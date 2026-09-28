@@ -1,6 +1,8 @@
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { classifyOpenings, sameHole, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 import { findEntranceMarkers, placeEntranceDoor } from "@/lib/projects/floorplan-entrance";
+import { findWardrobes } from "@/lib/projects/floorplan-wardrobe";
+import { findWorktopRuns } from "@/lib/projects/floorplan-worktop";
 import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
@@ -11,6 +13,7 @@ export { atOtherLevel };
 import {
   findBaths,
   findFurniture,
+  findKitchenFittings,
   findRoundedFurniture,
   looksLikeKitchenIsland,
   seatsAroundTable,
@@ -285,7 +288,15 @@ export async function buildFlatFromGeometry(
     .filter((body) => !hatchKept.some((band) => sameWall(band, body)));
   // A wall that lies inside a drawn bath is the bath's rim; see findBaths.
   const baths = findBaths(geometry.segments, geometry.curves, unitsPerMetre);
+  // And one with a hob in it is the worktop: the pan supports are short
+  // diagonals in a band, which is what hatch looks like, and דירה 22's hob and
+  // the run under it became a 42 cm wall 2.6 m long down its kitchen. A wall
+  // stands behind a hob, never under its middle.
+  const hobs = findKitchenFittings(geometry.segments, geometry.curves, unitsPerMetre).filter(
+    (piece) => piece.kind === "hob",
+  );
   const bodies = [...hatchKept, ...plotted].filter((body) => {
+    if (hobs.some((hob) => centreInsideBody(hob, body))) return false;
     const r = bodyRect(body);
     // Mostly inside, not wholly: דירה 22's ran on past the bath's end into
     // the outer wall. A real wall stands beside a bath, not across it.
@@ -320,6 +331,26 @@ export async function buildFlatFromGeometry(
     if (!inside(piece.x + piece.w / 2, piece.y + piece.h / 2)) return false;
     return !bodies.some((body) => centreInsideBody(piece, body));
   });
+  // The run the hob and the sink are set into; see findWorktopRuns.
+  const worktops = findWorktopRuns(
+    geometry.segments,
+    found.filter((piece) => piece.kind === "hob" || piece.kind === "sink"),
+    bodies.map(bodyRect),
+    unitsPerMetre,
+    found,
+  );
+  found.push(...worktops);
+  // Wardrobes drawn against a wall, which the rectangle finder cannot close;
+  // see findWardrobes. One already measured as a rectangle is kept as it is.
+  const wardrobes = findWardrobes(geometry.segments, unitsPerMetre).filter((wardrobe) => {
+    if (!standsOnFloor(wardrobe)) return false;
+    return !found.some((piece) => {
+      const ox = Math.min(piece.x + piece.w, wardrobe.x + wardrobe.w) - Math.max(piece.x, wardrobe.x);
+      const oy = Math.min(piece.y + piece.h, wardrobe.y + wardrobe.h) - Math.max(piece.y, wardrobe.y);
+      return ox > 0 && oy > 0 && ox * oy > 0.3 * Math.min(piece.w * piece.h, wardrobe.w * wardrobe.h);
+    });
+  });
+  found.push(...wardrobes);
 
   // Seating, placed on the anchors rather than hunted for. A chair and a stool
   // are drawn as rounded shapes whose corner arcs are the only part that reaches
@@ -362,7 +393,8 @@ export async function buildFlatFromGeometry(
   // and with floor on both of its long sides — a run against a wall is a
   // worktop and has no stools.
   const island = found.find((piece) => {
-    if (!looksLikeKitchenIsland(piece)) return false;
+    // A run against a wall has floor behind the wall too, in the next room.
+    if (worktops.includes(piece) || !looksLikeKitchenIsland(piece)) return false;
     const vertical = piece.h >= piece.w;
     const step = unitsPerMetre * 0.55;
     const lowSide = vertical
@@ -381,12 +413,13 @@ export async function buildFlatFromGeometry(
     // between the island and the sink run. The working side is the one with the
     // kitchen's own units on it, so the stools go on whichever side is further
     // from the nearest hob, sink or worktop.
+    // Not the island itself: it is renamed a counter above, and measured
+    // against itself both sides were half a metre away, so the choice fell
+    // to the tie — דירה 22's stools went on the cook's side.
     const fittings = found.filter(
       (piece) =>
-        piece.kind === "hob" ||
-        piece.kind === "sink" ||
-        piece.kind === "counter" ||
-        (piece.kind === "storage" && piece !== island),
+        piece !== island &&
+        (piece.kind === "hob" || piece.kind === "sink" || piece.kind === "counter" || piece.kind === "storage"),
     );
     const vertical = island.h >= island.w;
     const reach = (px: number, py: number) =>

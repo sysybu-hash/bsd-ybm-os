@@ -1,4 +1,10 @@
-import { buildFlatScene, pieceBelongsIn, sceneOpeningKind } from "@/lib/projects/scene3d/build-scene";
+import {
+  buildFlatScene,
+  enclosedOnFourSides,
+  pieceBelongsIn,
+  sceneOpeningKind,
+  slicesByEnclosure,
+} from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
 import { mergeSpanRows, outlineEdges } from "@/lib/projects/scene3d/floors";
 import {
@@ -211,5 +217,30 @@ describe("a room's floor, with its printed name's holes filled", () => {
     expect(fillEnclosedHoles(holed, 200)).toBe(holed);
     const notched = Array.from({ length: 50 }, (_, i) => ({ y: i * 2, spans: (i < 5 ? [[0, 40], [60, 100]] : [[0, 100]]) as Array<[number, number]> }));
     expect(fillEnclosedHoles(notched, 10_000)).toBe(notched);
+  });
+});
+
+describe("floor nobody claimed: inside the flat or outside it", () => {
+  // A room from 0 to 100 walled on all four sides.
+  const walls = [
+    { x: 0, y: -5, w: 100, h: 5 },
+    { x: 0, y: 100, w: 100, h: 5 },
+    { x: -5, y: 0, w: 5, h: 100 },
+    { x: 100, y: 0, w: 5, h: 100 },
+  ];
+
+  it("is inside where a wall stands every way", () => {
+    expect(enclosedOnFourSides({ x: 50, y: 50 }, walls)).toBe(true);
+  });
+
+  it("is outside where the drawing runs out one way", () => {
+    expect(enclosedOnFourSides({ x: 150, y: 50 }, walls)).toBe(false);
+  });
+
+  it("judges a strip that crosses the outer wall slice by slice", () => {
+    // דירה 22's north strip: a roof, under the wall, into the flat.
+    const runs = slicesByEnclosure({ x: 40, y: 40, w: 120, h: 10 }, walls, 10);
+    expect(runs.map((run) => run.inside)).toEqual([true, false]);
+    expect(runs[0]!.rect.x + runs[0]!.rect.w).toBeCloseTo(runs[1]!.rect.x);
   });
 });

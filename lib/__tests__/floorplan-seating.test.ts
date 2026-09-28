@@ -128,6 +128,16 @@ describe("findRoundedFurniture", () => {
     expect(found).toHaveLength(2);
   });
 
+  it("parts two sofas standing 25 cm apart, as דירה 16's pair does", () => {
+    // Each sofa is two 70 cm seats side by side, so the arcs inside one sofa
+    // are further apart than the two sofas are.
+    const seat = 0.7 * UPM;
+    const sofa = (x: number) => [...corners(x, 789, seat, seat), ...corners(x + seat, 789, seat, seat)];
+    const found = findRoundedFurniture([...sofa(376), ...sofa(376 + 2 * seat + 0.25 * UPM)], UPM);
+    expect(found).toHaveLength(2);
+    for (const piece of found) expect(Math.max(piece.widthCm, piece.depthCm)).toBeCloseTo(140, 0);
+  });
+
   it("ignores a shape too small to sit on", () => {
     expect(findRoundedFurniture(corners(100, 100, 0.15 * UPM, 0.15 * UPM), UPM)).toEqual(
       [],

@@ -223,6 +223,52 @@ export function roomsForScene(input: SceneInput): SceneInput["rooms"] {
   return out.length > 0 ? out : input.rooms;
 }
 
+/**
+ * Whether a point is shut in on all four sides: a ray from it, left, right,
+ * up and down, meets one of the blockers before it runs off the drawing.
+ */
+export function enclosedOnFourSides(point: { x: number; y: number }, blockers: Rect[]): boolean {
+  const spansY = (r: Rect) => point.y >= r.y && point.y <= r.y + r.h;
+  const spansX = (r: Rect) => point.x >= r.x && point.x <= r.x + r.w;
+  return (
+    blockers.some((r) => spansY(r) && r.x + r.w <= point.x) &&
+    blockers.some((r) => spansY(r) && r.x >= point.x) &&
+    blockers.some((r) => spansX(r) && r.y + r.h <= point.y) &&
+    blockers.some((r) => spansX(r) && r.y >= point.y)
+  );
+}
+
+/**
+ * A rect cut along its longer side into slices of about `step`, each judged by
+ * enclosedOnFourSides at its centre, with neighbouring slices that agree
+ * joined back into one run.
+ */
+export function slicesByEnclosure(
+  rect: Rect,
+  blockers: Rect[],
+  step: number,
+): Array<{ rect: Rect; inside: boolean }> {
+  const horizontal = rect.w >= rect.h;
+  const length = horizontal ? rect.w : rect.h;
+  const count = Math.max(1, Math.round(length / step));
+  const size = length / count;
+  const runs: Array<{ rect: Rect; inside: boolean }> = [];
+  for (let i = 0; i < count; i++) {
+    const slice: Rect = horizontal
+      ? { x: rect.x + i * size, y: rect.y, w: size, h: rect.h }
+      : { x: rect.x, y: rect.y + i * size, w: rect.w, h: size };
+    const inside = enclosedOnFourSides(rectCentre(slice), blockers);
+    const last = runs[runs.length - 1];
+    if (last && last.inside === inside) {
+      if (horizontal) last.rect.w += size;
+      else last.rect.h += size;
+    } else {
+      runs.push({ rect: slice, inside });
+    }
+  }
+  return runs;
+}
+
 /** The measured flat, which carries every region as scan rows. */
 export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): SceneInput {
   return {
@@ -482,11 +528,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   // Floor the segmenter did not claim for any room — thresholds, the odd sliver
-  // — still has to be walked on, so it is laid in the neutral timber.
+  // — still has to be walked on, so it is laid in the neutral timber. Floor
+  // with open drawing on one side of it is outside the flat, and timber there
+  // read as a deck stuck onto the building: דירה 22's two paved roofs at
+  // +14.36 came out as floorboards past its outer walls. It is laid as pale
+  // stone, as the sheet paves it.
   const claimed = roomRects.flatMap((entry) => entry.rects);
+  const blockers = [...claimed, ...bodies.map(bandToRect)];
+  // One scan rect can run from a roof, under an outer wall, into the flat —
+  // דירה 22's strip along its north side crosses both roofs — so it is judged
+  // in slices along its length, and each run of slices gets its own floor.
   for (const rect of floorRects) {
     if (pointInRects(rectCentre(rect), claimed)) continue;
-    meshes.push(boxFrom(p, rect, -FLOOR_T_M, 0, "floor", "floorWood", "floor:unclaimed"));
+    for (const run of slicesByEnclosure(rect, blockers, upm * 0.25)) {
+      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", run.inside ? "floorWood" : "floorStone", "floor:unclaimed"));
+    }
   }
 
   // --- terraces, and the railing along the edges that are not walls.

@@ -161,6 +161,12 @@ describe("a fixture needs a wet room to stand in", () => {
     expect(settled.every((p) => p.kind === "fixture")).toBe(true);
   });
 
+  it("takes דירה 22's two-stool island, 54 by 128 cm, as an island", () => {
+    expect(
+      looksLikeKitchenIsland({ x: 0, y: 0, w: 54, h: 128, widthCm: 54, depthCm: 128, kind: "storage" }),
+    ).toBe(true);
+  });
+
   it("recognises a free-standing island even when the rectangle was left unnamed", () => {
     expect(
       looksLikeKitchenIsland({
@@ -296,6 +302,25 @@ describe("the hob and the sink, which make a kitchen a kitchen", () => {
     expect(found.filter((p) => p.kind === "hob")).toHaveLength(1);
   });
 
+  it("keeps a hob that shares its x and width with the run past it", () => {
+    // דירה 22: the run to the wall, the worktop past the hob and the hob stack
+    // up like treads, and the stair filter took the hob out with them.
+    const side = 0.64 * UPM;
+    const top = 100 + side * 1.6;
+    const burners = [
+      ...ring(100 + side * 0.3, top + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.7, top + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.3, top + side * 0.7, 0.07 * UPM),
+      ...ring(100 + side * 0.7, top + side * 0.7, 0.07 * UPM),
+    ];
+    const stack = [
+      ...box(100, 100, side, side * 0.9),
+      ...box(100, 100 + side * 0.9, side, side * 0.7),
+      ...box(100, top, side, side),
+    ];
+    expect(findKitchenFittings(stack, burners, UPM).filter((p) => p.kind === "hob")).toHaveLength(1);
+  });
+
   it("does not call a plain square of that size a hob", () => {
     const side = 0.64 * UPM;
     expect(findKitchenFittings(box(100, 100, side, side), [], UPM).filter((p) => p.kind === "hob")).toEqual([]);
@@ -303,6 +328,11 @@ describe("the hob and the sink, which make a kitchen a kitchen", () => {
 
   it("takes two basins side by side as the kitchen sink", () => {
     const rects = [...box(600, 600, 0.32 * UPM, 0.64 * UPM), ...box(600, 640, 0.32 * UPM, 0.64 * UPM)];
+    expect(findKitchenFittings(rects, [], UPM).filter((p) => p.kind === "sink")).toHaveLength(2);
+  });
+
+  it("takes דירה 22's small pair, 46 by 37 cm and 64 cm apart, as the sink", () => {
+    const rects = [...box(600, 600, 0.46 * UPM, 0.37 * UPM), ...box(600 + 0.64 * UPM, 600, 0.45 * UPM, 0.37 * UPM)];
     expect(findKitchenFittings(rects, [], UPM).filter((p) => p.kind === "sink")).toHaveLength(2);
   });
 

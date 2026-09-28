@@ -231,14 +231,20 @@ export function settleFixtures(pieces: FurniturePiece[], unitsPerMetre: number):
   });
 }
 
-/** A free-standing kitchen island: deep enough to work at, long enough to seat. */
+/**
+ * A free-standing kitchen island: deep enough to work at, long enough to seat.
+ *
+ * Long enough is two stools, 1.2 m: דירה 22's island is 54 by 128 cm with two
+ * stools drawn at it, and at a 1.4 m floor it stood in the render as a
+ * two-metre wardrobe in the middle of the kitchen.
+ */
 export function looksLikeKitchenIsland(piece: FurniturePiece): boolean {
   if (piece.kind !== "storage" && piece.kind !== "counter" && piece.kind !== "unknown") {
     return false;
   }
   const depthCm = Math.min(piece.widthCm, piece.depthCm);
   const lengthCm = Math.max(piece.widthCm, piece.depthCm);
-  return depthCm >= 40 && depthCm <= 75 && lengthCm >= 140 && lengthCm <= 320;
+  return depthCm >= 40 && depthCm <= 75 && lengthCm >= 120 && lengthCm <= 320;
 }
 
 /**
@@ -574,11 +580,17 @@ export function findKitchenFittings(
   curves: VectorSegment[],
   unitsPerMetre: number,
 ): FurniturePiece[] {
-  const rects = dedupeRectangles(dropNested(findRectangles([...segments, ...curves], {
+  const found = findRectangles([...segments, ...curves], {
     unitsPerMetre,
     minSideM: 0.25,
     maxSideM: 1.2,
-  })));
+  });
+  const rects = dedupeRectangles(dropNested(found));
+  // The hob is judged on every rectangle, stair filter or not: at the end of a
+  // run the hob's square, the worktop past it and the run to the wall share
+  // an x and a width, and דירה 22's hob went out with them as a "stair". The
+  // burners inside are what vouch for it.
+  const hobRects = dedupeRectangles(found);
   const burners = findCurveFixtures(curves, unitsPerMetre, {
     cell: 4,
     minChords: 3,
@@ -588,12 +600,11 @@ export function findKitchenFittings(
 
   const out: FurniturePiece[] = [];
   const basins: FurniturePiece[] = [];
-  for (const r of rects) {
+  for (const r of hobRects) {
     const widthCm = (r.w / unitsPerMetre) * 100;
     const depthCm = (r.h / unitsPerMetre) * 100;
     const short = Math.min(widthCm, depthCm);
     const long = Math.max(widthCm, depthCm);
-
     if (short >= 50 && short <= 80 && long >= 50 && long <= 80) {
       const inside = burners.filter(
         (b) =>
@@ -604,11 +615,19 @@ export function findKitchenFittings(
       ).length;
       if (inside >= 3) {
         out.push({ ...r, widthCm, depthCm, kind: "hob" });
-        continue;
       }
     }
+  }
+  for (const r of rects) {
+    const widthCm = (r.w / unitsPerMetre) * 100;
+    const depthCm = (r.h / unitsPerMetre) * 100;
+    const short = Math.min(widthCm, depthCm);
+    const long = Math.max(widthCm, depthCm);
+    if (out.some((hob) => hob.kind === "hob" && Math.abs(hob.x - r.x) < 4 && Math.abs(hob.y - r.y) < 4)) continue;
     // A basin: half as wide as it is deep, at worktop depth.
-    if (short >= 26 && short <= 42 && long >= 52 && long <= 78) {
+    // דירה 22 draws its pair 46 by 37 cm, so the long side starts at 40; the
+    // pairing below is what keeps a bedside table out.
+    if (short >= 26 && short <= 42 && long >= 40 && long <= 78) {
       basins.push({ ...r, widthCm, depthCm, kind: "sink" });
     }
   }
@@ -620,8 +639,8 @@ export function findKitchenFittings(
     const paired = basins.some(
       (other) =>
         other !== basin &&
-        Math.abs(other.x - basin.x) < Math.max(basin.w, basin.h) * 1.4 &&
-        Math.abs(other.y - basin.y) < Math.max(basin.w, basin.h) * 1.4,
+        Math.abs(other.x - basin.x) < Math.max(basin.w, basin.h, other.w, other.h) * 1.5 &&
+        Math.abs(other.y - basin.y) < Math.max(basin.w, basin.h, other.w, other.h) * 1.5,
     );
     if (paired) out.push(basin);
   }
@@ -712,27 +731,35 @@ export function findRoundedFurniture(
   });
   if (knots.length === 0) return [];
 
-  const seen = new Array<boolean>(knots.length).fill(false);
-  const out: FurniturePiece[] = [];
-  for (let i = 0; i < knots.length; i++) {
-    if (seen[i]) continue;
-    const stack = [i];
-    const group: number[] = [];
-    seen[i] = true;
-    while (stack.length) {
-      const cur = stack.pop()!;
-      group.push(cur);
-      for (let j = 0; j < knots.length; j++) {
-        if (seen[j]) continue;
-        const a = knots[cur]!;
-        const b = knots[j]!;
-        const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
-        const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
-        if (Math.hypot(dx, dy) > gap) continue;
-        seen[j] = true;
-        stack.push(j);
+  const cluster = (members: number[], link: number): number[][] => {
+    const seen = new Set<number>();
+    const groups: number[][] = [];
+    for (const i of members) {
+      if (seen.has(i)) continue;
+      const stack = [i];
+      const group: number[] = [];
+      seen.add(i);
+      while (stack.length) {
+        const cur = stack.pop()!;
+        group.push(cur);
+        for (const j of members) {
+          if (seen.has(j)) continue;
+          const a = knots[cur]!;
+          const b = knots[j]!;
+          const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
+          const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
+          if (Math.hypot(dx, dy) > link) continue;
+          seen.add(j);
+          stack.push(j);
+        }
       }
+      groups.push(group);
     }
+    return groups;
+  };
+
+  const out: FurniturePiece[] = [];
+  const judge = (group: number[]) => {
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -756,9 +783,36 @@ export function findRoundedFurniture(
     const stool = short >= 20 && short <= 45 && long >= 40 && long <= 80;
     const chair = short >= 38 && short <= 95 && long >= 38 && long <= 100;
     const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260;
-    if (!stool && !chair && !sofa) continue;
-    out.push({ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" });
-  }
+    if (stool || chair || sofa) {
+      out.push({ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" });
+      return;
+    }
+    // Too long for one piece is pieces standing in a row: דירה 16's pair of
+    // two-seaters, 25 cm apart, joined into one 3 m block and was thrown out
+    // as not seating. A shorter link does not part them — the arcs inside one
+    // sofa are 40 cm apart — so the row is cut at the bare stretch nearest its
+    // middle, and each side judged again.
+    if (long <= 260 || group.length < 2) return;
+    const alongX = w >= h;
+    const lo = (g: number) => (alongX ? knots[g]!.x : knots[g]!.y);
+    const hi = (g: number) => (alongX ? knots[g]!.x + knots[g]!.w : knots[g]!.y + knots[g]!.h);
+    const sorted = [...group].sort((a, b) => lo(a) - lo(b));
+    const mid = alongX ? x0 + w / 2 : y0 + h / 2;
+    let reach = hi(sorted[0]!);
+    let cut: number | null = null;
+    for (const g of sorted.slice(1)) {
+      if (lo(g) > reach) {
+        const centre = (reach + lo(g)) / 2;
+        if (cut == null || Math.abs(centre - mid) < Math.abs(cut - mid)) cut = centre;
+      }
+      reach = Math.max(reach, hi(g));
+    }
+    if (cut == null) return;
+    const at = cut;
+    judge(group.filter((g) => (lo(g) + hi(g)) / 2 < at));
+    judge(group.filter((g) => (lo(g) + hi(g)) / 2 >= at));
+  };
+  for (const group of cluster(knots.map((_, i) => i), gap)) judge(group);
   return out;
 }
 
