@@ -303,14 +303,17 @@ const WET_CELL_MIN_M2 = 0.6;
  * The bedroom the sheet's "+2" stands at — the ממ"ד's door sill.
  *
  * The mark is printed in the doorway, on either side of it, so the bedroom
- * nearest it within a metre is the one. Null where no mark stands at a bedroom.
+ * nearest it within 0.4 m is the one. Null where no mark stands at a bedroom.
+ * A metre was too far: on דירה 17 the shelter itself was not read as a room,
+ * and the bedroom above it, 0.9 m from the mark, was named the ממ"ד instead —
+ * a bedroom lost and a shelter invented.
  */
 function markedShelter(
   rooms: SegmentedRoom[],
   marks: Array<{ x: number; y: number }>,
   unitsPerMetre: number,
 ): SegmentedRoom | null {
-  const reach = unitsPerMetre * 1;
+  const reach = unitsPerMetre * 0.4;
   let best: { room: SegmentedRoom; distance: number } | null = null;
   for (const room of rooms) {
     if (room.kind !== "bedroom") continue;

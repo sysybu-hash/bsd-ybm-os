@@ -359,3 +359,25 @@ describe("a measured terrace the rooms missed", () => {
     expect(rooms.filter((room) => room.kind === "balcony")).toHaveLength(1);
   });
 });
+
+describe("the ממ\"ד the sheet's +2 stands at", () => {
+  const bed = (x: number): FurniturePiece => piece(x, UPM, "bed");
+  const withMark = (mark: { x: number; y: number }) =>
+    segmentRooms({
+      bodies: [...shell, divider],
+      openings: [],
+      floor,
+      furniture: [bed(UPM), bed(W / 2 + UPM)],
+      bounds,
+      unitsPerMetre: UPM,
+      shelterMarks: [mark],
+    });
+
+  it("names the bedroom whose doorway the mark is printed in", () => {
+    expect(withMark({ x: W / 4, y: H - 0.1 * UPM }).filter((room) => room.kind === "mmd")).toHaveLength(1);
+  });
+
+  it("names no bedroom from a mark 0.9 m away — דירה 17's shelter was not read, the bedroom beside it was", () => {
+    expect(withMark({ x: W / 4, y: H + 0.9 * UPM }).filter((room) => room.kind === "mmd")).toHaveLength(0);
+  });
+});
