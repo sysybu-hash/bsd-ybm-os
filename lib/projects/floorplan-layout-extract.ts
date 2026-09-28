@@ -45,6 +45,7 @@ Return JSON only:
   "ceilingHeightM": number | null,
   "north": string | null,
   "grossAreaM2": number | null,
+  "unitLevelM": number | null,
   "rooms": [
     {
       "name": "exact Hebrew label from the drawing — REQUIRED, never null, never empty",
@@ -54,6 +55,7 @@ Return JSON only:
       "areaM2": number | null,
       "adjacentTo": string[],
       "bbox": { "x": 0.0, "y": 0.0, "w": 0.0, "h": 0.0 },
+      "levelM": number | null,
       "finishNotes": string | null,
       "bedCount": 0,
       "deskCount": 0,
@@ -96,6 +98,9 @@ Rules:
 - Bathtub room and laundry are separate when both are drawn. Do not add a third wet room. חלון ממ"ד is a window note on THE protected room — kind mmd, ONE room per unit, not a second ממ"ד and not a 4th bedroom.
 - One drawn terrace = one balcony. A מ"ר number is not an extra balcony. 0.64 מ"ר is a tiny strip — do not read it as 6.4. Living terrace and a second terrace only if both are printed.
 - grossAreaM2 = printed apartment area (111.29), not balcony area.
+- unitLevelM = the elevation printed in the apartment's own box, beside its number and gross area (⊕ +9.64 → 9.64).
+- Every terrace the sheet draws is one balcony object — including one whose area figure is drawn in outline lettering or not printed at all. Each one gets a bbox drawn tight round its paved area, its printed area in areaM2 when there is one, and levelM = the elevation printed at the ⊕ mark on it (+12.79 → 12.79). A terrace whose levelM differs from unitLevelM is still returned, with its own levelM: it is a roof or a terrace on another floor, and the level says so.
+- levelM on any other room only when an elevation is printed inside it; otherwise null.
 - Doors only where a swing is drawn. Do not flatten a duplex that is actually drawn. Do not invent a duplex that is not.
 - OCR grounding is for numbers/labels, not a reason to skip unlabeled kitchen/bath/living.
 - Furniture counts (count printed symbols, integer, do not guess):

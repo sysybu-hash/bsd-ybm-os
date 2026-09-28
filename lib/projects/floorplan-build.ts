@@ -93,8 +93,22 @@ export type BuiltFlat = {
  * measurement. The returned area is still only a claim: callers must verify
  * it against the vector flood before accepting the region.
  */
+/**
+ * A terrace the programme reads at another level than the flat: the roof of
+ * the flat below, or a terrace above, drawn for context. דירה 22 draws two at
+ * +14.36 beside a flat at +11.42. The level is printed in outline lettering
+ * the text layer cannot read, so it comes from the programme or not at all.
+ */
+export function atOtherLevel(
+  room: { levelM?: number },
+  programme: Pick<FloorplanLayout, "unitLevelM"> | undefined,
+): boolean {
+  const unit = programme?.unitLevelM;
+  return room.levelM != null && unit != null && Math.abs(room.levelM - unit) > 0.05;
+}
+
 export function programmeTerraceSeeds(
-  programme: Pick<FloorplanLayout, "rooms"> | undefined,
+  programme: Pick<FloorplanLayout, "rooms" | "unitLevelM"> | undefined,
   page: { width: number; height: number },
   extent: { x: number; y: number; width: number; height: number },
   printed: PlacedNumber[],
@@ -105,6 +119,7 @@ export function programmeTerraceSeeds(
       const kind = room.kind ?? inferRoomKind(room.name);
       return (
         kind === "balcony" &&
+        !atOtherLevel(room, programme) &&
         room.bbox != null &&
         room.areaM2 != null &&
         room.areaM2 >= 1.5 &&
@@ -480,8 +495,20 @@ export async function buildFlatFromGeometry(
   // A terrace whose area is drawn as outlines has no figure to seed it from,
   // but it still carries its level mark. Unlabelled, so the region is accepted
   // only inside the window a terrace measures; see findLevelMarks.
+  // A mark on a terrace the programme reads at another level seeds nothing.
+  const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
+  const otherLevelBoxes = (options?.programme?.rooms ?? [])
+    .filter((room) => room.bbox != null && atOtherLevel(room, options?.programme))
+    .map((room) => room.bbox!);
+  const onOtherLevel = (mark: { x: number; y: number }) =>
+    otherLevelBoxes.some((box) => {
+      const fx = mark.x / pageSize.width;
+      const fy = mark.y / pageSize.height;
+      return fx >= box.x && fx <= box.x + box.w && fy >= box.y && fy <= box.y + box.h;
+    });
   const levelSeeds = levelMarks.filter(
     (mark) =>
+      !onOtherLevel(mark) &&
       mark.x >= flatExtent.x &&
       mark.x <= flatExtent.x + flatExtent.width &&
       mark.y >= flatExtent.y &&

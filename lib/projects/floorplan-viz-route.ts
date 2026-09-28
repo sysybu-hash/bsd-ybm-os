@@ -192,6 +192,7 @@ export function layoutFromCadRooms(
     ceilingHeightM: extracted.ceilingHeightM,
     north: extracted.north,
     grossAreaM2: extracted.grossAreaM2,
+    unitLevelM: extracted.unitLevelM,
     rooms: withPageBbox(
       nameCadRoomsFromSheet(roomsForLayout(rooms, unitsPerMetre), rooms, extracted, extra?.page),
       rooms,
