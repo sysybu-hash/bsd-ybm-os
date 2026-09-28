@@ -93,6 +93,14 @@ describe("which room a piece stands in", () => {
     expect(assignFurniture([cell], [drain], UPM).has(drain)).toBe(false);
   });
 
+  it("gives a WC cell a pan drawn as its bowl alone, 52 cm long", () => {
+    // דירה 15's guest WC: the bowl sat just past the end of its cell, and at a
+    // 60 cm minimum it was left out and the WC came back a corridor.
+    const bowl = at(0.5 * UPM, 1.4 * UPM, 41, 52, "fixture");
+    const wc = withHole(0, 1.4 * UPM, 0, 1.8 * UPM, [bowl.x, bowl.x + bowl.w, bowl.y, bowl.y + bowl.h]);
+    expect(assignFurniture([wc], [bowl], UPM).get(bowl)).toBe(0);
+  });
+
   it("gives a pan to a WC cell but not to a living room", () => {
     const pan = at(0.5 * UPM, 0.5 * UPM, 40, 68, "fixture");
     const hole: [number, number, number, number] = [pan.x, pan.x + pan.w, pan.y, pan.y + pan.h];
@@ -349,5 +357,27 @@ describe("a measured terrace the rooms missed", () => {
       unitsPerMetre: UPM,
     });
     expect(rooms.filter((room) => room.kind === "balcony")).toHaveLength(1);
+  });
+});
+
+describe("the ממ\"ד the sheet's +2 stands at", () => {
+  const bed = (x: number): FurniturePiece => piece(x, UPM, "bed");
+  const withMark = (mark: { x: number; y: number }) =>
+    segmentRooms({
+      bodies: [...shell, divider],
+      openings: [],
+      floor,
+      furniture: [bed(UPM), bed(W / 2 + UPM)],
+      bounds,
+      unitsPerMetre: UPM,
+      shelterMarks: [mark],
+    });
+
+  it("names the bedroom whose doorway the mark is printed in", () => {
+    expect(withMark({ x: W / 4, y: H - 0.1 * UPM }).filter((room) => room.kind === "mmd")).toHaveLength(1);
+  });
+
+  it("names no bedroom from a mark 0.9 m away — דירה 17's shelter was not read, the bedroom beside it was", () => {
+    expect(withMark({ x: W / 4, y: H + 0.9 * UPM }).filter((room) => room.kind === "mmd")).toHaveLength(0);
   });
 });

@@ -215,7 +215,15 @@ describe("the level mark a terrace carries", () => {
 
   it("finds a terrace's mark — דירה 14's west terrace prints its area only as outlines", () => {
     const m = mark(257, 913, 11.3);
-    expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([{ x: 257, y: 913 }]);
+    expect(findLevelMarks(m.curves, m.segments, upm).map(({ x, y }) => ({ x, y }))).toEqual([{ x: 257, y: 913 }]);
+  });
+
+  it("hands back the mark's own hatch, which reads as a wall", () => {
+    const m = mark(311, 1208, 8);
+    const [found] = findLevelMarks(m.curves, m.segments, upm);
+    expect(found!.strokes.length).toBeGreaterThanOrEqual(6);
+    expect(found!.strokes.every((stroke) => m.segments.includes(stroke))).toBe(true);
+    expect(found!.r).toBeCloseTo(8);
   });
 
   it("leaves out the flat's own, smaller mark in its number box", () => {
@@ -241,6 +249,14 @@ describe("a terrace seeded without a printed area", () => {
     const found = findTerracesOnFloor(floorOf(150, 150), [], [{ x: 75, y: 75 }], upm);
     expect(found).toHaveLength(1);
     expect(found[0]!.printedM2).toBeUndefined();
+  });
+
+  it("gives a printed terrace back the rim the flood kept off its edges", () => {
+    // A 2 m by 1.6 m terrace printed as 3.2 m²: flooded only where floor lies
+    // on every side, it measures a rim short; given the rim back, it matches.
+    const found = findTerracesOnFloor(floorOf(100, 80), [], [{ x: 50, y: 40, value: 3.2 }], upm);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.floodedM2).toBeGreaterThan(3);
   });
 
   it("is refused when it floods more than any terrace", () => {

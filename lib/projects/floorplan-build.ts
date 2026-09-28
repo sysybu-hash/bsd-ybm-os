@@ -32,6 +32,8 @@ import {
   findHatchGaps,
   findOpenings,
   stubsInsideCrossingWalls,
+  floorWithoutLanding,
+  spanArea,
   wallBodiesForSheet,
   type Opening,
   type SpanRow,
@@ -186,6 +188,15 @@ export async function buildFlatFromGeometry(
     unitsPerMetreHint?: number;
   },
 ): Promise<BuiltFlat | null> {
+  // A terrace's level mark hatches two quarters of its circle, and that hatch
+  // is evidence for a wall across the top of the terrace. The mark is found
+  // before the scale is, at the scale these sheets lock to (54 to 63 units a
+  // metre), and its hatch is left out of the evidence tests after the lock —
+  // not before it: taken out of the scale sweep, it moved דירה 14's scale and
+  // cost the flat a terrace.
+  const levelMarks = findLevelMarks(geometry.curves, geometry.segments, 56);
+  const markHatch = new Set(levelMarks.flatMap((mark) => mark.strokes));
+  const evidence = geometry.segments.filter((segment) => !markHatch.has(segment));
   const sheet = wallBoundingBox(geometry);
   if (!sheet) return null;
 
@@ -199,6 +210,8 @@ export async function buildFlatFromGeometry(
         : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
+  let floorM2 = lock.floorM2;
+  let areaError = lock.areaError;
 
   const rowHeight = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
   const inside = (x: number, y: number) => {
@@ -255,10 +268,10 @@ export async function buildFlatFromGeometry(
   const hatchKept = dropUnhatchedBodies(
     trimToHatchAlong(
       kept.filter((body) => body.source !== "plotted"),
-      geometry.segments,
-      { unitsPerMetre, floor: lock.floor },
+      evidence,
+      { unitsPerMetre, floor },
     ),
-    geometry.segments,
+    evidence,
     unitsPerMetre,
   );
   // A plotted pair joins the set unless a hatched band that SURVIVED covers the
@@ -467,7 +480,6 @@ export async function buildFlatFromGeometry(
   // A terrace whose area is drawn as outlines has no figure to seed it from,
   // but it still carries its level mark. Unlabelled, so the region is accepted
   // only inside the window a terrace measures; see findLevelMarks.
-  const levelMarks = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre);
   const levelSeeds = levelMarks.filter(
     (mark) =>
       mark.x >= flatExtent.x &&
@@ -477,28 +489,15 @@ export async function buildFlatFromGeometry(
       !terraceHits.some((terrace) => spansContain(terrace.rows, mark.x, mark.y)),
   );
   // A level mark is also drawn inside a room — a wet room's lowered floor — and
-  // that room has a pan, a basin or a bed in it, where a terrace has none. Any
-  // other piece is not proof: a terrace's boxed label and its drain read as
-  // furniture, and would lose every terrace the mark finds. Nor is the mark
-  // itself, which is a circle a basin's size and reads as one.
+  // that room has a bed, a pan or a basin in it, or two wet pieces. Outlined
+  // lettering is not proof, nor is the mark itself, a circle a basin's size.
+  // Within the circle itself, not a margin round it: a terrace's drain is
+  // drawn beside its mark, and on דירה 22 a wider margin let the drain pass
+  // and the roof below the flat became two terraces.
   const onMark = (piece: FurniturePiece) =>
     levelMarks.some(
-      (mark) =>
-        Math.hypot(piece.x + piece.w / 2 - mark.x, piece.y + piece.h / 2 - mark.y) < unitsPerMetre * 0.3,
+      (mark) => Math.hypot(piece.x + piece.w / 2 - mark.x, piece.y + piece.h / 2 - mark.y) < mark.r * 1.2,
     );
-  const markedHits = (
-    levelSeeds.length > 0 ? findTerracesOnFloor(floor, bodies, levelSeeds, unitsPerMetre) : []
-  ).filter(
-    (terrace) =>
-      !furniture.some(
-        (piece) =>
-          (piece.kind === "fixture" || piece.kind === "sink" || piece.kind === "bed") &&
-          !onMark(piece) &&
-          spansContain(terrace.rows, piece.x + piece.w / 2, piece.y + piece.h / 2),
-      ),
-  );
-  const terraces = [...terraceHits, ...markedHits].map((terrace) => terrace.rows);
-
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(
     wallBodiesForSheet(geometry.segments, { unitsPerMetre, keepOpenings: true }),
@@ -506,6 +505,27 @@ export async function buildFlatFromGeometry(
     8,
     { truncate: true },
   ).filter(touchesFlat);
+  const markedHits = (
+    levelSeeds.length > 0
+      ? // At least 2.8 m²: unlabelled, the region has only its size to go on.
+        // The two real ones measured 3.04 and 3.19; the roof beside דירה 22,
+        // 2.53.
+        findTerracesOnFloor(floor, bodies, levelSeeds, unitsPerMetre, { unlabelledM2: { min: 2.8, max: 16 } })
+      : []
+  ).filter((terrace) => {
+    const inside = furniture.filter(
+      (piece) => !onMark(piece) && spansContain(terrace.rows, piece.x + piece.w / 2, piece.y + piece.h / 2),
+    );
+    const wet = inside.filter((piece) => piece.kind === "fixture" || piece.kind === "sink");
+    // A line of outlined lettering: long and thin. דירה 15's "שטח המרפסת 6.44"
+    // reads as a 100 by 50 cm fixture; a pan or a basin is not that shape, and
+    // neither was the 106 by 77 cm piece on the roof beside דירה 22.
+    const lettering = (piece: FurniturePiece) =>
+      Math.max(piece.widthCm, piece.depthCm) >= 80 && Math.min(piece.widthCm, piece.depthCm) <= 60;
+    return !inside.some((piece) => piece.kind === "bed") && wet.length < 2 && wet.every(lettering);
+  });
+  const terraces = [...terraceHits, ...markedHits].map((terrace) => terrace.rows);
+
   // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
   // rule alone returned six openings on דירה 14, most of them windows, and had
   // neither the front door nor the ones onto the terrace; the swings have all
@@ -572,13 +592,13 @@ export async function buildFlatFromGeometry(
         other.to > gap.from &&
         other.from < gap.to,
     );
-  const rowPitch = lock.floor.length > 1 ? lock.floor[1]!.y - lock.floor[0]!.y : 1;
+  const rowPitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
   // A terrace is not the flat's floor. The lock's floor runs out over the
   // balconies, so the door and the windows onto דירה 14's two terraces had
   // "floor" on both sides and were taken for doorways between rooms — drawn
   // as holes in the wall, each with a mezuzah.
   const floorAt = (x: number, y: number) =>
-    lock.floor.some(
+    floor.some(
       (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
     ) && !terraces.some((rows) => spansContain(rows, x, y));
   const floorSides = (gap: Opening): number => {
@@ -631,11 +651,14 @@ export async function buildFlatFromGeometry(
   }
   // The front door is the one the sheet's entrance arrow points through. By
   // the floor test alone it is a window: the landing is not the flat's floor.
-  const openings = placeEntranceDoor(
-    detected,
-    findEntranceMarkers([...geometry.segments, ...geometry.curves]),
-    { floor: lock.floor, bodies, unitsPerMetre },
-  );
+  const entranceMarkers = findEntranceMarkers([...geometry.segments, ...geometry.curves]);
+  const openings = placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre });
+  // The landing outside the front door is not the flat's; see floorWithoutLanding.
+  const flatFloor = floorWithoutLanding(floor, [...bodies, ...openings], entranceMarkers, unitsPerMetre);
+  if (flatFloor !== floor) {
+    floorM2 = spanArea(flatFloor) / (unitsPerMetre * unitsPerMetre);
+    areaError = printedAreaM2 > 0 ? floorM2 / printedAreaM2 - 1 : areaError;
+  }
 
   // A desk is a rectangle the classifier has to call storage, because a
   // sideboard is the same rectangle. The sheet already said which room is the
@@ -650,23 +673,25 @@ export async function buildFlatFromGeometry(
   const furnitureOffTerrace = furnishings.filter((piece) => {
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
-    return !terraces.some((rows) => spansContain(rows, cx, cy));
+    // A level mark is a circle a basin's size and was read as one; on דירה 15
+    // it made the west terrace a bathroom.
+    return !terraces.some((rows) => spansContain(rows, cx, cy)) && !onMark(piece);
   });
 
   return {
     unitsPerMetre,
     bodies,
-    floor,
+    floor: flatFloor,
     furniture: furnitureOffTerrace,
     openings,
     terraces,
     printedTerraceCount: printed.length,
     bounds,
-    floorM2: lock.floorM2,
-    areaError: lock.areaError,
+    floorM2,
+    areaError,
     svg: renderFlatSvg(bodies, bounds, {
       unitsPerMetre,
-      floor,
+      floor: flatFloor,
       furniture: furnishings,
       openings,
       terraces,

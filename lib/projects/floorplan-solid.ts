@@ -1336,6 +1336,68 @@ function hatchFillsMiddle(field: HatchField, body: WallBody, minDensity: number)
 }
 
 /**
+ * The thick hatched walls the stroke cap loses.
+ *
+ * extractHatchStrokes caps a stroke at 0.45 m because the terrace paving's
+ * diagonals run just under that, but 45° hatch across a ממ"ד wall hatched
+ * 32 cm deep is 0.45 m too. Where a sheet is cut at the shelter's outer wall —
+ * דירה 15 on its east side, דירה 17 on its west — that wall is the only thing
+ * closing the shelter, and without it the shelter was outside the flat. So a
+ * band at least 0.3 m thick, bracketed by two faces on the wall pen, is judged
+ * against longer strokes as well: paving lies between a terrace's edges,
+ * metres apart, not in a band a wall's width across.
+ */
+export function thickHatchedWalls(
+  segments: VectorSegment[],
+  known: WallBody[],
+  unitsPerMetre: number,
+  options?: { minDensity?: number; minLengthM?: number },
+): WallBody[] {
+  const upm = unitsPerMetre;
+  const minDensity = options?.minDensity ?? 0.4;
+  const minLength = (options?.minLengthM ?? 0.2) * upm;
+  const maxThickness = MAX_THICKNESS_M * upm;
+  const wallPen = segments.filter(
+    (s) => isAxisAligned(s) && segmentLength(s) >= 3 && (s.lineWidth ?? 0) >= WALL_MIN_LINE_WIDTH,
+  );
+  const longField = new HatchField(extractHatchStrokes(segments, { maxStrokeLength: upm * 0.6 }));
+  const penRuns = buildWallRuns(wallPen);
+  const out: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const faces = penRuns
+      .filter((r) => r.orientation === orientation && r.to - r.from >= minLength)
+      .sort((a, b) => a.at - b.at);
+    for (let i = 0; i < faces.length; i++) {
+      for (let j = i + 1; j < faces.length; j++) {
+        const a = faces[i]!;
+        const b = faces[j]!;
+        const gap = b.at - a.at;
+        if (gap < upm * 0.3) continue;
+        if (gap > maxThickness) break;
+        const from = Math.max(a.from, b.from);
+        const to = Math.min(a.to, b.to);
+        if (to - from < minLength) continue;
+        const body: WallBody = { orientation, centre: (a.at + b.at) / 2, thickness: gap, from, to };
+        // Already found, along most of its length. sameWall is too loose here:
+        // it matches on a fraction of the shorter body, and a 20-unit stub at a
+        // corner was enough to hide the whole of דירה 15's shelter wall.
+        const found = [...known, ...out].some(
+          (other) =>
+            other.orientation === orientation &&
+            Math.abs(other.centre - body.centre) < gap / 2 &&
+            Math.min(other.to, to) - Math.max(other.from, from) > (to - from) * 0.5,
+        );
+        if (found) continue;
+        if (longField.density(bodyRect(body)) < minDensity) continue;
+        if (!hatchFillsMiddle(longField, body, minDensity)) continue;
+        out.push({ ...body, source: "hatch" });
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * Drops wall bodies that lie outside the drawing.
  *
  * The hatch test is positive, so it also finds hatch outside the apartment: a
@@ -2517,6 +2579,102 @@ export function findTerraces(
   return out;
 }
 
+/**
+ * The flat's floor without the landing outside its front door.
+ *
+ * The scanline footprint fills whatever lies between a row's outermost walls,
+ * and on a sheet cut close to the flat that includes the stair hall: on
+ * דירה 15 and 17 it added the landing to the floor and put the area error at
+ * 10% and 7% once the ממ"ד was read. The sheet marks the landing itself — its
+ * entrance arrow stands on it, outside the door — so the floor is flooded from
+ * the arrow with the walls and every opening, the front door included, as
+ * barriers. What that reaches is the landing, and it is taken off.
+ *
+ * Only a small piece: a flood that reaches more than a fifth of the floor has
+ * come in through an opening that was not found, and nothing is taken off.
+ */
+export function floorWithoutLanding(
+  floor: SpanRow[],
+  barriers: WallBody[],
+  markers: Array<{ x: number; y: number }>,
+  unitsPerMetre: number,
+  options?: { maxShare?: number },
+): SpanRow[] {
+  if (floor.length < 2 || markers.length === 0) return floor;
+  const maxShare = options?.maxShare ?? 0.2;
+  const step = Math.max(1, floor[1]!.y - floor[0]!.y);
+  const rowAt = (y: number) => {
+    const index = Math.round((y - floor[0]!.y) / step);
+    return index >= 0 && index < floor.length ? index : -1;
+  };
+  const open = (x: number, y: number) => {
+    const index = rowAt(y);
+    if (index < 0) return false;
+    return floor[index]!.spans.some(([a, b]) => x >= a && x <= b) && !pointHitsBody(x, y, barriers);
+  };
+  const total = spanArea(floor) / (step * step);
+  const removed = new Set<string>();
+  for (const marker of markers) {
+    let seed: { x: number; y: number } | null = null;
+    const search = Math.round((unitsPerMetre * 0.4) / step);
+    for (let r = 0; r <= search && !seed; r++) {
+      for (let a = -r; a <= r && !seed; a++) {
+        for (let b = -r; b <= r && !seed; b++) {
+          const x = marker.x + a * step;
+          const y = marker.y + b * step;
+          if (open(x, y)) seed = { x: Math.round(x / step) * step, y: floor[rowAt(y)]!.y };
+        }
+      }
+    }
+    if (!seed) continue;
+    const seen = new Set<string>();
+    const key = (x: number, y: number) => `${Math.round(x / step)}:${Math.round(y / step)}`;
+    const stack = [seed];
+    seen.add(key(seed.x, seed.y));
+    let leaked = false;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      if (seen.size > total * maxShare) {
+        leaked = true;
+        break;
+      }
+      for (const [dx, dy] of [
+        [step, 0],
+        [-step, 0],
+        [0, step],
+        [0, -step],
+      ] as const) {
+        const x = cur.x + dx;
+        const y = cur.y + dy;
+        const k = key(x, y);
+        if (seen.has(k) || !open(x, y)) continue;
+        seen.add(k);
+        stack.push({ x, y });
+      }
+    }
+    if (!leaked) for (const k of seen) removed.add(k);
+  }
+  if (removed.size === 0) return floor;
+  return floor
+    .map((row) => {
+      const yi = Math.round(row.y / step);
+      const spans: Array<[number, number]> = [];
+      for (const [a, b] of row.spans) {
+        let start: number | null = null;
+        for (let xi = Math.ceil(a / step); xi <= Math.floor(b / step) + 1; xi++) {
+          const inside = xi * step <= b && !removed.has(`${xi}:${yi}`);
+          if (inside && start == null) start = Math.max(a, xi * step);
+          if (!inside && start != null) {
+            spans.push([start, Math.min(b, xi * step)]);
+            start = null;
+          }
+        }
+      }
+      return { y: row.y, spans };
+    })
+    .filter((row) => row.spans.length > 0);
+}
+
 function pointHitsBody(x: number, y: number, bodies: WallBody[]): boolean {
   for (const body of bodies) {
     const r = bodyRect(body);
@@ -2550,7 +2708,7 @@ export function findLevelMarks(
   segments: VectorSegment[],
   unitsPerMetre: number,
   options?: { minRadiusM?: number; maxRadiusM?: number; minHatch?: number },
-): Array<{ x: number; y: number }> {
+): Array<{ x: number; y: number; r: number; strokes: VectorSegment[] }> {
   const minR = (options?.minRadiusM ?? 0.12) * unitsPerMetre;
   const maxR = (options?.maxRadiusM ?? 0.25) * unitsPerMetre;
   const minHatch = options?.minHatch ?? 6;
@@ -2572,7 +2730,7 @@ export function findLevelMarks(
       votes.set(key, vote);
     }
   }
-  const out: Array<{ x: number; y: number }> = [];
+  const out: Array<{ x: number; y: number; r: number; strokes: VectorSegment[] }> = [];
   for (const vote of votes.values()) {
     if (vote.n < 4) continue;
     const hatch = segments.filter((s) => {
@@ -2580,8 +2738,8 @@ export function findLevelMarks(
       const dy = Math.abs(s.y2 - s.y1);
       if (dx < 0.5 || Math.abs(dx - dy) > 0.3 * Math.max(dx, dy)) return false;
       return Math.hypot((s.x1 + s.x2) / 2 - vote.x, (s.y1 + s.y2) / 2 - vote.y) < vote.r;
-    }).length;
-    if (hatch >= minHatch) out.push({ x: vote.x, y: vote.y });
+    });
+    if (hatch.length >= minHatch) out.push({ x: vote.x, y: vote.y, r: vote.r, strokes: hatch });
   }
   return out;
 }
@@ -2673,6 +2831,27 @@ export function findTerracesOnFloor(
       }
     }
     if (leaked) continue;
+    // Given back the rim the "open" test held it off: the floor the flood
+    // passed by along each edge is the terrace's too, and without it a 3.16 m²
+    // roof terrace measured 2.19 and failed its own printed figure. Only where
+    // there is a figure to check it against: grown, an unlabelled region from a
+    // level mark reached the size window on דירה 22's roof below the flat, and
+    // made two terraces the flat does not have.
+    for (const cell of area.value != null ? [...cells] : []) {
+      for (const [dx, dy] of [
+        [step, 0],
+        [-step, 0],
+        [0, step],
+        [0, -step],
+      ] as const) {
+        const x = cell.x + dx;
+        const y = cell.y + dy;
+        const key = `${Math.round(x / step)}:${Math.round(y / step)}`;
+        if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
+        seen.add(key);
+        cells.push({ x, y });
+      }
+    }
     const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);
     if (area.value != null) {
       if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;
@@ -2742,8 +2921,12 @@ export function hatchedWallExtent(
   sheet: { x: number; y: number; width: number; height: number },
   unitsPerMetre: number,
 ): { x: number; y: number; width: number; height: number } | null {
+  const hatched = wallBodiesFromHatch(segments, { unitsPerMetre });
+  // With the thick walls the stroke cap loses: דירה 15 and 17 are cut at a
+  // ממ"ד's outer wall, and an extent that stops short of it leaves the shelter
+  // outside everything measured from it.
   const bodies = clipBodiesToBounds(
-    wallBodiesFromHatch(segments, { unitsPerMetre }),
+    [...hatched, ...thickHatchedWalls(segments, hatched, unitsPerMetre, { minLengthM: 1.2 })],
     sheet,
     8,
     { truncate: true },
