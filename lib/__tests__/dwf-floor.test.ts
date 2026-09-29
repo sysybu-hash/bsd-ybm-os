@@ -100,3 +100,28 @@ describe("what does not join two rooms into one flat", () => {
     expect(floor.rooms.filter((r) => r.kind != null).map((r) => r.kind).sort()).toEqual(["bedroom", "living"]);
   });
 });
+
+describe("a bedroom the sheet left unnamed", () => {
+  /** A rectangle in metres, as four lines. */
+  const box = (x: number, y: number, w: number, h: number): VectorSegment[] => [
+    { x1: m(x), y1: m(y), x2: m(x + w), y2: m(y), lineWidth: 0.2 },
+    { x1: m(x + w), y1: m(y), x2: m(x + w), y2: m(y + h), lineWidth: 0.2 },
+    { x1: m(x + w), y1: m(y + h), x2: m(x), y2: m(y + h), lineWidth: 0.2 },
+    { x1: m(x), y1: m(y + h), x2: m(x), y2: m(y), lineWidth: 0.2 },
+  ];
+  const withInEastRoom = (extra: VectorSegment[]): DwfGeometry => {
+    const base = sheet();
+    return { ...base, segments: [...base.segments, ...extra], texts: base.texts.filter((t) => t.text !== "שינה") };
+  };
+  const kindEast = (g: DwfGeometry) =>
+    readDwfFloor(g, { unitsPerMetre: UPM }).rooms.find((r) => r.areaM2 > 10 && !r.names.length)?.kind ?? null;
+
+  it("is known by its bed: two metres by ninety, a pillow at its head", () => {
+    expect(kindEast(withInEastRoom([...box(6, 1.5, 0.9, 2), ...box(6.2, 1.55, 0.5, 0.35)]))).toBe("bedroom");
+  });
+
+  it("but not by a stair's flight, cut across by its treads", () => {
+    const treads = [0.3, 0.6, 0.9, 1.2, 1.5].flatMap((d) => box(6, 1.5 + d, 0.9, 0.3));
+    expect(kindEast(withInEastRoom([...box(6, 1.5, 0.9, 2), ...box(6.2, 1.55, 0.5, 0.35), ...treads]))).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 {
-  "_note": "Read off the permit strip 27.10.24-גרמושקה.dwf (kept outside the repo, in תוכניות בנין/) by eye, and confirmed by the owner as the reference. Per floor plan: the apartments on it, each with its bedrooms (not counting the ממ\"ד), ממ\"ד, bathrooms (not counting a separate guest WC or laundry) and this floor's own terraces with the area the sheet prints. \"היטל מרפסת קומה ב\" is the floor above's terrace drawn over this one and is not listed.",
+  "_note": "Read off the permit strip 27.10.24-גרמושקה.dwf (kept outside the repo, in תוכניות בנין/) by eye, and confirmed by the owner as the reference. Per floor plan: the apartments on it, each with its bedrooms (not counting the ממ\"ד), ממ\"ד, bathrooms (not counting a separate guest WC or laundry) and this floor's own terraces with the area the sheet prints. \"היטל מרפסת קומה ב\" is the floor above's terrace drawn over this one and is not listed. Floors 5–35 were read the same way, sheet by sheet against its room names (the unnamed third bedroom of 2, 6, 10 and 14 by the bed drawn in it); the top floor is one sheet per level of the three duplexes, and the printed 'דופלקס 5 חדרים' / '6 חדרים' agree with 33's and 34's rooms. Terraces are listed for floor 1 only so far.",
   "file": "27.10.24-גרמושקה.dwf",
   "sheets": {
     "sections": 2,
@@ -11,10 +11,319 @@
       "units": [1, 2, 3, 4],
       "scale": 100,
       "apartments": [
-        { "unit": 1, "bedrooms": 2, "mmd": 1, "bathrooms": 2, "guestWc": true, "terraces": [{ "m2": 28.8, "covered": false }] },
-        { "unit": 2, "bedrooms": 3, "mmd": 1, "bathrooms": 2, "terraces": [{ "m2": 30.4, "covered": true }] },
-        { "unit": 3, "bedrooms": 2, "mmd": 1, "bathrooms": 2, "terraces": [{ "m2": 19.15, "covered": true }] },
-        { "unit": 4, "bedrooms": 1, "mmd": 1, "bathrooms": 1, "terraces": [{ "m2": 9.6, "covered": true }] }
+        {
+          "unit": 1,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2,
+          "guestWc": true,
+          "terraces": [
+            {
+              "m2": 28.8,
+              "covered": false
+            }
+          ]
+        },
+        {
+          "unit": 2,
+          "bedrooms": 3,
+          "mmd": 1,
+          "bathrooms": 2,
+          "terraces": [
+            {
+              "m2": 30.4,
+              "covered": true
+            }
+          ]
+        },
+        {
+          "unit": 3,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2,
+          "terraces": [
+            {
+              "m2": 19.15,
+              "covered": true
+            }
+          ]
+        },
+        {
+          "unit": 4,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1,
+          "terraces": [
+            {
+              "m2": 9.6,
+              "covered": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "units": [5, 6, 7, 8],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 5,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2,
+          "guestWc": true
+        },
+        {
+          "unit": 6,
+          "bedrooms": 3,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 7,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 8,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [9, 10, 11, 12],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 9,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 10,
+          "bedrooms": 3,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 11,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 12,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [13, 14, 15, 16],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 13,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2,
+          "guestWc": true
+        },
+        {
+          "unit": 14,
+          "bedrooms": 3,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 15,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 16,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [17, 18, 19, 20],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 17,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 18,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 19,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 20,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [21, 22, 23, 24],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 21,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 22,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 23,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 24,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [25, 26, 27, 28],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 25,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2,
+          "guestWc": true
+        },
+        {
+          "unit": 26,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 27,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 28,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [29, 30, 31, 32],
+      "scale": 100,
+      "apartments": [
+        {
+          "unit": 29,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 30,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 31,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 2
+        },
+        {
+          "unit": 32,
+          "bedrooms": 1,
+          "mmd": 1,
+          "bathrooms": 1
+        }
+      ]
+    },
+    {
+      "units": [33, 34, 35],
+      "scale": 100,
+      "level": "lower",
+      "apartments": [
+        {
+          "unit": 33,
+          "bedrooms": 0,
+          "mmd": 1,
+          "bathrooms": 1
+        },
+        {
+          "unit": 34,
+          "bedrooms": 0,
+          "mmd": 1,
+          "bathrooms": 1
+        },
+        {
+          "unit": 35,
+          "bedrooms": 2,
+          "mmd": 1,
+          "bathrooms": 1,
+          "guestWc": true
+        }
+      ]
+    },
+    {
+      "units": [33, 34, 35],
+      "scale": 100,
+      "level": "upper",
+      "apartments": [
+        {
+          "unit": 33,
+          "bedrooms": 3,
+          "mmd": 0,
+          "bathrooms": 2
+        },
+        {
+          "unit": 34,
+          "bedrooms": 4,
+          "mmd": 0,
+          "bathrooms": 2
+        },
+        {
+          "unit": 35,
+          "bedrooms": 4,
+          "mmd": 0,
+          "bathrooms": 2
+        }
       ]
     }
   ]

@@ -132,6 +132,14 @@ function titleOf(texts: PlacedText[], box: StripSheet["box"]): string | null {
  * carries four (1–4, 5–8 … 29–32) and the top floor 33–35.
  */
 function unitNumbers(texts: PlacedText[]): number[] {
+  return [...new Set(unitMarks(texts).map((m) => m.unit))].sort((a, b) => a - b);
+}
+
+/**
+ * Where each apartment number stands on a floor plan — the point in the flat
+ * it is written in, for the floor reader to start the flat from.
+ */
+export function unitMarks(texts: PlacedText[]): Array<{ unit: number; x: number; y: number }> {
   const rooms = texts.filter((t) => ROOM.test(t.text));
   if (rooms.length === 0) return [];
   const roomHeight = Math.max(...rooms.map((t) => t.height));
@@ -146,10 +154,10 @@ function unitNumbers(texts: PlacedText[]): number[] {
         Math.abs(o.y - t.y) <= t.height * 0.3 &&
         Math.abs(o.x - t.x) < t.height * 4,
     );
-  const numbers = texts
+  // A text's y is its baseline; the number's middle is half its height up.
+  return texts
     .filter((t) => /^\d{1,3}$/.test(t.text.trim()) && t.height > roomHeight * 1.3 && t.height < roomHeight * 2.2 && alone(t))
-    .map((t) => Number(t.text.trim()));
-  return [...new Set(numbers)].sort((a, b) => a - b);
+    .map((t) => ({ unit: Number(t.text.trim()), x: t.x, y: t.y - t.height / 2 }));
 }
 
 const ROOM = /סלון|מטבח|שינה|מגורים|אוכל|רחצה|ממ"ד|ממד|מרפסת|לובי|מעלית|מדרגות/;

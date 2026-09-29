@@ -1,5 +1,5 @@
 import type { DwfGeometry, PlacedText } from "@/lib/projects/floorplan-dwf";
-import { splitStrip } from "@/lib/projects/sheet-split";
+import { splitStrip, unitMarks } from "@/lib/projects/sheet-split";
 import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
 const seg = (x1: number, y1: number, x2: number, y2: number): VectorSegment => ({ x1, y1, x2, y2, lineWidth: 1 });
@@ -60,5 +60,12 @@ describe("a permit strip, cut into its drawings", () => {
 
   it("marks the permit form and passes nothing on from it", () => {
     expect(sheets[2]).toMatchObject({ kind: "form", title: null });
+  });
+});
+
+describe("where a floor plan's apartment numbers stand", () => {
+  it("gives each number's middle, for the flat to be read from", () => {
+    const marks = unitMarks([text(100, 100, "סלון"), text(200, 100, "שינה"), text(150, 200, "7", 13)]);
+    expect(marks).toEqual([{ unit: 7, x: 150, y: 193.5 }]);
   });
 });
