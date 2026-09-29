@@ -66,12 +66,13 @@ export const FRAME_INSET_M = 0.02;
  * Where the walls are cut for a bird's-eye still.
  *
  * Full-height walls hide the near third of the flat at any camera angle that
- * still reads as three-dimensional. Cut too low and a window loses its head
- * and stops reading as a window. At 1.35 m a partition is still a wall, every
- * room is open to the camera, and a window is legible because its sill band
- * stops at 0.90 and the glazing above it is what the cut passes through.
+ * still reads as three-dimensional. At 1.35 m, with the overview camera at
+ * 62°, a wall still hid 72 cm of floor behind it — the depth of a sofa, and
+ * דירה 16's and 17's two-seaters against the bedroom wall were measured,
+ * built and not seen. At 1.0 m the shadow is 53 cm: a sofa's back shows over
+ * the wall, and a window keeps 10 cm of glass above its 0.90 m sill.
  */
-export const CUTAWAY_OVERVIEW_M = 1.35;
+export const CUTAWAY_OVERVIEW_M = 1.0;
 
 /** How far a wall body may be from the footprint edge and still be envelope. */
 export const ENVELOPE_TOLERANCE_M = 0.5;

@@ -58,7 +58,7 @@ describe("the cutaway", () => {
       CUTAWAY_OVERVIEW_M,
       9,
     );
-    // The band over a door starts at 2.10 — above a 1.35 cut, so it is gone.
+    // The band over a door starts at 2.10 — above the cut, so it is gone.
     expect(cutBox(box(2.4, 0.6), CUTAWAY_OVERVIEW_M)).toBeNull();
     // And a wall that is already below the line is untouched.
     const low = box(0.5, 1);
