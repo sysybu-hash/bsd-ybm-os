@@ -127,3 +127,19 @@ describe("which way a piece faces", () => {
     expect(headFacing(wide, "east")).toBe("east");
   });
 });
+
+describe("seating longer than a metre is a sofa", () => {
+  it("stands on a solid base with two arms, not on four legs", () => {
+    // דירה 16's two-seaters, 1.4 by 0.7 m.
+    const parts = partsFor("seat", { wM: 1.4, dM: 0.7, hM: 0.45, facing: "north" });
+    const tags = parts.map((p) => p.tag);
+    expect(tags).toContain("base");
+    expect(tags.filter((t) => t === "arm")).toHaveLength(2);
+    expect(tags).not.toContain("leg");
+  });
+
+  it("leaves a dining chair a chair", () => {
+    const parts = partsFor("seat", { wM: 0.5, dM: 0.5, hM: 0.45, facing: "north" });
+    expect(parts.filter((p) => p.tag === "leg")).toHaveLength(4);
+  });
+});

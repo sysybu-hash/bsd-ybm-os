@@ -124,9 +124,26 @@ export function desk(spec: PieceSpec): PiecePart[] {
   return parts;
 }
 
+/**
+ * A sofa: a solid base to the floor, a back and two arms. Built as a chair —
+ * a pad on four legs — דירה 16's two-seaters read from above as a board.
+ */
+function sofa(w: number, d: number, h: number): PiecePart[] {
+  const backD = Math.min(0.2, d * 0.25);
+  const armW = Math.min(0.16, w * 0.1);
+  const backH = h + 0.35;
+  return [
+    part("base", "upholstery", { x: 0, y: h / 2, z: backD / 2, w, h, d: d - backD }),
+    part("back", "upholstery", { x: 0, y: backH / 2, z: -d / 2 + backD / 2, w, h: backH, d: backD }),
+    part("arm", "upholstery", { x: -w / 2 + armW / 2, y: (h + 0.15) / 2, z: backD / 2, w: armW, h: h + 0.15, d: d - backD }),
+    part("arm", "upholstery", { x: w / 2 - armW / 2, y: (h + 0.15) / 2, z: backD / 2, w: armW, h: h + 0.15, d: d - backD }),
+  ];
+}
+
 /** A seat: pad, a back on the side away from what it faces, four legs. */
 export function seat(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
+  if (w > 1.0) return sofa(w, d, h);
   const padH = 0.06;
   const legW = Math.min(0.04, w * 0.12);
   const parts = [
