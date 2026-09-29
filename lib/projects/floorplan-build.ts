@@ -328,7 +328,31 @@ export async function buildFlatFromGeometry(
     curves: geometry.curves,
     acceptTable: standsOnFloor,
   }).filter((piece) => {
-    if (!inside(piece.x + piece.w / 2, piece.y + piece.h / 2)) return false;
+    const cx = piece.x + piece.w / 2;
+    const cy = piece.y + piece.h / 2;
+    // A sink or a hob stands on the worktop, and the strip between the
+    // worktop's front line and the wall can be closed off from the floor:
+    // דירה 14's double sink was on no floor at all, and was dropped. Floor
+    // within a worktop's depth of it will do.
+    const reach = piece.kind === "sink" || piece.kind === "hob" ? unitsPerMetre * 0.6 : 0;
+    // Floor on this side of a wall only: past the wall is the neighbour's
+    // kitchen, and דירה 15 and 22 took in the sinks drawn beyond theirs.
+    const wallBetween = (tx: number, ty: number) =>
+      bodies.some((body) => {
+        const r = bodyRect(body);
+        return (
+          Math.max(r.x, Math.min(cx, tx)) <= Math.min(r.x + r.w, Math.max(cx, tx)) &&
+          Math.max(r.y, Math.min(cy, ty)) <= Math.min(r.y + r.h, Math.max(cy, ty))
+        );
+      });
+    const onFloor = [
+      [0, 0],
+      [reach, 0],
+      [-reach, 0],
+      [0, reach],
+      [0, -reach],
+    ].some(([dx, dy]) => inside(cx + dx!, cy + dy!) && (dx === 0 && dy === 0 ? true : !wallBetween(cx + dx!, cy + dy!)));
+    if (!onFloor) return false;
     return !bodies.some((body) => centreInsideBody(piece, body));
   });
   // The run the hob and the sink are set into; see findWorktopRuns.
@@ -360,7 +384,20 @@ export async function buildFlatFromGeometry(
   // there is nothing left to infer. It matters because the middle of the living
   // room was coming out as bare floor, and bare floor is what the model fills in
   // for itself — that is where the invented armchairs in the entrance came from.
-  const clear = (piece: FurniturePiece) => {
+  const overlaps = (piece: FurniturePiece, other: FurniturePiece) => {
+    const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
+    const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
+    return ox > 0 && oy > 0 && ox * oy > 0.3 * Math.min(piece.w * piece.h, other.w * other.h);
+  };
+  // An unnamed rectangle lying wholly inside a sofa-sized piece is one of its
+  // cushions, not a piece of its own.
+  const partOf = (inner: FurniturePiece, outer: FurniturePiece) => {
+    if (inner.kind !== "unknown" || Math.max(outer.w, outer.h) < unitsPerMetre) return false;
+    const ox = Math.min(inner.x + inner.w, outer.x + outer.w) - Math.max(inner.x, outer.x);
+    const oy = Math.min(inner.y + inner.h, outer.y + outer.h) - Math.max(inner.y, outer.y);
+    return ox > 0 && oy > 0 && ox * oy >= 0.8 * inner.w * inner.h;
+  };
+  const clear = (piece: FurniturePiece, options?: { overUnknown?: boolean }) => {
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
     if (!inside(cx, cy)) return false;
@@ -369,11 +406,7 @@ export async function buildFlatFromGeometry(
     // Overlap, not the centre: a seat whose centre fell just outside a WC it
     // half covered was kept, and דירה 16, 17 and 18 got a chair on the pan and
     // one in the bath.
-    return !found.some((other) => {
-      const ox = Math.min(piece.x + piece.w, other.x + other.w) - Math.max(piece.x, other.x);
-      const oy = Math.min(piece.y + piece.h, other.y + other.h) - Math.max(piece.y, other.y);
-      return ox > 0 && oy > 0 && ox * oy > 0.3 * Math.min(piece.w * piece.h, other.w * other.h);
-    });
+    return !found.some((other) => !(options?.overUnknown && partOf(other, piece)) && overlaps(piece, other));
   };
 
   // The rounded furniture that does survive detection: the living room's own
@@ -382,11 +415,11 @@ export async function buildFlatFromGeometry(
   // handful of the sanitary ware — and the sanitary ware is already found, so
   // requiring clear ground drops it. What is left is the suite, and it is the
   // last bare patch in the middle of the flat.
-  const rounded = findRoundedFurniture(geometry.curves, unitsPerMetre);
+  const rounded = findRoundedFurniture(geometry.curves, unitsPerMetre, { segments: geometry.segments });
 
   const table = found.find((piece) => piece.kind === "table");
   const chairs = table
-    ? seatsAroundTable(table, unitsPerMetre).filter(clear)
+    ? seatsAroundTable(table, unitsPerMetre).filter((piece) => clear(piece))
     : [];
 
   // A free-standing run: deep enough to be a counter, long enough to seat at,
@@ -436,11 +469,19 @@ export async function buildFlatFromGeometry(
       ? reach(island.x + island.w + step, island.y + island.h / 2)
       : reach(island.x + island.w / 2, island.y + island.h + step);
     const side = lowRoom >= highRoom ? "low" : "high";
-    stools = stoolsAlongRun(island, unitsPerMetre, side).filter(clear);
+    stools = stoolsAlongRun(island, unitsPerMetre, side).filter((piece) => clear(piece));
   }
 
-  const suite = rounded.filter(clear);
-  const furniture = [...found, ...suite, ...chairs, ...stools];
+  // A sofa is named and a rectangle inside it is not: דירה 21's second
+  // two-seater carried one of its cushions as a 68 by 40 cm "unknown", and the
+  // cushion, found first, kept the sofa out. The sofa stands; its parts go.
+  const suite = rounded.filter((piece) => clear(piece, { overUnknown: true }));
+  const furniture = [
+    ...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))),
+    ...suite,
+    ...chairs,
+    ...stools,
+  ];
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that

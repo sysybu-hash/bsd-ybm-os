@@ -52,4 +52,15 @@ describe("the worktop run the hob and the sink are set into", () => {
     const existing = [piece("counter", 40, 470, 220, 30)];
     expect(findWorktopRuns([seg(40, 470, 260, 470)], sinks, [wall], UPM, existing)).toEqual([]);
   });
+
+  it("fills the corner where an L's two runs meet", () => {
+    // דירה 22: the hob run down the west wall, the sink run along the south.
+    const west = { x: 0, y: 0, w: 10, h: 520 };
+    const hob = piece("hob", 10, 300, 28, 28);
+    const lines = [seg(40, 290, 40, 470), seg(40, 470, 260, 470)];
+    const runs = findWorktopRuns(lines, [hob, ...sinks], [wall, west], UPM);
+    const corner = runs.find((run) => run.x < 20 && run.y >= 460);
+    expect(corner).toBeDefined();
+    expect(corner!.y + corner!.h).toBeCloseTo(500);
+  });
 });

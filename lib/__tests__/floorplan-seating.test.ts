@@ -138,6 +138,33 @@ describe("findRoundedFurniture", () => {
     for (const piece of found) expect(Math.max(piece.widthCm, piece.depthCm)).toBeCloseTo(140, 0);
   });
 
+  it("parts דירה 14's armchair from the two-seater beside it, by the edges drawn", () => {
+    // An armchair and a 1.44 m two-seater 32 cm apart: sofa-sized together.
+    // The front edge runs across each piece and stops between them.
+    const arm = 0.75 * UPM;
+    const two = 1.44 * UPM;
+    const gap = 0.32 * UPM;
+    const deep = 0.7 * UPM;
+    const edge = (x: number, len: number) => ({ x1: x + 7, y1: 789 + deep * 0.8, x2: x + len - 7, y2: 789 + deep * 0.8, lineWidth: 1 });
+    const found = findRoundedFurniture(
+      [...corners(376, 789, arm, deep), ...corners(376 + arm + gap, 789, two / 2, deep), ...corners(376 + arm + gap + two / 2, 789, two / 2, deep)],
+      UPM,
+      { segments: [edge(376, arm), edge(376 + arm + gap, two)] },
+    );
+    expect(found.map((p) => Math.round(Math.max(p.widthCm, p.depthCm))).sort()).toEqual([144, 75]);
+  });
+
+  it("does not call a door swing and the marks round it a sofa", () => {
+    // דירה 21's bedroom doorway: an arc and four small marks, 1.86 by 1.05 m
+    // across, none of them at a corner of that box.
+    const knot = (x: number, y: number) => corners(x, y, 0.13 * UPM, 0.13 * UPM).slice(0, 5);
+    const found = findRoundedFurniture(
+      [knot(376, 789 + 0.54 * UPM), knot(376 + 0.44 * UPM, 789 + 0.53 * UPM), knot(376 + 1.1 * UPM, 789), knot(376 + 1.74 * UPM, 789 + 0.71 * UPM), knot(376 + 0.98 * UPM, 789 + 0.98 * UPM)].flat(),
+      UPM,
+    );
+    expect(found.filter((p) => Math.max(p.widthCm, p.depthCm) > 100)).toEqual([]);
+  });
+
   it("ignores a shape too small to sit on", () => {
     expect(findRoundedFurniture(corners(100, 100, 0.15 * UPM, 0.15 * UPM), UPM)).toEqual(
       [],

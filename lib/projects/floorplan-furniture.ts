@@ -712,7 +712,7 @@ export function findSeatsAroundTable(
 export function findRoundedFurniture(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { gapM?: number },
+  options?: { gapM?: number; segments?: VectorSegment[] },
 ): FurniturePiece[] {
   // Measured between the arcs' edges, not their centres. Centre distance
   // depends on how big the arcs happen to be drawn — a small corner puts the
@@ -758,8 +758,7 @@ export function findRoundedFurniture(
     return groups;
   };
 
-  const out: FurniturePiece[] = [];
-  const judge = (group: number[]) => {
+  const judge = (group: number[]): FurniturePiece[] => {
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -782,38 +781,85 @@ export function findRoundedFurniture(
     // deep. Anything outside that is not seating.
     const stool = short >= 20 && short <= 45 && long >= 40 && long <= 80;
     const chair = short >= 38 && short <= 95 && long >= 38 && long <= 100;
-    const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260;
-    if (stool || chair || sofa) {
-      out.push({ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" });
-      return;
+    // A sofa is rounded at its corners, so an arc stands at three of them at
+    // least. A door's swing and the small marks round a doorway, joined at the
+    // half-metre link, made a 1.86 m "sofa" in דירה 21's bedroom doorway with
+    // no arc at any corner.
+    const reachCorner = 0.2 * unitsPerMetre;
+    const cornered = [
+      [x0, y0],
+      [x1, y0],
+      [x0, y1],
+      [x1, y1],
+    ].filter(([cx, cy]) =>
+      group.some((g) => {
+        const k = knots[g]!;
+        const dx = Math.max(k.x - cx!, 0, cx! - (k.x + k.w));
+        const dy = Math.max(k.y - cy!, 0, cy! - (k.y + k.h));
+        return Math.hypot(dx, dy) <= reachCorner;
+      }),
+    ).length;
+    const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260 && cornered >= 3;
+    // Pieces standing in a row join into one block: דירה 16's pair of
+    // two-seaters 25 cm apart, דירה 14's armchair beside its two-seater. The
+    // arcs cannot part them — inside one sofa they stand 40 cm apart — but the
+    // drawing can: each piece's own straight edges run on from arc to arc, and
+    // between two pieces nothing is drawn. So the row is cut where neither an
+    // arc nor an edge covers it, at the bare stretch nearest its middle.
+    // Tried only on a block that is no one piece or longer than a two-metre
+    // sofa, and kept only when both sides are seating in their own right.
+    const whole = stool || chair || sofa;
+    if (!whole || long > 200) {
+      const parts = split(group, x0, y0, w, h);
+      if (parts) return parts;
     }
-    // Too long for one piece is pieces standing in a row: דירה 16's pair of
-    // two-seaters, 25 cm apart, joined into one 3 m block and was thrown out
-    // as not seating. A shorter link does not part them — the arcs inside one
-    // sofa are 40 cm apart — so the row is cut at the bare stretch nearest its
-    // middle, and each side judged again.
-    if (long <= 260 || group.length < 2) return;
+    return whole ? [{ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" }] : [];
+  };
+  const split = (group: number[], x0: number, y0: number, w: number, h: number): FurniturePiece[] | null => {
+    if (group.length < 2) return null;
     const alongX = w >= h;
-    const lo = (g: number) => (alongX ? knots[g]!.x : knots[g]!.y);
-    const hi = (g: number) => (alongX ? knots[g]!.x + knots[g]!.w : knots[g]!.y + knots[g]!.h);
-    const sorted = [...group].sort((a, b) => lo(a) - lo(b));
+    const span = (lo: number, hi: number) => ({ lo, hi });
+    const covered = group.map((g) => {
+      const k = knots[g]!;
+      return alongX ? span(k.x, k.x + k.w) : span(k.y, k.y + k.h);
+    });
+    // Edges inside the block, not along its rim: the wall a sofa backs onto
+    // runs the whole row and would join everything.
+    const insetX = w * 0.1;
+    const insetY = h * 0.1;
+    for (const s of options?.segments ?? []) {
+      const sx0 = Math.min(s.x1, s.x2);
+      const sx1 = Math.max(s.x1, s.x2);
+      const sy0 = Math.min(s.y1, s.y2);
+      const sy1 = Math.max(s.y1, s.y2);
+      if (sx0 < x0 - 1 || sx1 > x0 + w + 1 || sy0 < y0 - 1 || sy1 > y0 + h + 1) continue;
+      const parallel = alongX ? sy1 - sy0 <= 0.02 * unitsPerMetre : sx1 - sx0 <= 0.02 * unitsPerMetre;
+      const length = alongX ? sx1 - sx0 : sy1 - sy0;
+      if (!parallel || length < 0.2 * unitsPerMetre) continue;
+      const across = alongX ? sy0 : sx0;
+      const inside = alongX ? across > y0 + insetY && across < y0 + h - insetY : across > x0 + insetX && across < x0 + w - insetX;
+      if (!inside) continue;
+      covered.push(alongX ? span(sx0, sx1) : span(sy0, sy1));
+    }
+    covered.sort((a, b) => a.lo - b.lo);
     const mid = alongX ? x0 + w / 2 : y0 + h / 2;
-    let reach = hi(sorted[0]!);
+    let reach = covered[0]!.hi;
     let cut: number | null = null;
-    for (const g of sorted.slice(1)) {
-      if (lo(g) > reach) {
-        const centre = (reach + lo(g)) / 2;
+    for (const c of covered.slice(1)) {
+      if (c.lo - reach >= 0.15 * unitsPerMetre) {
+        const centre = (reach + c.lo) / 2;
         if (cut == null || Math.abs(centre - mid) < Math.abs(cut - mid)) cut = centre;
       }
-      reach = Math.max(reach, hi(g));
+      reach = Math.max(reach, c.hi);
     }
-    if (cut == null) return;
+    if (cut == null) return null;
     const at = cut;
-    judge(group.filter((g) => (lo(g) + hi(g)) / 2 < at));
-    judge(group.filter((g) => (lo(g) + hi(g)) / 2 >= at));
+    const centreOf = (g: number) => (alongX ? knots[g]!.x + knots[g]!.w / 2 : knots[g]!.y + knots[g]!.h / 2);
+    const before = judge(group.filter((g) => centreOf(g) < at));
+    const after = judge(group.filter((g) => centreOf(g) >= at));
+    return before.length > 0 && after.length > 0 ? [...before, ...after] : null;
   };
-  for (const group of cluster(knots.map((_, i) => i), gap)) judge(group);
-  return out;
+  return cluster(knots.map((_, i) => i), gap).flatMap((group) => judge(group));
 }
 
 /**

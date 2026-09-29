@@ -125,6 +125,25 @@ export function findWorktopRuns(
     }
   }
 
+  // An L: two runs on walls that meet, each ending short of the other by the
+  // other's depth. The square between them is the corner cabinet, and without
+  // it דירה 22's hob run and sink run stood as two pieces with a hole between.
+  const near = 0.12 * upm;
+  const corners: Rect[] = [];
+  for (const v of merged) {
+    if (v.h <= v.w) continue;
+    for (const h of merged) {
+      if (h.w <= h.h) continue;
+      const beside = Math.abs(v.x + v.w - h.x) <= near || Math.abs(h.x + h.w - v.x) <= near;
+      const below = Math.abs(h.y - (v.y + v.h)) <= near || Math.abs(v.y - (h.y + h.h)) <= near;
+      if (!beside || !below) continue;
+      const corner = { x: v.x, y: h.y, w: v.w, h: h.h };
+      if (merged.some((run) => overlapShare(run, corner) > 0.5)) continue;
+      corners.push(corner);
+    }
+  }
+  merged.push(...corners);
+
   return merged
     .filter((run) => !existing.some((piece) => piece.kind === "counter" && overlapShare(run, piece) > 0.5))
     .map((run) => ({
