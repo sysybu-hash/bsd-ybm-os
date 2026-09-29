@@ -575,8 +575,12 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   furniture.forEach((piece, index) => {
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
-    const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     const host = roomAt(rectCentre(box), roomRects);
+    // A cabinet in a bathroom is the basin's vanity, at worktop height: built
+    // as a wardrobe, דירה 18's stood two metres tall beside the bath.
+    const kind =
+      piece.kind === "storage" && host && isWetRoom(host.room.kind as SceneRoomKind) ? "counter" : piece.kind;
+    const height = FURNITURE_HEIGHT_M[kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     // The written rules, kept here and not only asked of a model: a bed only
     // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
     // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
@@ -593,7 +597,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     });
     const facing = piece.kind === "bed" ? headFacing(box, decided) : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
-    for (const built of partsFor(piece.kind, {
+    for (const built of partsFor(kind, {
       wM: box.w / upm,
       dM: box.h / upm,
       hM: height,

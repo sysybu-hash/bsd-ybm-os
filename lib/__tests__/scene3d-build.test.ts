@@ -120,6 +120,19 @@ describe("the measured flat as a scene", () => {
     ).toBe(true);
   });
 
+  it("builds a cabinet in a bathroom as the basin's vanity, not a wardrobe", () => {
+    // דירה 18's stood two metres tall beside the bath.
+    const cabinet = { x: 40, y: 40, w: 90, h: 50, kind: "storage" as const, widthCm: 90, depthCm: 50 };
+    const tallest = (rooms: typeof ROOMS) =>
+      Math.max(
+        ...buildFlatScene(flat({ furniture: [cabinet] }), rooms)
+          .meshes.filter((m) => m.kind === "furniture")
+          .map((m) => m.centre.y + m.size.y / 2),
+      );
+    expect(tallest([room("ח.רחצה", "bathroom", LEFT, 11.4), ROOMS[1]!])).toBeLessThan(1);
+    expect(tallest(ROOMS)).toBeGreaterThan(1.5);
+  });
+
   it("is the same scene every time it is built", () => {
     expect(hashScene(buildFlatScene(flat(), ROOMS))).toBe(hashScene(scene));
   });

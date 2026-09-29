@@ -2944,6 +2944,43 @@ export function findTerracesOnFloor(
         cells.push({ x, y });
       }
     }
+    // A terrace known by its level is paved and lettered, and every joint in
+    // the paving, every outlined letter of "שטח המרפסת" and the ⊕ itself stop
+    // the flood: דירה 18's 8 m² terrace flooded to 2.9. Inside the box the
+    // flood already spans, everything but wall is filled back, and nothing
+    // past the box is touched.
+    if (options?.growRim) {
+      let bx0 = Infinity;
+      let bx1 = -Infinity;
+      let by0 = Infinity;
+      let by1 = -Infinity;
+      for (const cell of cells) {
+        bx0 = Math.min(bx0, cell.x);
+        bx1 = Math.max(bx1, cell.x);
+        by0 = Math.min(by0, cell.y);
+        by1 = Math.max(by1, cell.y);
+      }
+      const has = (x: number, y: number) => seen.has(`${Math.round(x / step)}:${Math.round(y / step)}`);
+      for (let round = 0; round < 400; round++) {
+        let grew = false;
+        for (const cell of [...cells]) {
+          for (const [dx, dy] of [
+            [step, 0],
+            [-step, 0],
+            [0, step],
+            [0, -step],
+          ] as const) {
+            const x = cell.x + dx;
+            const y = cell.y + dy;
+            if (x < bx0 || x > bx1 || y < by0 || y > by1 || has(x, y) || pointHitsBody(x, y, bodies)) continue;
+            seen.add(`${Math.round(x / step)}:${Math.round(y / step)}`);
+            cells.push({ x, y });
+            grew = true;
+          }
+        }
+        if (!grew) break;
+      }
+    }
     const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);
     if (area.value != null) {
       if (Math.abs(floodedM2 - area.value) / area.value > tolerance) continue;

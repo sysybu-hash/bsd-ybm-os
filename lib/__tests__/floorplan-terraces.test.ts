@@ -263,3 +263,27 @@ describe("a terrace seeded without a printed area", () => {
     expect(findTerracesOnFloor(floorOf(400, 400), [], [{ x: 75, y: 75 }], upm)).toEqual([]);
   });
 });
+
+describe("a terrace known by its level, filled back past its lettering", () => {
+  it("takes back the holes the outlined letters and the ⊕ cut in the flood", () => {
+    // דירה 18's 8 m² terrace flooded to 2.9: its lettering and mark are
+    // closed shapes, holes in the floor the flood has to go round.
+    const upm = 50;
+    const x0 = 100;
+    const y0 = 100;
+    const w = 4 * upm;
+    const h = 1.5 * upm;
+    const floor: SpanRow[] = [];
+    for (let y = y0; y < y0 + h; y += 2) {
+      // A band of lettering across the middle third: not floor.
+      const lettered = y > y0 + h / 3 && y < y0 + (2 * h) / 3;
+      floor.push({ y, spans: lettered ? [[x0, x0 + 20], [x0 + w - 20, x0 + w]] : [[x0, x0 + w]] });
+    }
+    const seed = [{ x: x0 + 40, y: y0 + 8 }];
+    const area = (rows: SpanRow[]) => rows.reduce((sum, row) => sum + row.spans.reduce((a, [p, q]) => a + q - p, 0) * 2, 0) / (upm * upm);
+    const plain = findTerracesOnFloor(floor, [], seed, upm, { unlabelledM2: { min: 0.5, max: 16 } });
+    const filled = findTerracesOnFloor(floor, [], seed, upm, { unlabelledM2: { min: 0.5, max: 16 }, growRim: true });
+    expect(area(filled[0]!.rows)).toBeGreaterThan(area(plain[0]!.rows) + 1);
+    expect(area(filled[0]!.rows)).toBeLessThanOrEqual((w * h) / (upm * upm) * 1.05);
+  });
+});
