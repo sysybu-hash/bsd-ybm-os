@@ -1,5 +1,5 @@
 import type { PlacedText } from "@/lib/projects/floorplan-dwf";
-import { roomLabels, terraceAreas, textLines } from "@/lib/projects/floor-split";
+import { levelMarks, roomLabels, terraceAreas, textLines } from "@/lib/projects/floor-split";
 import { labelledKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
 
 const word = (x: number, y: number, text: string, height = 8): PlacedText => ({ x, y, text, height });
@@ -47,5 +47,12 @@ describe("the terrace areas a floor plan prints", () => {
       word(570, 112, "4.30"),
     ];
     expect(terraceAreas(texts).map((a) => a.value)).toEqual([19.15]);
+  });
+});
+
+describe("the levels a floor plan marks", () => {
+  it("reads a signed level either way round, and leaves the absolute height under it out", () => {
+    const marks = levelMarks([word(100, 50, "+"), word(110, 50, "11.78"), word(105, 60, "787.28"), word(300, 50, "11.80"), word(320, 50, "+")]);
+    expect(marks.map((l) => l.value).sort()).toEqual([11.78, 11.8]);
   });
 });

@@ -1,5 +1,5 @@
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
-import { roomLabels } from "@/lib/projects/floor-split";
+import { levelMarks, roomLabels } from "@/lib/projects/floor-split";
 import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import { labelledKind } from "@/lib/projects/floorplan-segment";
 
@@ -106,19 +106,17 @@ export function readDwfFloor(
   }
   // The glazing: straight lines along a wall's line across its openings. A
   // run of windows or a terrace slider is wider than any doorway, and is
-  // closed wherever glass is drawn across it.
+  // closed wherever glass is drawn across it. A window is drawn as a frame and
+  // its panes — lines a few centimetres apart; a floor's tile grid is single
+  // lines 25 cm and more apart, and is no glass.
   const glass = new Uint8Array(n);
-  for (const s of sheet.segments) {
-    const lengthM = Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / upm;
-    if (lengthM < 0.3) continue;
-    const straight = Math.abs(s.x2 - s.x1) < 0.01 * upm || Math.abs(s.y2 - s.y1) < 0.01 * upm;
-    if (straight) line(s.x1 * pxPerUnit, s.y1 * pxPerUnit, s.x2 * pxPerUnit, s.y2 * pxPerUnit, glass, 1);
-  }
+  for (const s of glazing(sheet.segments, upm)) line(s.x1 * pxPerUnit, s.y1 * pxPerUnit, s.x2 * pxPerUnit, s.y2 * pxPerUnit, glass, 1);
   const closed = new Uint8Array(wall);
   const gaps = {
     sameWall: Math.round(320 / cm),
     toCorner: Math.round(150 / cm),
     glazed: Math.round(800 / cm),
+    narrowest: Math.round(55 / cm),
     doorway: Math.round(120 / cm),
   };
   closeGaps(along, wall, closed, cols, rows, true, gaps, glass);
@@ -223,10 +221,34 @@ export function readDwfFloor(
     areas[id] = areas[id]! - areas[coreId]!;
   }
 
+  // A name set over a fitting — a bath's outline, a shower's screen — can
+  // land in a sliver the fitting cuts off, or in a wall's hatch: it names the
+  // nearest room of a room's size, within 40 cm.
+  const named = (x: number, y: number) => {
+    const px = Math.round(x * pxPerUnit);
+    const py = Math.round(y * pxPerUnit);
+    const big = (id: number) => id > 0 && id !== outside && areas[id]! >= 0.8;
+    const here = at(x, y);
+    if (big(here) || here === outside) return here;
+    const reachPx = Math.round(40 / cm);
+    for (let r = 1; r <= reachPx; r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const qx = px + dx;
+          const qy = py + dy;
+          if (qx < 0 || qy < 0 || qx >= cols || qy >= rows) continue;
+          const id = room[qy * cols + qx]!;
+          if (big(id)) return id;
+        }
+      }
+    }
+    return here;
+  };
   const names = new Map<number, string[]>();
   const kinds = new Map<number, FloorplanRoomKind[]>();
   for (const label of labels) {
-    const id = at(label.x, label.y);
+    const id = named(label.x, label.y);
     if (!id || id === outside) continue;
     names.set(id, [...(names.get(id) ?? []), label.text]);
     kinds.set(id, [...(kinds.get(id) ?? []), label.kind]);
@@ -246,6 +268,7 @@ export function readDwfFloor(
   const kept = new Set(rooms.map((r) => r.id));
   const doors = new Map<number, Set<number>>();
   const contact = new Map<string, number>();
+  const touching = new Set<string>();
   const reach = Math.round(25 / cm);
   for (let k = 0; k < n; k++) {
     if (closed[k]! < 2) continue;
@@ -264,6 +287,7 @@ export function readDwfFloor(
       for (const q of seen) {
         if (p === q) continue;
         if (closed[k] === 3) doors.set(p, (doors.get(p) ?? new Set()).add(q));
+        touching.add(`${p}:${q}`);
         if (closed[k] === 2) continue;
         const key = `${p}:${q}`;
         contact.set(key, (contact.get(key) ?? 0) + 1);
@@ -275,6 +299,33 @@ export function readDwfFloor(
   );
   const units = (options.units ?? []).map((u) => ({ unit: u.unit, id: at(u.x, u.y) })).filter((u) => kept.has(u.id));
   const numbered = new Set(units.map((u) => u.id));
+  // The lobby's floor is set a step below the flats' — "+ 11.78" to their
+  // "+ 11.80" — and a part of it cut off by a closed gap still carries its
+  // level. An unnamed room marked at a level no flat is at, beside the stair
+  // core, is the core's; and so is the shaft or the meter cupboard that
+  // opens only onto it (below, where the core outvotes every flat).
+  const levels = levelMarks(sheet.texts);
+  const flatLevels = new Set(
+    levels.filter((l) => numbered.has(at(l.x, l.y))).map((l) => l.value),
+  );
+  if (flatLevels.size > 0) {
+    const stepped = new Set(
+      levels
+        .filter((l) => !flatLevels.has(l.value))
+        .map((l) => at(l.x, l.y))
+        .filter((id) => kept.has(id) && !numbered.has(id) && labelledKind(kinds.get(id) ?? []) == null),
+    );
+    for (let grown = true; grown; ) {
+      grown = false;
+      for (const id of stepped) {
+        if (core.has(id)) continue;
+        if ([...core].some((c) => touching.has(`${id}:${c}`))) {
+          core.add(id);
+          grown = true;
+        }
+      }
+    }
+  }
   const owner = new Map<number, number>();
   for (const { unit, id } of units) {
     owner.set(id, unit);
@@ -288,21 +339,35 @@ export function readDwfFloor(
       }
     }
   }
+  // The stair core votes too, as flat -1: a room that opens mostly onto the
+  // lobby is the building's, not a flat's. It is decided only once no flat
+  // can take a room any more, so a hall is not given to the lobby for being
+  // looked at before the flat round it had been.
+  const vote = (id: number) => {
+    const votes = new Map<number, number>();
+    for (const [key, count] of contact) {
+      const [p, q] = key.split(":").map(Number) as [number, number];
+      if (p !== id) continue;
+      const who = core.has(q) ? -1 : owner.get(q);
+      if (who == null) continue;
+      votes.set(who, (votes.get(who) ?? 0) + count);
+    }
+    return [...votes].sort((x, y) => y[1] - x[1])[0]?.[0];
+  };
+  const open = () => rooms.filter((r) => !owner.has(r.id) && !core.has(r.id));
   for (let changed = true; changed; ) {
     changed = false;
-    for (const r of rooms) {
-      if (owner.has(r.id) || core.has(r.id)) continue;
-      const votes = new Map<number, number>();
-      for (const [key, count] of contact) {
-        const [p, q] = key.split(":").map(Number) as [number, number];
-        if (p !== r.id || !owner.has(q)) continue;
-        votes.set(owner.get(q)!, (votes.get(owner.get(q)!) ?? 0) + count);
-      }
-      const best = [...votes].sort((a, b) => b[1] - a[1])[0];
-      if (best) {
-        owner.set(r.id, best[0]);
-        changed = true;
-      }
+    for (const r of open()) {
+      const best = vote(r.id);
+      if (best == null || best === -1) continue;
+      owner.set(r.id, best);
+      changed = true;
+    }
+    if (changed) continue;
+    for (const r of open()) {
+      if (vote(r.id) !== -1) continue;
+      core.add(r.id);
+      changed = true;
     }
   }
   const apartments: DwfApartment[] = units.map(({ unit }) => ({
@@ -313,6 +378,41 @@ export function readDwfFloor(
   const wallOut = new Uint8Array(n);
   for (let k = 0; k < n; k++) wallOut[k] = wall[k] ? 1 : closed[k]!;
   return { cols, rows, cm, unitsPerMetre: upm, wall: wallOut, room, outside, rooms, apartments };
+}
+
+/**
+ * The straight lines of 30 cm and more that have another beside them, the same
+ * way, 1.5 to 10 cm off and alongside for half the shorter's length.
+ */
+function glazing(segments: DwfGeometry["segments"], upm: number): DwfGeometry["segments"] {
+  const out: DwfGeometry["segments"] = [];
+  for (const horizontal of [true, false]) {
+    const lines = segments
+      .filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= 0.3 * upm)
+      .filter((s) => (horizontal ? Math.abs(s.y2 - s.y1) : Math.abs(s.x2 - s.x1)) < 0.01 * upm)
+      .map((s) => {
+        const at = horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2;
+        const a = horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+        const b = horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+        return { s, at, a, b };
+      })
+      .sort((p, q) => p.at - q.at);
+    const near = 0.015 * upm;
+    const far = 0.1 * upm;
+    const paired = new Set<number>();
+    for (let i = 0; i < lines.length; i++) {
+      const p = lines[i]!;
+      for (let j = i + 1; j < lines.length && lines[j]!.at - p.at <= far; j++) {
+        const q = lines[j]!;
+        if (q.at - p.at < near) continue;
+        const overlap = Math.min(p.b, q.b) - Math.max(p.a, q.a);
+        if (overlap < 0.5 * Math.min(p.b - p.a, q.b - q.a)) continue;
+        paired.add(i).add(j);
+      }
+    }
+    for (const i of paired) out.push(lines[i]!.s);
+  }
+  return out;
 }
 
 function dilate(src: Uint8Array, cols: number, rows: number, r: number): Uint8Array {
@@ -400,7 +500,7 @@ function closeGaps(
   cols: number,
   rows: number,
   horizontal: boolean,
-  limits: { sameWall: number; toCorner: number; glazed: number; doorway: number },
+  limits: { sameWall: number; toCorner: number; glazed: number; narrowest: number; doorway: number },
   glass: Uint8Array,
 ): void {
   const len = horizontal ? cols : rows;
@@ -415,15 +515,29 @@ function closeGaps(
         const b = own[idx(line, i)]!;
         const gap = i - last;
         let shut = (a && b && gap <= limits.sameWall) || ((a || b) && gap <= limits.toCorner);
-        if (!shut && a && b && gap <= limits.glazed) {
-          // Glass drawn along most of the gap, on this line.
-          let glazed = 0;
-          for (let k = last + 1; k < i; k++) if (glass[idx(line, k)]) glazed++;
-          shut = glazed >= 0.7 * (gap - 1);
+        // Glass drawn along most of the gap, on this line.
+        let glazed = 0;
+        for (let k = last + 1; k < i; k++) if (glass[idx(line, k)]) glazed++;
+        const window = glazed >= 0.7 * (gap - 1);
+        // From a wall's end to a stub the frame is the evidence: a window's
+        // sill, frame and panes run the gap's length on three lines and more
+        // of the band, where a tile grid runs it on one.
+        if (!shut && a && b && gap <= limits.glazed) shut = window;
+        if (!shut && (a || b) && gap <= limits.glazed && window) {
+          let panes = 0;
+          for (let d = -8; d <= 8; d++) {
+            const o = line + d;
+            if (o < 0 || o >= lines) continue;
+            let run = 0;
+            for (let k = last + 1; k < i; k++) if (glass[idx(o, k)]) run++;
+            if (run >= 0.7 * (gap - 1)) panes++;
+          }
+          shut = panes >= 3;
         }
         // A doorway's width marked apart from a window's: only a doorway joins
-        // two rooms into one flat.
-        const mark = gap <= limits.doorway ? 4 : 2;
+        // two rooms into one flat. One narrower than a door is a shaft or a
+        // pipe let into the wall, and one glazed is a window, however narrow.
+        const mark = !window && gap >= limits.narrowest && gap <= limits.doorway ? 4 : 2;
         if (shut) for (let k = last + 1; k < i; k++) into[idx(line, k)] = mark;
       }
       last = i;

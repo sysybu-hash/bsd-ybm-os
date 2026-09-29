@@ -36,6 +36,10 @@ describe("a permit strip, cut into its drawings", () => {
       ...["סלון", "מטבח", "שינה", "שינה", "מרפסת", "לובי"].map((t, k) => text(1150 + k * 50, 300, t)),
       text(1200, 200, "1", 13),
       text(1450, 200, "2", 13),
+      // A third number with a level mark set beside it, smaller.
+      text(1300, 400, "3", 13),
+      text(1280, 400, "+", 8),
+      text(1265, 400, "14.75", 8),
       // A permit form, known by an ID number.
       text(2200, 300, "123456789"),
     ]),
@@ -51,7 +55,7 @@ describe("a permit strip, cut into its drawings", () => {
   });
 
   it("knows a floor by its rooms and its apartment numbers", () => {
-    expect(sheets[1]).toMatchObject({ kind: "floor", units: [1, 2] });
+    expect(sheets[1]).toMatchObject({ kind: "floor", units: [1, 2, 3] });
   });
 
   it("marks the permit form and passes nothing on from it", () => {

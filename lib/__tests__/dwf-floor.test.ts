@@ -66,3 +66,37 @@ describe("a permit plan's floor, read from its hatch", () => {
     expect(floor.apartments[0]!.rooms).toHaveLength(2);
   });
 });
+
+describe("what does not join two rooms into one flat", () => {
+  /** The same two rooms; the party wall's opening only 30 cm — a shaft let into it — and no door drawn. */
+  function shafted(): DwfGeometry {
+    const segments = [
+      ...hatchedWall(1, 1, 9.2, 1.2),
+      ...hatchedWall(1, 4.2, 9.2, 4.4),
+      ...hatchedWall(1, 1, 1.2, 4.4),
+      ...hatchedWall(9, 1, 9.2, 4.4),
+      ...hatchedWall(5, 1, 5.2, 2.2),
+      ...hatchedWall(5, 2.5, 5.2, 4.4),
+    ];
+    return {
+      pageWidth: m(10.5),
+      pageHeight: m(5.5),
+      segments,
+      curves: [],
+      walls: [],
+      fills: [],
+      arcs: [],
+      // The bedroom's name set over its wall, as a name over a fitting can be.
+      texts: [text(3, 2.8, "סלון"), text(7, 1.32, "שינה"), text(3, 3.4, "7", 13)],
+    };
+  }
+  const floor = readDwfFloor(shafted(), { unitsPerMetre: UPM, units: [{ unit: 7, x: m(3), y: m(3.4) }] });
+
+  it("a gap narrower than a door is no doorway", () => {
+    expect(floor.apartments[0]!.rooms).toHaveLength(1);
+  });
+
+  it("a name set over a wall names the room beside it", () => {
+    expect(floor.rooms.filter((r) => r.kind != null).map((r) => r.kind).sort()).toEqual(["bedroom", "living"]);
+  });
+});

@@ -135,10 +135,16 @@ function unitNumbers(texts: PlacedText[]): number[] {
   const rooms = texts.filter((t) => ROOM.test(t.text));
   if (rooms.length === 0) return [];
   const roomHeight = Math.max(...rooms.map((t) => t.height));
-  // Alone on its line: "דופלקס 5 חדרים" is set at the same size.
+  // Alone on its line: "דופלקס 5 חדרים" is set at the same size. A level
+  // mark beside the number, "+14.75", is smaller and is not its line.
   const alone = (t: PlacedText) =>
     !texts.some(
-      (o) => o !== t && o.text.trim() !== "" && Math.abs(o.y - t.y) <= t.height * 0.3 && Math.abs(o.x - t.x) < t.height * 4,
+      (o) =>
+        o !== t &&
+        o.text.trim() !== "" &&
+        Math.abs(o.height - t.height) < t.height * 0.25 &&
+        Math.abs(o.y - t.y) <= t.height * 0.3 &&
+        Math.abs(o.x - t.x) < t.height * 4,
     );
   const numbers = texts
     .filter((t) => /^\d{1,3}$/.test(t.text.trim()) && t.height > roomHeight * 1.3 && t.height < roomHeight * 2.2 && alone(t))
