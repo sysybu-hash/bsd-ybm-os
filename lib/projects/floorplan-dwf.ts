@@ -36,13 +36,21 @@ export function sheetGeometry(
     texts: strip.texts
       .filter((t) => t.x >= box.x && t.x <= box.x + box.width && t.y >= box.y && t.y <= box.y + box.height)
       .map((t) => ({ ...t, x: t.x - box.x, y: t.y - box.y })),
+    fills: strip.fills
+      .filter((tri) => tri.every(([vx, vy]) => vx >= box.x && vx <= box.x + box.width && vy >= box.y && vy <= box.y + box.height))
+      .map((tri) => tri.map(([vx, vy]) => [vx - box.x, vy - box.y] as [number, number])),
   };
 }
 
 /** A text the sheet carries as text, placed on the page. */
 export type PlacedText = { x: number; y: number; text: string; height: number };
 
-export type DwfGeometry = FloorplanVectorGeometry & { texts: PlacedText[] };
+/**
+ * The sheet's solid fills, as triangles. A permit set fills its walls solid —
+ * poché, not the diagonal hatch a sales sheet draws — so on a DWF the walls
+ * are these, drawn outright.
+ */
+export type DwfGeometry = FloorplanVectorGeometry & { texts: PlacedText[]; fills: Array<Array<[number, number]>> };
 
 /** Page units are PDF points, so every threshold tuned on the sales sheets means the same. */
 const POINTS_PER_MM = 72 / 25.4;
@@ -101,11 +109,16 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
   let hebrewFont = false;
   let visible = true;
 
-  const raw: Array<[number, number, number, number, number, boolean]> = [];
+  // The pen colour, as the index into the drawing's palette or as RGB. A
+  // permit set draws each kind of thing in its own colour — walls, dimension
+  // chains, furniture — and the colour is how they are told apart.
+  let colour = 0;
+  const raw: Array<[number, number, number, number, number, boolean, number]> = [];
   const push = (x1: number, y1: number, x2: number, y2: number, curve = false) => {
-    if (visible) raw.push([x1, y1, x2, y2, lineWeight, curve]);
+    if (visible) raw.push([x1, y1, x2, y2, lineWeight, curve, colour]);
   };
   const rawTexts: Array<[number, number, string, number]> = [];
+  const rawFills: Array<Array<[number, number]>> = [];
 
   const count = (i: number): [number, number] => {
     const c = d[i]!;
@@ -208,10 +221,11 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
         }
         case 0x14:
         case 0x74: {
-          // Filled triangles: solid fills, drawn as their outline is enough here.
+          // A strip of filled triangles: a solid fill.
           const [k, j] = count(i);
-          const [, j2] = points(j, k, c === 0x74);
+          const [p, j2] = points(j, k, c === 0x74);
           i = j2;
+          if (visible) for (let t = 0; t + 2 < p.length; t++) rawFills.push([p[t]!, p[t + 1]!, p[t + 2]!]);
           break;
         }
         case 0x12:
@@ -292,9 +306,12 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
           i += 4;
           break;
         case 0x03:
+          // RGBA, stored B, G, R, A.
+          colour = 0x1000000 | (d[i + 2]! << 16) | (d[i + 1]! << 8) | d[i]!;
           i += 4;
           break;
         case 0x63:
+          colour = d[i]!;
           i += 1;
           break;
         case 0x56:
@@ -329,11 +346,19 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
   const k = mmPerUnit * POINTS_PER_MM;
   const px = (vx: number) => (vx - minX) * k;
   const py = (vy: number) => (maxY - vy) * k;
-  for (const [x1, y1, x2, y2, weight, curve] of raw) {
-    const s: VectorSegment = { x1: px(x1), y1: py(y1), x2: px(x2), y2: py(y2), lineWidth: Math.max(0.5, weight * k) };
+  for (const [x1, y1, x2, y2, weight, curve, pen] of raw) {
+    const s: VectorSegment = {
+      x1: px(x1),
+      y1: py(y1),
+      x2: px(x2),
+      y2: py(y2),
+      lineWidth: Math.max(0.5, weight * k),
+      stroke: pen,
+    };
     (curve ? curves : segments).push(s);
   }
   for (const [tx, ty, text, h] of rawTexts) texts.push({ x: px(tx), y: py(ty), text, height: h * k });
+  const fills = rawFills.map((tri) => tri.map(([vx, vy]) => [px(vx), py(vy)] as [number, number]));
   const page = { width: (maxX - minX) * k, height: (maxY - minY) * k };
   return {
     pageWidth: page.width,
@@ -345,5 +370,6 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
     // are found once the strip is cut into sheets (see sheetGeometry).
     walls: [],
     texts,
+    fills,
   };
 }

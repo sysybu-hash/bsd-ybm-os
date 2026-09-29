@@ -20,6 +20,7 @@ function strip(texts: PlacedText[]): DwfGeometry {
     curves: [],
     walls: [],
     texts,
+    fills: [],
   };
 }
 

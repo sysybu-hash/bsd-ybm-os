@@ -314,6 +314,33 @@ function bathAlong(piece: FurniturePiece, rows: SpanRow[], pitch: number): boole
 }
 
 /**
+ * A room's kind from the names written in it. An open-plan room carries
+ * several ("סלון", "פ. אוכל", "מטבח") and is the living room; a bathroom with
+ * its laundry corner is the bathroom.
+ */
+export function labelledKind(kinds: FloorplanRoomKind[]): FloorplanRoomKind | null {
+  if (kinds.length === 0) return null;
+  for (const kind of ["mmd", "bedroom", "living", "kitchen", "bathroom", "utility", "balcony", "circulation"] as const) {
+    if (kinds.includes(kind)) return kind;
+  }
+  return kinds[0]!;
+}
+
+/** The kind a room's written name gives it, or null for a word that is no room. */
+export function roomLabelKind(text: string): FloorplanRoomKind | null {
+  const t = text.replace(/\s+/g, "");
+  if (/ממ"?ד/.test(t)) return "mmd";
+  if (/שינה|הורים/.test(t)) return "bedroom";
+  if (/סלון|אוכל|מגורים/.test(t)) return "living";
+  if (/מטבח/.test(t)) return "kitchen";
+  if (/רחצה|שרותים|שירותים|אמבטיה|מקלחת/.test(t)) return "bathroom";
+  if (/כביסה|מחסן|שירות/.test(t)) return "utility";
+  if (/מרפסת/.test(t) && !/היטל/.test(t)) return "balcony";
+  if (/לובי|מבואה|מעלית|מדרגות|פרוזדור|מסדרון/.test(t)) return "circulation";
+  return null;
+}
+
+/**
  * The bedroom the sheet's "+2" stands at — the ממ"ד's door sill.
  *
  * The mark is printed in the doorway, on either side of it, so the bedroom
@@ -376,6 +403,13 @@ export function segmentRooms(input: {
   shelterMarks?: Array<{ x: number; y: number }>;
   /** OCR/programme hints are applied only to a matching measured room. */
   programme?: FloorplanRoom[];
+  /**
+   * Room names the sheet carries as text, where it carries them — a DWF does
+   * ("ח. שינה", "ממ"ד 2", "רחצה"). A region with a name in it is a room of
+   * that kind whatever its size or furniture says: the name is the drawing's
+   * own word for it. See roomLabelKind.
+   */
+  labels?: Array<{ x: number; y: number; kind: FloorplanRoomKind }>;
   page?: { width: number; height: number };
 }): SegmentedRoom[] {
   const { bodies, openings, floor, furniture, bounds, unitsPerMetre } = input;
@@ -439,12 +473,13 @@ export function segmentRooms(input: {
     const pitch = rowPitch(rows);
     const standing = furniture.filter((piece) => placed.get(piece) === componentIndex);
     const areaM2 = spanArea(rows) / (unitsPerMetre * unitsPerMetre);
+    const named = (input.labels ?? []).filter((label) => covers(rows, pitch, label.x, label.y));
     // A cell with a measured sanitary fixture in it is a room at any size a
     // fixture fits in. A bathroom is often drawn as two cells — a WC and a
     // shower either side of a thin partition — and each is below the size
     // that makes an empty region a room. Dropped, the flat lost a bathroom:
     // four reference sheets did, once rooms stopped being joined across walls.
-    if (areaM2 < minRoomM2) {
+    if (areaM2 < minRoomM2 && !(named.length > 0 && areaM2 >= WET_CELL_MIN_M2)) {
       const hasFixture =
         areaM2 >= WET_CELL_MIN_M2 &&
         // Standing in it, not an island beside it: a balcony's drain symbol
@@ -469,7 +504,10 @@ export function segmentRooms(input: {
       return covers(terrace, tPitch, cx, cy);
     });
 
-    const classified = classifyRoomFromContents({ onTerrace, areaM2, contents });
+    const byName = labelledKind(named.map((label) => label.kind));
+    const classified = byName
+      ? { kind: byName, bedCount: contents.filter((piece) => piece.kind === "bed").length }
+      : classifyRoomFromContents({ onTerrace, areaM2, contents });
 
     rooms.push({
       rows,
