@@ -23,7 +23,10 @@ export type DwfFloor = {
   cm: number;
   /** Page units per metre on this sheet. */
   unitsPerMetre: number;
-  /** The walls as drawn (1), the gaps closed along them (2), and the doors shut along their swing (3). */
+  /**
+   * The walls as drawn (1), the gaps closed along them — windows and wide
+   * openings (2), doorways (4) — and the doors shut along their swing (3).
+   */
   wall: Uint8Array;
   /** The room each pixel is in, 0 for wall, `outside` for the world round the building. */
   room: Int32Array;
@@ -92,23 +95,40 @@ export function readDwfFloor(
   const runX = runLengths(wall, cols, rows, true);
   const runY = runLengths(wall, cols, rows, false);
   const longRun = Math.round(60 / cm);
-  const thin = Math.round(45 / cm);
   const along = new Uint8Array(n);
   const across = new Uint8Array(n);
   for (let k = 0; k < n; k++) {
     if (!wall[k]) continue;
-    if (runX[k]! >= longRun && runY[k]! <= thin) along[k] = 1;
-    if (runY[k]! >= longRun && runX[k]! <= thin) across[k] = 1;
+    // Longer along the line than across it: a stub off a wall's end makes its
+    // last pixels thicker than a wall, and a gap from there was never closed.
+    if (runX[k]! >= longRun && runX[k]! > runY[k]! * 1.5) along[k] = 1;
+    if (runY[k]! >= longRun && runY[k]! > runX[k]! * 1.5) across[k] = 1;
+  }
+  // The glazing: straight lines along a wall's line across its openings. A
+  // run of windows or a terrace slider is wider than any doorway, and is
+  // closed wherever glass is drawn across it.
+  const glass = new Uint8Array(n);
+  for (const s of sheet.segments) {
+    const lengthM = Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / upm;
+    if (lengthM < 0.3) continue;
+    const straight = Math.abs(s.x2 - s.x1) < 0.01 * upm || Math.abs(s.y2 - s.y1) < 0.01 * upm;
+    if (straight) line(s.x1 * pxPerUnit, s.y1 * pxPerUnit, s.x2 * pxPerUnit, s.y2 * pxPerUnit, glass, 1);
   }
   const closed = new Uint8Array(wall);
-  closeGaps(along, wall, closed, cols, rows, true, Math.round(320 / cm), Math.round(150 / cm));
-  closeGaps(across, wall, closed, cols, rows, false, Math.round(320 / cm), Math.round(150 / cm));
+  const gaps = {
+    sameWall: Math.round(320 / cm),
+    toCorner: Math.round(150 / cm),
+    glazed: Math.round(800 / cm),
+    doorway: Math.round(120 / cm),
+  };
+  closeGaps(along, wall, closed, cols, rows, true, gaps, glass);
+  closeGaps(across, wall, closed, cols, rows, false, gaps, glass);
   // Every door with a swing drawn is shut along both its leaf positions: the
   // doorway then closes whatever wall it stands in, a 45° one included.
   for (const arc of sheet.arcs) {
     const rM = arc.r / upm;
     const sweep = arc.end - arc.start;
-    if (rM < 0.55 || rM > 1.3 || sweep < 1.3 || sweep > 1.85) continue;
+    if (rM < 0.45 || rM > 1.4 || sweep < 1.2 || sweep > 1.95) continue;
     for (const t of [arc.start, arc.end]) {
       line(
         arc.cx * pxPerUnit,
@@ -244,6 +264,7 @@ export function readDwfFloor(
       for (const q of seen) {
         if (p === q) continue;
         if (closed[k] === 3) doors.set(p, (doors.get(p) ?? new Set()).add(q));
+        if (closed[k] === 2) continue;
         const key = `${p}:${q}`;
         contact.set(key, (contact.get(key) ?? 0) + 1);
       }
@@ -379,8 +400,8 @@ function closeGaps(
   cols: number,
   rows: number,
   horizontal: boolean,
-  sameWall: number,
-  toCorner: number,
+  limits: { sameWall: number; toCorner: number; glazed: number; doorway: number },
+  glass: Uint8Array,
 ): void {
   const len = horizontal ? cols : rows;
   const lines = horizontal ? rows : cols;
@@ -393,9 +414,17 @@ function closeGaps(
         const a = own[idx(line, last)]!;
         const b = own[idx(line, i)]!;
         const gap = i - last;
-        if ((a && b && gap <= sameWall) || ((a || b) && gap <= toCorner)) {
-          for (let k = last + 1; k < i; k++) into[idx(line, k)] = 2;
+        let shut = (a && b && gap <= limits.sameWall) || ((a || b) && gap <= limits.toCorner);
+        if (!shut && a && b && gap <= limits.glazed) {
+          // Glass drawn along most of the gap, on this line.
+          let glazed = 0;
+          for (let k = last + 1; k < i; k++) if (glass[idx(line, k)]) glazed++;
+          shut = glazed >= 0.7 * (gap - 1);
         }
+        // A doorway's width marked apart from a window's: only a doorway joins
+        // two rooms into one flat.
+        const mark = gap <= limits.doorway ? 4 : 2;
+        if (shut) for (let k = last + 1; k < i; k++) into[idx(line, k)] = mark;
       }
       last = i;
     }
