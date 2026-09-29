@@ -21,6 +21,7 @@ function strip(texts: PlacedText[]): DwfGeometry {
     walls: [],
     texts,
     fills: [],
+    arcs: [],
   };
 }
 

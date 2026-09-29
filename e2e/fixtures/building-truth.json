@@ -1,0 +1,21 @@
+{
+  "_note": "Read off the permit strip 27.10.24-גרמושקה.dwf (kept outside the repo, in תוכניות בנין/) by eye, and confirmed by the owner as the reference. Per floor plan: the apartments on it, each with its bedrooms (not counting the ממ\"ד), ממ\"ד, bathrooms (not counting a separate guest WC or laundry) and this floor's own terraces with the area the sheet prints. \"היטל מרפסת קומה ב\" is the floor above's terrace drawn over this one and is not listed.",
+  "file": "27.10.24-גרמושקה.dwf",
+  "sheets": {
+    "sections": 2,
+    "elevations": ["חזית דרומית", "חזית מזרחית", "חזית מערבית", "חזית צפונית"],
+    "floors": 10
+  },
+  "floors": [
+    {
+      "units": [1, 2, 3, 4],
+      "scale": 100,
+      "apartments": [
+        { "unit": 1, "bedrooms": 2, "mmd": 1, "bathrooms": 2, "guestWc": true, "terraces": [{ "m2": 28.8, "covered": false }] },
+        { "unit": 2, "bedrooms": 3, "mmd": 1, "bathrooms": 2, "terraces": [{ "m2": 30.4, "covered": true }] },
+        { "unit": 3, "bedrooms": 2, "mmd": 1, "bathrooms": 2, "terraces": [{ "m2": 19.15, "covered": true }] },
+        { "unit": 4, "bedrooms": 1, "mmd": 1, "bathrooms": 1, "terraces": [{ "m2": 9.6, "covered": true }] }
+      ]
+    }
+  ]
+}

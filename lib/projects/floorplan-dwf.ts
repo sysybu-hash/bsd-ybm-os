@@ -39,6 +39,9 @@ export function sheetGeometry(
     fills: strip.fills
       .filter((tri) => tri.every(([vx, vy]) => vx >= box.x && vx <= box.x + box.width && vy >= box.y && vy <= box.y + box.height))
       .map((tri) => tri.map(([vx, vy]) => [vx - box.x, vy - box.y] as [number, number])),
+    arcs: strip.arcs
+      .filter((a) => a.cx >= box.x && a.cx <= box.x + box.width && a.cy >= box.y && a.cy <= box.y + box.height)
+      .map((a) => ({ ...a, cx: a.cx - box.x, cy: a.cy - box.y })),
   };
 }
 
@@ -50,7 +53,18 @@ export type PlacedText = { x: number; y: number; text: string; height: number };
  * poché, not the diagonal hatch a sales sheet draws — so on a DWF the walls
  * are these, drawn outright.
  */
-export type DwfGeometry = FloorplanVectorGeometry & { texts: PlacedText[]; fills: Array<Array<[number, number]>> };
+export type DwfGeometry = FloorplanVectorGeometry & {
+  texts: PlacedText[];
+  fills: Array<Array<[number, number]>>;
+  /**
+   * Circular arcs as drawn — centre, radius and the swept angles (radians,
+   * counter-clockwise from +x in page space with y down, as drawn). A door is
+   * one of these about its hinge, and the hinge is what closes it.
+   */
+  arcs: DwfArc[];
+};
+
+export type DwfArc = { cx: number; cy: number; r: number; start: number; end: number };
 
 /** Page units are PDF points, so every threshold tuned on the sales sheets means the same. */
 const POINTS_PER_MM = 72 / 25.4;
@@ -119,6 +133,7 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
   };
   const rawTexts: Array<[number, number, string, number]> = [];
   const rawFills: Array<Array<[number, number]>> = [];
+  const rawArcs: Array<[number, number, number, number, number]> = [];
 
   const count = (i: number): [number, number] => {
     const c = d[i]!;
@@ -172,6 +187,7 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
   };
   /** An arc as chords a quarter turn or less, as a PDF draws one. */
   const arc = (cx: number, cy: number, a: number, b: number, start: number, end: number) => {
+    if (visible && a === b && end !== 65536) rawArcs.push([cx, cy, a, start, end]);
     const s0 = (start / 65536) * Math.PI * 2;
     let e0 = (end / 65536) * Math.PI * 2;
     if (e0 <= s0) e0 += Math.PI * 2;
@@ -359,6 +375,13 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
   }
   for (const [tx, ty, text, h] of rawTexts) texts.push({ x: px(tx), y: py(ty), text, height: h * k });
   const fills = rawFills.map((tri) => tri.map(([vx, vy]) => [px(vx), py(vy)] as [number, number]));
+  // y is flipped onto the page, so an angle measured up from +x runs down.
+  const arcs: DwfArc[] = rawArcs.map(([cx, cy, r, start, end]) => {
+    const s0 = (start / 65536) * Math.PI * 2;
+    let e0 = (end / 65536) * Math.PI * 2;
+    if (e0 <= s0) e0 += Math.PI * 2;
+    return { cx: px(cx), cy: py(cy), r: r * k, start: -e0, end: -s0 };
+  });
   const page = { width: (maxX - minX) * k, height: (maxY - minY) * k };
   return {
     pageWidth: page.width,
@@ -371,5 +394,6 @@ export function geometryFromW2d(d: Buffer): DwfGeometry | null {
     walls: [],
     texts,
     fills,
+    arcs,
   };
 }
