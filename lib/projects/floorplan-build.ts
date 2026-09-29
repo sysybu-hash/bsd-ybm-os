@@ -17,6 +17,7 @@ import {
   findRoundedFurniture,
   looksLikeKitchenIsland,
   seatsAroundTable,
+  seatsDrawnAroundTable,
   stoolsAlongRun,
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
@@ -30,6 +31,9 @@ import {
   dropUnhatchedBodies,
   findDoorSwings,
   findLevelMarks,
+  levelTextAt,
+  sameLevelText,
+  type LevelText,
   findTerraces,
   findTerracesOnFloor,
   spansContain,
@@ -48,6 +52,7 @@ import {
   extractFloorplanVectorGeometry,
   type FloorplanVectorGeometry,
   type PlacedNumber,
+  type VectorSegment,
   extractPrintedAreas,
   extractShelterMarks,
   wallBoundingBox,
@@ -136,6 +141,31 @@ export function programmeTerraceSeeds(
             Math.hypot(label.x - area.x, label.y - area.y) < unitsPerMetre * 0.5,
         ),
     );
+}
+
+/**
+ * The level the flat itself stands at, as printed beside the small ⊕ in its
+ * label: the one mark on the flat's own floor, off every terrace, with a
+ * level figure beside it. Null where there is none, or two disagree.
+ */
+function flatLevelText(
+  geometry: { segments: VectorSegment[]; curves: VectorSegment[] },
+  floor: SpanRow[],
+  terraces: Array<{ rows: SpanRow[] }>,
+  unitsPerMetre: number,
+): LevelText | null {
+  const marks = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre, { minRadiusM: 0.07, minHatch: 2 }).filter(
+    (mark) =>
+      mark.r < unitsPerMetre * 0.12 &&
+      spansContain(floor, mark.x, mark.y) &&
+      !terraces.some((terrace) => spansContain(terrace.rows, mark.x, mark.y)),
+  );
+  const texts = marks
+    .map((mark) => levelTextAt(mark, geometry.segments, geometry.curves))
+    .filter((text): text is LevelText => text != null);
+  const first = texts[0];
+  if (!first || texts.some((text) => !sameLevelText(text, first))) return null;
+  return first;
 }
 
 /**
@@ -419,7 +449,7 @@ export async function buildFlatFromGeometry(
 
   const table = found.find((piece) => piece.kind === "table");
   const chairs = table
-    ? seatsAroundTable(table, unitsPerMetre).filter((piece) => clear(piece))
+    ? (seatsDrawnAroundTable(table, geometry.curves, unitsPerMetre, geometry.segments) ?? seatsAroundTable(table, unitsPerMetre)).filter((piece) => clear(piece))
     : [];
 
   // A free-standing run: deep enough to be a counter, long enough to seat at,
@@ -594,26 +624,93 @@ export async function buildFlatFromGeometry(
     8,
     { truncate: true },
   ).filter(touchesFlat);
-  const markedHits = (
-    levelSeeds.length > 0
+  // A seed whose printed level is the flat's own is the flat's terrace, and
+  // is taken at any size a terrace can be; see levelTextAt. The paving's
+  // joints eat into the flood, and דירה 18's 8 m² terrace, at the flat's
+  // +11.42, measured 2.69 and fell under the floor below.
+  const flatLevel = flatLevelText(geometry, floor, terraceHits, unitsPerMetre);
+  const atFlatLevel = (mark: { x: number; y: number; r: number }) => {
+    if (!flatLevel) return false;
+    const text = levelTextAt(mark, geometry.segments, geometry.curves);
+    return text != null && sameLevelText(text, flatLevel);
+  };
+  const ownSeeds = levelSeeds.filter(atFlatLevel);
+  const otherSeeds = levelSeeds.filter((mark) => !atFlatLevel(mark));
+  const unlabelledHits =
+    otherSeeds.length > 0
       ? // At least 2.8 m²: unlabelled, the region has only its size to go on.
         // The two real ones measured 3.04 and 3.19; the roof beside דירה 22,
         // 2.53.
-        findTerracesOnFloor(floor, bodies, levelSeeds, unitsPerMetre, { unlabelledM2: { min: 2.8, max: 16 } })
-      : []
-  ).filter((terrace) => {
-    const inside = furniture.filter(
+        findTerracesOnFloor(floor, bodies, otherSeeds, unitsPerMetre, { unlabelledM2: { min: 2.8, max: 16 } })
+      : [];
+  const ownHits =
+    ownSeeds.length > 0
+      ? findTerracesOnFloor(floor, bodies, ownSeeds, unitsPerMetre, { unlabelledM2: { min: 1.2, max: 16 }, growRim: true })
+      : [];
+  const standsIn = (terrace: { rows: SpanRow[] }) =>
+    furniture.filter(
       (piece) => !onMark(piece) && spansContain(terrace.rows, piece.x + piece.w / 2, piece.y + piece.h / 2),
     );
-    const wet = inside.filter((piece) => piece.kind === "fixture" || piece.kind === "sink");
-    // A line of outlined lettering: long and thin. דירה 15's "שטח המרפסת 6.44"
-    // reads as a 100 by 50 cm fixture; a pan or a basin is not that shape, and
-    // neither was the 106 by 77 cm piece on the roof beside דירה 22.
-    const lettering = (piece: FurniturePiece) =>
-      Math.max(piece.widthCm, piece.depthCm) >= 80 && Math.min(piece.widthCm, piece.depthCm) <= 60;
-    return !inside.some((piece) => piece.kind === "bed") && wet.length < 2 && wet.every(lettering);
-  });
-  const terraces = [...terraceHits, ...markedHits].map((terrace) => terrace.rows);
+  const markedHits = [
+    ...unlabelledHits.filter((terrace) => {
+      const inside = standsIn(terrace);
+      const wet = inside.filter((piece) => piece.kind === "fixture" || piece.kind === "sink");
+      // A line of outlined lettering: long and thin. דירה 15's "שטח המרפסת 6.44"
+      // reads as a 100 by 50 cm fixture; a pan or a basin is not that shape, and
+      // neither was the 106 by 77 cm piece on the roof beside דירה 22.
+      const lettering = (piece: FurniturePiece) =>
+        Math.max(piece.widthCm, piece.depthCm) >= 80 && Math.min(piece.widthCm, piece.depthCm) <= 60;
+      return !inside.some((piece) => piece.kind === "bed") && wet.length < 2 && wet.every(lettering);
+    }),
+    // At the flat's own level it is a terrace by its figure; only a bed says
+    // otherwise. The lettering of דירה 18's "שטח המרפסת 4.6" read as two
+    // fixtures and took its terrace for a bathroom.
+    // Nor one already found: a mark just off the paving's grown region seeds
+    // the same terrace again, and דירה 16 got its terrace twice.
+    ...ownHits.filter(
+      (terrace) =>
+        !standsIn(terrace).some((piece) => piece.kind === "bed") &&
+        !terraceHits.some((found) =>
+          terrace.rows.some((row) =>
+            row.spans.some(([a, b]) => spansContain(found.rows, (a + b) / 2, row.y)),
+          ),
+        ),
+    ),
+  ];
+  // A terrace at another level than the flat's, with no door onto it, is the
+  // roof of the storey below or the terrace of the one above: דירה 18's
+  // "5.2" at +12.79, printed as text and so grown and kept, beside a flat at
+  // +11.42 with only windows onto it. Access decides, not level alone — דירה
+  // 20's middle bedroom opens onto its terrace three metres up the sheet's
+  // section — so a door onto it keeps it.
+  const earlySwings = findDoorSwings(geometry.segments, geometry.curves, bodies, unitsPerMetre, { extent: flatExtent });
+  const reach = unitsPerMetre * 0.35;
+  const doorOnto = (terrace: { rows: SpanRow[] }) =>
+    earlySwings.some((door) => {
+      const mid = (door.from + door.to) / 2;
+      const probes =
+        door.orientation === "h"
+          ? [
+              [mid, door.centre - reach],
+              [mid, door.centre + reach],
+            ]
+          : [
+              [door.centre - reach, mid],
+              [door.centre + reach, mid],
+            ];
+      return probes.some(([x, y]) => spansContain(terrace.rows, x!, y!));
+    });
+  const elsewhere = (terrace: { rows: SpanRow[] }) => {
+    if (!flatLevel) return false;
+    const own = levelMarks.filter((mark) => spansContain(terrace.rows, mark.x, mark.y));
+    const texts = own
+      .map((mark) => levelTextAt(mark, geometry.segments, geometry.curves))
+      .filter((text): text is LevelText => text != null);
+    return texts.length > 0 && texts.every((text) => !sameLevelText(text, flatLevel));
+  };
+  const terraces = [...terraceHits, ...markedHits]
+    .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
+    .map((terrace) => terrace.rows);
 
   // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
   // rule alone returned six openings on דירה 14, most of them windows, and had

@@ -300,6 +300,20 @@ function restitchFurnishedFragments(
 const WET_CELL_MIN_M2 = 0.6;
 
 /**
+ * A bath the cell stands along. The tub is drawn closed, so the flood goes
+ * round it and its centre is never in the cell: דירה 18's bathroom measured
+ * 1.40 m² beside its 1.59 m bath and was dropped with nothing in it. A bath
+ * is long; a drain symbol, the island this test must not take, is not.
+ */
+function bathAlong(piece: FurniturePiece, rows: SpanRow[], pitch: number): boolean {
+  if (Math.max(piece.widthCm, piece.depthCm) < 120) return false;
+  const box = boundsOf(rows, pitch);
+  const ox = Math.min(piece.x + piece.w, box.x + box.width) - Math.max(piece.x, box.x);
+  const oy = Math.min(piece.y + piece.h, box.y + box.height) - Math.max(piece.y, box.y);
+  return ox > 0 && oy > 0 && ox * oy >= 0.5 * piece.w * piece.h;
+}
+
+/**
  * The bedroom the sheet's "+2" stands at — the ממ"ד's door sill.
  *
  * The mark is printed in the doorway, on either side of it, so the bedroom
@@ -438,7 +452,7 @@ export function segmentRooms(input: {
         standing.some(
           (piece) =>
             (piece.kind === "fixture" || piece.kind === "sink") &&
-            covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2),
+            (covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2) || bathAlong(piece, rows, pitch)),
         );
       if (!hasFixture) continue;
     }

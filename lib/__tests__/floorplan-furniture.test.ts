@@ -7,6 +7,8 @@ import {
   findDiningTable,
   findKitchenFittings,
   findRectangles,
+  findRoundedTables,
+  seatsDrawnAroundTable,
   looksLikeKitchenIsland,
   panPartsAreNotSeats,
   findSeatsAroundTable,
@@ -469,5 +471,63 @@ describe("the dining table, from the ring of chairs round it", () => {
   it("is not placed where the caller says no table can stand", () => {
     // דירה 18's bathroom fixtures made a ring, and its "table" stood in a wall.
     expect(findDiningTable(ring, UPM, { accept: () => false })).toBeNull();
+  });
+});
+
+describe("a dining table drawn with rounded corners, and the chairs drawn round it", () => {
+  // דירה 18: 2.13 by 0.95 m, corners of 11 cm.
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const r = 0.11 * UPM;
+  const x0 = 200;
+  const y0 = 300;
+  const w = 2.13 * UPM;
+  const h = 0.95 * UPM;
+  const edges = [
+    seg(x0 + r, y0, x0 + w - r, y0),
+    seg(x0 + r, y0 + h, x0 + w - r, y0 + h),
+    seg(x0, y0 + r, x0, y0 + h - r),
+    seg(x0 + w, y0 + r, x0 + w, y0 + h - r),
+  ];
+  const corners = [
+    seg(x0, y0 + r, x0 + r, y0),
+    seg(x0 + w - r, y0, x0 + w, y0 + r),
+    seg(x0, y0 + h - r, x0 + r, y0 + h),
+    seg(x0 + w - r, y0 + h, x0 + w, y0 + h - r),
+  ];
+
+  it("finds the table the rectangle finder cannot close", () => {
+    expect(findRectangles(edges, { unitsPerMetre: UPM })).toEqual([]);
+    const tables = findRoundedTables(edges, corners, UPM);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.widthCm).toBeCloseTo(213, 0);
+    expect(tables[0]!.depthCm).toBeCloseTo(95, 0);
+  });
+
+  it("wants an arc in every corner: four lines alone are not a table", () => {
+    expect(findRoundedTables(edges, corners.slice(0, 3), UPM)).toEqual([]);
+  });
+
+  it("puts a chair where each is drawn — three a side, none at the ends", () => {
+    const table = findRoundedTables(edges, corners, UPM)[0]!;
+    // A chair: a 52 cm seat, its front and back edges straight, its corners arcs.
+    const chair = (cx: number, top: number) => [
+      seg(cx - 0.26 * UPM, top, cx + 0.26 * UPM, top),
+      seg(cx - 0.26 * UPM, top + 0.45 * UPM, cx + 0.26 * UPM, top + 0.45 * UPM),
+      seg(cx - 0.26 * UPM, top, cx - 0.26 * UPM, top + 0.45 * UPM),
+      seg(cx + 0.26 * UPM, top, cx + 0.26 * UPM, top + 0.45 * UPM),
+    ];
+    const along = [0.2, 0.5, 0.8].map((t) => x0 + w * t);
+    const drawn = [
+      ...along.flatMap((cx) => chair(cx, y0 - 0.55 * UPM)),
+      ...along.flatMap((cx) => chair(cx, y0 + h + 0.1 * UPM)),
+    ];
+    const seats = seatsDrawnAroundTable(table, [], UPM, drawn);
+    expect(seats).toHaveLength(6);
+    expect(seats!.every((s) => s.x > table.x && s.x + s.w < table.x + table.w)).toBe(true);
+  });
+
+  it("gives the rule back to the caller where no chair is drawn", () => {
+    const table = findRoundedTables(edges, corners, UPM)[0]!;
+    expect(seatsDrawnAroundTable(table, [], UPM, [])).toBeNull();
   });
 });
