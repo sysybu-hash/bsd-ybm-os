@@ -325,7 +325,29 @@ export async function buildFlatFromGeometry(
   const hobs = findKitchenFittings(geometry.segments, geometry.curves, unitsPerMetre).filter(
     (piece) => piece.kind === "hob",
   );
+  // Nor is a thin one that runs through the chairs drawn round the dining
+  // table: the seats' front and back edges, a chair's width apart and in a
+  // row, pair up like a partition's faces, and דירה 23's three chairs below
+  // the table came out as a wall across the living room.
+  const earlyTable = findFurniture(geometry.segments, unitsPerMetre, { curves: geometry.curves }).find(
+    (piece) => piece.kind === "table",
+  );
+  const drawnChairs = earlyTable
+    ? (seatsDrawnAroundTable(earlyTable, geometry.curves, unitsPerMetre, geometry.segments) ?? [])
+    : [];
+  const throughChairs = (body: WallBody) => {
+    if (body.thickness > unitsPerMetre * 0.15) return false;
+    const r = bodyRect(body);
+    return (
+      drawnChairs.filter((chair) => {
+        const ox = Math.min(r.x + r.w, chair.x + chair.w) - Math.max(r.x, chair.x);
+        const oy = Math.min(r.y + r.h, chair.y + chair.h) - Math.max(r.y, chair.y);
+        return ox > 0 && oy > 0;
+      }).length >= 2
+    );
+  };
   const bodies = [...hatchKept, ...plotted].filter((body) => {
+    if (throughChairs(body)) return false;
     if (hobs.some((hob) => centreInsideBody(hob, body))) return false;
     const r = bodyRect(body);
     // Mostly inside, not wholly: דירה 22's ran on past the bath's end into
