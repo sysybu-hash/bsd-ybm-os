@@ -3,6 +3,7 @@ import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import { type FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { readDwfFurniture } from "@/lib/projects/dwf-furniture";
+import { type DwfTerrace, readDwfTerraces } from "@/lib/projects/dwf-terrace";
 import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
@@ -26,7 +27,11 @@ export type DwfFlat = { flat: BuiltFlat; rooms: SegmentedRoom[] };
 /** How far past its rooms a flat's walls reach: the thickest wall on the sheet, a ממ"ד's. */
 const WALL_REACH_CM = 40;
 
-export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: number): DwfFlat | null {
+/**
+ * `terraces` is the floor's, read once for all its flats; left out, it is
+ * read here.
+ */
+export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: number, terraces?: DwfTerrace[]): DwfFlat | null {
   const apartment = floor.apartments.find((a) => a.unit === unit);
   if (!apartment || apartment.rooms.length === 0) return null;
   const { cols, rows, cm, unitsPerMetre: upm } = floor;
@@ -101,7 +106,17 @@ export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: numb
   for (let k = 0; k < n; k++) floorPx += inFlat[k]!;
   const floorM2 = floorPx * pixelArea;
 
-  const ext = extent(near, cols, rows);
+  // The flat's terraces, each a mask on the floor's grid; the flat's extent
+  // takes them in, so the render frames them.
+  const ownTerraces = (terraces ?? readDwfTerraces(floor, sheet)).filter((t) => t.unit === unit);
+  const terraceMasks = ownTerraces.map((t) => {
+    const mask = new Uint8Array(n);
+    for (const k of t.pixels) mask[k] = 1;
+    return mask;
+  });
+  const framed = near.slice();
+  for (const mask of terraceMasks) for (let k = 0; k < n; k++) if (mask[k]) framed[k] = 1;
+  const ext = extent(framed, cols, rows);
   const bounds = {
     x: ext.x0 * unitsPerPx,
     y: ext.y0 * unitsPerPx,
@@ -176,18 +191,19 @@ export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: numb
     if ((counts.get(base) ?? 0) > 1 && room.name === base) room.name = `${base} 1`;
   }
 
+  const terraceRows = terraceMasks.map((mask) => spanRows(mask, cols, rows, unitsPerPx));
   const flat: BuiltFlat = {
     unitsPerMetre: upm,
     bodies,
     floor: floorRows,
     furniture,
     openings,
-    terraces: [],
-    printedTerraceCount: 0,
+    terraces: terraceRows,
+    printedTerraceCount: ownTerraces.filter((t) => t.printedM2 != null).length,
     bounds,
     floorM2,
     areaError: 0,
-    svg: renderFlatSvg(bodies, bounds, { unitsPerMetre: upm, floor: floorRows, furniture, openings, terraces: [] }),
+    svg: renderFlatSvg(bodies, bounds, { unitsPerMetre: upm, floor: floorRows, furniture, openings, terraces: terraceRows }),
   };
   return { flat, rooms: segmented };
 }
