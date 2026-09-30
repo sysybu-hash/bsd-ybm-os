@@ -167,9 +167,10 @@ export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: numb
       return floor.room[py * cols + px] === id;
     });
     // A WC or a bathroom the sheet leaves unnamed is still one: its pan or
-    // its bath says so.
-    const kind: FloorplanRoomKind =
-      info.kind ?? (contents.some((p) => p.kind === "fixture") ? "bathroom" : info.areaM2 < 6 ? "circulation" : "other");
+    // its bath says so — in a room a bathroom's size. דירה 34's upper hall,
+    // 11.7 m², holds a piece read as a fixture and is not a bathroom.
+    const wet = info.areaM2 < 9 && contents.some((p) => p.kind === "fixture");
+    const kind: FloorplanRoomKind = info.kind ?? (wet ? "bathroom" : info.areaM2 < 6 ? "circulation" : "other");
     const base = NAME[kind];
     const seen = (counts.get(base) ?? 0) + 1;
     counts.set(base, seen);

@@ -8,6 +8,7 @@ import { useIsPlatformAdmin } from "@/hooks/use-is-platform-admin";
 import FloorplanVizLibrary from "@/components/os/widgets/floorplan-viz/FloorplanVizLibrary";
 import FloorplanVizResults from "@/components/os/widgets/floorplan-viz/FloorplanVizResults";
 import FloorplanVizStylePicker from "@/components/os/widgets/floorplan-viz/FloorplanVizStylePicker";
+import FloorplanVizDwfUnitPicker from "@/components/os/widgets/floorplan-viz/FloorplanVizDwfUnitPicker";
 import { OsButton } from "@/components/os/ui";
 import { useFloorplanVizRun } from "@/components/os/widgets/floorplan-viz/useFloorplanVizRun";
 
@@ -23,6 +24,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
     file,
     setFile,
     onFile,
+    dwf,
     projectId,
     setProjectId,
     projects,
@@ -112,7 +114,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*"
+            accept=".pdf,.dwf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*"
             className="hidden"
             onChange={(e) => {
               onFile(e.target.files?.[0] ?? null);
@@ -126,6 +128,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             onClick={() => {
               setResult(null);
               setFile(null);
+              dwf.reset();
               setError(null);
             }}
           >
@@ -135,15 +138,29 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             variant="secondary"
             size="sm"
             icon={<Upload size={12} aria-hidden />}
+            loading={dwf.reading}
             onClick={() => fileRef.current?.click()}
           >
-            {file ? file.name : t("workspaceWidgets.floorplanViz.upload")}
+            {dwf.reading
+              ? t("workspaceWidgets.floorplanViz.dwfReading")
+              : file
+                ? file.name
+                : t("workspaceWidgets.floorplanViz.upload")}
           </OsButton>
+          {dwf.units.length > 0 && !result ? (
+            <FloorplanVizDwfUnitPicker
+              t={t}
+              units={dwf.units}
+              value={dwf.choice}
+              onChange={dwf.setChoice}
+              disabled={loading}
+            />
+          ) : null}
           <OsButton
             variant="primary"
             size="sm"
             loading={loading && pendingCount === 0}
-            disabled={(!file && !result?.runId) || loading}
+            disabled={(!file && !result?.runId) || loading || dwf.reading || (dwf.isDwf && !dwf.choice && !result?.runId)}
             onClick={() => void generate(scope)}
           >
             {scope === "full"

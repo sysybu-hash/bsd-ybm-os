@@ -42,6 +42,13 @@ describe("floorplan photo prep", () => {
     expect(sniffFloorplanMime(Buffer.from("%PDF-1.4").toString("base64"), "")).toBe("application/pdf");
   });
 
+  it("knows a permit strip, whole or as the drawing cut out of it", () => {
+    expect(sniffFloorplanMime(Buffer.from("(W2D V06.00)").toString("base64"), "")).toBe("model/vnd.dwf");
+    expect(sniffFloorplanMime(Buffer.from("(DWF V06.00)PK").toString("base64"), "")).toBe("model/vnd.dwf");
+    expect(inferMimeFromFileName("גרמושקה.w2d", "")).toBe("model/vnd.dwf");
+    expect(inferMimeFromFileName("גרמושקה.DWF", "application/octet-stream")).toBe("model/vnd.dwf");
+  });
+
   it("accepts PDF magic and rejects a JPEG stored under a .pdf name", () => {
     expect(bufferIfPdf(Buffer.from("%PDF-1.4 mock"))).not.toBeNull();
     expect(bufferIfPdf(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBeNull();

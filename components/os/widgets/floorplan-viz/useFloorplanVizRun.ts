@@ -12,6 +12,7 @@ import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
 import type { FloorplanLayout, FloorplanRoom } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
 import { useFloorplanVizStills } from "@/components/os/widgets/floorplan-viz/useFloorplanVizStills";
+import { useDwfBuilding } from "@/components/os/widgets/floorplan-viz/useDwfBuilding";
 import {
   listFloorplanVizJobs,
   type FloorplanVizScope,
@@ -52,6 +53,8 @@ export function useFloorplanVizRun({
   const [scope, setScope] = useState<FloorplanVizScope>("overview");
   const [runs, setRuns] = useState<FloorplanVizRunSummary[]>([]);
   const [titleDraft, setTitleDraft] = useState("");
+  const dwf = useDwfBuilding(t);
+  const prepareDwf = dwf.prepare;
 
   useEffect(() => {
     if (typeof liveData?.projectId === "string") setProjectId(liveData.projectId);
@@ -99,11 +102,16 @@ export function useFloorplanVizRun({
     setTitleDraft(result?.title ?? "");
   }, [result?.title, result?.runId]);
 
-  const onFile = useCallback((next: File | null) => {
-    setFile(next);
-    setResult(null);
-    setError(null);
-  }, []);
+  const onFile = useCallback(
+    (next: File | null) => {
+      setFile(null);
+      setResult(null);
+      setError(null);
+      // A permit strip becomes its drawing, once its apartments are read.
+      void prepareDwf(next).then(setFile);
+    },
+    [prepareDwf],
+  );
 
   const applyResult = useCallback((incoming: FloorplanVizResult) => {
     setResult(incoming);
@@ -135,11 +143,17 @@ export function useFloorplanVizRun({
           fd.append("scope", nextScope);
         } else if (file) {
           const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-          // Keep the PDF bytes. Rasterizing here used to skip the CAD path
-          // and the model invented a different apartment.
-          const blobUrl = await uploadPlanToBlob(file);
-          if (blobUrl) fd.append("blobUrl", blobUrl);
-          else fd.append("file", file);
+          const dwfFields = dwf.isDwf ? await dwf.runFields() : null;
+          if (dwf.isDwf && !dwfFields) return;
+          if (dwfFields) {
+            for (const [key, value] of Object.entries(dwfFields)) fd.append(key, value);
+          } else {
+            // Keep the PDF bytes. Rasterizing here used to skip the CAD path
+            // and the model invented a different apartment.
+            const blobUrl = await uploadPlanToBlob(file);
+            if (blobUrl) fd.append("blobUrl", blobUrl);
+            else fd.append("file", file);
+          }
           if (projectId) fd.append("projectId", projectId);
           fd.append("styleId", styleId);
           fd.append("planKind", isPdf ? "sales-sheet" : "auto");
@@ -176,7 +190,7 @@ export function useFloorplanVizRun({
         setLoading(false);
       }
     },
-    [applyResult, customKit, file, projectId, refreshRuns, result, styleId, t],
+    [applyResult, customKit, dwf, file, projectId, refreshRuns, result, styleId, t],
   );
 
   const openRun = useCallback(
@@ -291,6 +305,7 @@ export function useFloorplanVizRun({
     file,
     setFile,
     onFile,
+    dwf,
     projectId,
     setProjectId,
     projects,

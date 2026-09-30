@@ -165,8 +165,10 @@ export const PLAN_DIRECT_UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024;
  * any failure — the caller then falls back to multipart, which still works for
  * anything under the platform's limit.
  */
-export async function uploadPlanToBlob(file: File): Promise<string | null> {
-  if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) return null;
+export async function uploadPlanToBlob(file: File, options?: { always?: boolean }): Promise<string | null> {
+  // A permit strip is read twice — once for its apartments, once for the run —
+  // so it goes to Blob whatever its size.
+  if (!options?.always && file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) return null;
   try {
     const { upload } = await import("@vercel/blob/client");
     const blob = await upload(file.name, file, {

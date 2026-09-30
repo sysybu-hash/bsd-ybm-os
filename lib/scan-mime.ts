@@ -39,6 +39,8 @@ const EXT_TO_MIME: [RegExp, string][] = [
   [/\.heif$/i, "image/heif"],
   [/\.tiff?$/i, "image/tiff"],
   [/\.svg$/i, "image/svg+xml"],
+  // A permit strip, or the W2D stream the browser cuts out of one.
+  [/\.(dwf|w2d)$/i, "model/vnd.dwf"],
   [/\.docx$/i, "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
   [/\.doc$/i, "application/msword"],
   [/\.xlsx$/i, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],

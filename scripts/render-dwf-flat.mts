@@ -30,11 +30,7 @@ if (!file || !Number.isInteger(unit)) {
 }
 const outDir = args.get("out") ?? path.dirname(file);
 
-const { geometryFromDwf, sheetGeometry } = await import("@/lib/projects/floorplan-dwf");
-const { splitStrip, unitMarks } = await import("@/lib/projects/sheet-split");
-const { levelMarks } = await import("@/lib/projects/floor-split");
-const { readDwfFloor } = await import("@/lib/projects/dwf-floor");
-const { flatFromDwfFloor } = await import("@/lib/projects/dwf-flat");
+const { readDwfStrip, dwfFlatForUnit } = await import("@/lib/projects/dwf-building");
 const { FLOORPLAN_VIZ_PRESETS, isFloorplanVizPresetId } = await import("@/lib/projects/floorplan-viz-styles");
 const { buildFlatScene } = await import("@/lib/projects/scene3d/build-scene");
 const { sceneStyleFor } = await import("@/lib/projects/scene3d/style");
@@ -42,22 +38,10 @@ const { chromiumSceneRenderer } = await import("@/lib/projects/scene3d/renderer"
 const { QUALITY } = await import("@/lib/projects/scene3d/quality");
 const { hashScene } = await import("@/lib/projects/scene3d/hash");
 
-const strip = geometryFromDwf(fs.readFileSync(file));
+const strip = readDwfStrip(fs.readFileSync(file));
 if (!strip) throw new Error("no drawing read");
-const UPM = (72 / 25.4) * 10;
-const candidates = splitStrip(strip)
-  .filter((s) => s.kind === "floor" && s.units.includes(unit))
-  .map((s) => {
-    const sheet = sheetGeometry(strip, s.box);
-    const marks = levelMarks(sheet.texts).map((l) => l.value).sort((a, b) => a - b);
-    return { sheet, level: marks[marks.length >> 1] ?? 0 };
-  })
-  .sort((a, b) => a.level - b.level);
-const chosen = args.get("level") === "upper" ? candidates[1] : candidates[0];
-if (!chosen) throw new Error(`no floor sheet carries apartment ${unit}`);
-
-const floor = readDwfFloor(chosen.sheet, { unitsPerMetre: UPM, units: unitMarks(chosen.sheet.texts) });
-const built = flatFromDwfFloor(floor, chosen.sheet, unit);
+const level = args.get("level") === "upper" ? "upper" : args.get("level") === "lower" ? "lower" : null;
+const built = dwfFlatForUnit(strip, unit, level);
 if (!built) throw new Error(`apartment ${unit} not read`);
 const { flat, rooms } = built;
 console.log(

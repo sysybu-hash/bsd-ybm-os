@@ -57,6 +57,8 @@ export const floorplanGeometrySchema = z.object({
         kind: z.string().max(40),
         widthCm: z.number(),
         depthCm: z.number(),
+        /** Which sanitary fixture, where the reading knew; see FurniturePiece. */
+        fixture: z.enum(["bath", "shower", "toilet", "basin"]).optional(),
       }),
     )
     .max(2000),
@@ -142,6 +144,7 @@ export function floorplanGeometryPayload(
       kind: piece.kind,
       widthCm: piece.widthCm,
       depthCm: piece.depthCm,
+      ...(piece.fixture ? { fixture: piece.fixture } : {}),
     })),
     // Page fractions become page units, which is what the geometry speaks.
     labelledRooms:
