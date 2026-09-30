@@ -121,6 +121,18 @@ const LABELS_MINUS2: RoomLabel[] = [
   L(42.5, 11, "מעבר", "corridor"),
 ];
 
+/** The roof: floor −1's outline, and the car park deck out over the ramp. */
+const ROOF: Outline = [
+  [0.88, 1.02],
+  [53.92, 1.02],
+  [53.92, 19.4],
+  [33.82, 19.4],
+  [33.82, 18.2],
+  [30.44, 18.2],
+  [30.44, 16.58],
+  [0.88, 16.58],
+];
+
 /** The void over the lobby behind the curtain wall, floor −1's "חלל כפול". */
 const VOID: Outline = [
   [22.5, 1.35],
@@ -299,17 +311,34 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   }
 
   // Roof: the car park to the east, the roof plaza to the west.
-  prims.push(slab(inset(OUTLINE_MINUS1, 0.06), LEVEL.roof, 0.35, "slab", "roof:slab"));
+  // The roof. East of the lift the car park deck runs on past the building
+  // line to z 19.4, over the covered accessible ramp — the site plan's bays
+  // 8–12 stand there, z 13.2 to 18.0.
+  prims.push(slab(inset(ROOF, 0.06), LEVEL.roof, 0.35, "slab", "roof:slab"));
   prims.push(slab(rect(0.88, 1.02, 32.4, 16.58), LEVEL.roof + 0.03, 0.03, "paving", "roof:plaza"));
-  prims.push(slab(rect(32.4, 2.4, 53.62, 16.28), LEVEL.roof + 0.03, 0.03, "asphalt", "roof:parking"));
+  prims.push(slab(rect(33.9, 2.4, 53.62, 19.1), LEVEL.roof + 0.03, 0.03, "asphalt", "roof:parking"));
   const line = (x0: number, z0: number, x1: number, z1: number) =>
     prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: LEVEL.roof + 0.04, z: (z0 + z1) / 2 }, size: { x: Math.max(0.1, x1 - x0), y: 0.01, z: Math.max(0.1, z1 - z0) }, material: "parkingLine", tag: "roof:lines" });
   for (let i = 0; i <= 7; i++) line(36.7 + i * 2.43, 2.6, 36.7 + i * 2.43, 7.6);
   line(33.0, 2.6, 33.0, 7.6);
   line(33.0, 7.6, 53.7, 7.6);
-  for (let i = 0; i <= 5; i++) line(41.5 + i * 2.44, 11.5, 41.5 + i * 2.44, 16.3);
-  line(41.5, 11.5, 53.7, 11.5);
-  prims.push(...parapet(OUTLINE_MINUS1, LEVEL.roof, LEVEL.parapet, 0.3, "stone", "roof:parapet"));
+  for (let i = 0; i <= 5; i++) line(41.6 + i * 2.42, 13.2, 41.6 + i * 2.42, 18.0);
+  line(41.6, 13.2, 53.7, 13.2);
+  // The two-way drive's centre line, from the entrance north to the aisle.
+  for (let z = 11.2; z < 19.2; z += 1.6) line(38.2, z, 38.2, z + 0.8);
+  // The parapet all round, but for the car park's way in: the site plan's
+  // "כניסה מקורה לחניה", x 35.1 to 41.4 on the south edge.
+  prims.push(
+    ...parapet(ROOF, LEVEL.roof, LEVEL.parapet, 0.3, "stone", "roof:parapet").filter(
+      (p) => !(p.type === "box" && Math.abs(p.centre.z - (19.4 - 0.15)) < 0.05 && p.size.x > 10),
+    ),
+  );
+  for (const [x0, x1] of [[33.82, 35.1], [41.4, 53.92]] as const) {
+    prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.roof + LEVEL.parapet) / 2, z: 19.25 }, size: { x: x1 - x0, y: LEVEL.parapet - LEVEL.roof, z: 0.3 }, material: "stone", tag: "roof:parapet" });
+  }
+  // The barrier arm at the way in.
+  prims.push({ type: "box", centre: { x: 35.4, y: LEVEL.roof + 0.55, z: 18.9 }, size: { x: 0.25, y: 1.1, z: 0.25 }, material: "frame", tag: "roof:gate" });
+  prims.push({ type: "box", centre: { x: 38.3, y: LEVEL.roof + 1.0, z: 18.9 }, size: { x: 5.6, y: 0.06, z: 0.06 }, material: "parkingLine", tag: "roof:gate" });
   // The north band the sign is on: dark stone from 16.75 to the parapet's top.
   prims.push({ type: "box", centre: { x: 27.4, y: (16.75 + LEVEL.parapet) / 2, z: 1.02 - 0.03 }, size: { x: 53.04 + 0.1, y: LEVEL.parapet - 16.75, z: 0.06 }, material: "stoneDark", tag: "facade:band" });
   prims.push({ type: "text", text: "מרכז פסגה קרית ארבע", at: { x: 27.4, y: 17.58, z: 1.02 - 0.07 }, facing: { x: 0, z: -1 }, heightM: 1.0, material: "signage", tag: "facade:sign" });
@@ -349,10 +378,16 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   prims.push(slab(rect(53.92, 1.02, 64, 12), 8.27, 0.4, "paving", "site:east"));
   // The car park's way in from the street, over the covered ramp below.
-  prims.push(slab(rect(32.4, 19.4, 54, 24.2), LEVEL.street, 9.2, "paving", "site:entrance"));
+  // From the street: the drive, x 35.1 to 41.4, and a paved plaza either side.
+  prims.push(slab(rect(35.1, 19.4, 41.4, 24.2), LEVEL.street, 9.2, "asphalt", "site:entrance"));
+  prims.push(slab(rect(30.4, 19.4, 35.1, 24.2), LEVEL.street + 0.05, 9.25, "paving", "site:entrance"));
+  prims.push(slab(rect(41.4, 19.4, 54, 24.2), LEVEL.street + 0.05, 9.25, "paving", "site:entrance"));
   prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
   // The street: a sidewalk along the plot, the road, the far sidewalk.
-  prims.push(slab(rect(-14, 21.4, 72, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
+  // The sidewalk, dropped at the drive; a zebra crossing across it.
+  prims.push(slab(rect(-14, 21.4, 35.1, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
+  prims.push(slab(rect(41.4, 21.4, 72, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
+  for (let x = 35.5; x < 41.2; x += 0.9) prims.push({ type: "box", centre: { x: x + 0.25, y: LEVEL.street + 0.012, z: 23.0 }, size: { x: 0.5, y: 0.01, z: 2.2 }, material: "parkingLine", tag: "site:crossing" });
   prims.push(slab(rect(-14, 24.2, 72, 33.5), LEVEL.street, 1, "asphalt", "site:street"));
   prims.push(slab(rect(-14, 33.5, 72, 36.5), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk-far"));
   for (let x = -12; x < 70; x += 6) prims.push({ type: "box", centre: { x: x + 1.5, y: LEVEL.street + 0.01, z: 28.85 }, size: { x: 3, y: 0.01, z: 0.12 }, material: "parkingLine", tag: "site:lane" });
@@ -379,7 +414,7 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   const paint = [0xe8e8e6, 0x23262b, 0x8d9299, 0x6d1f23, 0xd5d7d9, 0x2c3e57, 0x5a5d61, 0xf0efe9];
   const upper = [1, 2, 4, 5, 7];
   upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]! }));
-  [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.5 + (bay - 1) * 2.44 + 1.22, y: LEVEL.roof + 0.05, z: 13.9 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]! }));
+  [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]! }));
   [-6, 0, 6, 13, 19].forEach((x, i) => prims.push({ type: "car", at: { x, y: LEVEL.street, z: 25.4 }, rotY: Math.PI / 2, colour: paint[(i + 2) % paint.length]! }));
 
   // People, for scale: in the courtyard, on the roof plaza, at the entrance.

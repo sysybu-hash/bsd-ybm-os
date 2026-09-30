@@ -418,7 +418,7 @@ async function main() {
     const far = new THREE.Mesh(new THREE.CircleGeometry(2500, 64), MAT.soilFar);
     far.rotation.x = -Math.PI / 2; far.position.set(cx, -3, cz); far.receiveShadow = true;
     scene.add(far);
-    scene.fog = new THREE.Fog(0xcfd9e2, 180, 1400);
+    scene.fog = new THREE.Fog(0xb9d3ec, 220, 1600);
   }
 
   const cam = P.camera.orthoHalfWidth
