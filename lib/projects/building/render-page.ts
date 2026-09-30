@@ -17,6 +17,8 @@ export type BuildingCamera = {
   cutAboveM?: number;
   /** Leave out primitives whose tag starts with any of these. */
   hideTags?: string[];
+  /** Standing inside: lit by the rooms' own light, not the open sky. */
+  interior?: boolean;
 };
 
 export type BuildingRenderPayload = {
@@ -108,8 +110,9 @@ async function main() {
   skyScene.add(sky2);
   const envSky = pmrem.fromScene(skyScene, 0.02).texture;
   const envRoom = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environment = P.camera.cutAboveM != null ? envRoom : envSky;
-  scene.environmentIntensity = P.camera.cutAboveM != null ? 0.55 : 0.45;
+  const inside = P.camera.interior === true;
+  scene.environment = P.camera.cutAboveM != null || inside ? envRoom : envSky;
+  scene.environmentIntensity = inside ? 0.38 : P.camera.cutAboveM != null ? 0.55 : 0.45;
 
   const M = P.model;
   const ext = M.extent;
@@ -128,7 +131,18 @@ async function main() {
   sun.shadow.normalBias = 0.04;
   sun.shadow.radius = 3;
   scene.add(sun, sun.target);
-  scene.add(new THREE.HemisphereLight(0xdfe9f5, 0x8a7a66, 0.35));
+  scene.add(new THREE.HemisphereLight(inside ? 0xfff3e2 : 0xdfe9f5, 0x8a7a66, inside ? 0.18 : 0.35));
+  // Inside, the ceiling's panels light the room: a warm light over each.
+  if (inside) {
+    for (const p of P.model.primitives) {
+      if (p.type !== "box" || p.material !== "lightPanel") continue;
+      const d = Math.hypot(p.centre.x - P.camera.position.x, p.centre.z - P.camera.position.z);
+      if (d > 16 || Math.abs(p.centre.y - P.camera.position.y) > 4) continue;
+      const l = new THREE.PointLight(0xffe9cc, 5.5, 7, 1.6);
+      l.position.set(p.centre.x, p.centre.y - 0.15, p.centre.z);
+      scene.add(l);
+    }
+  }
 
   // ---- surfaces, painted in metres ----
   let seed = 0x9e3779b9;
@@ -199,9 +213,9 @@ async function main() {
     for (let k = 0; k < 400; k++) { g.fillStyle = "rgba(" + (80 + rnd() * 40) + "," + (110 + rnd() * 40) + ",60,0.55)"; g.beginPath(); g.arc(rnd() * w, rnd() * h, 2 + rnd() * 6, 0, 7); g.fill(); }
   }, 6.0);
   const floorStoneTex = canvasTex(512, 512, (g, w, h) => {
-    g.fillStyle = "#cfc8bc"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#9f978a"; g.fillRect(0, 0, w, h);
     const s = w / 4;
-    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const l = 214 + rnd() * 16; g.fillStyle = "rgb(" + l + "," + (l * 0.975) + "," + (l * 0.94) + ")"; g.fillRect(x * s + 1, y * s + 1, s - 2, s - 2); }
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const l = 186 + rnd() * 18; g.fillStyle = "rgb(" + l + "," + (l * 0.955) + "," + (l * 0.9) + ")"; g.fillRect(x * s + 1, y * s + 1, s - 2, s - 2); }
     noise(g, w, h, 6);
   }, 2.4);
   const woodTex = canvasTex(512, 512, (g, w, h) => {
@@ -210,14 +224,14 @@ async function main() {
     for (let r = 0; r < 8; r++) { const l = rnd() * 26; g.fillStyle = "rgb(" + (176 + l) + "," + (128 + l * 0.8) + "," + (84 + l * 0.5) + ")"; g.fillRect(0, r * plank + 1, w, plank - 2);
       for (let k = 0; k < 40; k++) { g.strokeStyle = "rgba(90,55,25," + rnd() * 0.18 + ")"; g.beginPath(); const y = r * plank + rnd() * plank; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + rnd() * 4 - 2, w * 0.6, y + rnd() * 4 - 2, w, y); g.stroke(); } }
   }, 1.6);
-  const vinylTex = plainTex("#c9c3b8", 8, 2);
+  const vinylTex = plainTex("#a9a192", 8, 2);
   const carpetTex = plainTex("#5f6a78", 18, 1);
 
   const MAT = {
     stone: new THREE.MeshStandardMaterial({ map: stoneTex([0, 0, 0]), roughness: 0.86 }),
     stoneDark: new THREE.MeshStandardMaterial({ color: 0x55585c, roughness: 0.62, metalness: 0.15 }),
     concrete: new THREE.MeshStandardMaterial({ map: plainTex("#b8b4ac", 16, 3), roughness: 0.92 }),
-    plaster: new THREE.MeshStandardMaterial({ map: plainTex("#f1eee8", 5, 2), roughness: 0.95 }),
+    plaster: new THREE.MeshStandardMaterial({ map: plainTex("#e9e3d8", 5, 2), roughness: 0.95 }),
     glass: new THREE.MeshPhysicalMaterial({ color: 0x3f5560, metalness: 0.55, roughness: 0.04, transparent: true, opacity: 0.8, envMapIntensity: 1.4, depthWrite: false }),
     frame: new THREE.MeshStandardMaterial({ color: 0x3c3f43, roughness: 0.42, metalness: 0.65 }),
     slab: new THREE.MeshStandardMaterial({ map: plainTex("#d9d5cd", 8, 3), roughness: 0.9 }),
@@ -235,7 +249,7 @@ async function main() {
     existing: new THREE.MeshStandardMaterial({ map: stoneTex([-6, -4, 4]), roughness: 0.9, color: 0xd6d2cc }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8c9096, roughness: 0.35, metalness: 0.8 }),
     timber: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.5 }),
-    upholstery: new THREE.MeshStandardMaterial({ color: 0x51606e, roughness: 0.9 }),
+    upholstery: new THREE.MeshStandardMaterial({ color: 0x3e5566, roughness: 0.9 }),
     upholsteryAccent: new THREE.MeshStandardMaterial({ color: 0xc58b3a, roughness: 0.85 }),
     whiteboard: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.25 }),
     screen: new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.2, metalness: 0.4 }),
@@ -248,6 +262,9 @@ async function main() {
     foliage1: new THREE.MeshStandardMaterial({ color: 0x6a7f3e, roughness: 0.95 }),
     foliage2: new THREE.MeshStandardMaterial({ color: 0x455e30, roughness: 0.95 }),
     bark: new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }),
+    ceiling: new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.95 }),
+    seatFabric: new THREE.MeshStandardMaterial({ color: 0x1f5c66, roughness: 0.92 }),
+    lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
     trousers: new THREE.MeshStandardMaterial({ color: 0x23252b, roughness: 0.9 }),

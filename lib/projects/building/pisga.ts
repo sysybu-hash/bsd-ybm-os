@@ -3,6 +3,9 @@ import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
 import { readPdfPage, transformPage, type PdfPage } from "@/lib/projects/building/pdf-paths";
 import { findOpenings, footprintOf } from "@/lib/projects/building/plan-openings";
 import { readPlanWalls } from "@/lib/projects/building/plan-walls";
+import { furnishFloor } from "@/lib/projects/building/furnish";
+import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
+import { readPlanRooms, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
 
 /**
  * מרכז פסג"ה למורים, קריית ארבע — גוטליב אדריכלים, 09.09.25.
@@ -67,8 +70,68 @@ const OUTLINE_MINUS2: Outline = [
   [0.88, 13.2],
 ];
 
+/**
+ * The room names each sheet writes, where it writes them. The sheets set
+ * them in a vector font, so they are read here off the drawing, not parsed.
+ */
+const L = (x: number, y: number, name: string, kind: RoomKind): RoomLabel => ({ x, y, name, kind });
+const LABELS_MINUS1: RoomLabel[] = [
+  L(10.3, 4.7, "עיצוב מרחבי למידה 109 מ\"ר", "design"),
+  L(17.2, 7.2, "כיתה 50 מ\"ר", "classroom"),
+  L(27.9, 3.4, "חלל כפול", "void"),
+  L(30.7, 5.2, "מזכירות 17 מ\"ר", "lobby"),
+  L(27.5, 8.7, "מבואה", "lobby"),
+  L(50.2, 2.0, "אולם רב תכליתי 135 מ\"ר", "hall"),
+  L(37.1, 12.4, "סדנא לגיל הרך 70 מ\"ר", "workshop"),
+  L(36.8, 8.6, "פינת קפה מבקרים", "workshop"),
+  L(42, 7, "שירותים", "wc"),
+  L(39.5, 7.5, "שירותים", "wc"),
+  L(40.8, 5.3, "שירותים", "wc"),
+  L(42.5, 5.3, "שירותים", "wc"),
+  L(4.4, 11.1, "מטבח צוות", "kitchen"),
+  L(3.1, 14.5, "ממ\"ד", "mmd"),
+  L(6.0, 14.5, "יציאת חרום", "corridor"),
+  L(8.7, 14.7, "מפקחים 17 מ\"ר", "office"),
+  L(12.6, 15.1, "סגן מנהל 10 מ\"ר", "office"),
+  L(17.2, 14.7, "מנהל 14 מ\"ר", "office"),
+  L(20.9, 14.4, "מדריכים 15 מ\"ר", "office"),
+  L(27.3, 14.3, "מדרגות", "stair"),
+  L(31.9, 14.5, "מעלית", "lift"),
+  L(32, 16.8, "מבואת מעלית", "lobby"),
+  L(12, 10.8, "מעבר", "corridor"),
+];
+const LABELS_MINUS2: RoomLabel[] = [
+  L(4.1, 6.9, "מחשבים 50 מ\"ר", "computers"),
+  L(14, 4.5, "מרחב לימוד פתוח / כיתה 50 מ\"ר", "classroom"),
+  L(5.6, 12.3, "חדר עזר 40 מ\"ר", "office"),
+  L(16.5, 12.3, "חדר עזר 40 מ\"ר", "office"),
+  L(22.5, 10.3, "אב בית / ממ\"ד", "mmd"),
+  L(25.9, 9.4, "שירותים", "wc"),
+  L(27.8, 10.5, "שירותים", "wc"),
+  L(27.6, 12.5, "שירותים", "wc"),
+  L(31.2, 10.6, "מבואה", "lobby"),
+  L(36.5, 10.3, "עמדת מחשבים / ממ\"ד", "mmd"),
+  L(41.5, 4.5, "מחשבים 50 מ\"ר", "computers"),
+  L(49.3, 6.7, "כיתה 50 מ\"ר", "classroom"),
+  L(49.3, 10.6, "כיתה 50 מ\"ר", "classroom"),
+  L(26, 2.8, "מבואה — חלל כפול", "lobby"),
+  L(12, 7, "מעבר", "corridor"),
+  L(45, 7, "מעבר", "corridor"),
+  L(39.5, 10, "מעבר", "corridor"),
+  L(42.5, 11, "מעבר", "corridor"),
+];
+
 /** The void over the lobby behind the curtain wall, floor −1's "חלל כפול". */
-const VOID: Outline = rect(22.5, 1.35, 32.3, 4.45);
+const VOID: Outline = [
+  [22.5, 1.35],
+  [32.3, 1.35],
+  [32.3, 4.45],
+  [26.0, 4.45],
+  [26.0, 7.65],
+  [20.5, 7.65],
+  [20.5, 4.45],
+  [22.5, 4.45],
+];
 
 /** The north elevation: a stone surround from 1.10 to 3.75 above the floor. */
 const WINDOW = { sill: 1.1, head: 3.75, surround: 0.2 };
@@ -84,28 +147,116 @@ const SPOTS: Array<[number, number, number]> = [
   [48, 27.5, 940.29], [60, 27, 940.31], [30, -30, 921.5], [0, -28, 923.5], [60, -22, 921.2], [-14, -20, 925.0],
 ];
 
+/**
+ * The multi-purpose hall's seating as floor −1's sheet lays it out: a
+ * speakers' table on a low stage at the north wall, nine rows of thirteen
+ * seats facing it, 95 cm apart.
+ */
+function auditorium(level: number): Primitive[] {
+  const out: Primitive[] = [];
+  const tag = "floor-1:inside:furniture";
+  out.push({ type: "box", centre: { x: 49.0, y: level + 0.12, z: 2.4 }, size: { x: 8.6, y: 0.24, z: 2.1 }, material: "floorWood", tag });
+  out.push({ type: "box", centre: { x: 48.0, y: level + 0.24 + 0.375, z: 2.2 }, size: { x: 2.4, y: 0.75, z: 0.7 }, material: "timber", tag });
+  // A projection screen over the stage, and the walls either side lined in
+  // oak slats for the room's acoustics.
+  out.push({ type: "box", centre: { x: 49.0, y: level + 2.0, z: 1.36 }, size: { x: 4.2, y: 2.4, z: 0.03 }, material: "whiteboard", tag });
+  for (const x of [44.55, 53.43]) {
+    for (let z = 1.6; z < 15.8; z += 0.12) {
+      out.push({ type: "box", centre: { x, y: level + 1.6, z }, size: { x: 0.04, y: 2.8, z: 0.06 }, material: "timber", tag });
+    }
+  }
+  for (let r = 0; r < 9; r++) {
+    const z = 4.2 + r * 0.95;
+    for (let i = 0; i < 13; i++) {
+      const x = 45.5 + i * 0.58;
+      // A theatre seat: a sprung pan, a raked back, arms either side.
+      out.push({ type: "box", centre: { x, y: level + 0.44, z: z - 0.02 }, size: { x: 0.5, y: 0.1, z: 0.46 }, material: "seatFabric", tag });
+      out.push({ type: "box", centre: { x, y: level + 0.78, z: z + 0.22 }, size: { x: 0.5, y: 0.62, z: 0.08 }, material: "seatFabric", tag });
+      out.push({ type: "box", centre: { x: x - 0.28, y: level + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+    }
+    out.push({ type: "box", centre: { x: 45.5 + 12 * 0.58 + 0.28, y: level + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+  }
+  return out;
+}
+
+/**
+ * The open stair in the double-height lobby, as both floor sheets draw it:
+ * two flights side by side between x 21.4 and 25.9, a landing to the west,
+ * a glass balustrade.
+ */
+function lobbyStair(): Primitive[] {
+  const out: Primitive[] = [];
+  const tag = "floor-2:inside:stair";
+  const rise = LEVEL.floorMinus1 - LEVEL.floorMinus2;
+  const n = 14;
+  const r = rise / (2 * n);
+  const run = (25.9 - 21.4) / n;
+  for (let k = 0; k < n; k++) {
+    // Up westward along the south flight: each step a solid block to the floor.
+    const xa = 25.9 - (k + 1) * run;
+    const ha = (k + 1) * r;
+    out.push({ type: "box", centre: { x: xa + run / 2, y: LEVEL.floorMinus2 + ha / 2, z: 6.85 }, size: { x: run + 0.01, y: ha, z: 1.4 }, material: "stone", tag });
+    // Then eastward along the north flight: treads on a stringer.
+    const xb = 21.4 + k * run;
+    const top = LEVEL.floorMinus2 + (n + k + 1) * r;
+    out.push({ type: "box", centre: { x: xb + run / 2, y: top - 0.12, z: 5.4 }, size: { x: run + 0.01, y: 0.24, z: 1.4 }, material: "stone", tag });
+  }
+  out.push({ type: "box", centre: { x: 21.0, y: LEVEL.floorMinus2 + n * r - 0.12, z: 6.15 }, size: { x: 0.8, y: 0.24, z: 2.9 }, material: "stone", tag });
+  for (const z of [4.68, 6.13, 7.57]) {
+    out.push({ type: "box", centre: { x: 23.65, y: LEVEL.floorMinus2 + rise * 0.5 + 0.55, z }, size: { x: 4.5, y: rise * 0.62, z: 0.02 }, material: "glass", tag });
+  }
+  return out;
+}
+
+/** The secretariat's curved counter at the lobby, floor −1. */
+function reception(): Primitive[] {
+  const out: Primitive[] = [];
+  const tag = "floor-1:inside:furniture";
+  const cx = 31.6;
+  const cz = 6.4;
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * (0.15 + (i / 8) * 0.7);
+    const x = cx + Math.cos(a) * 1.6;
+    const z = cz + Math.sin(a) * 1.1;
+    out.push({ type: "box", centre: { x, y: LEVEL.floorMinus1 + 0.55, z }, size: { x: 0.62, y: 1.1, z: 0.12 }, material: "timber", rotY: -(a + Math.PI / 2), tag });
+    out.push({ type: "box", centre: { x, y: LEVEL.floorMinus1 + 1.12, z }, size: { x: 0.66, y: 0.04, z: 0.34 }, material: "worktop", rotY: -(a + Math.PI / 2), tag });
+  }
+  return out;
+}
+
 export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   const sheet = async (spec: { page: number; s: number; tx: number; ty: number }): Promise<PdfPage> =>
     transformPage(await readPdfPage(pdf, spec.page), spec.s, spec.tx, spec.ty);
   const region = { x: ORIGIN.x, y: ORIGIN.y, width: 1760, height: 680 };
   const pens = { colours: [0xff0000, 0x0000ff] };
 
-  const floors: Array<{ spec: FloorSpec; page: PdfPage }> = [
+  const floors: Array<{ spec: FloorSpec; page: PdfPage; labels: RoomLabel[] }> = [
     {
+      labels: LABELS_MINUS2,
       page: await sheet(SHEETS.floorMinus2),
       spec: { id: "floor-2", level: LEVEL.floorMinus2, height: LEVEL.floorMinus1 - LEVEL.floorMinus2, outline: OUTLINE_MINUS2, window: WINDOW, facade: "stone", interior: "plaster" },
     },
     {
+      labels: LABELS_MINUS1,
       page: await sheet(SHEETS.floorMinus1),
       spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: WINDOW, facade: "stone", interior: "plaster" },
     },
   ];
 
   const prims: Primitive[] = [];
-  for (const { spec, page } of floors) {
+  for (const { spec, page, labels } of floors) {
     const walls = readPlanWalls(page, region, { unitsPerMetre: UPM, pens });
     const openings = findOpenings(walls, footprintOf(walls));
     prims.push(...floorPrimitives(walls, openings, spec));
+    const rooms = readPlanRooms(walls, openings, spec.outline, labels);
+    const items = readPlanFurniture(page, walls, {
+      pens: [0x000000, 0xff0000, 0x0000ff, 0x474842].map((colour) => ({ colour, widths: [0.24, 0.48, 0.72] })),
+    });
+    // Under floor −1's double-height void (and its stair) floor −2 has no ceiling.
+    const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
+    prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids }));
+    if (spec.id === "floor-1") prims.push(...auditorium(spec.level), ...reception());
+    if (spec.id === "floor-2") prims.push(...lobbyStair());
     // The floor: structure, and a finish on it.
     // The floor, behind the cladding: structure, and a finish on it. Floor
     // −1 has no floor behind the curtain wall — the double-height hall its
@@ -158,10 +309,14 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
 
   // The site: the sunken courtyard, the plazas either side, the street.
   prims.push(slab(rect(-10.5, 13.2, 32.4, 20.9), LEVEL.courtyard, 0.4, "paving", "site:courtyard"));
+  // Under the overhang the paving runs the building's length, and east of
+  // the stair on to the covered ramp.
+  prims.push(slab(rect(32.4, 13.2, 53.92, 19.0), LEVEL.courtyard, 0.4, "paving", "site:colonnade"));
+  prims.push({ type: "box", centre: { x: 43.1, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: 21.6, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   prims.push(slab(rect(53.92, 1.02, 64, 12), 8.27, 0.4, "paving", "site:east"));
   // The car park's way in from the street, over the covered ramp below.
-  prims.push(slab(rect(32.4, 16.58, 46, 24.2), LEVEL.street, 9.2, "paving", "site:entrance"));
+  prims.push(slab(rect(32.4, 19.4, 54, 24.2), LEVEL.street, 9.2, "paving", "site:entrance"));
   prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
   // The street: a sidewalk along the plot, the road, the far sidewalk.
   prims.push(slab(rect(-14, 21.4, 72, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
@@ -221,7 +376,7 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
       if (insidePolygon(rect(-10.5, -10, 64, 36), x, z)) h = Math.min(h, 8.1);
       // East of the entrance the plot falls from the street to the east
       // plaza — the accessible ramp's slope.
-      if (x > 46 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
+      if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
       if (z > 21 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
       heights.push(h);
     }

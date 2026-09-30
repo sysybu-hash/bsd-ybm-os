@@ -38,7 +38,10 @@ export type BuildingMaterial =
   | "ceramic"
   | "signage"
   | "planter"
-  | "foliage";
+  | "foliage"
+  | "ceiling"
+  | "lightPanel"
+  | "seatFabric";
 
 export type Primitive =
   | { type: "box"; centre: Vec3; size: Vec3; material: BuildingMaterial; tag?: string; rotY?: number }
