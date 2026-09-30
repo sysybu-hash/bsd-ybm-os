@@ -263,10 +263,17 @@ export function sink(spec: PieceSpec): PiecePart[] {
   ];
 }
 
-/** A bath or a basin, told apart the way the oblique plate tells them apart. */
+/**
+ * A sanitary fixture. Where the reading says which, it is built as that; where
+ * it does not — a sales sheet's reading — a bath and a basin are told apart
+ * the way the oblique plate tells them apart.
+ */
 export function fixture(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
-  if (fixtureKind(w, d) === "bath") {
+  if (spec.fixture === "toilet") return toilet(w, d);
+  if (spec.fixture === "shower") return shower(w, d);
+  if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
+  if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath")) {
     return [
       part("tub", "ceramic", { x: 0, y: h / 2, z: 0, w, h, d }),
       part("water", "ceramic", {
@@ -284,6 +291,37 @@ export function fixture(spec: PieceSpec): PiecePart[] {
     part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
     part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),
     part("tap", "metal", { x: 0, y: h + 0.06, z: -d / 2 + 0.05, w: 0.035, h: 0.12, d: 0.035 }),
+  ];
+}
+
+/** A pan against the wall: the cistern behind, the bowl and its seat before it. */
+function toilet(w: number, d: number): PiecePart[] {
+  const cisternD = Math.min(0.16, d * 0.3);
+  const bowlD = d - cisternD;
+  return [
+    part("cistern", "ceramic", { x: 0, y: 0.38, z: -d / 2 + cisternD / 2, w: w * 0.95, h: 0.76, d: cisternD }),
+    part("bowl", "ceramic", { x: 0, y: 0.19, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.8, h: 0.38, d: bowlD }),
+    part("seat", "ceramic", { x: 0, y: 0.395, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.9, h: 0.03, d: bowlD * 0.95 }),
+  ];
+}
+
+/** A shower: the tray, a glass screen along its open front, the riser at the back. */
+function shower(w: number, d: number): PiecePart[] {
+  return [
+    part("tray", "ceramic", { x: 0, y: 0.03, z: 0, w, h: 0.06, d }),
+    part("screen", "glass", { x: 0, y: 1.03, z: d / 2 - 0.005, w, h: 1.94, d: 0.01 }),
+    part("riser", "metal", { x: 0, y: 1.05, z: -d / 2 + 0.03, w: 0.03, h: 1.9, d: 0.03 }),
+  ];
+}
+
+/** A basin on its vanity: the cabinet, the top, the bowl sunk in it and the tap. */
+function vanity(w: number, d: number): PiecePart[] {
+  const top = 0.85;
+  return [
+    part("cabinet", "joinery", { x: 0, y: (top - 0.04 + 0.15) / 2, z: 0, w, h: top - 0.04 - 0.15, d: d * 0.95 }),
+    part("top", "worktop", { x: 0, y: top - 0.02, z: 0, w, h: 0.04, d }),
+    part("bowl", "ceramic", { x: 0, y: top + 0.04, z: 0.02, w: Math.min(w - 0.08, 0.5), h: 0.08, d: Math.min(d - 0.12, 0.38) }),
+    part("tap", "metal", { x: 0, y: top + 0.1, z: -d / 2 + 0.05, w: 0.035, h: 0.2, d: 0.035 }),
   ];
 }
 

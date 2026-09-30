@@ -25,7 +25,7 @@ import type {
   SceneRoom,
   SceneRoomKind,
 } from "@/lib/projects/scene3d/types";
-import { partsFor } from "@/lib/projects/scene3d/furniture";
+import { partsFor, type PieceSpec } from "@/lib/projects/scene3d/furniture";
 import { rulesFor, type AudienceRules } from "@/lib/projects/scene3d/rules";
 import { mezuzot, stageScene } from "@/lib/projects/scene3d/staging";
 import { openingHeights } from "@/lib/projects/scene3d/openings";
@@ -160,7 +160,7 @@ export type SceneInput = {
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
-  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string }>;
+  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"] }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
   /**
    * The rooms as the sheet labels them, in page units.
@@ -603,6 +603,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       hM: height,
       facing,
       haredi: options?.rules?.singleBeds ?? options?.haredi,
+      ...(piece.fixture ? { fixture: piece.fixture } : {}),
     })) {
       meshes.push({
         kind: "furniture",

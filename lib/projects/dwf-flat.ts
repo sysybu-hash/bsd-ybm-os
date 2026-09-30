@@ -161,15 +161,18 @@ export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: numb
     for (let k = 0; k < n; k++) if (floor.room[k] === id) mask[k] = 1;
     const roomRows = spanRows(mask, cols, rows, unitsPerPx);
     const b = extent(mask, cols, rows);
-    const kind: FloorplanRoomKind = info.kind ?? (info.areaM2 < 6 ? "circulation" : "other");
-    const base = NAME[kind];
-    const seen = (counts.get(base) ?? 0) + 1;
-    counts.set(base, seen);
     const contents = furniture.filter((p) => {
       const px = Math.round((p.x + p.w / 2) / unitsPerPx);
       const py = Math.round((p.y + p.h / 2) / unitsPerPx);
       return floor.room[py * cols + px] === id;
     });
+    // A WC or a bathroom the sheet leaves unnamed is still one: its pan or
+    // its bath says so.
+    const kind: FloorplanRoomKind =
+      info.kind ?? (contents.some((p) => p.kind === "fixture") ? "bathroom" : info.areaM2 < 6 ? "circulation" : "other");
+    const base = NAME[kind];
+    const seen = (counts.get(base) ?? 0) + 1;
+    counts.set(base, seen);
     segmented.push({
       rows: roomRows,
       bounds: {

@@ -41,6 +41,12 @@ export type FurniturePiece = {
   kind: FurnitureKind;
   widthCm: number;
   depthCm: number;
+  /**
+   * Which sanitary fixture a "fixture" is, where the reading knows. A sales
+   * sheet's reading does not, and the render tells a bath from a basin by
+   * shape; a permit plan's knows a pan from a basin by how each is drawn.
+   */
+  fixture?: "bath" | "shower" | "toilet" | "basin";
 };
 
 type Edge = { at: number; a: number; b: number };

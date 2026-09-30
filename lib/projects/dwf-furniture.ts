@@ -1,6 +1,7 @@
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { findRectangles, seatsAroundTable, type FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
+import { readDwfSanitary } from "@/lib/projects/dwf-sanitary";
 
 /**
  * The furniture a permit plan draws, read as a permit plan draws it.
@@ -57,8 +58,8 @@ export function readDwfFurniture(
   const labelled = (r: Rect) => sheet.texts.some((t) => /^\s*\d/.test(t.text) && t.x > r.x && t.x < r.x + r.w && t.y - t.height / 2 > r.y && t.y - t.height / 2 < r.y + r.h);
 
   const out: Array<FurniturePiece & { rect: Rect }> = [];
-  const piece = (r: Rect, kind: FurniturePiece["kind"]) => {
-    out.push({ ...r, kind, widthCm: cm(r.w), depthCm: cm(r.h), rect: r });
+  const piece = (r: Rect, kind: FurniturePiece["kind"], fixture?: FurniturePiece["fixture"]) => {
+    out.push({ ...r, kind, widthCm: cm(r.w), depthCm: cm(r.h), rect: r, ...(fixture ? { fixture } : {}) });
   };
   const taken = new Set<Rect>();
   const overlap = (a: Rect, b: Rect) => {
@@ -72,6 +73,17 @@ export function readDwfFurniture(
     for (const q of rects) if (inside(q, r) || overlap(q, r) > 0.5) taken.add(q);
   };
   const dims = (r: Rect) => [Math.min(cm(r.w), cm(r.h)), Math.max(cm(r.w), cm(r.h))] as const;
+
+  // Pans and basins first: a rectangle round one is the room's outline or a
+  // vanity, never a bath — on דירה 10 the bathroom's inner faces, split by a
+  // partition, closed two 180 cm "baths" round its pan and its basin.
+  const sanitary = readDwfSanitary(sheet, upm, roomKindAt, inFlat, rects);
+  const holdsSanitary = (r: Rect) =>
+    sanitary.some((f) => {
+      const cx = f.x + f.w / 2;
+      const cy = f.y + f.h / 2;
+      return cx > r.x && cx < r.x + r.w && cy > r.y && cy < r.y + r.h && f.w * f.h < r.w * r.h * 0.8;
+    });
 
   // Largest first, so an item claims what is drawn inside it.
   const order = [...rects].sort((a, b) => b.w * b.h - a.w * a.h);
@@ -93,13 +105,13 @@ export function readDwfFurniture(
     }
     // A bath can close a small region of its own, with no name: it is a
     // bath wherever a wet room's size and shape says so.
-    if ((wet || room == null) && s >= 50 && s <= 82 && l >= 130 && l <= 185) {
-      piece(r, "fixture");
+    if ((wet || room == null) && s >= 50 && s <= 82 && l >= 130 && l <= 185 && !holdsSanitary(r)) {
+      piece(r, "fixture", "bath");
       take(r);
       continue;
     }
-    if (wet && s >= 65 && s <= 100 && l <= 105) {
-      piece(r, "fixture");
+    if (wet && s >= 65 && s <= 100 && l <= 105 && !holdsSanitary(r)) {
+      piece(r, "fixture", "shower");
       take(r);
       continue;
     }
@@ -230,6 +242,14 @@ export function readDwfFurniture(
         }
       }
     }
+  }
+  // Pans and basins, drawn with curves. A basin's vanity may already have
+  // been read as a cupboard; the basin is what it is.
+  for (const f of sanitary) {
+    const clash = out.findIndex((p) => overlap(p.rect, f) > 0.5);
+    if (clash >= 0 && out[clash]!.kind === "fixture") continue;
+    if (clash >= 0) out.splice(clash, 1);
+    out.push({ ...f, rect: { x: f.x, y: f.y, w: f.w, h: f.h } });
   }
   const pieces = out.map(({ rect: _rect, ...p }) => p);
   // Dining chairs are drawn as open shapes; they are set round the table as the sheet draws them.
