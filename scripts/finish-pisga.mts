@@ -34,6 +34,14 @@ const VIEWS: Record<string, [Kind, string]> = {
   classroom: ["interior", "a classroom with group tables, chairs and round tables"],
 };
 
+/** What the model changed in a view before, said back to it. */
+const FOCUS: Record<string, string> = {
+  "aerial-ne":
+    "CRITICAL for this view: the lower buildings in front (the existing kindergarten) are plain flat-roofed stone boxes with flat paved roofs — no railings, no balconies, no parapets, no terraces, no cantilevers. Do not add any structure to them. The upper building has NO sign on its east side; the only lettering is on the dark band of the north facade, where it already is. Keep the paved platform on the left as a flat slab on the ground.",
+  courtyard:
+    "CRITICAL for this view: the whole right side of the image is a tall solid stone retaining wall rising to the top edge of the frame — keep it tall and solid, do NOT lower it, do NOT turn it into a low wall or fence, and do NOT show any landscape, sky or view beyond it on the right. The trees stand in one row in front of that wall. The far end of the walkway ends at a stone wall. Keep the colonnade, the overhang and the windows on the left exactly.",
+};
+
 const [dir, ...only] = process.argv.slice(2);
 if (!dir) throw new Error("usage: <renders dir> [view…]");
 const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -56,7 +64,7 @@ for (const [view, [kind, subject]] of Object.entries(VIEWS)) {
   for (let attempt = 0; attempt < Number(process.env.TRIES ?? 2) && calls < 24; attempt++) {
     calls++;
     const t = Date.now();
-    const got = await finishPass(client, finishPrompt(kind, subject), input);
+    const got = await finishPass(client, `${finishPrompt(kind, subject)}\n${FOCUS[view] ?? ""}`, input);
     if (!got) {
       console.log(`${view}: no image (${Date.now() - t}ms)`);
       continue;
