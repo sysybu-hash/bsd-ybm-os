@@ -4,6 +4,7 @@ import { readPdfPage, transformPage, type PdfPage } from "@/lib/projects/buildin
 import { findOpenings, footprintOf } from "@/lib/projects/building/plan-openings";
 import { readPlanWalls } from "@/lib/projects/building/plan-walls";
 import { furnishFloor } from "@/lib/projects/building/furnish";
+import { pisgaStairs, pisgaStreet, pisgaStreetBays } from "@/lib/projects/building/pisga-site";
 import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
 import { readPlanRooms, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
 
@@ -223,30 +224,6 @@ function auditorium(level: number): Primitive[] {
  * two flights side by side between x 21.4 and 25.9, a landing to the west,
  * a glass balustrade.
  */
-function lobbyStair(): Primitive[] {
-  const out: Primitive[] = [];
-  const tag = "floor-2:inside:stair";
-  const rise = LEVEL.floorMinus1 - LEVEL.floorMinus2;
-  const n = 14;
-  const r = rise / (2 * n);
-  const run = (25.9 - 21.4) / n;
-  for (let k = 0; k < n; k++) {
-    // Up westward along the south flight: each step a solid block to the floor.
-    const xa = 25.9 - (k + 1) * run;
-    const ha = (k + 1) * r;
-    out.push({ type: "box", centre: { x: xa + run / 2, y: LEVEL.floorMinus2 + ha / 2, z: 6.85 }, size: { x: run + 0.01, y: ha, z: 1.4 }, material: "stone", tag });
-    // Then eastward along the north flight: treads on a stringer.
-    const xb = 21.4 + k * run;
-    const top = LEVEL.floorMinus2 + (n + k + 1) * r;
-    out.push({ type: "box", centre: { x: xb + run / 2, y: top - 0.12, z: 5.4 }, size: { x: run + 0.01, y: 0.24, z: 1.4 }, material: "stone", tag });
-  }
-  out.push({ type: "box", centre: { x: 21.0, y: LEVEL.floorMinus2 + n * r - 0.12, z: 6.15 }, size: { x: 0.8, y: 0.24, z: 2.9 }, material: "stone", tag });
-  for (const z of [4.68, 6.13, 7.57]) {
-    out.push({ type: "box", centre: { x: 23.65, y: LEVEL.floorMinus2 + rise * 0.5 + 0.55, z }, size: { x: 4.5, y: rise * 0.62, z: 0.02 }, material: "glass", tag });
-  }
-  return out;
-}
-
 /** The secretariat's curved counter at the lobby, floor −1. */
 function reception(): Primitive[] {
   const out: Primitive[] = [];
@@ -270,17 +247,40 @@ function reception(): Primitive[] {
  * railing along its open side.
  */
 function ramp(): Primitive[] {
+  // Sheet 5's covered accessible ramp: 1.5 m wide along the south face from
+  // the stair core to the building's east end, falling 2–6% from +12.73 to
+  // +11.86, then bending south-east at 4.6% to the emergency exit at the
+  // plot's corner, +12.30.
   const out: Primitive[] = [];
   const tag = "site:ramp";
-  const z0 = 16.62;
-  const z1 = 18.9;
-  const at = (x: number) => (x <= 53.9 ? 12.77 + ((x - 33.8) / (53.9 - 33.8)) * (11.8 - 12.77) : 11.8 + ((x - 53.9) / (62 - 53.9)) * (12.3 - 11.8));
-  for (let x = 33.8; x < 62; x += 0.5) {
-    const y = at(x + 0.25);
-    out.push({ type: "box", centre: { x: x + 0.25, y: y - 0.15, z: (z0 + z1) / 2 }, size: { x: 0.51, y: 0.3, z: z1 - z0 }, material: "paving", tag });
-    out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.95, z: z1 - 0.03 }, size: { x: 0.51, y: 0.04, z: 0.05 }, material: "metal", tag });
-    if (Math.round(x * 2) % 3 === 0) out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.48, z: z1 - 0.03 }, size: { x: 0.03, y: 0.95, z: 0.03 }, material: "metal", tag });
-    out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.48, z: z1 - 0.02 }, size: { x: 0.51, y: 0.9, z: 0.012 }, material: "glass", tag });
+  const path: Array<[number, number, number]> = [
+    [30.8, 17.35, 12.73],
+    [53.9, 17.35, 11.86],
+    [66.2, 20.9, 12.3],
+  ];
+  const width = 1.5;
+  for (let i = 1; i < path.length; i++) {
+    const [ax, az, ay] = path[i - 1]!;
+    const [bx, bz, by] = path[i]!;
+    const len = Math.hypot(bx - ax, bz - az);
+    const n = Math.ceil(len / 0.5);
+    const rot = -Math.atan2(bz - az, bx - ax);
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      const x = ax + (bx - ax) * t;
+      const z = az + (bz - az) * t;
+      const y = ay + (by - ay) * t;
+      const seg = len / n + 0.02;
+      // Normal to the path, to the south: the railing's side.
+      const nx = -(bz - az) / len;
+      const nz = (bx - ax) / len;
+      out.push({ type: "box", centre: { x, y: y - 0.15, z }, size: { x: seg, y: 0.3, z: width }, rotY: rot, material: "paving", tag });
+      const rx = x + nx * (width / 2 - 0.03);
+      const rz = z + nz * (width / 2 - 0.03);
+      out.push({ type: "box", centre: { x: rx, y: y + 0.95, z: rz }, size: { x: seg, y: 0.04, z: 0.05 }, rotY: rot, material: "metal", tag });
+      out.push({ type: "box", centre: { x: rx, y: y + 0.48, z: rz }, size: { x: seg, y: 0.9, z: 0.012 }, rotY: rot, material: "glass", tag });
+      if (k % 3 === 0) out.push({ type: "box", centre: { x: rx, y: y + 0.48, z: rz }, size: { x: 0.03, y: 0.95, z: 0.03 }, material: "metal", tag });
+    }
   }
   return out;
 }
@@ -331,7 +331,7 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
     const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
     prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
     if (spec.id === "floor-1") prims.push(...auditorium(spec.level), ...reception());
-    if (spec.id === "floor-2") prims.push(...lobbyStair());
+
     // Planters in the lobby: tall green by the curtain wall, low by the stair.
     const planters: Array<[number, number, number]> = spec.id === "floor-2" ? [[31.6, 2.2, 1.8], [27.2, 2.2, 1.4], [20.9, 2.2, 1.6]] : [[33.6, 8.8, 1.5], [26.6, 9.4, 1.2]];
     for (const [x, z, h] of planters) {
@@ -373,9 +373,6 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   for (const [x0, x1] of [[33.82, 35.1], [41.4, 53.92]] as const) {
     prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.roof + LEVEL.parapet) / 2, z: 19.25 }, size: { x: x1 - x0, y: LEVEL.parapet - LEVEL.roof, z: 0.3 }, material: "stone", tag: "roof:parapet" });
   }
-  // The barrier arm at the way in.
-  prims.push({ type: "box", centre: { x: 35.4, y: LEVEL.roof + 0.55, z: 18.9 }, size: { x: 0.25, y: 1.1, z: 0.25 }, material: "frame", tag: "roof:gate" });
-  prims.push({ type: "box", centre: { x: 38.3, y: LEVEL.roof + 1.0, z: 18.9 }, size: { x: 5.6, y: 0.06, z: 0.06 }, material: "parkingLine", tag: "roof:gate" });
   // The north band the sign is on: dark stone from 16.75 to the parapet's top.
   prims.push({ type: "box", centre: { x: 27.4, y: (16.75 + LEVEL.parapet) / 2, z: 1.02 - 0.03 }, size: { x: 53.04 + 0.1, y: LEVEL.parapet - 16.75, z: 0.06 }, material: "stoneDark", tag: "facade:band" });
   prims.push({ type: "text", text: "מרכז פסגה קרית ארבע", at: { x: 27.4, y: 17.58, z: 1.02 - 0.07 }, facing: { x: 0, z: -1 }, heightM: 1.0, material: "signage", tag: "facade:sign" });
@@ -422,35 +419,11 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   prims.push({ type: "box", centre: { x: 43.1, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: 21.6, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
   prims.push(...ramp());
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
-  prims.push(slab(rect(53.92, 1.02, 64, 12), 8.27, 0.4, "paving", "site:east"));
-  // The car park's way in from the street, over the covered ramp below.
-  // From the street: the drive, x 35.1 to 41.4, and a paved plaza either side.
-  prims.push(slab(rect(35.1, 19.4, 41.4, 24.2), LEVEL.street, 9.2, "asphalt", "site:entrance"));
-  prims.push(slab(rect(30.4, 19.4, 35.1, 24.2), LEVEL.street + 0.05, 9.25, "paving", "site:entrance"));
-  prims.push(slab(rect(41.4, 19.4, 54, 24.2), LEVEL.street + 0.05, 9.25, "paving", "site:entrance"));
+  // East of the building (sheet 5): a grated deck at +5.73 and the
+  // emergency exit's landing at +7.80.
+  prims.push(slab(rect(53.92, 3.8, 60.4, 7.4), 5.73, 0.3, "metal", "site:east"));
+  prims.push(slab(rect(53.92, 7.4, 60.4, 12.0), 7.8, 0.4, "paving", "site:east"));
   prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
-  // The street: a sidewalk along the plot, the road, the far sidewalk.
-  // The sidewalk, dropped at the drive; a zebra crossing across it.
-  prims.push(slab(rect(-14, 21.4, 35.1, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
-  prims.push(slab(rect(41.4, 21.4, 72, 24.2), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk"));
-  for (let x = 35.5; x < 41.2; x += 0.9) prims.push({ type: "box", centre: { x: x + 0.25, y: LEVEL.street + 0.012, z: 23.0 }, size: { x: 0.5, y: 0.01, z: 2.2 }, material: "parkingLine", tag: "site:crossing" });
-  prims.push(slab(rect(-14, 24.2, 72, 33.5), LEVEL.street, 1, "asphalt", "site:street"));
-  prims.push(slab(rect(-14, 33.5, 72, 36.5), LEVEL.street + 0.15, 1.15, "paving", "site:sidewalk-far"));
-  for (let x = -12; x < 70; x += 6) prims.push({ type: "box", centre: { x: x + 1.5, y: LEVEL.street + 0.01, z: 28.85 }, size: { x: 3, y: 0.01, z: 0.12 }, material: "parkingLine", tag: "site:lane" });
-
-  // The stair down from the street to the courtyard: two flights side by
-  // side, as the sheets draw it, 17 cm risers.
-  const riser = 0.17;
-  const steps = Math.round((LEVEL.street - LEVEL.courtyard) / 2 / riser);
-  for (let k = 0; k < steps; k++) {
-    // Down from the street along the east flight, back along the west one.
-    const zA = 24.0 - (k + 1) * 0.3;
-    prims.push({ type: "box", centre: { x: 28.85, y: LEVEL.street - (k + 0.5) * riser, z: zA + 0.15 }, size: { x: 2.9, y: riser, z: 0.3 }, material: "stone", tag: "site:stair" });
-    const zB = 24.0 - steps * 0.3 + k * 0.3;
-    prims.push({ type: "box", centre: { x: 25.85, y: LEVEL.street - (steps + k + 0.5) * riser, z: zB + 0.15 }, size: { x: 2.9, y: riser, z: 0.3 }, material: "stone", tag: "site:stair" });
-  }
-  prims.push({ type: "box", centre: { x: 27.35, y: (LEVEL.courtyard + LEVEL.street) / 2 - 0.5, z: 22.6 }, size: { x: 6.0, y: LEVEL.street - LEVEL.courtyard - 1, z: 2.8 }, material: "stone", tag: "site:stair" });
-
   // Trees where the site plan draws them: along the courtyard's retaining
   // wall, and on the plaza by the car park's entrance.
   for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
@@ -461,7 +434,8 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   const upper = [1, 2, 4, 5, 7];
   upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]!, tag: "car" }));
   [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]!, tag: "car" }));
-  [-6, 0, 6, 13, 19].forEach((x, i) => prims.push({ type: "car", at: { x, y: LEVEL.street, z: 25.4 }, rotY: Math.PI / 2, colour: paint[(i + 2) % paint.length]!, tag: "car" }));
+  pisgaStreetBays().forEach((b, i) => prims.push({ type: "car", at: { x: b.x, y: LEVEL.street, z: b.z }, rotY: b.rotY, colour: paint[(i + 2) % paint.length]!, tag: "car" }));
+  prims.push(...pisgaStreet(LEVEL), ...pisgaStairs(LEVEL));
 
   // People, for scale: in the courtyard, on the roof plaza, at the entrance.
 

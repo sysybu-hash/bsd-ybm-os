@@ -45,7 +45,7 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "section-bb": { camera: { position: { x: 140, y: 12, z: 6 }, target: { x: 0, y: 12, z: 6 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 49.3, keep: -1 }, interior: true, hideTags: ["tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "section-dd": { camera: { position: { x: 140, y: 12, z: 8 }, target: { x: 0, y: 12, z: 8 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 28.4, keep: -1 }, interior: true, hideTags: ["tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "event-hall": { camera: { position: { x: 21.5, y: 12.77 + 1.7, z: 10.2 }, target: { x: 6, y: 12.77 + 0.9, z: 3.5 }, fovDeg: 66, interior: true }, sun: { azimuthDeg: 290, elevationDeg: 25 }, exposure: 0.62, ao: true },
-  courtyard: { camera: { position: { x: -4.5, y: 9.9, z: 18.2 }, target: { x: 24, y: 11.4, z: 14.2 }, fovDeg: 56 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
+  courtyard: { camera: { position: { x: 2.2, y: 9.9, z: 19.2 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
 };
 const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.includes(id));
 // NOSIGN=1: the same frames with the lettering left off, for the photographic

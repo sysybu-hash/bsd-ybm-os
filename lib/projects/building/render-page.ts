@@ -285,6 +285,16 @@ async function main() {
     planes.push(new THREE.Plane(n, -sec.keep * sec.at));
   }
   const clip = planes.length ? planes : null;
+  const unclippedCache = new Map();
+  const unclipped = (m) => {
+    if (!unclippedCache.has(m)) {
+      const c = m.clone();
+      // Keep a vertical section's plane; drop only the horizontal cut.
+      c.clippingPlanes = planes.filter((pl) => Math.abs(pl.normal.y) < 0.5);
+      unclippedCache.set(m, c);
+    }
+    return unclippedCache.get(m);
+  };
   if (clip) for (const m of Object.values(MAT)) { m.clippingPlanes = clip; m.clipShadows = true; if (sec && P.camera.interior) m.side = THREE.DoubleSide; }
 
   // A box whose faces carry UVs in metres, so every texture keeps its scale.
@@ -303,7 +313,11 @@ async function main() {
 
   for (const p of M.primitives) {
     if (hidden(p.tag)) continue;
-    const mat = MAT[p.material] || MAT.plaster;
+    // A plan's horizontal cut goes through the building only: the street, the
+    // site's stairs and walls, trees and cars are drawn whole, as the sheet
+    // draws them above the cut.
+    const siteTag = p.tag && /^(site:|tree|car)/.test(p.tag);
+    const mat = siteTag && P.camera.cutAboveM != null ? unclipped(MAT[p.material] || MAT.plaster) : MAT[p.material] || MAT.plaster;
     let mesh;
     if (p.type === "box") {
       mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat)), mat);
