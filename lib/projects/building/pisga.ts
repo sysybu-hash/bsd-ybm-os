@@ -27,6 +27,7 @@ const UPM = 32.04;
 /** Each floor sheet mapped onto the floor −1 sheet: x' = s·x + tx. */
 const SHEETS = {
   floorMinus1: { page: 5, s: 1, tx: 0, ty: 0 },
+  futureMinus1: { page: 7, s: 1.10867, tx: -163.78, ty: -48.19 },
   floorMinus2: { page: 6, s: 1.00565, tx: 22.86, ty: 33.98 },
 } as const;
 
@@ -75,7 +76,7 @@ const OUTLINE_MINUS2: Outline = [
  * them in a vector font, so they are read here off the drawing, not parsed.
  */
 const L = (x: number, y: number, name: string, kind: RoomKind): RoomLabel => ({ x, y, name, kind });
-const LABELS_MINUS1: RoomLabel[] = [
+export const LABELS_MINUS1: RoomLabel[] = [
   L(10.3, 4.7, "עיצוב מרחבי למידה 109 מ\"ר", "design"),
   L(17.2, 7.2, "כיתה 50 מ\"ר", "classroom"),
   L(27.9, 3.4, "חלל כפול", "void"),
@@ -100,7 +101,7 @@ const LABELS_MINUS1: RoomLabel[] = [
   L(32, 16.8, "מבואת מעלית", "lobby"),
   L(12, 10.8, "מעבר", "corridor"),
 ];
-const LABELS_MINUS2: RoomLabel[] = [
+export const LABELS_MINUS2: RoomLabel[] = [
   L(4.1, 6.9, "מחשבים 50 מ\"ר", "computers"),
   L(14, 4.5, "מרחב לימוד פתוח / כיתה 50 מ\"ר", "classroom"),
   L(5.6, 12.3, "חדר עזר 40 מ\"ר", "office"),
@@ -132,6 +133,19 @@ const ROOF: Outline = [
   [30.44, 16.58],
   [0.88, 16.58],
 ];
+
+/**
+ * The multi-purpose hall's floor, raked: section ב-ב steps it down from the
+ * door at +12.77 to the stage at +11.57 (the plan's "+11.57" by the stage).
+ */
+const HALL: Outline = [
+  [44.62, 1.36],
+  [53.48, 1.36],
+  [53.48, 16.2],
+  [44.62, 16.2],
+];
+const HALL_FRONT = 11.57;
+const HALL_RISE = 0.133;
 
 /** The void over the lobby behind the curtain wall, floor −1's "חלל כפול". */
 const VOID: Outline = [
@@ -170,11 +184,20 @@ const SPOTS: Array<[number, number, number]> = [
 function auditorium(level: number): Primitive[] {
   const out: Primitive[] = [];
   const tag = "floor-1:inside:furniture";
-  out.push({ type: "box", centre: { x: 49.0, y: level + 0.12, z: 2.4 }, size: { x: 8.6, y: 0.24, z: 2.1 }, material: "floorWood", tag });
-  out.push({ type: "box", centre: { x: 48.0, y: level + 0.24 + 0.375, z: 2.2 }, size: { x: 2.4, y: 0.75, z: 0.7 }, material: "timber", tag });
+  // The floor: the stage's level at the front, a step a row, the door's
+  // level behind the last row.
+  const rowY = (r: number) => HALL_FRONT + (r + 1) * HALL_RISE;
+  const floorBox = (z0: number, z1: number, y: number) =>
+    out.push({ type: "box", centre: { x: 49.05, y: (HALL_FRONT - 0.3 + y) / 2, z: (z0 + z1) / 2 }, size: { x: 8.86, y: y - (HALL_FRONT - 0.3), z: z1 - z0 }, material: "floorWood", tag: "floor-1:slab" });
+  floorBox(1.36, 3.72, HALL_FRONT);
+  for (let r = 0; r < 9; r++) floorBox(3.72 + r * 0.95, 3.72 + (r + 1) * 0.95, rowY(r));
+  floorBox(3.72 + 9 * 0.95, 16.2, level);
+  void level;
+  out.push({ type: "box", centre: { x: 49.0, y: HALL_FRONT + 0.12, z: 2.4 }, size: { x: 8.6, y: 0.24, z: 2.1 }, material: "floorWood", tag });
+  out.push({ type: "box", centre: { x: 48.0, y: HALL_FRONT + 0.24 + 0.375, z: 2.2 }, size: { x: 2.4, y: 0.75, z: 0.7 }, material: "timber", tag });
   // A projection screen over the stage, and the walls either side lined in
   // oak slats for the room's acoustics.
-  out.push({ type: "box", centre: { x: 49.0, y: level + 2.0, z: 1.36 }, size: { x: 4.2, y: 2.4, z: 0.03 }, material: "whiteboard", tag });
+  out.push({ type: "box", centre: { x: 49.0, y: HALL_FRONT + 2.1, z: 1.4 }, size: { x: 4.2, y: 2.4, z: 0.03 }, material: "whiteboard", tag });
   for (const x of [44.55, 53.43]) {
     for (let z = 1.6; z < 15.8; z += 0.12) {
       out.push({ type: "box", centre: { x, y: level + 1.6, z }, size: { x: 0.04, y: 2.8, z: 0.06 }, material: "timber", tag });
@@ -185,11 +208,12 @@ function auditorium(level: number): Primitive[] {
     for (let i = 0; i < 13; i++) {
       const x = 45.5 + i * 0.58;
       // A theatre seat: a sprung pan, a raked back, arms either side.
-      out.push({ type: "box", centre: { x, y: level + 0.44, z: z - 0.02 }, size: { x: 0.5, y: 0.1, z: 0.46 }, material: "seatFabric", tag });
-      out.push({ type: "box", centre: { x, y: level + 0.78, z: z + 0.22 }, size: { x: 0.5, y: 0.62, z: 0.08 }, material: "seatFabric", tag });
-      out.push({ type: "box", centre: { x: x - 0.28, y: level + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+      const f = rowY(r);
+      out.push({ type: "box", centre: { x, y: f + 0.44, z: z - 0.02 }, size: { x: 0.5, y: 0.1, z: 0.46 }, material: "seatFabric", tag });
+      out.push({ type: "box", centre: { x, y: f + 0.78, z: z + 0.22 }, size: { x: 0.5, y: 0.62, z: 0.08 }, material: "seatFabric", tag });
+      out.push({ type: "box", centre: { x: x - 0.28, y: f + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
     }
-    out.push({ type: "box", centre: { x: 45.5 + 12 * 0.58 + 0.28, y: level + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+    out.push({ type: "box", centre: { x: 45.5 + 12 * 0.58 + 0.28, y: rowY(r) + 0.34, z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
   }
   return out;
 }
@@ -261,7 +285,20 @@ function ramp(): Primitive[] {
   return out;
 }
 
-export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
+/**
+ * The future plan, sheet 7: the west wing of floor −1 becomes a 236 m² events
+ * hall with a 60 m² kitchen and a ממ"ד; east of the lobby nothing changes.
+ */
+const WEST_OF_LOBBY = 24.4;
+export const LABELS_FUTURE: RoomLabel[] = [
+  L(12, 6, "אולם 236 מ\"ר", "hall"),
+  L(15, 14.5, "מטבח 60 מ\"ר", "kitchen"),
+  L(3, 14.5, "ממ\"ד", "mmd"),
+  ...LABELS_MINUS1.filter((l) => l.x > WEST_OF_LOBBY || l.kind === "void"),
+];
+
+export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }): Promise<BuildingModel> {
+  const future = options?.future === true;
   const sheet = async (spec: { page: number; s: number; tx: number; ty: number }): Promise<PdfPage> =>
     transformPage(await readPdfPage(pdf, spec.page), spec.s, spec.tx, spec.ty);
   const region = { x: ORIGIN.x, y: ORIGIN.y, width: 1760, height: 680 };
@@ -274,8 +311,8 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
       spec: { id: "floor-2", level: LEVEL.floorMinus2, height: LEVEL.floorMinus1 - LEVEL.floorMinus2, outline: OUTLINE_MINUS2, window: WINDOW, facade: "stone", interior: "plaster" },
     },
     {
-      labels: LABELS_MINUS1,
-      page: await sheet(SHEETS.floorMinus1),
+      labels: future ? LABELS_FUTURE : LABELS_MINUS1,
+      page: await sheet(future ? SHEETS.futureMinus1 : SHEETS.floorMinus1),
       // The curtain wall stops at +16.05, the head of the windows either side.
       spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: WINDOW, curtainHead: 3.28, facade: "stone", interior: "plaster" },
     },
@@ -292,7 +329,7 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
     });
     // Under floor −1's double-height void (and its stair) floor −2 has no ceiling.
     const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
-    prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids }));
+    prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
     if (spec.id === "floor-1") prims.push(...auditorium(spec.level), ...reception());
     if (spec.id === "floor-2") prims.push(...lobbyStair());
     // Planters in the lobby: tall green by the curtain wall, low by the stair.
@@ -305,7 +342,7 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
     // The floor, behind the cladding: structure, and a finish on it. Floor
     // −1 has no floor behind the curtain wall — the double-height hall its
     // sheet marks "חלל כפול".
-    const holes = spec.id === "floor-1" ? [VOID] : undefined;
+    const holes = spec.id === "floor-1" ? [VOID, HALL] : undefined;
     prims.push(slab(inset(spec.outline, 0.06), spec.level - 0.02, 0.3, "slab", `${spec.id}:slab`, holes));
     prims.push(slab(inset(spec.outline, 0.06), spec.level, 0.02, "floorStone", `${spec.id}:floor`, holes));
   }
@@ -367,6 +404,15 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
       prims.push({ type: "box", centre: { x: x + 0.8, y: sill + 0.7, z: z - 0.05 }, size: { x: 1.48, y: 1.28, z: 0.02 }, material: "glass", tag: "kindergarten:window" });
     }
   }
+  // And on its east and west ends, as sheet 9 draws them: a row on each storey.
+  for (const [x, z0, z1, out] of [[56.7, -4.3, 8.0, 1], [5.5, -7.5, 1.02, -1], [0.88, 1.02, 13.2, -1]] as const) {
+    for (const sill of [1.2, 5.2]) {
+      for (let z = z0 + 0.8; z + 1.6 <= z1 - 0.4; z += 3.4) {
+        prims.push({ type: "box", centre: { x: x + out * 0.02, y: sill + 0.7, z: z + 0.8 }, size: { x: 0.06, y: 1.4, z: 1.6 }, material: "frame", tag: "kindergarten:window" });
+        prims.push({ type: "box", centre: { x: x + out * 0.05, y: sill + 0.7, z: z + 0.8 }, size: { x: 0.02, y: 1.28, z: 1.48 }, material: "glass", tag: "kindergarten:window" });
+      }
+    }
+  }
 
   // The site: the sunken courtyard, the plazas either side, the street.
   prims.push(slab(rect(-10.5, 13.2, 32.4, 20.9), LEVEL.courtyard, 0.4, "paving", "site:courtyard"));
@@ -407,26 +453,29 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
 
   // Trees where the site plan draws them: along the courtyard's retaining
   // wall, and on the plaza by the car park's entrance.
-  for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4 });
-  for (const [x, z] of [[44.6, 22.6], [52.4, 22.9], [59.2, 23.4]] as const) prims.push({ type: "tree", at: { x, y: LEVEL.street, z }, height: 6, crown: 2.2 });
+  for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
+  for (const [x, z] of [[44.6, 22.6], [52.4, 22.9], [59.2, 23.4]] as const) prims.push({ type: "tree", at: { x, y: LEVEL.street, z }, height: 6, crown: 2.2, tag: "tree" });
 
   // Cars: most of the roof's bays taken, and the street's bays 13–18.
   const paint = [0xe8e8e6, 0x23262b, 0x8d9299, 0x6d1f23, 0xd5d7d9, 0x2c3e57, 0x5a5d61, 0xf0efe9];
   const upper = [1, 2, 4, 5, 7];
-  upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]! }));
-  [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]! }));
-  [-6, 0, 6, 13, 19].forEach((x, i) => prims.push({ type: "car", at: { x, y: LEVEL.street, z: 25.4 }, rotY: Math.PI / 2, colour: paint[(i + 2) % paint.length]! }));
+  upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]!, tag: "car" }));
+  [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]!, tag: "car" }));
+  [-6, 0, 6, 13, 19].forEach((x, i) => prims.push({ type: "car", at: { x, y: LEVEL.street, z: 25.4 }, rotY: Math.PI / 2, colour: paint[(i + 2) % paint.length]!, tag: "car" }));
 
   // People, for scale: in the courtyard, on the roof plaza, at the entrance.
-  const people: Array<[number, number, number, number]> = [[6, LEVEL.courtyard, 15.2, 0x2f4b6e], [7, LEVEL.courtyard, 15.6, 0x9b8a6a], [18, LEVEL.courtyard, 17.5, 0x5b3a3a], [12, LEVEL.roof + 0.05, 8, 0x333a44], [36, LEVEL.street + 0.15, 19, 0x6b6f4a]];
-  people.forEach(([x, y, z, c], i) => prims.push({ type: "person", at: { x, y, z }, rotY: i * 1.3, colour: c, height: 1.72 }));
+
 
   // Ground: the spot heights, and the site's own levels where it is built.
-  const x0 = -30;
-  const z0 = -40;
+  const x0 = -90;
+  const z0 = -80;
   const dx = 1;
-  const nx = 120;
-  const nz = 80;
+  const nx = 240;
+  const nz = 170;
+  // Far from the survey's spot heights the ground follows the site's overall
+  // fall, a plane fitted to all of them — not their average, which raised a
+  // plateau to the street's height north of the building.
+  const plane = fitPlane(SPOTS.map(([sx, sz, abs]) => [sx, sz, abs - 923.2] as [number, number, number]));
   const heights: number[] = [];
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {
@@ -440,8 +489,13 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
         wsum += w;
         hsum += w * (abs - 923.2);
       }
-      let h = hsum / wsum;
+      const w0 = 1 / 20 ** 4;
+      let h = (hsum + w0 * (plane[0] + plane[1] * x + plane[2] * z)) / (wsum + w0);
       if (insidePolygon(rect(-10.5, -10, 64, 36), x, z)) h = Math.min(h, 8.1);
+      // The kindergarten stands on its ±0.00: sheet 9 draws its ground at
+      // +0.70 to the north and east, and it is dug into the slope beneath the
+      // courtyard.
+      if (kindergarten.some(([ring]) => insidePolygon(ring, x, z))) h = Math.min(h, -0.2);
       // East of the entrance the plot falls from the street to the east
       // plaza — the accessible ramp's slope.
       if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
@@ -457,4 +511,22 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
     extent: { x: -12, z: -20, width: 84, depth: 50, yMin: -1, yMax: LEVEL.bulkhead },
     north: { x: 0, z: -1 },
   };
+}
+
+/** Least-squares plane h = a + b·x + c·z through the points. */
+function fitPlane(pts: Array<[number, number, number]>): [number, number, number] {
+  let n = 0, sx = 0, sz = 0, sh = 0, sxx = 0, szz = 0, sxz = 0, sxh = 0, szh = 0;
+  for (const [x, z, h] of pts) {
+    n++; sx += x; sz += z; sh += h; sxx += x * x; szz += z * z; sxz += x * z; sxh += x * h; szh += z * h;
+  }
+  // Solve the 3×3 normal equations by Cramer's rule.
+  const m = [[n, sx, sz], [sx, sxx, sxz], [sz, sxz, szz]];
+  const r = [sh, sxh, szh];
+  const det = (a: number[][]) =>
+    a[0]![0]! * (a[1]![1]! * a[2]![2]! - a[1]![2]! * a[2]![1]!) -
+    a[0]![1]! * (a[1]![0]! * a[2]![2]! - a[1]![2]! * a[2]![0]!) +
+    a[0]![2]! * (a[1]![0]! * a[2]![1]! - a[1]![1]! * a[2]![0]!);
+  const d = det(m);
+  const col = (k: number) => det(m.map((row, i) => row.map((v, j) => (j === k ? r[i]! : v))));
+  return [col(0) / d, col(1) / d, col(2) / d];
 }

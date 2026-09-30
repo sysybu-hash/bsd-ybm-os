@@ -154,7 +154,8 @@ export function transformPage(page: PdfPage, s: number, tx: number, ty: number):
     height: page.height * s,
     paths: page.paths.map((p) => ({
       ...p,
-      lineWidth: p.lineWidth * s,
+      // The pen, not the drawn width: pens are told apart by it.
+      lineWidth: p.lineWidth,
       rings: p.rings.map((r) => r.map(([x, y]) => [s * x + tx, s * y + ty] as [number, number])),
     })),
   };

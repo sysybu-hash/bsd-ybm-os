@@ -21,6 +21,12 @@ export type BuildingCamera = {
   interior?: boolean;
   /** Parallel projection, as an elevation is drawn: half the frame's width in metres. */
   orthoHalfWidth?: number;
+  /** For an elevation: metres behind the face the ground line is the lowest of (25 by default; 0 cuts at the face). */
+  groundBand?: number;
+  /** The camera's up vector; a plan seen from above has north, -z, up. */
+  up?: { x: number; y: number; z: number };
+  /** A vertical section: everything on the far side of the plane x (or z) = at is kept, the near side cut away. */
+  section?: { axis: "x" | "z"; at: number; keep: 1 | -1 };
 };
 
 export type BuildingRenderPayload = {
@@ -84,9 +90,7 @@ async function main() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = P.exposure;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  if (P.camera.cutAboveM != null) {
-    renderer.localClippingEnabled = true;
-  }
+  renderer.localClippingEnabled = true;
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -266,14 +270,22 @@ async function main() {
     bark: new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.95 }),
     seatFabric: new THREE.MeshStandardMaterial({ color: 0x1f5c66, roughness: 0.92 }),
+    linen: new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.85 }),
     lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
     trousers: new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.9 }),
     skin: new THREE.MeshStandardMaterial({ color: 0xefece6, roughness: 0.8 }),
   };
-  const clip = P.camera.cutAboveM != null ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), P.camera.cutAboveM)] : null;
-  if (clip) for (const m of Object.values(MAT)) { m.clippingPlanes = clip; m.clipShadows = true; }
+  const planes = [];
+  if (P.camera.cutAboveM != null) planes.push(new THREE.Plane(new THREE.Vector3(0, -1, 0), P.camera.cutAboveM));
+  const sec = P.camera.section;
+  if (sec) {
+    const n = sec.axis === "x" ? new THREE.Vector3(sec.keep, 0, 0) : new THREE.Vector3(0, 0, sec.keep);
+    planes.push(new THREE.Plane(n, -sec.keep * sec.at));
+  }
+  const clip = planes.length ? planes : null;
+  if (clip) for (const m of Object.values(MAT)) { m.clippingPlanes = clip; m.clipShadows = true; if (sec && P.camera.interior) m.side = THREE.DoubleSide; }
 
   // A box whose faces carry UVs in metres, so every texture keeps its scale.
   const worldBox = (sx, sy, sz, repeatM) => {
@@ -421,9 +433,84 @@ async function main() {
     scene.fog = new THREE.Fog(0xb9d3ec, 220, 1600);
   }
 
+  // Where a vertical section cuts, the cut is drawn solid — poche — as an
+  // architect draws it: the ground in earth, the existing building in stone.
+  // Without it a cut prism shows its hollow inside, and the finishing model
+  // furnished the kindergarten with rooms nobody drew.
+  if (sec) {
+    const along = sec.axis === "x" ? "z" : "x";
+    const eps = -sec.keep * 0.004;
+    const put = (pts2) => {
+      // pts2: [u, y] with u along the plane.
+      const contour = pts2.map(([u, y]) => new THREE.Vector2(u, y));
+      const tris = THREE.ShapeUtils.triangulateShape(contour, []);
+      const pos = [];
+      for (const [u, y] of pts2) {
+        if (sec.axis === "x") pos.push(sec.at + eps, y, u);
+        else pos.push(u, y, sec.at + eps);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      g.setIndex(tris.flat());
+      g.computeVertexNormals();
+      return g;
+    };
+    const earth = new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1, side: THREE.DoubleSide });
+    const poche = new THREE.MeshStandardMaterial({ color: 0x8c8378, roughness: 0.9, side: THREE.DoubleSide });
+    for (const p of M.primitives) {
+      if (hidden(p.tag)) continue;
+      if (p.type === "terrain") {
+        // A section cuts the ground where it cuts; an elevation shows the
+        // ground line along the face — the lowest ground in the 25 m behind
+        // the plane, where the building stands, not the slope in front.
+        const band = P.camera.interior ? 0 : Math.round((P.camera.groundBand ?? 25) / p.dx);
+        const prof = [];
+        if (sec.axis === "x") {
+          const i0 = Math.round((sec.at - p.x0) / p.dx);
+          if (i0 < 0 || i0 >= p.nx) continue;
+          for (let j = 0; j < p.nz; j++) {
+            let h = Infinity;
+            for (let d = 0; d <= band; d++) {
+              const i = i0 + sec.keep * d;
+              if (i >= 0 && i < p.nx) h = Math.min(h, p.heights[j * p.nx + i]);
+            }
+            prof.push([p.z0 + j * p.dx, h]);
+          }
+        } else {
+          const j0 = Math.round((sec.at - p.z0) / p.dx);
+          if (j0 < 0 || j0 >= p.nz) continue;
+          for (let i = 0; i < p.nx; i++) {
+            let h = Infinity;
+            for (let d = 0; d <= band; d++) {
+              const j = j0 + sec.keep * d;
+              if (j >= 0 && j < p.nz) h = Math.min(h, p.heights[j * p.nx + i]);
+            }
+            prof.push([p.x0 + i * p.dx, h]);
+          }
+        }
+        const bottom = Math.min(...prof.map(([, h]) => h)) - 14;
+        const pts2 = [...prof, [prof[prof.length - 1][0], bottom], [prof[0][0], bottom]];
+        scene.add(new THREE.Mesh(put(pts2.reverse()), earth));
+      } else if (p.type === "prism" && p.tag && (p.tag.startsWith("kindergarten") || p.tag.startsWith("site:"))) {
+        const hits = [];
+        const r = p.ring;
+        for (let k = 0; k < r.length; k++) {
+          const [ax, az] = r[k], [bx, bz] = r[(k + 1) % r.length];
+          const [a, b, ua, ub] = sec.axis === "x" ? [ax, bx, az, bz] : [az, bz, ax, bx];
+          if ((a - sec.at) * (b - sec.at) < 0) hits.push(ua + ((sec.at - a) / (b - a)) * (ub - ua));
+        }
+        if (hits.length < 2) continue;
+        const u0 = Math.min(...hits), u1 = Math.max(...hits);
+        const mat = p.tag.startsWith("kindergarten") ? poche : earth;
+        scene.add(new THREE.Mesh(put([[u0, p.y0], [u1, p.y0], [u1, p.y1], [u0, p.y1]]), mat));
+      }
+    }
+  }
+
   const cam = P.camera.orthoHalfWidth
     ? new THREE.OrthographicCamera(-P.camera.orthoHalfWidth, P.camera.orthoHalfWidth, (P.camera.orthoHalfWidth * P.height) / P.width, (-P.camera.orthoHalfWidth * P.height) / P.width, 0.1, 6000)
     : new THREE.PerspectiveCamera(P.camera.fovDeg, P.width / P.height, 0.1, 6000);
+  if (P.camera.up) cam.up.set(P.camera.up.x, P.camera.up.y, P.camera.up.z);
   cam.position.set(P.camera.position.x, P.camera.position.y, P.camera.position.z);
   cam.lookAt(P.camera.target.x, P.camera.target.y, P.camera.target.z);
 

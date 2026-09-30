@@ -14,22 +14,26 @@ import { getFloorplanVizModelChain } from "@/lib/gemini-model";
  * finish whose edges wander from the render's has moved the building, and is
  * not used.
  */
-export type FinishKind = "exterior" | "interior" | "cutaway";
+export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo";
 
 export function finishPrompt(kind: FinishKind, subject: string): string {
   const keep = [
     "This image is an exact architectural render. Repaint it as a professional architectural photograph.",
-    "KEEP EXACTLY: the camera position, lens and framing; every wall, opening, window, mullion, column, slab and roof edge in the same place and size; every piece of furniture, its position, size and count; the stair; the trees, cars and people where they are.",
+    "KEEP EXACTLY: the camera position, lens and framing; every wall, opening, window, mullion, column, slab and roof edge in the same place and size; every piece of furniture, its position, size and count; the stair; the trees and cars where they are. There are NO people: do not add any person or human figure anywhere.",
     "Do NOT add, remove, move or resize any element. Do NOT add windows, doors, rooms, storeys, signs or furniture. Do NOT change the building's proportions.",
     "Do NOT add any sign, lettering, logo or text anywhere. Where the render has lettering, keep it where it is.",
     "Keep every retaining wall, terrace edge, ramp and the shape of the ground exactly; do not open up views that the render's walls close.",
   ];
   const look =
-    kind === "exterior"
-      ? "Make it photoreal: warm Jerusalem limestone cladding with natural variation and fine chisel texture, dark anthracite aluminium window frames with reflective glass showing sky, crisp soft shadows of a clear late-afternoon sky in the Judean hills, real asphalt and stone paving, natural trees and dry Mediterranean landscape, realistic cars. Balanced exposure, no haze, high dynamic range, 35mm lens photography."
-      : kind === "interior"
-        ? "Make it photoreal: a contemporary Israeli public education centre interior; matte warm-white walls, real oak and vinyl flooring, acoustic ceiling with LED panels casting soft light, daylight through the windows, realistic upholstery and furniture materials, subtle reflections, natural bounce light and soft contact shadows. Interior design magazine quality."
-        : "Make it a photoreal architectural cutaway model: the same cut and view, real materials — oak and stone floors, fabric seats, white walls with a clean section cut, soft daylight from above, gentle ambient occlusion, like a high-end presentation model photograph.";
+    kind === "exterior" || kind === "photo"
+      ? "Luxury architectural visualization, the finest quality: warm honey-toned Jerusalem limestone with natural variation, crisp arrises and fine chisel texture; slim anthracite aluminium frames; deep reflective glazing mirroring the sky; the soft raking light of a clear golden-hour sky over the Judean hills, long gentle shadows; immaculate stone paving and asphalt; mature olive trees and manicured Mediterranean planting; premium cars. Perfect exposure, rich but natural colour, no haze, tack-sharp, photographed by a top architectural photographer on a tilt-shift lens."
+      : kind === "elevation"
+        ? "Luxury architectural visualization of a straight-on orthographic elevation — keep it perfectly flat-on, no perspective: warm honey-toned Jerusalem limestone with natural variation and fine texture, anthracite aluminium frames, reflective glazing, soft golden-hour light, clean sky, the ground as drawn. Presentation-board quality."
+        : kind === "interior"
+          ? "Luxury interior visualization, magazine quality: a refined contemporary Israeli public centre; warm matte walls, natural oak and fine stone or premium vinyl floors, a clean acoustic ceiling with flush LED panels glowing softly, warm daylight through the windows, premium upholstery with visible weave, subtle reflections, natural bounce light and soft contact shadows. Calm, elegant, expensive."
+          : kind === "section"
+            ? "Luxury architectural section visualization: the building cut exactly where it is cut, the cut faces of walls and slabs crisp and solid, the rooms behind furnished and softly lit, real materials — oak and stone floors, fabric seats, warm white walls — the ground cut as a clean earth section, a clean pale sky. Presentation-board quality."
+            : "Luxury architectural cutaway model photograph: the same cut and view, exquisite real materials — oak and stone floors, fabric seats, warm white walls with a crisp section cut — soft daylight from above, gentle ambient occlusion, like a museum-grade presentation model photographed in a studio.";
   return [...keep, look, `Subject: ${subject}.`].join("\n");
 }
 

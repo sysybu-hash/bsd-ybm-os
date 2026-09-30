@@ -39,6 +39,8 @@ export type FurnishOptions = {
   openAbove?: RoomKind[];
   /** Where the floor above is open — a double-height hall: no ceiling under it. */
   voids?: Array<{ x: number; y: number; w: number; h: number }>;
+  /** Rooms whose floor is built elsewhere — a raked hall. */
+  ownFloor?: RoomKind[];
 };
 
 type Piece = { kind: string; x: number; y: number; length: number; width: number; angle: number };
@@ -61,7 +63,7 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
   }
   for (const room of rooms) {
     const rects = roomRects(room, step).filter((r) => r.w > 0.05 && r.h > 0.05);
-    if (room.kind !== "void") {
+    if (room.kind !== "void" && !(options.ownFloor ?? []).includes(room.kind)) {
       const finish = room.kind === "wc" ? FLOOR.wc : (regionFinish.get(room.region) ?? FLOOR[room.kind]);
       for (const r of mergeRects(rects)) {
         out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + 0.025, z: r.y + r.h / 2 }, size: { x: r.w + 0.02, y: 0.01, z: r.h + 0.02 }, material: finish, tag: `${tag}:finish` });
@@ -104,6 +106,8 @@ function classify(it: PlanItem, room: RoomKind): string | null {
   const { length: L, width: W, roundness } = it;
   if (L >= 0.38 && L <= 0.75 && W >= 0.3) return room === "lobby" && L > 0.65 ? "armchair" : "chair";
   if (L > 0.75 && L <= 1.0 && W >= 0.6) return room === "lobby" || room === "design" || room === "classroom" ? "armchair" : "table";
+  // A banquet table drawn with its ring of chairs: nearly square, 1.6 to 2.2 m.
+  if (room === "hall" && L >= 1.6 && L <= 2.2 && W / L >= 0.85) return "banquet";
   if (roundness >= 0.8 && L >= 0.9 && L <= 2.2) return "roundTable";
   if (room === "computers" && L >= 2.4 && L <= 4.2 && W >= 0.9 && W <= 1.6) return "computerBench";
   if (room === "office" && L >= 1.4 && L <= 2.4 && W >= 1.1 && W <= 1.8) return "workstation";
@@ -230,6 +234,26 @@ function build(p: Piece, level: number, tag: string): Primitive[] {
       legs(p.length, p.width, 0.72);
       part(0, 0, p.length, p.width, 0.72, 0.75, "timber");
       break;
+    case "banquet": {
+      // A round table under a white cloth, ten chairs round it.
+      const r = (p.length - 0.75) / 2;
+      out.push({ type: "cylinder", centre: { x: p.x, y: level + 0.37, z: p.y }, radius: r, height: 0.74, material: "linen", tag });
+      for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2;
+        const cr = p.length / 2 - 0.2;
+        const cx = p.x + Math.cos(a) * cr;
+        const cz = p.y + Math.sin(a) * cr;
+        out.push({ type: "box", centre: { x: cx, y: level + 0.46, z: cz }, size: { x: 0.44, y: 0.06, z: 0.44 }, rotY: -a, material: "upholsteryAccent", tag });
+        const bx = p.x + Math.cos(a) * (cr + 0.2);
+        const bz = p.y + Math.sin(a) * (cr + 0.2);
+        out.push({ type: "box", centre: { x: bx, y: level + 0.7, z: bz }, size: { x: 0.05, y: 0.5, z: 0.42 }, rotY: -a, material: "upholsteryAccent", tag });
+        for (const [lx, lz] of [[-0.18, -0.18], [0.18, -0.18], [-0.18, 0.18], [0.18, 0.18]] as const) {
+          const ca = Math.cos(-a), sa = Math.sin(-a);
+          out.push({ type: "box", centre: { x: cx + lx * ca - lz * sa, y: level + 0.215, z: cz + lx * sa + lz * ca }, size: { x: 0.025, y: 0.43, z: 0.025 }, material: "metal", tag });
+        }
+      }
+      break;
+    }
     case "roundTable":
       out.push({ type: "cylinder", centre: { x: p.x, y: level + 0.36, z: p.y }, radius: 0.05, height: 0.72, material: "metal", tag });
       out.push({ type: "cylinder", centre: { x: p.x, y: level + 0.735, z: p.y }, radius: Math.min(p.length, 1.8) / 2, height: 0.03, material: "timber", tag });

@@ -20,22 +20,45 @@ type Kind = import("@/lib/projects/building/finish").FinishKind;
 const sharp = (await import("sharp")).default;
 
 const VIEWS: Record<string, [Kind, string]> = {
-  "north-facade": ["exterior", "the north facade of a two-storey stone-clad teachers' centre with a double-height glass curtain wall, standing on an existing kindergarten building"],
+  "north-facade": ["exterior", "the north facade of a two-storey stone-clad teachers' centre with a double-height glass curtain wall, standing on the existing two-storey stone kindergarten building"],
+  site: ["exterior", "high aerial view of the whole site from the south: the street, the car park entrance, the roof, the sunken courtyard and the existing kindergarten on the slope below"],
+  "roof-top": ["exterior", "near top-down aerial view of the roof: the car park with its bays and entrance, the paved roof plaza, the lift bulkhead"],
   "aerial-ne": ["exterior", "aerial view of the teachers' centre from the north-east, a car park on its roof at street level, the existing kindergarten below"],
-  "aerial-sw": ["exterior", "aerial view from the south-west over the street, the roof car park and the building"],
-  courtyard: ["exterior", "the sunken south courtyard with a colonnade under the upper floor, a row of trees along the stone retaining wall"],
-  "dollhouse-1": ["cutaway", "cutaway of the upper floor: learning spaces, lobby with double-height void, multi-purpose hall with theatre seating, offices"],
+  "aerial-sw": ["exterior", "aerial view from the south-west over the street, the roof car park and its gated entrance"],
+  courtyard: ["exterior", "the sunken south courtyard with a colonnade under the upper floor, a row of trees along the tall stone retaining wall"],
+  "elev-north": ["elevation", "north elevation"],
+  "elev-south": ["elevation", "south elevation"],
+  "elev-east": ["elevation", "east elevation, the new building above the existing kindergarten, the street at the top left"],
+  "elev-west": ["elevation", "west elevation, the new building above the existing kindergarten, the street at the top right"],
+  "section-aa": ["section", "long section A-A through both floors, the lobby stair and the existing kindergarten below"],
+  "section-bb": ["section", "cross section B-B through the multi-purpose hall with its raked theatre seating"],
+  "section-dd": ["section", "cross section D-D through the stair from the street down to the courtyard"],
+  "dollhouse-1": ["cutaway", "cutaway of the upper floor: learning spaces, lobby with double-height void, multi-purpose hall with raked theatre seating, offices"],
   "dollhouse-2": ["cutaway", "cutaway of the lower floor: computer rooms, classrooms, support rooms, lobby with open stair"],
+  "future-dollhouse-1": ["cutaway", "cutaway of the upper floor in its future plan: a 236 m² events hall with round banquet tables, a kitchen, the lobby and the multi-purpose hall"],
   lobby: ["interior", "the double-height entrance lobby with an open stone stair and a glass curtain wall"],
-  hall: ["interior", "a 135 m² multi-purpose hall with teal theatre seats, oak acoustic slat walls and a projection screen"],
+  hall: ["interior", "a 135 m² multi-purpose hall with raked teal theatre seats, oak acoustic slat walls and a projection screen"],
+  "future-event-hall": ["interior", "a 236 m² events hall with round banquet tables under white cloths"],
   design: ["interior", "a learning-design studio with long oak tables and chairs"],
   workshop: ["interior", "an early-childhood workshop room with tables, chairs and round tables"],
   computers: ["interior", "a computer lab with long white benches and monitors"],
   classroom: ["interior", "a classroom with group tables, chairs and round tables"],
+  lift: ["photo", "an external platform lift for wheelchair access beside a building, up to a balcony"],
 };
 
 /** What the model changed in a view before, said back to it. */
 const FOCUS: Record<string, string> = {
+  "section-aa": "This is an architectural section. The flat grey-brown solid at the bottom is the existing kindergarten cut through, drawn solid (poche): keep it a flat solid cut face — do NOT open it into rooms, windows or furniture. The dark brown mass is cut earth: keep it solid and flat-faced. The rooms above belong to a public teachers' centre: keep exactly the furniture shown — NO sofas, beds, televisions or home furniture.",
+  "section-bb": "This is an architectural section. The flat grey-brown solid at the bottom is the existing kindergarten cut through, drawn solid (poche): keep it a flat solid cut face — do NOT open it into rooms, windows or furniture. The dark brown mass is cut earth: keep it solid and flat-faced. The rooms above belong to a public teachers' centre: keep exactly the furniture shown — NO sofas, beds, televisions or home furniture.",
+  "section-dd": "This is an architectural section. The flat grey-brown solid at the bottom is the existing kindergarten cut through, drawn solid (poche): keep it a flat solid cut face — do NOT open it into rooms, windows or furniture. The dark brown mass is cut earth: keep it solid and flat-faced. The rooms above belong to a public teachers' centre: keep exactly the furniture shown — NO sofas, beds, televisions or home furniture.",
+  "elev-east": "This is a flat orthographic elevation. The brown mass is the ground cut along the face: keep it a solid flat earth section with its exact outline. Keep the existing kindergarten's windows exactly as drawn.",
+  "elev-west": "This is a flat orthographic elevation. The brown mass is the ground cut along the face: keep it a solid flat earth section with its exact outline. Keep the existing kindergarten's windows exactly as drawn.",
+  workshop: "CRITICAL for this view: the two large dark rectangles on the left wall are WINDOWS — show them as clear glazing with daylight and the hillside outside, not stone or panels.",
+  "north-facade": "CRITICAL for this view: in front of the building there is NO road, NO car park and NO cars — only the natural rocky hillside falling away, exactly as the render shows. Keep the lower stone buildings (the existing kindergarten) with their small windows as they are.",
+  site: "CRITICAL for this view: keep the building's exact massing — a long flat-roofed block with the car park on its east part of the roof, the stair tower and lift by the entrance, the sunken courtyard and the lower existing buildings. Do not simplify it to one box and do not move the car park off the roof. Keep the street, the crossing and the parked cars where they are.",
+  "roof-top": "CRITICAL for this view: this is a plan-like top view. Keep every edge of the roof exactly: the paved plaza on the west, the asphalt car park with its painted bays on the east, the entrance gap in the parapet onto the street, the lift bulkhead, the courtyard and the lower roofs. Do not add planting or trees on the roof. Do not change any outline.",
+  courtyard: "CRITICAL for this view: keep the tall solid stone retaining wall on the right rising to the top of the frame, the single row of trees in front of it, the colonnade and the overhang on the left, the walkway ending at a stone wall. No view beyond the wall.",
+  lift: "This is the architect's own sketch of the lift. Make it a luxury photograph of the same scene from the same camera: the same wall, the lift tower, the glass platform at the bottom, the balcony with its railing, the window and the pipe, all in place. REMOVE the person and the wheelchair: the glass platform stands empty. Crisp, high resolution.",
   "aerial-ne":
     "CRITICAL for this view: the lower buildings in front (the existing kindergarten) are plain flat-roofed stone boxes with flat paved roofs — no railings, no balconies, no parapets, no terraces, no cantilevers. Do not add any structure to them. The upper building has NO sign on its east side; the only lettering is on the dark band of the north facade, where it already is. Keep the paved platform on the left as a flat slab on the ground.",
   courtyard:
@@ -61,7 +84,7 @@ for (const [view, [kind, subject]] of Object.entries(VIEWS)) {
   const unlettered = fs.existsSync(bare) ? fs.readFileSync(bare) : null;
   const meta = await sharp(render).metadata();
   let best: { image: Buffer; score: number; model: string } | null = null;
-  for (let attempt = 0; attempt < Number(process.env.TRIES ?? 2) && calls < 24; attempt++) {
+  for (let attempt = 0; attempt < Number(process.env.TRIES ?? 2) && calls < 60; attempt++) {
     calls++;
     const t = Date.now();
     const got = await finishPass(client, `${finishPrompt(kind, subject)}\n${FOCUS[view] ?? ""}`, input);
