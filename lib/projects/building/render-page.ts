@@ -19,6 +19,8 @@ export type BuildingCamera = {
   hideTags?: string[];
   /** Standing inside: lit by the rooms' own light, not the open sky. */
   interior?: boolean;
+  /** Parallel projection, as an elevation is drawn: half the frame's width in metres. */
+  orthoHalfWidth?: number;
 };
 
 export type BuildingRenderPayload = {
@@ -188,11 +190,11 @@ async function main() {
   }, 4.0);
   const plainTex = (hex, a, sizeM) => canvasTex(256, 256, (g, w, h) => { g.fillStyle = hex; g.fillRect(0, 0, w, h); noise(g, w, h, a); }, sizeM);
   const paverTex = canvasTex(512, 512, (g, w, h) => {
-    g.fillStyle = "#8f877c"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#7d7366"; g.fillRect(0, 0, w, h);
     const s = w / 8;
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-      const l = 170 + rnd() * 30;
-      g.fillStyle = "rgb(" + l + "," + (l * 0.96) + "," + (l * 0.9) + ")";
+      const l = 168 + rnd() * 28;
+      g.fillStyle = "rgb(" + l + "," + (l * 0.93) + "," + (l * 0.82) + ")";
       const off = (y % 2) * s / 2;
       g.fillRect(x * s + off + 2, y * s + 2, s - 4, s - 4);
       g.fillRect(x * s + off - w + 2, y * s + 2, s - 4, s - 4);
@@ -267,8 +269,8 @@ async function main() {
     lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
-    trousers: new THREE.MeshStandardMaterial({ color: 0x23252b, roughness: 0.9 }),
-    skin: new THREE.MeshStandardMaterial({ color: 0xc99b7a, roughness: 0.8 }),
+    trousers: new THREE.MeshStandardMaterial({ color: 0xd8d4cc, roughness: 0.9 }),
+    skin: new THREE.MeshStandardMaterial({ color: 0xefece6, roughness: 0.8 }),
   };
   const clip = P.camera.cutAboveM != null ? [new THREE.Plane(new THREE.Vector3(0, -1, 0), P.camera.cutAboveM)] : null;
   if (clip) for (const m of Object.values(MAT)) { m.clippingPlanes = clip; m.clipShadows = true; }
@@ -335,9 +337,17 @@ async function main() {
       const clumps = 14;
       for (let k = 0; k < clumps; k++) {
         const r = p.crown * (0.3 + rnd() * 0.2);
-        const geo = new THREE.IcosahedronGeometry(r, 2);
+        const geo = new THREE.IcosahedronGeometry(r, 3);
         const pos = geo.attributes.position;
-        for (let v = 0; v < pos.count; v++) { const f = 0.85 + rnd() * 0.3; pos.setXYZ(v, pos.getX(v) * f, pos.getY(v) * f, pos.getZ(v) * f); }
+        // Lumpy by direction, so a vertex shared by faces moves once and the
+        // crown stays whole.
+        const seedK = rnd() * 100;
+        for (let v = 0; v < pos.count; v++) {
+          const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+          const n = Math.sin((x / r) * 5.1 + seedK) * Math.sin((y / r) * 4.3 + seedK * 0.7) * Math.sin((z / r) * 5.7 + seedK * 1.3);
+          const f = 0.9 + 0.16 * n;
+          pos.setXYZ(v, x * f, y * f, z * f);
+        }
         geo.computeVertexNormals();
         const leaf = new THREE.Mesh(geo, MAT["foliage" + (k % 3)]);
         const a = (k / clumps) * Math.PI * 2 + rnd();
@@ -368,7 +378,8 @@ async function main() {
       continue;
     } else if (p.type === "person") {
       const g = new THREE.Group();
-      const cloth = new THREE.MeshStandardMaterial({ color: p.colour, roughness: 0.9, clippingPlanes: clip });
+      // Figures for scale, drawn as an architect draws them: pale and plain.
+      const cloth = new THREE.MeshStandardMaterial({ color: 0xe9e6e0, roughness: 0.9, clippingPlanes: clip });
       const h = p.height;
       const legs = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, h * 0.38, 4, 8), MAT.trousers);
       legs.position.y = h * 0.27; g.add(legs);
@@ -410,7 +421,9 @@ async function main() {
     scene.fog = new THREE.Fog(0xcfd9e2, 180, 1400);
   }
 
-  const cam = new THREE.PerspectiveCamera(P.camera.fovDeg, P.width / P.height, 0.1, 6000);
+  const cam = P.camera.orthoHalfWidth
+    ? new THREE.OrthographicCamera(-P.camera.orthoHalfWidth, P.camera.orthoHalfWidth, (P.camera.orthoHalfWidth * P.height) / P.width, (-P.camera.orthoHalfWidth * P.height) / P.width, 0.1, 6000)
+    : new THREE.PerspectiveCamera(P.camera.fovDeg, P.width / P.height, 0.1, 6000);
   cam.position.set(P.camera.position.x, P.camera.position.y, P.camera.position.z);
   cam.lookAt(P.camera.target.x, P.camera.target.y, P.camera.target.z);
 

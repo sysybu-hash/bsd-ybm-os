@@ -133,8 +133,11 @@ const VOID: Outline = [
   [22.5, 4.45],
 ];
 
-/** The north elevation: a stone surround from 1.10 to 3.75 above the floor. */
-const WINDOW = { sill: 1.1, head: 3.75, surround: 0.2 };
+/**
+ * The north elevation: a stone surround from 0.69 to 3.27 above each floor
+ * (+12.77 at 660 pt, +8.29 at 790 pt, 29 pt a metre on its sheet).
+ */
+const WINDOW = { sill: 0.69, head: 3.27, surround: 0.22 };
 
 /** Spot heights along the plot, absolute metres, in plan metres. ±0.00 = 923.20. */
 const SPOTS: Array<[number, number, number]> = [
@@ -224,6 +227,28 @@ function reception(): Primitive[] {
   return out;
 }
 
+/**
+ * The covered accessible ramp along the south face, as the south elevation
+ * draws it: from floor −1's +12.77 at the stair tower falling to +11.80 at
+ * the building's east end, then rising to the plaza at +12.30; a steel
+ * railing along its open side.
+ */
+function ramp(): Primitive[] {
+  const out: Primitive[] = [];
+  const tag = "site:ramp";
+  const z0 = 16.62;
+  const z1 = 18.9;
+  const at = (x: number) => (x <= 53.9 ? 12.77 + ((x - 33.8) / (53.9 - 33.8)) * (11.8 - 12.77) : 11.8 + ((x - 53.9) / (62 - 53.9)) * (12.3 - 11.8));
+  for (let x = 33.8; x < 62; x += 0.5) {
+    const y = at(x + 0.25);
+    out.push({ type: "box", centre: { x: x + 0.25, y: y - 0.15, z: (z0 + z1) / 2 }, size: { x: 0.51, y: 0.3, z: z1 - z0 }, material: "paving", tag });
+    out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.95, z: z1 - 0.03 }, size: { x: 0.51, y: 0.04, z: 0.05 }, material: "metal", tag });
+    if (Math.round(x * 2) % 3 === 0) out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.48, z: z1 - 0.03 }, size: { x: 0.03, y: 0.95, z: 0.03 }, material: "metal", tag });
+    out.push({ type: "box", centre: { x: x + 0.25, y: y + 0.48, z: z1 - 0.02 }, size: { x: 0.51, y: 0.9, z: 0.012 }, material: "glass", tag });
+  }
+  return out;
+}
+
 export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   const sheet = async (spec: { page: number; s: number; tx: number; ty: number }): Promise<PdfPage> =>
     transformPage(await readPdfPage(pdf, spec.page), spec.s, spec.tx, spec.ty);
@@ -239,7 +264,8 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
     {
       labels: LABELS_MINUS1,
       page: await sheet(SHEETS.floorMinus1),
-      spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: WINDOW, facade: "stone", interior: "plaster" },
+      // The curtain wall stops at +16.05, the head of the windows either side.
+      spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: WINDOW, curtainHead: 3.28, facade: "stone", interior: "plaster" },
     },
   ];
 
@@ -257,6 +283,12 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
     prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids }));
     if (spec.id === "floor-1") prims.push(...auditorium(spec.level), ...reception());
     if (spec.id === "floor-2") prims.push(...lobbyStair());
+    // Planters in the lobby: tall green by the curtain wall, low by the stair.
+    const planters: Array<[number, number, number]> = spec.id === "floor-2" ? [[31.6, 2.2, 1.8], [27.2, 2.2, 1.4], [20.9, 2.2, 1.6]] : [[33.6, 8.8, 1.5], [26.6, 9.4, 1.2]];
+    for (const [x, z, h] of planters) {
+      prims.push({ type: "cylinder", centre: { x, y: spec.level + 0.3, z }, radius: 0.32, height: 0.6, material: "planter", tag: `${spec.id}:inside:plant` });
+      prims.push({ type: "tree", at: { x, y: spec.level + 0.55, z }, height: h, crown: 0.55, tag: `${spec.id}:inside:plant` });
+    }
     // The floor: structure, and a finish on it.
     // The floor, behind the cladding: structure, and a finish on it. Floor
     // −1 has no floor behind the curtain wall — the double-height hall its
@@ -313,6 +345,7 @@ export async function buildPisga(pdf: Uint8Array): Promise<BuildingModel> {
   // the stair on to the covered ramp.
   prims.push(slab(rect(32.4, 13.2, 53.92, 19.0), LEVEL.courtyard, 0.4, "paving", "site:colonnade"));
   prims.push({ type: "box", centre: { x: 43.1, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: 21.6, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
+  prims.push(...ramp());
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   prims.push(slab(rect(53.92, 1.02, 64, 12), 8.27, 0.4, "paving", "site:east"));
   // The car park's way in from the street, over the covered ramp below.

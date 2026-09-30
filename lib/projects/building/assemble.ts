@@ -22,6 +22,8 @@ export type FloorSpec = {
   /** The floor's outer outline in plan metres. */
   outline: Outline;
   window: { sill: number; head: number; surround: number };
+  /** Where a curtain wall stops below the floor's top, stone above it; the full height when absent. */
+  curtainHead?: number;
   /** Material of the outer skin, and of the walls inside. */
   facade: BuildingMaterial;
   interior: BuildingMaterial;
@@ -166,11 +168,16 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
         if (o.orientation === "h") box(o.x + p0, outer, p1 - p0, SKIN + proud, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
         else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
       }
+      // The sill: a stone ledge standing 8 cm proud under the surround.
+      if (o.orientation === "h") box(o.x - 0.05, outer - 0.03, o.w + 0.1, SKIN + proud + 0.04, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
+      else box(outer - 0.03, o.y - 0.05, SKIN + proud + 0.04, o.h + 0.1, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
       glazing(out, o, y0 + sill + surround, y0 + head - surround, surround, side, `${tag}:window`, 1);
       continue;
     }
-    // A curtain wall: the whole height, mullions every two metres or so.
-    glazing(out, o, y0, top, 0, side, `${tag}:curtain`, Math.max(2, Math.round((o.orientation === "h" ? o.w : o.h) / 2.1)));
+    // A curtain wall: to its head, mullions every two metres or so, stone above.
+    const head = floor.curtainHead != null ? y0 + floor.curtainHead : top;
+    if (head < top) wallPiece(o, head, top, side);
+    glazing(out, o, y0, head, 0, side, `${tag}:curtain`, Math.max(2, Math.round((o.orientation === "h" ? o.w : o.h) / 2.1)));
   }
   return out;
 }

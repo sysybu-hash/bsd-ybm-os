@@ -30,6 +30,8 @@ export type RoomLabel = { x: number; y: number; name: string; kind: RoomKind };
 export type PlanRoom = {
   name: string;
   kind: RoomKind;
+  /** The open region the room is part of: rooms sharing one are one floor. */
+  region: number;
   areaM2: number;
   /** Rows of spans, metres: the room's floor. */
   rows: Array<{ y: number; spans: Array<[number, number]> }>;
@@ -104,7 +106,8 @@ export function readPlanRooms(walls: PlanWalls, openings: PlanOpening[], outline
         y1 = Math.max(y1, (y + 1) * m);
       }
     }
-    out.push({ name: l.name, kind: l.kind, areaM2: area * m * m, rows: rowsOut, bounds: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } });
+    const at = Math.round(l.y / m) * cols + Math.round(l.x / m);
+    out.push({ name: l.name, kind: l.kind, region: regions.ids[at]!, areaM2: area * m * m, rows: rowsOut, bounds: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } });
   }
   return out;
 }

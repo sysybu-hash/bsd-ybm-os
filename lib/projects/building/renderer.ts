@@ -58,7 +58,7 @@ export async function renderBuildingFrames(
         );
       });
       try {
-        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load" });
+        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load", timeout: 180_000 });
         await page.waitForFunction("window.__renderDone === true || window.__renderError", {
           timeout: options?.timeoutMs ?? 240_000,
         });

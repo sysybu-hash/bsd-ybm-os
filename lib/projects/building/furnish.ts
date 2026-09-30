@@ -48,11 +48,23 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
   const { level, tag } = options;
   const step = 0.02;
 
+  // An open plan is one floor: the finish its largest part would have, and
+  // wood where that part is circulation — a centre like this is floored for
+  // the rooms it opens into, not for its corridors.
+  const regionFinish = new Map<number, BuildingMaterial>();
+  const byRegion = new Map<number, PlanRoom[]>();
+  for (const r of rooms) byRegion.set(r.region, [...(byRegion.get(r.region) ?? []), r]);
+  for (const [region, list] of byRegion) {
+    if (list.length < 2) continue;
+    const main = [...list].filter((r) => r.kind !== "void").sort((a, b) => b.areaM2 - a.areaM2)[0];
+    if (main) regionFinish.set(region, FLOOR[main.kind] === "floorStone" ? "floorWood" : FLOOR[main.kind]);
+  }
   for (const room of rooms) {
     const rects = roomRects(room, step).filter((r) => r.w > 0.05 && r.h > 0.05);
     if (room.kind !== "void") {
+      const finish = room.kind === "wc" ? FLOOR.wc : (regionFinish.get(room.region) ?? FLOOR[room.kind]);
       for (const r of mergeRects(rects)) {
-        out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + 0.025, z: r.y + r.h / 2 }, size: { x: r.w, y: 0.01, z: r.h }, material: FLOOR[room.kind], tag: `${tag}:finish` });
+        out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + 0.025, z: r.y + r.h / 2 }, size: { x: r.w + 0.02, y: 0.01, z: r.h + 0.02 }, material: finish, tag: `${tag}:finish` });
       }
     }
     const open = room.kind === "void" || room.kind === "stair" || (options.openAbove ?? []).includes(room.kind);
@@ -61,7 +73,7 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
         (options.voids ?? []).some((v) => r.x < v.x + v.w && r.x + r.w > v.x && r.y < v.y + v.h && r.y + r.h > v.y);
       for (const whole of mergeRects(rects)) {
         for (const r of cutAway(whole, options.voids ?? [])) {
-          out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + options.ceilingM + 0.01, z: r.y + r.h / 2 }, size: { x: r.w, y: 0.02, z: r.h }, material: "ceiling", tag: `${tag}:ceiling` });
+          out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + options.ceilingM + 0.01, z: r.y + r.h / 2 }, size: { x: r.w + 0.02, y: 0.02, z: r.h + 0.02 }, material: "ceiling", tag: `${tag}:ceiling` });
         }
       }
       // Light panels, 60 cm square, on a 2.4 m grid across the room.
@@ -83,6 +95,7 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
     if (kind) pieces.push({ kind, x: it.x, y: it.y, length: it.length, width: it.width, angle: it.angle });
   }
   pieces.push(...tablesBetweenRows(pieces));
+  pieces.push(...chairsAtBareTables(pieces, rooms));
   for (const p of pieces) out.push(...build(p, level, `${tag}:furniture`));
   return out;
 }
@@ -127,6 +140,48 @@ function tablesBetweenRows(pieces: Piece[]): Piece[] {
       used.add(a);
       used.add(b);
       break;
+    }
+  }
+  return out;
+}
+
+/**
+ * A table the sheet draws with its chairs in one stroke — a group table in a
+ * classroom — comes out of the reader as a table alone. Where no chair stands
+ * within reach of a table, chairs are set along its long sides, 60 cm apart,
+ * or round a round one; only where the floor is the room's.
+ */
+function chairsAtBareTables(pieces: Piece[], rooms: PlanRoom[]): Piece[] {
+  const out: Piece[] = [];
+  const chairs = pieces.filter((p) => p.kind === "chair");
+  const free = (x: number, y: number) => rooms.some((r) => inRoom(r, x, y)) && !pieces.some((p) => p.kind !== "chair" && Math.abs(p.x - x) < p.length / 2 && Math.abs(p.y - y) < p.length / 2 && p !== undefined && Math.hypot(p.x - x, p.y - y) < Math.max(p.length, p.width) / 2 - 0.05);
+  for (const t of pieces) {
+    if (t.kind !== "table" && t.kind !== "roundTable") continue;
+    const reach = Math.max(t.length, t.width) / 2 + 0.7;
+    if (chairs.some((c) => Math.hypot(c.x - t.x, c.y - t.y) < reach)) continue;
+    const ca = Math.cos(t.angle);
+    const sa = Math.sin(t.angle);
+    if (t.kind === "roundTable") {
+      const r = t.length / 2 + 0.35;
+      const n = Math.max(4, Math.min(8, Math.round((2 * Math.PI * r) / 0.7)));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const x = t.x + Math.cos(a) * r;
+        const y = t.y + Math.sin(a) * r;
+        if (free(x, y)) out.push({ kind: "chair", x, y, length: 0.46, width: 0.46, angle: a + Math.PI / 2 });
+      }
+      continue;
+    }
+    const n = Math.max(1, Math.floor(t.length / 0.6));
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < n; i++) {
+        const u = -t.length / 2 + (t.length / n) * (i + 0.5);
+        const v = side * (t.width / 2 + 0.3);
+        const x = t.x + u * ca - v * sa;
+        const y = t.y + u * sa + v * ca;
+        // Chairs face the table: their back away from it.
+        if (free(x, y)) out.push({ kind: "chair", x, y, length: 0.46, width: 0.46, angle: t.angle + (side > 0 ? 0 : Math.PI) });
+      }
     }
   }
   return out;
