@@ -38,9 +38,15 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   courtyard: { camera: { position: { x: -4.5, y: 9.9, z: 18.2 }, target: { x: 24, y: 11.4, z: 14.2 }, fovDeg: 56 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
 };
 const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.includes(id));
-const frames = await renderBuildingFrames(chosen.map(([, v]) => ({ ...v, model, width: W, height: H })), { outputWidthPx: 1600 });
+// NOSIGN=1: the same frames with the lettering left off, for the photographic
+// finish — the system draws the lettering back, never the model.
+const nosign = process.env.NOSIGN === "1";
+const frames = await renderBuildingFrames(
+  chosen.map(([, v]) => ({ ...v, camera: nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera, model, width: W, height: H })),
+  { outputWidthPx: 1600 },
+);
 chosen.forEach(([id], i) => {
-  const out = path.join(outDir, `pisga-${id}.jpg`);
+  const out = path.join(outDir, `pisga-${id}${nosign ? "-nosign" : ""}.jpg`);
   fs.writeFileSync(out, frames[i]!);
   console.log(out);
 });
