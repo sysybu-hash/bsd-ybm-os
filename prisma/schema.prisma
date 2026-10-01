@@ -1762,3 +1762,31 @@ model AiUsageEvent {
   @@index([createdAt])
   @@index([organizationId, createdAt])
 }
+
+/// A building booklet made from a permit strip (DWF), step by step: each step
+/// runs within one function's time; its work is in Blob, its place in `state`.
+model BuildingBookletJob {
+  id             String    @id @default(cuid())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  organizationId String
+  userId         String
+  projectId      String?
+  /// The project's name as the person typed it — never read off the strip,
+  /// whose title block sits beside the permit form.
+  name           String
+  /// queued | running | done | failed
+  status         String    @default("queued")
+  /// model | views | apartments | assemble | done
+  stage          String    @default("model")
+  state          Json      @default("{}")
+  /// The uploaded W2D drawing.
+  sourceUrl      String
+  resultUrl      String?
+  error          String?
+  /// A step holds the job until then; another may take it after.
+  lockedUntil    DateTime?
+
+  @@index([organizationId, createdAt])
+  @@index([status, updatedAt])
+}

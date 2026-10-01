@@ -58,6 +58,22 @@ function buildAllowedDevOrigins() {
 }
 
 /** @type {import('next').NextConfig} */
+/** What a building booklet's steps read off disk; see outputFileTracingIncludes. */
+const BUILDING_BOOKLET_FILES = [
+  "./lib/pdf/fonts/**",
+  "./lib/pdf/load-pdf-font-buffers.ts",
+  "./node_modules/three/build/three.module.js",
+  "./node_modules/three/build/three.core.js",
+  "./node_modules/three/examples/jsm/environments/**",
+  "./node_modules/three/examples/jsm/postprocessing/**",
+  "./node_modules/three/examples/jsm/objects/**",
+  "./node_modules/three/examples/jsm/geometries/**",
+  "./node_modules/three/examples/jsm/shaders/**",
+  "./node_modules/three/examples/jsm/math/**",
+  "./node_modules/@sparticuz/chromium/**",
+  ...PDF_READER_FILES,
+];
+
 const nextConfig = {
   outputFileTracingRoot: path.resolve(__dirname),
   allowedDevOrigins: buildAllowedDevOrigins(),
@@ -219,6 +235,12 @@ const nextConfig = {
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
+    // A building booklet's steps draw the building in Chromium with three and
+    // the add-ons its page imports (environment, post-processing, sky, rounded
+    // boxes, and the shaders and noise those import), each apartment with the
+    // flat renderer, and the PDF in the booklet's fonts — all read by path.
+    "/api/projects/building-booklet/[id]/step": BUILDING_BOOKLET_FILES,
+    "/api/cron/building-booklet-step": BUILDING_BOOKLET_FILES,
     "/api/projects/visualize-floorplan/[id]/stills/[stillId]": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",

@@ -13,6 +13,12 @@
     },
     "app/api/projects/visualize-floorplan/export-pdf/route.ts": {
       "maxDuration": 90
+    },
+    "app/api/projects/building-booklet/[id]/step/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/building-booklet-step/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

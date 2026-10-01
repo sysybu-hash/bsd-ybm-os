@@ -38,7 +38,8 @@ export const DWF_BUILDING_STANDARDS = {
   storey: 3.0,
 } as const;
 
-export type DwfBuildingFloor = {
+/** A storey as the booklet needs it: plain data, kept between a job's steps. */
+export type BuildingFloorMeta = {
   id: string;
   level: number;
   height: number;
@@ -50,6 +51,12 @@ export type DwfBuildingFloor = {
   roof: boolean;
   /** Of this sheet's walls, the share that lands on the neighbour's it was laid on (1 for the typical floor). */
   registration: number;
+  /** The floor sheet's size, in page units: its frame, shifted by `shift`, is the plan's. */
+  sheetWidth: number;
+  sheetHeight: number;
+};
+
+export type DwfBuildingFloor = BuildingFloorMeta & {
   /** The floor's sheet, in its own frame: shift it by `shift` (in metres) to land in the building's. */
   sheet: DwfGeometry;
 };
@@ -190,7 +197,7 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
         if (!beyond) prims.push(...railing(rail, bars, `${id}:railing`));
       }
     }
-    out.push({ id, level: f.level, height, units: f.units, shift: { x: shift.x, y: shift.y }, outline, roof: f.roof, registration: shift.score, sheet: f.sheet });
+    out.push({ id, level: f.level, height, units: f.units, shift: { x: shift.x, y: shift.y }, outline, roof: f.roof, registration: shift.score, sheet: f.sheet, sheetWidth: f.sheet.pageWidth, sheetHeight: f.sheet.pageHeight });
   });
 
   // The roof over the highest storey (not over a stair head standing on it).

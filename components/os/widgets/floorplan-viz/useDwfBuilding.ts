@@ -100,5 +100,5 @@ export function useDwfBuilding(t: TFn) {
     return { blobUrl: url, unit: String(picked.unit), ...(picked.level ? { level: picked.level } : {}) };
   }, [blobUrl, choice, drawing, t, units]);
 
-  return { isDwf: drawing !== null, units, choice, setChoice, reading, prepare, runFields, reset };
+  return { isDwf: drawing !== null, drawing, units, choice, setChoice, reading, prepare, runFields, reset };
 }

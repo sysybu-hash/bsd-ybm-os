@@ -78,3 +78,40 @@ export function dwfFlatForUnit(
   const built = flatFromDwfFloor(floor, chosen.sheet, unit, readDwfTerraces(floor, chosen.sheet));
   return built ? { ...built, sheet: chosen.sheet } : null;
 }
+
+/**
+ * Several apartments, each floor sheet read once for all of its own: reading a
+ * floor is the slow part, seconds a sheet, and a floor carries four flats.
+ * `onFlat` is awaited before the next floor is read, so a caller with a time
+ * budget can stop between floors by answering false.
+ */
+export async function forEachDwfFlat(
+  strip: DwfGeometry,
+  wanted: Array<{ unit: number; level: "lower" | "upper" | null }>,
+  onFlat: (unit: { unit: number; level: "lower" | "upper" | null }, flat: (DwfFlat & { sheet: DwfGeometry }) | null) => Promise<boolean | void>,
+): Promise<void> {
+  const sheets = floorSheets(strip);
+  const seen = new Map<number, number>();
+  const plan = sheets.map((s) => ({
+    s,
+    units: s.units.map((unit) => {
+      const count = (seen.get(unit) ?? 0) + 1;
+      seen.set(unit, count);
+      return { unit, nth: count };
+    }),
+  }));
+  const levelOf = (unit: number, nth: number): "lower" | "upper" | null => ((seen.get(unit) ?? 0) > 1 ? (nth > 1 ? "upper" : "lower") : null);
+  for (const { s, units } of plan) {
+    const here = units.filter(({ unit, nth }) => wanted.some((w) => w.unit === unit && w.level === levelOf(unit, nth)));
+    if (here.length === 0) continue;
+    const floor = readDwfFloor(s.sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: unitMarks(s.sheet.texts) });
+    const terraces = readDwfTerraces(floor, s.sheet);
+    let go = true;
+    for (const { unit, nth } of here) {
+      const built = flatFromDwfFloor(floor, s.sheet, unit, terraces);
+      const answer = await onFlat({ unit, level: levelOf(unit, nth) }, built ? { ...built, sheet: s.sheet } : null);
+      if (answer === false) go = false;
+    }
+    if (!go) return;
+  }
+}

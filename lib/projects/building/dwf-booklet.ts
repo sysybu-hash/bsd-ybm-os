@@ -1,40 +1,65 @@
 import sharp from "sharp";
 
 import { buildBuildingBookletHtml, type BookletImage, type BuildingBookletPlate, type BuildingBookletSheet } from "@/lib/projects/building/booklet-html";
-import { buildingFromDwf, DWF_BUILDING_STANDARDS, type DwfBuilding } from "@/lib/projects/building/from-dwf";
+import { buildingFromDwf, DWF_BUILDING_STANDARDS, type BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
 import { dwfBuildingViews, levelText } from "@/lib/projects/building/dwf-views";
+import type { BuildingModel } from "@/lib/projects/building/model";
 import { renderBuildingFrames } from "@/lib/projects/building/renderer";
-import { dwfFlatForUnit, listDwfUnits } from "@/lib/projects/dwf-building";
-import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
+import { forEachDwfFlat, listDwfUnits, readDwfStrip } from "@/lib/projects/dwf-building";
+import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
+import { floorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import { dwfSheetJpeg } from "@/lib/projects/floorplan-render-dwf";
 import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
-import { floorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
 import { splitStrip } from "@/lib/projects/sheet-split";
-import { sheetGeometry } from "@/lib/projects/floorplan-dwf";
 
 /**
- * A building's booklet from its permit strip (DWF), with nothing entered by
- * hand but the project's name.
+ * A building's booklet from its permit strip (DWF), in stages a job can run
+ * one function call at a time.
  *
- * The building is stood up from the strip (buildingFromDwf) and drawn from
- * cameras solved from its size. Each floor sheet is paired with its storey
- * drawn from above in the sheet's own frame — the same picture, pixel for
- * pixel — and each elevation with the building drawn square to that face.
- * Every apartment follows as a plate of its own, the measured render a flat
- * gets from its sales sheet. Nothing here calls an image model: the finish
- * is a separate, paid step.
+ * The whole takes eight minutes and a function five, so the work is cut where
+ * it can be resumed: the model (the strip read and the building stood up,
+ * with every sheet's picture), the views (drawn a few at a time), the
+ * apartments (a floor at a time) and the assembly. Each stage leaves its
+ * pictures in a store and its place in a plain state, and runs until it is
+ * done or its time is up. The script runs every stage in one go against a
+ * store in memory; the platform's job, one stage a call, against Blob.
+ *
+ * Each floor sheet is paired with its storey drawn from above in the sheet's
+ * own frame — the same picture, pixel for pixel — and each elevation with
+ * the face. Nothing here calls an image model.
  */
-export type DwfBookletOptions = {
-  projectName: string;
+export type BookletStage = "model" | "views" | "apartments" | "assemble" | "done";
+
+export type BookletApartment = { key: string; label: string; levelM: number; areaM2: number; bedrooms: number; spaces: number; terraces: number };
+
+export type BookletState = {
   subtitle?: string;
-  /** The practice or the submission the strip belongs to, as the cover credits it. */
-  credit?: string;
-  styleId?: string;
-  onProgress?: (step: string) => void;
+  floors?: BuildingFloorMeta[];
+  extent?: BuildingModel["extent"];
+  /** Elevations the strip draws, by view id, in the order the booklet shows them. */
+  elevations?: string[];
+  units?: Array<{ unit: number; level: "lower" | "upper" | null; levelM: number }>;
+  viewsDone?: string[];
+  apartments?: BookletApartment[];
+  /** What each stored picture is called, and where the store put it. */
+  artefacts?: Record<string, string>;
 };
 
-export type DwfBooklet = { html: string; building: DwfBuilding; pages: number };
+export type ArtefactStore = {
+  /** Keep `data`; answers where, for get(). */
+  put(name: string, data: Buffer, contentType: string): Promise<string>;
+  get(ref: string): Promise<Buffer>;
+};
+
+const ELEVATIONS: Array<[string, string]> = [
+  ["elev-south", "חזית דרומית"],
+  ["elev-east", "חזית מזרחית"],
+  ["elev-north", "חזית צפונית"],
+  ["elev-west", "חזית מערבית"],
+];
+
+const unitKey = (u: { unit: number; level: "lower" | "upper" | null }) => (u.level ? `${u.unit}-${u.level}` : String(u.unit));
 
 const jpeg = async (buf: Buffer, width = 2600): Promise<BookletImage> => ({
   mimeType: "image/jpeg",
@@ -46,117 +71,203 @@ function drawnBox(g: DwfGeometry): { x: number; y: number; width: number; height
   const xs = g.segments.flatMap((s) => [s.x1, s.x2]).sort((a, b) => a - b);
   const ys = g.segments.flatMap((s) => [s.y1, s.y2]).sort((a, b) => a - b);
   const at = (arr: number[], q: number) => arr[Math.min(arr.length - 1, Math.max(0, Math.round(q * (arr.length - 1))))] ?? 0;
-  const x0 = at(xs, 0.02);
-  const x1 = at(xs, 0.98);
-  const y0 = at(ys, 0.02);
-  const y1 = at(ys, 0.98);
+  const [x0, x1, y0, y1] = [at(xs, 0.02), at(xs, 0.98), at(ys, 0.02), at(ys, 0.98)];
   const pad = 0.04 * Math.max(x1 - x0, y1 - y0);
   return { x: x0 - pad, y: y0 - pad, width: x1 - x0 + 2 * pad, height: y1 - y0 + 2 * pad };
 }
 
-export async function buildDwfBuildingBooklet(strip: DwfGeometry, options: DwfBookletOptions): Promise<DwfBooklet> {
-  const say = options.onProgress ?? (() => undefined);
-  say("reading the building");
-  const building = buildingFromDwf(strip, { name: options.projectName });
-  const views = dwfBuildingViews(building);
-  say(`drawing ${views.length} views`);
-  const frames = await renderBuildingFrames(
-    views.map((v) => ({ ...v.payload, model: building.model })),
-    { outputWidthPx: 2000 },
-  );
-  const frameOf = (id: string) => frames[views.findIndex((v) => v.id === id)];
+export type StageInput = {
+  stage: BookletStage;
+  state: BookletState;
+  projectName: string;
+  source: () => Promise<Buffer>;
+  store: ArtefactStore;
+  /** Epoch ms the call must hand back by; a stage stops at a resumable point before it. */
+  deadline: number;
+  styleId?: string;
+  say?: (step: string) => void;
+};
 
-  // Sheets: each floor beside its storey from above; each elevation beside the face.
+/** Where the job stands after a call, and the booklet's page once it is assembled. */
+export type StageResult = { stage: BookletStage; state: BookletState; html?: string };
+
+export async function runBookletStage(input: StageInput): Promise<StageResult> {
+  const say = input.say ?? (() => undefined);
+  const state: BookletState = { ...input.state, artefacts: { ...(input.state.artefacts ?? {}) } };
+  const keep = async (name: string, data: Buffer, type = "image/jpeg") => {
+    state.artefacts![name] = await input.store.put(name, data, type);
+  };
+  const strip = async () => {
+    const s = readDwfStrip(await input.source());
+    if (!s) throw new Error("לא ניתן לקרוא את קובץ ה-DWF");
+    return s;
+  };
+
+  if (input.stage === "model") {
+    say("reading the building");
+    const s = await strip();
+    const building = buildingFromDwf(s, { name: input.projectName });
+    await keep("model.json", Buffer.from(JSON.stringify(building.model)), "application/json");
+    for (const f of building.floors) {
+      if (!f.roof) await keep(`sheet-${f.id}.jpg`, await dwfSheetJpeg(f.sheet, { x: 0, y: 0, width: f.sheet.pageWidth, height: f.sheet.pageHeight }, 2400));
+    }
+    const drawn = splitStrip(s);
+    state.elevations = [];
+    for (const [id, title] of ELEVATIONS) {
+      const sheet = drawn.find((d) => d.kind === "elevation" && (d.title ?? "").includes(title));
+      if (!sheet) continue;
+      const g = sheetGeometry(s, sheet.box);
+      await keep(`sheet-${id}.jpg`, await dwfSheetJpeg(g, drawnBox(g), 2400));
+      state.elevations.push(id);
+    }
+    state.floors = building.floors.map(({ sheet: _sheet, ...meta }) => meta);
+    state.extent = building.model.extent;
+    state.units = listDwfUnits(s).map((u) => ({ unit: u.unit, level: u.level, levelM: u.levelM }));
+    state.viewsDone = [];
+    state.apartments = [];
+    return { stage: "views", state };
+  }
+
+  if (input.stage === "views") {
+    const views = dwfBuildingViews({ floors: state.floors ?? [], model: { extent: state.extent! } });
+    const pending = views.filter((v) => !(state.viewsDone ?? []).includes(v.id));
+    const model = JSON.parse((await input.store.get(state.artefacts!["model.json"]!)).toString("utf8")) as BuildingModel;
+    // A few at a time: one browser for each batch, and the deadline checked between them.
+    for (let i = 0; i < pending.length; i += 3) {
+      if (Date.now() > input.deadline) return { stage: "views", state };
+      const batch = pending.slice(i, i + 3);
+      say(`drawing ${batch.map((v) => v.id).join(", ")}`);
+      const frames = await renderBuildingFrames(batch.map((v) => ({ ...v.payload, model })), { outputWidthPx: 2000 });
+      for (let k = 0; k < batch.length; k++) {
+        await keep(`view-${batch[k]!.id}.jpg`, frames[k]!);
+        state.viewsDone = [...(state.viewsDone ?? []), batch[k]!.id];
+      }
+    }
+    return { stage: "apartments", state };
+  }
+
+  if (input.stage === "apartments") {
+    const done = new Set((state.apartments ?? []).map((a) => a.key));
+    const wanted = (state.units ?? []).filter((u) => !done.has(unitKey(u)));
+    const style = resolveFloorplanVizStyle(input.styleId ?? "haredi_classic");
+    let finished = true;
+    await forEachDwfFlat(await strip(), wanted, async (u, flat) => {
+      const levelM = (state.units ?? []).find((w) => w.unit === u.unit && w.level === u.level)?.levelM ?? 0;
+      const label = `דירה ${u.unit}${u.level === "upper" ? " — קומה עליונה" : u.level === "lower" ? " — קומה תחתונה" : ""}`;
+      const entry: BookletApartment = { key: unitKey(u), label, levelM, areaM2: 0, bedrooms: 0, spaces: 0, terraces: 0 };
+      if (flat) {
+        say(`drawing ${label}`);
+        const still = await renderMeasuredStill({
+          geometry: floorplanGeometryPayload(flat.flat, flat.rooms, { labelled: [], page: { width: flat.sheet.pageWidth, height: flat.sheet.pageHeight } }),
+          styleKit: style,
+          unitTitle: label,
+          areaM2: flat.flat.floorM2,
+          deadlineMs: Date.now() + 120_000,
+          selected: true,
+        });
+        if (still) await keep(`unit-${entry.key}.jpg`, Buffer.from(still.base64, "base64"));
+        entry.areaM2 = Math.round(flat.flat.floorM2 * 10) / 10;
+        entry.bedrooms = flat.rooms.filter((r) => r.kind === "bedroom" || r.kind === "mmd").length;
+        entry.spaces = flat.rooms.length;
+        entry.terraces = flat.flat.terraces.length;
+      }
+      state.apartments = [...(state.apartments ?? []), entry];
+      // Stop between floors once the time is nearly up; the next call goes on.
+      if (Date.now() > input.deadline) {
+        finished = false;
+        return false;
+      }
+    });
+    return { stage: finished ? "assemble" : "apartments", state };
+  }
+
+  if (input.stage === "assemble") {
+    say("assembling the booklet");
+    return { stage: "done", state, html: await assembleHtml(input.projectName, state, input.store) };
+  }
+  return { stage: "done", state };
+}
+
+async function assembleHtml(projectName: string, state: BookletState, store: ArtefactStore): Promise<string> {
+  const a = state.artefacts ?? {};
+  const image = async (name: string) => (a[name] ? jpeg(await store.get(a[name]!)) : null);
+  const floors = (state.floors ?? []).filter((f) => !f.roof);
   const sheets: BuildingBookletSheet[] = [];
   let no = 0;
-  for (const f of building.floors) {
-    const render = frameOf(`plan-${f.id}`);
-    if (!render) continue;
-    const box = { x: 0, y: 0, width: f.sheet.pageWidth, height: f.sheet.pageHeight };
+  for (const f of floors) {
+    const [sheet, render] = [await image(`sheet-${f.id}.jpg`), await image(`view-plan-${f.id}.jpg`)];
+    if (!sheet || !render) continue;
     sheets.push({
       no: ++no,
       title: f.units.length ? `קומה ${levelText(f.level)} — דירות ${f.units.join(", ")}` : `קומה ${levelText(f.level)}`,
       caption: `תכנית הקומה והקומה בהדמיה, מלמעלה, באותה מסגרת ובאותו קנה מידה. ${Math.round(f.registration * 100)}% מקירות הגיליון מתיישבים על הקומה הסמוכה.`,
-      sheet: await jpeg(await dwfSheetJpeg(f.sheet, box, 2400)),
-      render: await jpeg(render),
+      sheet,
+      render,
     });
   }
-  const elevations: Array<[string, string]> = [
-    ["elev-south", "חזית דרומית"],
-    ["elev-east", "חזית מזרחית"],
-    ["elev-north", "חזית צפונית"],
-    ["elev-west", "חזית מערבית"],
-  ];
-  const stripSheets = splitStrip(strip);
-  for (const [id, title] of elevations) {
-    const render = frameOf(id);
-    const drawn = stripSheets.find((s) => s.kind === "elevation" && (s.title ?? "").includes(title));
-    if (!render || !drawn) continue;
-    const g = sheetGeometry(strip, drawn.box);
-    sheets.push({
-      no: ++no,
-      title,
-      caption: "החזית בגיליון, והבניין בהדמיה במבט ישר אל אותה חזית.",
-      sheet: await jpeg(await dwfSheetJpeg(g, drawnBox(g), 2400)),
-      render: await jpeg(render),
-    });
+  for (const id of state.elevations ?? []) {
+    const [sheet, render] = [await image(`sheet-${id}.jpg`), await image(`view-${id}.jpg`)];
+    const title = ELEVATIONS.find(([e]) => e === id)?.[1] ?? id;
+    if (sheet && render) sheets.push({ no: ++no, title, caption: "החזית בגיליון, והבניין בהדמיה במבט ישר אל אותה חזית.", sheet, render });
   }
 
-  // Plates: the aerials, then every apartment.
   const plates: BuildingBookletPlate[] = [];
   for (const [id, title] of [["aerial-se", "מבט על מדרום־מזרח"], ["aerial-nw", "מבט על מצפון־מערב"]] as const) {
-    const image = frameOf(id);
-    if (image) plates.push({ kicker: "מבט חוץ", title, caption: "הבניין כולו, כפי שנבנה מתוכניות הקומות, המפלסים והחתכים שבגרמושקה.", image: await jpeg(image) });
+    const img = await image(`view-${id}.jpg`);
+    if (img) plates.push({ kicker: "מבט חוץ", title, caption: "הבניין כולו, כפי שנבנה מתוכניות הקומות, המפלסים והחתכים שבגרמושקה.", image: img });
   }
-  const style = resolveFloorplanVizStyle(options.styleId ?? "haredi_classic");
-  const rooms: Array<{ name: string; floor: string; area: string }> = [];
-  const units = listDwfUnits(strip);
-  say(`drawing ${units.length} apartments`);
-  for (const u of units) {
-    const flat = dwfFlatForUnit(strip, u.unit, u.level);
-    if (!flat) continue;
-    const label = `דירה ${u.unit}${u.level === "upper" ? " — קומה עליונה" : u.level === "lower" ? " — קומה תחתונה" : ""}`;
-    const bedrooms = flat.rooms.filter((r) => r.kind === "bedroom" || r.kind === "mmd").length;
-    rooms.push({ name: label, floor: `<span dir="ltr">${levelText(u.levelM)}</span>`, area: `${flat.flat.floorM2.toFixed(1)} מ"ר` });
-    const still = await renderMeasuredStill({
-      geometry: floorplanGeometryPayload(flat.flat, flat.rooms, { labelled: [], page: { width: flat.sheet.pageWidth, height: flat.sheet.pageHeight } }),
-      styleKit: style,
-      unitTitle: label,
-      areaM2: flat.flat.floorM2,
-      deadlineMs: Date.now() + 120_000,
-      selected: true,
-    });
-    if (!still) continue;
-    plates.push({
-      kicker: "דירות",
-      title: label,
-      caption: `${bedrooms} חדרי שינה (כולל ממ"ד), ${flat.rooms.length} חללים, ${flat.flat.floorM2.toFixed(1)} מ"ר${flat.flat.terraces.length ? `, ${flat.flat.terraces.length === 1 ? "מרפסת" : `${flat.flat.terraces.length} מרפסות`}` : ""}.`,
-      image: await jpeg(Buffer.from(still.base64, "base64")),
-    });
+  const apartments = state.apartments ?? [];
+  for (const apt of apartments) {
+    const img = await image(`unit-${apt.key}.jpg`);
+    if (!img) continue;
+    const terraces = apt.terraces ? `, ${apt.terraces === 1 ? "מרפסת" : `${apt.terraces} מרפסות`}` : "";
+    plates.push({ kicker: "דירות", title: apt.label, caption: `${apt.bedrooms} חדרי שינה (כולל ממ"ד), ${apt.spaces} חללים, ${apt.areaM2.toFixed(1)} מ"ר${terraces}.`, image: img });
   }
 
-  const storeys = building.floors.filter((f) => !f.roof);
-  const top = Math.max(...storeys.map((f) => f.level + f.height));
-  const hero = frameOf("hero") ?? frameOf("aerial-se");
+  const top = Math.max(...floors.map((f) => f.level + f.height));
+  const hero = (await image("view-hero.jpg")) ?? (await image("view-aerial-se.jpg"));
   if (!hero) throw new Error("the building could not be drawn");
-  const html = buildBuildingBookletHtml({
-    projectName: options.projectName,
-    subtitle: options.subtitle ?? "",
-    architect: options.credit ?? "",
-    hero: await jpeg(hero),
+  return buildBuildingBookletHtml({
+    projectName,
+    subtitle: state.subtitle ?? "",
+    architect: "",
+    hero,
     kpis: [
-      { label: "קומות", value: String(storeys.length) },
-      { label: "דירות", value: String(new Set(units.map((u) => u.unit)).size) },
+      { label: "קומות", value: String(floors.length) },
+      { label: "דירות", value: String(new Set(apartments.map((x) => x.key.replace(/-.*$/, ""))).size) },
       { label: "גובה", value: `<span dir="ltr">${levelText(top)}</span>` },
       { label: "גיליונות", value: String(sheets.length) },
     ],
     paragraphs: [
-      `הבניין נבנה ישירות מגרמושקת ההיתר: כל תוכנית קומה נקראה לקירות, לפתחים, לחדרים ולדירות, המפלס של כל קומה נלקח מהמפלסים שמסומנים עליה, והקומות הונחו זו על זו לפי הקירות שחוזרים בכולן — חדר המדרגות והמעלית.`,
+      "הבניין נבנה ישירות מגרמושקת ההיתר: כל תוכנית קומה נקראה לקירות, לפתחים, לחדרים ולדירות, המפלס של כל קומה נלקח מהמפלסים שמסומנים עליה, והקומות הונחו זו על זו לפי הקירות שחוזרים בכולן — חדר המדרגות והמעלית.",
       `מה שהתוכניות אינן משרטטות נלקח מתקנים מקובלים ומצוין כאן: אדן חלון ${DWF_BUILDING_STANDARDS.window.sill.toFixed(2)} מ' ומשקוף ${DWF_BUILDING_STANDARDS.window.head.toFixed(2)} מ', דלת למרפסת מזוגגת עד הרצפה, מעקה מרפסת בגובה ${DWF_BUILDING_STANDARDS.railing.toFixed(2)} מ' — מעקה סורגים כשהחזיתות משרטטות סורגים — ומעקה גג בגובה ${DWF_BUILDING_STANDARDS.parapet.toFixed(2)} מ'.`,
     ],
-    rooms,
+    rooms: apartments.map((x) => ({ name: x.label, floor: `<span dir="ltr">${levelText(x.levelM)}</span>`, area: `${x.areaM2.toFixed(1)} מ"ר` })),
     sheets,
     plates,
   });
-  return { html, building, pages: 1 + sheets.length * 3 + plates.length };
+}
+
+/** Every stage in one go, against a store in memory: the script's way. */
+export async function runWholeBooklet(input: Omit<StageInput, "stage" | "state" | "store" | "deadline"> & { subtitle?: string }): Promise<{ html: string; state: BookletState }> {
+  const memory = new Map<string, Buffer>();
+  const store: ArtefactStore = {
+    put: async (name, data) => {
+      memory.set(name, data);
+      return name;
+    },
+    get: async (ref) => {
+      const hit = memory.get(ref);
+      if (!hit) throw new Error(`no artefact ${ref}`);
+      return hit;
+    },
+  };
+  let stage: BookletStage = "model";
+  let state: BookletState = { subtitle: input.subtitle };
+  for (;;) {
+    const r = await runBookletStage({ ...input, stage, state, store, deadline: Infinity });
+    stage = r.stage;
+    state = r.state;
+    if (r.html) return { html: r.html, state };
+  }
 }

@@ -1,5 +1,6 @@
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
-import type { DwfBuilding, DwfBuildingFloor } from "@/lib/projects/building/from-dwf";
+import type { BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
+import type { BuildingModel } from "@/lib/projects/building/model";
 import type { BuildingRenderPayload } from "@/lib/projects/building/render-page";
 
 /** A view of the building: what the booklet calls it, and the frame to draw. */
@@ -13,7 +14,10 @@ export type BuildingView = { id: string; title: string; payload: Omit<BuildingRe
  * projection square to their faces, and each storey from above with the
  * floors over it cut away. North is -z, so the south elevation looks north.
  */
-export function dwfBuildingViews(building: DwfBuilding, frame = { width: 2400, height: 1500 }): BuildingView[] {
+export function dwfBuildingViews(
+  building: { floors: BuildingFloorMeta[]; model: { extent: BuildingModel["extent"] } },
+  frame = { width: 2400, height: 1500 },
+): BuildingView[] {
   const pts = building.floors.flatMap((f) => f.outline);
   const xs = pts.map(([x]) => x);
   const zs = pts.map(([, z]) => z);
@@ -109,9 +113,9 @@ export function levelText(level: number): string {
  * sheet's middle moved into the building's frame, its half width the sheet's,
  * and its height the sheet's proportion of the width.
  */
-export function planPayload(f: DwfBuildingFloor, widthPx: number): Omit<BuildingRenderPayload, "model"> {
-  const w = f.sheet.pageWidth / DWF_FLOOR_UNITS_PER_METRE;
-  const h = f.sheet.pageHeight / DWF_FLOOR_UNITS_PER_METRE;
+export function planPayload(f: BuildingFloorMeta, widthPx: number): Omit<BuildingRenderPayload, "model"> {
+  const w = f.sheetWidth / DWF_FLOOR_UNITS_PER_METRE;
+  const h = f.sheetHeight / DWF_FLOOR_UNITS_PER_METRE;
   const cx = w / 2 + f.shift.x;
   const cz = h / 2 + f.shift.y;
   return {

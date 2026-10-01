@@ -9,6 +9,7 @@ import FloorplanVizLibrary from "@/components/os/widgets/floorplan-viz/Floorplan
 import FloorplanVizResults from "@/components/os/widgets/floorplan-viz/FloorplanVizResults";
 import FloorplanVizStylePicker from "@/components/os/widgets/floorplan-viz/FloorplanVizStylePicker";
 import FloorplanVizDwfUnitPicker from "@/components/os/widgets/floorplan-viz/FloorplanVizDwfUnitPicker";
+import FloorplanVizBuildingBooklet from "@/components/os/widgets/floorplan-viz/FloorplanVizBuildingBooklet";
 import { OsButton } from "@/components/os/ui";
 import { useFloorplanVizRun } from "@/components/os/widgets/floorplan-viz/useFloorplanVizRun";
 
@@ -182,6 +183,9 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
               onDelete={(id) => void deleteRun(id)}
             />
           </section>
+          {dwf.drawing && !result ? (
+            <FloorplanVizBuildingBooklet key={dwf.drawing.name} t={t} drawing={dwf.drawing} projectId={projectId || undefined} />
+          ) : null}
           <div role="radiogroup" aria-label={t("workspaceWidgets.floorplanViz.scopeLabel")} className="grid gap-2 sm:grid-cols-2">
             <button
               type="button"
