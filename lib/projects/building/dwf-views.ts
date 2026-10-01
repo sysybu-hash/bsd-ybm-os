@@ -1,6 +1,7 @@
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import type { BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
 import type { BuildingModel } from "@/lib/projects/building/model";
+import type { ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import type { BuildingRenderPayload } from "@/lib/projects/building/render-page";
 
 /** A view of the building: what the booklet calls it, and the frame to draw. */
@@ -17,6 +18,8 @@ export type BuildingView = { id: string; title: string; payload: Omit<BuildingRe
 export function dwfBuildingViews(
   building: { floors: BuildingFloorMeta[]; model: { extent: BuildingModel["extent"] } },
   frame = { width: 2400, height: 1500 },
+  /** Each elevation's frame as its sheet draws it, by view id: the render is drawn in the same one. */
+  elevationFrames: Record<string, Pick<ElevationFrame, "widthM" | "bottomM" | "topM">> = {},
 ): BuildingView[] {
   const pts = building.floors.flatMap((f) => f.outline);
   const xs = pts.map(([x]) => x);
@@ -67,32 +70,42 @@ export function dwfBuildingViews(
   });
   aerial("aerial-nw", "מבט על — צפון מערב", -1, -1, 250);
 
-  // Elevations: square to the face, parallel, the whole height and width in frame.
+  // Elevations: square to the face, parallel. Where the sheet's frame is
+  // known the render is drawn in it — the same metres across and the same
+  // levels top and bottom — so the two are the same picture; otherwise the
+  // whole building is framed. The camera stands a building and a half off:
+  // a parallel view looks the same from any distance, and four spans out
+  // stood it in the sky's haze, which greyed the whole face.
   const elevation = (id: string, title: string, dir: { x: number; z: number }, faceWidth: number, azimuthDeg: number) => {
-    const half = Math.max((faceWidth / 2) * 1.12, ((height / 2) * 1.12) * aspect);
-    const far = span * 4;
+    const sheet = elevationFrames[id];
+    const half = sheet ? sheet.widthM / 2 : Math.max((faceWidth / 2) * 1.12, ((height / 2) * 1.12) * aspect);
+    const midY = sheet ? (sheet.bottomM + sheet.topM) / 2 : ground + height / 2;
+    const heightPx = sheet ? Math.round((frame.width * (sheet.topM - sheet.bottomM)) / sheet.widthM) : frame.height;
+    const far = span * 1.6;
     views.push({
       id,
       title,
       payload: {
         ...base,
+        height: heightPx,
         camera: {
-          position: { x: cx + dir.x * far, y: ground + height / 2, z: cz + dir.z * far },
-          target: { x: cx, y: ground + height / 2, z: cz },
+          position: { x: cx + dir.x * far, y: midY, z: cz + dir.z * far },
+          target: { x: cx, y: midY, z: cz },
           fovDeg: 30,
           orthoHalfWidth: half,
           groundBand: 0,
         },
-        sun: { azimuthDeg, elevationDeg: 38 },
-        // Square to the sun's face, pale stone washes out at the plates' exposure.
+        // Raking, 45° across the face, so terraces and reveals cast their shadows.
+        sun: { azimuthDeg, elevationDeg: 32 },
+        // Square on, pale stone takes more light than the plates' exposure allows.
         exposure: 0.5,
       },
     });
   };
-  elevation("elev-south", "חזית דרומית", { x: 0, z: 1 }, width, 180);
-  elevation("elev-east", "חזית מזרחית", { x: 1, z: 0 }, depth, 110);
-  elevation("elev-north", "חזית צפונית", { x: 0, z: -1 }, width, 300);
-  elevation("elev-west", "חזית מערבית", { x: -1, z: 0 }, depth, 250);
+  elevation("elev-south", "חזית דרומית", { x: 0, z: 1 }, width, 225);
+  elevation("elev-east", "חזית מזרחית", { x: 1, z: 0 }, depth, 135);
+  elevation("elev-north", "חזית צפונית", { x: 0, z: -1 }, width, 315);
+  elevation("elev-west", "חזית מערבית", { x: -1, z: 0 }, depth, 225);
 
   // Each storey from above, the building over it cut away — framed on its
   // own sheet, so the render and the drawing are the same picture.

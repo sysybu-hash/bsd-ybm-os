@@ -126,6 +126,8 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
   // The frame: the typical floor, the storey whose sheet names the most flats.
   const ref = [...floors].sort((a, b) => b.units.length - a.units.length || wallCount(b) - wallCount(a))[0]!;
   const top = topLevel(strip);
+  const gaps = floors.slice(1).map((f, i) => f.level - floors[i]!.level).filter((h) => h > 2 && h < 6).sort((a, b) => a - b);
+  const storey = gaps[gaps.length >> 1] ?? DWF_BUILDING_STANDARDS.storey;
   const bars = railingOfBars(strip);
 
   // Each floor laid on its neighbour nearer the typical one, outwards from it:
@@ -148,7 +150,10 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
   floors.forEach((f, i) => {
     const shift = shifts.get(f)!;
     const next = floors[i + 1];
-    const height = next ? next.level - f.level : top != null && top > f.level + 1.5 ? top - f.level : DWF_BUILDING_STANDARDS.storey;
+    // The top storey is as tall as the storeys under it. The sections' highest
+    // mark is the top only when nothing stands on the roof: here it was the
+    // stair head's, +36, and the top floor came out 6.5 m tall.
+    const height = next ? next.level - f.level : top != null && top > f.level + 1.5 ? Math.min(top - f.level, storey) : storey;
     const id = `floor-${i}`;
     const m = f.floor.cm / 100;
     const localOutline: Outline = traceOutline(f.footprint).map(([x, y]) => [x * m, y * m]);

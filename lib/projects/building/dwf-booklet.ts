@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { buildBuildingBookletHtml, type BookletImage, type BuildingBookletPlate, type BuildingBookletSheet } from "@/lib/projects/building/booklet-html";
 import { buildingFromDwf, DWF_BUILDING_STANDARDS, type BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
 import { dwfBuildingViews, levelText } from "@/lib/projects/building/dwf-views";
+import { elevationFrame, type ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import type { BuildingModel } from "@/lib/projects/building/model";
 import { renderBuildingFrames } from "@/lib/projects/building/renderer";
 import { forEachDwfFlat, listDwfUnits, readDwfStrip } from "@/lib/projects/dwf-building";
@@ -39,6 +40,8 @@ export type BookletState = {
   extent?: BuildingModel["extent"];
   /** Elevations the strip draws, by view id, in the order the booklet shows them. */
   elevations?: string[];
+  /** Each elevation's frame on its sheet, which its render is drawn in. */
+  elevationFrames?: Record<string, Pick<ElevationFrame, "widthM" | "bottomM" | "topM">>;
   units?: Array<{ unit: number; level: "lower" | "upper" | null; levelM: number }>;
   viewsDone?: string[];
   apartments?: BookletApartment[];
@@ -113,11 +116,14 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
     }
     const drawn = splitStrip(s);
     state.elevations = [];
+    state.elevationFrames = {};
     for (const [id, title] of ELEVATIONS) {
       const sheet = drawn.find((d) => d.kind === "elevation" && (d.title ?? "").includes(title));
       if (!sheet) continue;
       const g = sheetGeometry(s, sheet.box);
-      await keep(`sheet-${id}.jpg`, await dwfSheetJpeg(g, drawnBox(g), 2400));
+      const frame = elevationFrame(g);
+      await keep(`sheet-${id}.jpg`, await dwfSheetJpeg(g, frame?.box ?? drawnBox(g), 2400));
+      if (frame) state.elevationFrames[id] = { widthM: frame.widthM, bottomM: frame.bottomM, topM: frame.topM };
       state.elevations.push(id);
     }
     state.floors = building.floors.map(({ sheet: _sheet, ...meta }) => meta);
@@ -129,7 +135,7 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
   }
 
   if (input.stage === "views") {
-    const views = dwfBuildingViews({ floors: state.floors ?? [], model: { extent: state.extent! } });
+    const views = dwfBuildingViews({ floors: state.floors ?? [], model: { extent: state.extent! } }, undefined, state.elevationFrames ?? {});
     const pending = views.filter((v) => !(state.viewsDone ?? []).includes(v.id));
     const model = JSON.parse((await input.store.get(state.artefacts!["model.json"]!)).toString("utf8")) as BuildingModel;
     // A few at a time: one browser for each batch, and the deadline checked between them.
