@@ -1,15 +1,15 @@
 import { floorPrimitives, insidePolygon, parapet, slab, inset, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
-import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
+import type { BuildingMaterial, BuildingModel, Primitive } from "@/lib/projects/building/model";
 import { findOpenings, type Footprint } from "@/lib/projects/building/plan-openings";
-import { bandsOf, type PlanWalls } from "@/lib/projects/building/plan-walls";
-import { emptyMask, label, traceOutline } from "@/lib/projects/building/raster";
-import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
-import { readDwfFloor } from "@/lib/projects/dwf-floor";
+import type { PlanWalls } from "@/lib/projects/building/plan-walls";
+import { emptyMask, traceOutline } from "@/lib/projects/building/raster";
 import { readDwfTerraces } from "@/lib/projects/dwf-terrace";
+import { paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
 import { furnishedFlats, railing, railingOfBars, register, topLevel, type ReadFloor } from "@/lib/projects/building/from-dwf-parts";
-import { levelMarks } from "@/lib/projects/floor-split";
-import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
-import { splitStrip, unitMarks } from "@/lib/projects/sheet-split";
+import { faceTheWeather, readFloorSheet } from "@/lib/projects/building/from-dwf-sheet";
+export { sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
+import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
+import { splitStrip } from "@/lib/projects/sheet-split";
 
 /**
  * A building stood up from its permit strip (DWF), with nothing written down
@@ -61,46 +61,36 @@ export type DwfBuildingFloor = BuildingFloorMeta & {
   sheet: DwfGeometry;
 };
 
-export type DwfBuilding = { model: BuildingModel; floors: DwfBuildingFloor[] };
+export type DwfBuilding = {
+  model: BuildingModel;
+  floors: DwfBuildingFloor[];
+  /** Which hatch the elevations draw each material in, and how many walls took one. */
+  facade: { painted: number; key: Partial<Record<string, BuildingMaterial>> };
+  /** The window its elevations draw, and how many windows it was measured on (0: the standard). */
+  window: { sill: number; head: number; measured: number };
+};
 
 /** The level most often marked on a sheet, to the centimetre: its own floor's. */
-export function sheetLevel(sheet: DwfGeometry): number | null {
-  const counts = new Map<number, number>();
-  for (const mark of levelMarks(sheet.texts)) {
-    // Absolute heights (the survey's 923.20) are not a floor's.
-    if (Math.abs(mark.value) > 200) continue;
-    const v = Math.round(mark.value * 100) / 100;
-    counts.set(v, (counts.get(v) ?? 0) + 1);
-  }
-  const best = [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0];
-  return best ? best[0] : null;
+
+/**
+ * The middle of the building as its elevations measure it: across the
+ * storeys above the ground. A ground floor drawn on its site plan takes in
+ * fences and ramps the elevations leave off, and a roof's stair head is not
+ * the building's width.
+ */
+export function buildingCentre(floors: Array<{ level: number; roof: boolean; outline: Outline }>): { x: number; z: number } {
+  const above = floors.filter((f) => !f.roof && f.level > 1);
+  const use = above.length ? above : floors;
+  const xs = use.flatMap((f) => f.outline.map(([x]) => x));
+  const zs = use.flatMap((f) => f.outline.map(([, z]) => z));
+  return { x: (Math.min(...xs) + Math.max(...xs)) / 2, z: (Math.min(...zs) + Math.max(...zs)) / 2 };
 }
 
-function readFloorSheet(strip: DwfGeometry, box: { x: number; y: number; width: number; height: number }, units: number[], roof: boolean): ReadFloor | null {
-  const sheet = sheetGeometry(strip, box);
-  const level = sheetLevel(sheet);
-  if (level == null) return null;
-  const floor = readDwfFloor(sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: unitMarks(sheet.texts) });
-  const { cols, rows, cm } = floor;
-  const mask = emptyMask(cols, rows);
-  for (let i = 0; i < mask.data.length; i++) mask.data[i] = floor.wall[i] === 1 ? 1 : 0;
-  const walls: PlanWalls = { box: { x: 0, y: 0, width: sheet.pageWidth, height: sheet.pageHeight }, unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, cm, mask, bands: bandsOf(mask, cm) };
-  // The building: every pixel of a room or a wall the reader closed.
-  const inside = emptyMask(cols, rows);
-  for (let i = 0; i < inside.data.length; i++) {
-    const r = floor.room[i]!;
-    inside.data[i] = floor.wall[i] || (r !== 0 && r !== floor.outside) ? 1 : 0;
-  }
-  const parts = label(inside, 1);
-  let biggest = 0;
-  for (let id = 1; id < parts.sizes.length; id++) if (parts.sizes[id]! > parts.sizes[biggest]!) biggest = id;
-  const footprint = emptyMask(cols, rows);
-  for (let i = 0; i < footprint.data.length; i++) footprint.data[i] = parts.ids[i] === biggest ? 1 : 0;
-  // Holes: a courtyard or a light well stays open only if it reaches the edge.
-  const holes = label(footprint, 0);
-  for (let i = 0; i < footprint.data.length; i++) if (!footprint.data[i] && !holes.touchesEdge[holes.ids[i]!]) footprint.data[i] = 1;
-  return { sheet, floor, level, units, roof, walls, footprint };
-}
+/** Rooms that are the outside let in: unnamed, no flat's, under 15 m², touching the world across a closed gap. */
+
+/** A closed-gap pixel at a recess's mouth: it closes nothing that is the building's. */
+
+/** What a floor's walls close, gaps to 1.5 m (or `reach` px a side) bridged: its largest part, holes filled. */
 
 export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string }): DwfBuilding {
   const read: ReadFloor[] = [];
@@ -145,6 +135,35 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
     }
   }
 
+  // Every floor's outline first: the building's middle is where its
+  // elevations are laid from, and the windows are measured on them.
+  const outlines = floors.map((f) => {
+    const shift = shifts.get(f)!;
+    const m = f.floor.cm / 100;
+    return traceOutline(f.footprint).map(([x, y]) => [x * m + shift.x, y * m + shift.y] as [number, number]);
+  });
+  const centre = buildingCentre(floors.map((f, i) => ({ level: f.level, roof: f.roof, outline: outlines[i]! })));
+  const elevations = readElevations(strip);
+
+  // The building's own window, for the windows its elevations do not show
+  // clearly: the median sill and head of those they do — not a standard's.
+  const measured: Array<{ sill: number; head: number }> = [];
+  floors.forEach((f, i) => {
+    const shift = shifts.get(f)!;
+    const next = floors[i + 1];
+    const height = next ? next.level - f.level : storey;
+    for (const o of findOpenings(f.walls, { mask: f.footprint, cm: f.floor.cm })) {
+      if (!o.exterior || !o.outward) continue;
+      const drawnAt = windowHeights(elevations, { ...o, x: o.x + shift.x, y: o.y + shift.y, outward: o.outward }, f.level, height, centre);
+      if (drawnAt && drawnAt.sill > 0.2) measured.push(drawnAt);
+    }
+  });
+  const mid = (v: number[]) => [...v].sort((a, b) => a - b)[v.length >> 1]!;
+  const typicalWindow =
+    measured.length >= 5
+      ? { sill: mid(measured.map((w) => w.sill)), head: mid(measured.map((w) => w.head)), surround: 0 }
+      : DWF_BUILDING_STANDARDS.window;
+
   const prims: Primitive[] = [];
   const out: DwfBuildingFloor[] = [];
   floors.forEach((f, i) => {
@@ -156,8 +175,7 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
     const height = next ? next.level - f.level : top != null && top > f.level + 1.5 ? Math.min(top - f.level, storey) : storey;
     const id = `floor-${i}`;
     const m = f.floor.cm / 100;
-    const localOutline: Outline = traceOutline(f.footprint).map(([x, y]) => [x * m, y * m]);
-    const outline: Outline = localOutline.map(([x, y]) => [x + shift.x, y + shift.y]);
+    const outline: Outline = outlines[i]!;
     const moved: PlanWalls = { ...f.walls, bands: f.walls.bands.map((b) => ({ ...b, x: b.x + shift.x, y: b.y + shift.y })) };
     const footprint: Footprint = { mask: f.footprint, cm: f.floor.cm };
     const terraces = readDwfTerraces(f.floor, f.sheet);
@@ -170,8 +188,11 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
       return px >= 0 && py >= 0 && px < f.floor.cols && py < f.floor.rows && terraceAt[py * f.floor.cols + px] === 1;
     };
     const openings = findOpenings(f.walls, footprint).map((o) => {
-      const moved = { ...o, x: o.x + shift.x, y: o.y + shift.y };
-      if (!o.exterior || !o.outward) return moved;
+      const placed = { ...o, x: o.x + shift.x, y: o.y + shift.y };
+      if (!o.exterior || !o.outward) return placed;
+      // Its sill and head as its elevation draws them.
+      const drawnAt = windowHeights(elevations, { ...placed, outward: o.outward }, f.level, height, centre);
+      const moved = drawnAt ? { ...placed, sill: drawnAt.sill, head: drawnAt.head } : placed;
       // Half a metre out from its middle: a terrace there makes it a door onto it.
       const cx = moved.x + moved.w / 2;
       const cy = moved.y + moved.h / 2;
@@ -180,8 +201,8 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
       const py = o.orientation === "h" ? cy + o.outward * out : cy;
       return onTerrace(px, py) ? { ...moved, full: true } : moved;
     });
-    const spec: FloorSpec = { id, level: f.level, height, outline, window: DWF_BUILDING_STANDARDS.window, facade: "stone", interior: "plaster" };
-    prims.push(...floorPrimitives(moved, openings, spec));
+    const spec: FloorSpec = { id, level: f.level, height, outline, window: typicalWindow, facade: "stone", interior: "plaster" };
+    prims.push(...faceTheWeather(floorPrimitives(moved, openings, spec), outline, spec.facade));
     prims.push(slab(inset(outline, 0.06), f.level - 0.02, 0.3, "slab", `${id}:slab`));
     prims.push(slab(inset(outline, 0.06), f.level, 0.02, "floorStone", `${id}:floor`));
 
@@ -214,6 +235,25 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
   const headroom = out.filter((f) => f.roof);
   for (const h of headroom) prims.push(slab(inset(h.outline, 0.06), h.level + h.height, 0.3, "slab", "roof:slab"));
 
+  // Where a storey steps back from the one under it, that one's top is open:
+  // a roof, walked on as a terrace, with a railing on its open edges — bars
+  // where the elevations draw bars. Without it the floor below stood
+  // unroofed wherever the floor above was smaller.
+  for (let i = 0; i < storeys.length - 1; i++) {
+    const below = storeys[i]!;
+    const above = storeys[i + 1]!;
+    const top = below.level + below.height;
+    prims.push(slab(inset(below.outline, 0.06), top - 0.03, 0.3, "paving", `roof:${below.id}`));
+    const under = (x: number, z: number) => [0.5, -0.5].some((d) => insidePolygon(above.outline, x + d, z) || insidePolygon(above.outline, x, z + d));
+    for (const edge of parapet(below.outline, top, top + DWF_BUILDING_STANDARDS.railing, 0.04, "metal", `roof:${below.id}:railing`)) {
+      if (edge.type !== "box" || under(edge.centre.x, edge.centre.z)) continue;
+      prims.push(...railing(edge, bars, `roof:${below.id}:railing`));
+    }
+  }
+
+  // The facade in the materials the elevations name, laid on by hatch.
+  const facade = paintFacades(prims, out, strip, centre);
+
   // Ground: paving round the building, at its lowest floor.
   const xs = out.flatMap((f) => f.outline.map(([x]) => x));
   const ys = out.flatMap((f) => f.outline.map(([, y]) => y));
@@ -230,5 +270,7 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
       north: { x: 0, z: -1 },
     },
     floors: out,
+    facade,
+    window: { sill: typicalWindow.sill, head: typicalWindow.head, measured: measured.length },
   };
 }

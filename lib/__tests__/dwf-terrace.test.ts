@@ -71,6 +71,28 @@ describe("terraces as a permit plan draws them", () => {
     expect(readDwfTerraces(floor(), sheet(tiles(), [text(5, 5.5, "מרפסת")]))).toEqual([]);
   });
 
+  it("closes a terrace whose parapet runs on the slant", () => {
+    // The east side slanted: from (8, 4.2) out to (7, 7), its doubled line 5 cm off.
+    const slanted: VectorSegment[] = [
+      line(2, 7, 7, 7),
+      line(2, 7.05, 7, 7.05),
+      line(2, 4.2, 2, 7.05),
+      line(1.95, 4.2, 1.95, 7.05),
+      line(8, 4.2, 7, 7),
+      line(8.047, 4.217, 7.047, 7.017),
+    ];
+    const t = readDwfTerraces(floor(), sheet(slanted, [text(5, 5.5, "מרפסת")]));
+    expect(t).toHaveLength(1);
+    expect(t[0]!.unit).toBe(5);
+  });
+
+  it("closes a terrace whose parapet stops a hand short of its side", () => {
+    // The front stops 16 cm short of the side's line.
+    const short: VectorSegment[] = [...parapet().slice(0, 2).map((l) => ({ ...l, x2: l.x2 - m(0.16) })), ...parapet().slice(2)];
+    const t = readDwfTerraces(floor(), sheet(short, [text(5, 5.5, "מרפסת")]));
+    expect(t).toHaveLength(1);
+  });
+
   it("does not read the floor below's terrace, marked with its level", () => {
     expect(readDwfTerraces(floor(), sheet(parapet(), [text(5, 5.5, "מרפסת + 2.93")]))).toEqual([]);
   });

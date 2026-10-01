@@ -37,15 +37,28 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
   const k = 100 / upm / cm;
   const barrier = new Uint8Array(n);
   for (let i = 0; i < n; i++) if (floor.wall[i]) barrier[i] = 1;
-  // Doubled lines: a parapet, a partition between terraces.
+  // Doubled lines: a parapet, a partition between terraces — at any angle: a
+  // building with a slanted face has its parapet slanted with it, and read
+  // only along x and y those terraces were open and dropped.
   const lines = sheet.segments
     .filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) >= 0.8 * upm)
     .map((s) => {
-      const horizontal = Math.abs(s.y2 - s.y1) < 0.01 * upm;
-      const vertical = Math.abs(s.x2 - s.x1) < 0.01 * upm;
-      return { s, horizontal, vertical, at: horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2, a: horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2), b: horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2) };
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      let ux = (s.x2 - s.x1) / len;
+      let uy = (s.y2 - s.y1) / len;
+      // One direction per line, so parallels agree on which way is along.
+      if (ux < -1e-9 || (Math.abs(ux) <= 1e-9 && uy < 0)) {
+        ux = -ux;
+        uy = -uy;
+      }
+      const along = (x: number, y: number) => x * ux + y * uy;
+      const a = Math.min(along(s.x1, s.y1), along(s.x2, s.y2));
+      const b = Math.max(along(s.x1, s.y1), along(s.x2, s.y2));
+      // Offset across the line, from the origin.
+      const at = -s.x1 * uy + s.y1 * ux;
+      return { s, ux, uy, a, b, at, angle: Math.atan2(uy, ux) };
     })
-    .filter((l) => l.horizontal || l.vertical);
+    .sort((p, q) => p.angle - q.angle);
   const draw = (x1: number, y1: number, x2: number, y2: number) => {
     const steps = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) * k * 2));
     for (let t = 0; t <= steps; t++) {
@@ -58,22 +71,26 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
       }
     }
   };
-  for (const dir of [true, false]) {
-    const set = lines.filter((l) => l.horizontal === dir).sort((p, q) => p.at - q.at);
-    for (let i = 0; i < set.length; i++) {
-      const p = set[i]!;
-      for (let j = i + 1; j < set.length && set[j]!.at - p.at <= 0.09 * upm; j++) {
-        const q = set[j]!;
-        if (q.at - p.at < 0.01 * upm) continue;
-        // A dashed roof edge beside a tile line is not a parapet: one pen, both lines.
-        if (q.s.stroke !== p.s.stroke) continue;
-        const ov = Math.min(p.b, q.b) - Math.max(p.a, q.a);
-        if (ov < 0.6 * Math.max(p.b - p.a, q.b - q.a)) continue;
-        draw(p.s.x1, p.s.y1, p.s.x2, p.s.y2);
-        draw(q.s.x1, q.s.y1, q.s.x2, q.s.y2);
-      }
+  const PARALLEL = 0.012; // radians, under a degree
+  for (let i = 0; i < lines.length; i++) {
+    const p = lines[i]!;
+    for (let j = i + 1; j < lines.length && lines[j]!.angle - p.angle <= PARALLEL; j++) {
+      const q = lines[j]!;
+      const gap = Math.abs(q.at - p.at);
+      if (gap < 0.01 * upm || gap > 0.09 * upm) continue;
+      // A dashed roof edge beside a tile line is not a parapet: one pen, both lines.
+      if (q.s.stroke !== p.s.stroke) continue;
+      const ov = Math.min(p.b, q.b) - Math.max(p.a, q.a);
+      if (ov < 0.6 * Math.max(p.b - p.a, q.b - q.a)) continue;
+      draw(p.s.x1, p.s.y1, p.s.x2, p.s.y2);
+      draw(q.s.x1, q.s.y1, q.s.x2, q.s.y2);
     }
   }
+
+  // A parapet's lines often stop a hand short of the next one's — a terrace's
+  // front of its neighbour's side — and the terrace runs out through the gap.
+  // Closing the lines by 5 px seals gaps to 20 cm; a door is 70 or more.
+  closeGapsInPlace(barrier, cols, rows, 5);
 
   const text = textLines(sheet.texts);
   // "+2.93" beside the label marks the floor below's terrace seen from above.
@@ -174,7 +191,7 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
     // The flat: the one whose rooms the terrace's edge looks into most.
     const votes = new Map<number, number>();
     // Across a window, a door, a planter between the terrace and the wall.
-    const reach = Math.round(150 / cm);
+    const reach = Math.round(200 / cm);
     for (const c of pix) {
       const x = c % cols;
       const y = (c - x) / cols;
@@ -216,4 +233,29 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
     out.push({ unit: best[0], pixels, areaM2: Math.round(areaM2 * 100) / 100, printedM2, covered });
   }
   return out;
+}
+
+/** Dilate then erode a mask in place by `r` px (square), sealing gaps up to 2r. */
+function closeGapsInPlace(mask: Uint8Array, cols: number, rows: number, r: number): void {
+  const pass = (src: Uint8Array, grow: boolean, horizontal: boolean): Uint8Array => {
+    const out = new Uint8Array(src.length);
+    const lines = horizontal ? rows : cols;
+    const len = horizontal ? cols : rows;
+    const idx = (line: number, i: number) => (horizontal ? line * cols + i : i * cols + line);
+    for (let line = 0; line < lines; line++) {
+      // Running count of set pixels in the window [i - r, i + r].
+      let count = 0;
+      for (let i = 0; i < Math.min(len, r); i++) count += src[idx(line, i)]!;
+      for (let i = 0; i < len; i++) {
+        if (i + r < len) count += src[idx(line, i + r)]!;
+        if (i - r - 1 >= 0) count -= src[idx(line, i - r - 1)]!;
+        const window = Math.min(len - 1, i + r) - Math.max(0, i - r) + 1;
+        out[idx(line, i)] = grow ? (count > 0 ? 1 : 0) : count === window ? 1 : 0;
+      }
+    }
+    return out;
+  };
+  const grown = pass(pass(mask, true, true), true, false);
+  const shut = pass(pass(grown, false, true), false, false);
+  for (let i = 0; i < mask.length; i++) if (shut[i]) mask[i] = 1;
 }

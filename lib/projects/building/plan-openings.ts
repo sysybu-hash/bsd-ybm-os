@@ -23,6 +23,9 @@ export type PlanOpening = {
   outward?: 1 | -1;
   /** Glazed to the floor: a door onto a terrace, not a window over a sill. */
   full?: boolean;
+  /** Its sill and head above the floor, where an elevation draws them. */
+  sill?: number;
+  head?: number;
 };
 
 export type Footprint = { mask: Mask; cm: number };

@@ -47,6 +47,10 @@ export type BookletState = {
   apartments?: BookletApartment[];
   /** What each stored picture is called, and where the store put it. */
   artefacts?: Record<string, string>;
+  /** The window the elevations draw, measured on `measured` of them (0: the standard). */
+  window?: { sill: number; head: number; measured: number };
+  /** Which material each facade hatch took. */
+  facade?: { painted: number; key: Partial<Record<string, string>> };
 };
 
 export type ArtefactStore = {
@@ -127,6 +131,8 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
       state.elevations.push(id);
     }
     state.floors = building.floors.map(({ sheet: _sheet, ...meta }) => meta);
+    state.window = building.window;
+    state.facade = building.facade;
     state.extent = building.model.extent;
     state.units = listDwfUnits(s).map((u) => ({ unit: u.unit, level: u.level, levelM: u.levelM }));
     state.viewsDone = [];
@@ -246,12 +252,21 @@ async function assembleHtml(projectName: string, state: BookletState, store: Art
     ],
     paragraphs: [
       "הבניין נבנה ישירות מגרמושקת ההיתר: כל תוכנית קומה נקראה לקירות, לפתחים, לחדרים ולדירות, המפלס של כל קומה נלקח מהמפלסים שמסומנים עליה, והקומות הונחו זו על זו לפי הקירות שחוזרים בכולן — חדר המדרגות והמעלית.",
-      `מה שהתוכניות אינן משרטטות נלקח מתקנים מקובלים ומצוין כאן: אדן חלון ${DWF_BUILDING_STANDARDS.window.sill.toFixed(2)} מ' ומשקוף ${DWF_BUILDING_STANDARDS.window.head.toFixed(2)} מ', דלת למרפסת מזוגגת עד הרצפה, מעקה מרפסת בגובה ${DWF_BUILDING_STANDARDS.railing.toFixed(2)} מ' — מעקה סורגים כשהחזיתות משרטטות סורגים — ומעקה גג בגובה ${DWF_BUILDING_STANDARDS.parapet.toFixed(2)} מ'.`,
+      windowSentence(state.window),
+      `חומרי החזית נקראו מהחזיתות עצמן — מכל כיתוב חומר ("אבן כהה", "אבן גוון 2", "טיח") ומדוגמת הקווקוו שסביבו — וכל קיר בחזית קיבל את החומר שמשורטט במקומו. דלת למרפסת מזוגגת עד הרצפה; מעקה מרפסת וגג בגובה ${DWF_BUILDING_STANDARDS.railing.toFixed(2)} מ', מעקה סורגים כשהחזיתות משרטטות סורגים.`,
     ],
     rooms: apartments.map((x) => ({ name: x.label, floor: `<span dir="ltr">${levelText(x.levelM)}</span>`, area: `${x.areaM2.toFixed(1)} מ"ר` })),
     sheets,
     plates,
   });
+}
+
+/** What the booklet says of the windows: measured on the elevations, or the standard where none could be. */
+function windowSentence(w: BookletState["window"]): string {
+  if (w && w.measured > 0) {
+    return `גובה החלונות נמדד על החזיתות: כל חלון לפי מה שמשורטט מעליו ומתחתיו, ובחלון שהחזית אינה מראה בבירור — האדן והמשקוף הנפוצים בבניין (${w.sill.toFixed(2)} ו־${w.head.toFixed(2)} מ', מתוך ${w.measured} חלונות שנמדדו).`;
+  }
+  return `גובה החלונות לפי תקן מקובל: אדן ${DWF_BUILDING_STANDARDS.window.sill.toFixed(2)} מ' ומשקוף ${DWF_BUILDING_STANDARDS.window.head.toFixed(2)} מ'.`;
 }
 
 /** Every stage in one go, against a store in memory: the script's way. */

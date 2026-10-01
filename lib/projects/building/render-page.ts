@@ -235,6 +235,8 @@ async function main() {
 
   const MAT = {
     stone: new THREE.MeshStandardMaterial({ map: stoneTex([0, 0, 0]), roughness: 0.86 }),
+    stoneDeep: new THREE.MeshStandardMaterial({ map: stoneTex([-34, -40, -46]), roughness: 0.88 }),
+    render: new THREE.MeshStandardMaterial({ map: plainTex("#ece7dd", 4, 2), roughness: 0.93 }),
     stoneDark: new THREE.MeshStandardMaterial({ color: 0x55585c, roughness: 0.62, metalness: 0.15 }),
     concrete: new THREE.MeshStandardMaterial({ map: plainTex("#b8b4ac", 16, 3), roughness: 0.92 }),
     plaster: new THREE.MeshStandardMaterial({ map: plainTex("#e9e3d8", 5, 2), roughness: 0.95 }),

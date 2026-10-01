@@ -1,5 +1,5 @@
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
-import type { BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
+import { buildingCentre, type BuildingFloorMeta } from "@/lib/projects/building/from-dwf";
 import type { BuildingModel } from "@/lib/projects/building/model";
 import type { ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import type { BuildingRenderPayload } from "@/lib/projects/building/render-page";
@@ -25,8 +25,8 @@ export function dwfBuildingViews(
   const xs = pts.map(([x]) => x);
   const zs = pts.map(([, z]) => z);
   const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
-  const cx = (x0 + x1) / 2;
-  const cz = (z0 + z1) / 2;
+  // The middle the elevations are laid from: the storeys above the ground.
+  const { x: cx, z: cz } = buildingCentre(building.floors);
   const width = x1 - x0;
   const depth = z1 - z0;
   const ground = building.floors[0]?.level ?? 0;

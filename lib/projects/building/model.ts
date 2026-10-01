@@ -11,6 +11,10 @@ export type Vec3 = { x: number; y: number; z: number };
 
 export type BuildingMaterial =
   | "stone"
+  /** A darker stone the elevation names for parts of a facade ("אבן כהה"). */
+  | "stoneDeep"
+  /** Exterior render ("טיח"), as an elevation calls for it. */
+  | "render"
   | "stoneDark"
   | "concrete"
   | "plaster"

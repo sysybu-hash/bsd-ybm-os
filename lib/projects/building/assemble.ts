@@ -117,7 +117,31 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
 
   /** A piece of wall between two heights, clad where it faces out. */
   const wallPiece = (b: { orientation: "h" | "v"; x: number; y: number; w: number; h: number }, a: number, c: number, side: -1 | 0 | 1) => {
-    if (side === 0) return box(b.x, b.y, b.w, b.h, a, c, floor.interior);
+    // A wall standing out past the floor's outline — the partition between
+    // two flats' terraces — has the weather on both faces: it is clad whole.
+    // Plastered as an inside wall, it stood up the facade as a white fin.
+    // A party wall that runs on out past the facade to part two terraces is
+    // split where it crosses the outline: plaster within, clad without.
+    if (side === 0) {
+      const horizontal = b.orientation === "h";
+      const length = horizontal ? b.w : b.h;
+      const steps = Math.max(1, Math.round(length / 0.1));
+      const inAt = (t: number) =>
+        insidePolygon(ring, horizontal ? b.x + t : b.x + b.w / 2, horizontal ? b.y + b.h / 2 : b.y + t);
+      let start = 0;
+      let inside = inAt((0.5 * length) / steps);
+      for (let k = 1; k <= steps; k++) {
+        const here = k < steps ? inAt(((k + 0.5) * length) / steps) : !inside;
+        if (here === inside) continue;
+        const t0 = (start * length) / steps;
+        const t1 = (k * length) / steps;
+        if (horizontal) box(b.x + t0, b.y, t1 - t0, b.h, a, c, inside ? floor.interior : floor.facade, inside ? tag : `${tag}:fin`);
+        else box(b.x, b.y + t0, b.w, t1 - t0, a, c, inside ? floor.interior : floor.facade, inside ? tag : `${tag}:fin`);
+        start = k;
+        inside = here;
+      }
+      return;
+    }
     // Stone through, so the ends and reveals a corner shows are stone too,
     // with a plaster lining on the face that looks in.
     const LINING = 0.015;
@@ -144,6 +168,8 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
     // Outside is where the floor's own outline says, not where the reader's
     // footprint guessed: a window is on the outline, a doorway within it.
     const side = outerSide(found);
+    // A gap past the outline — a recess's mouth, between two terraces — is open air, not a doorway.
+    if (side === 0 && !insidePolygon(ring, found.x + found.w / 2, found.y + found.h / 2)) continue;
     const wide = (found.orientation === "h" ? found.w : found.h) >= 6;
     const o: PlanOpening = { ...found, exterior: side !== 0, kind: side === 0 ? "doorway" : wide ? "curtain" : "window" };
     if (o.kind === "doorway") {
@@ -151,9 +177,10 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       continue;
     }
     if (o.kind === "window") {
-      const { head, surround } = floor.window;
-      // A door onto a terrace is glazed from the floor, to a door's head at least.
-      const sill = o.full ? 0 : floor.window.sill;
+      const { surround } = floor.window;
+      // As the elevation draws it where it does; a door onto a terrace is glazed from the floor.
+      const head = o.head ?? floor.window.head;
+      const sill = o.sill ?? (o.full ? 0 : floor.window.sill);
       wallPiece(o, y0, y0 + sill, side);
       wallPiece(o, y0 + head, top, side);
       // The stone surround, standing proud of the facade by 6 cm.
@@ -171,7 +198,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
         else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
       }
       // The sill: a stone ledge standing 8 cm proud under the surround.
-      if (o.full) {
+      if (o.full || sill < 0.05) {
         // No ledge under a door.
       } else if (o.orientation === "h") box(o.x - 0.05, outer - 0.03, o.w + 0.1, SKIN + proud + 0.04, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
       else box(outer - 0.03, o.y - 0.05, SKIN + proud + 0.04, o.h + 0.1, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
