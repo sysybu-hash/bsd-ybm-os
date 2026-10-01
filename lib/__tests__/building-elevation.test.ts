@@ -69,3 +69,38 @@ describe("a party wall carried out past the facade", () => {
     expect(end(outside[0]!)).toBeCloseTo(5.5, 5);
   });
 });
+
+describe("a laundry screen, as an elevation draws it", () => {
+  // The east face of a 20 × 12 m block, its elevation 30 m across: courses
+  // every 30 cm, and from 10 to 13.6 m across a screen of slats every 10 cm
+  // from +1 to +11, named.
+  const sheet = (named: boolean): import("@/lib/projects/building/facade-materials").Sheet => {
+    const hor: Array<[number, number, number]> = [];
+    for (let h = 0.15; h < 12; h += 0.3) hor.push([ZERO - m(h), m(5), m(25)]);
+    for (let h = 1; h < 11; h += 0.1) hor.push([ZERO - m(h), m(10), m(13.6)]);
+    const texts: PlacedText[] = named ? [{ x: m(11.8), y: ZERO - m(6), text: "מסתור כביסה", height: m(0.25) }] : [];
+    const g: DwfGeometry = { pageWidth: m(30), pageHeight: m(20), segments: [], curves: [], walls: [], texts, fills: [], arcs: [] };
+    return { g, zeroY: ZERO, centreX: m(15), left: m(5), right: m(25), hor, ver: [] };
+  };
+  const east = { title: "חזית מזרחית", normal: { x: 1, z: 0 }, sign: -1 as const, alongX: false };
+  const floors = [0, 3, 6, 9].map((level) => ({ level, height: 3, roof: false, outline: [[0, 0], [12, 0], [12, 20], [0, 20]] as Array<[number, number]> }));
+
+  it("stands slats in front of the face, where the elevation draws them", async () => {
+    const { laundryScreens } = await import("@/lib/projects/building/laundry-screens");
+    const prims = laundryScreens(new Map([["east", { face: east, sheet: sheet(true) }]]), floors, { x: 6, z: 10 });
+    const slats = prims.filter((p) => p.type === "box" && p.size.y < 0.1);
+    expect(slats.length).toBeGreaterThan(80);
+    const p = slats[0]!;
+    if (p.type !== "box") throw new Error("box");
+    // Just proud of the east face, x = 12, and across the 3.6 m the drawing gives it.
+    expect(p.centre.x).toBeGreaterThan(12);
+    expect(p.centre.x).toBeLessThan(12.2);
+    expect(p.size.z).toBeGreaterThan(3.2);
+    expect(p.size.z).toBeLessThan(4.2);
+  });
+
+  it("stands nothing where nothing names a screen", async () => {
+    const { laundryScreens } = await import("@/lib/projects/building/laundry-screens");
+    expect(laundryScreens(new Map([["east", { face: east, sheet: sheet(false) }]]), floors, { x: 6, z: 10 })).toEqual([]);
+  });
+});

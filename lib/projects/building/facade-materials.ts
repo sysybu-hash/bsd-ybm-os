@@ -32,7 +32,7 @@ const MATERIAL_WORDS: Array<[RegExp, BuildingMaterial]> = [
   [/טיח/, "render"],
 ];
 
-export type Sheet = { g: DwfGeometry; zeroY: number; centreX: number; hor: Array<[number, number, number]>; ver: Array<[number, number, number]> };
+export type Sheet = { g: DwfGeometry; zeroY: number; centreX: number; left?: number; right?: number; hor: Array<[number, number, number]>; ver: Array<[number, number, number]> };
 
 /** The hatch round a point of a sheet: joints between stones, courses only, or none. */
 function hatchAt(sheet: Sheet, x: number, y: number): Hatch {
@@ -141,6 +141,8 @@ export function readElevations(strip: DwfGeometry): Map<string, { face: Face; sh
         g,
         zeroY: frame.zeroY,
         centreX: frame.centreX,
+        left: frame.left,
+        right: frame.right,
         hor: g.segments.filter((s) => Math.abs(s.y2 - s.y1) < 0.01 * upm && Math.abs(s.x2 - s.x1) > 0.15 * upm).map((s) => [(s.y1 + s.y2) / 2, Math.min(s.x1, s.x2), Math.max(s.x1, s.x2)]),
         ver: [],
       },

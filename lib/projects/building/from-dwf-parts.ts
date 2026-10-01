@@ -25,6 +25,8 @@ export type ReadFloor = {
   walls: PlanWalls;
   /** The building on this sheet: its rooms and walls, holes filled, the largest part. */
   footprint: Mask;
+  /** The footprint is what the walls close, not the rooms read: it may take in a fence. */
+  walled?: boolean;
 };
 
 /**

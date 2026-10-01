@@ -5,8 +5,9 @@ import type { PlanWalls } from "@/lib/projects/building/plan-walls";
 import { emptyMask, traceOutline } from "@/lib/projects/building/raster";
 import { readDwfTerraces } from "@/lib/projects/dwf-terrace";
 import { paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
+import { laundryScreens } from "@/lib/projects/building/laundry-screens";
 import { furnishedFlats, railing, railingOfBars, register, topLevel, type ReadFloor } from "@/lib/projects/building/from-dwf-parts";
-import { faceTheWeather, readFloorSheet } from "@/lib/projects/building/from-dwf-sheet";
+import { clipUnder, faceTheWeather, readFloorSheet } from "@/lib/projects/building/from-dwf-sheet";
 export { sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { splitStrip } from "@/lib/projects/sheet-split";
@@ -137,6 +138,14 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
 
   // Every floor's outline first: the building's middle is where its
   // elevations are laid from, and the windows are measured on them.
+  // A floor closed by its walls — an open ground floor — keeps only what
+  // stands under the floor above it, a metre and a half each way: its walls
+  // close a fence and a gate beside the building too, and the elevations
+  // draw those low, not a storey high.
+  floors.forEach((f, i) => {
+    const above = floors[i + 1];
+    if (f.walled && above) f.footprint = clipUnder(f, shifts.get(f)!, above, shifts.get(above)!, 1.5);
+  });
   const outlines = floors.map((f) => {
     const shift = shifts.get(f)!;
     const m = f.floor.cm / 100;
@@ -253,6 +262,9 @@ export function buildingFromDwf(strip: DwfGeometry, options?: { name?: string })
 
   // The facade in the materials the elevations name, laid on by hatch.
   const facade = paintFacades(prims, out, strip, centre);
+  // The laundry screens the elevations draw, in front of the facade.
+  const screens = laundryScreens(elevations, out, centre);
+  prims.push(...screens);
 
   // Ground: paving round the building, at its lowest floor.
   const xs = out.flatMap((f) => f.outline.map(([x]) => x));

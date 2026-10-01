@@ -25,6 +25,9 @@ export type ElevationFrame = {
   /** Where on the page the ±0.00 line runs, and the middle of the building across it. */
   zeroY: number;
   centreX: number;
+  /** The building's own edges across the page, before the frame's margin. */
+  left: number;
+  right: number;
 };
 
 const median = (values: number[]) => {
@@ -91,5 +94,7 @@ export function elevationFrame(g: DwfGeometry, upm = DWF_FLOOR_UNITS_PER_METRE):
     topM,
     zeroY,
     centreX: centre,
+    left,
+    right,
   };
 }

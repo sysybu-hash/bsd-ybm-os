@@ -15,6 +15,8 @@ export type BuildingMaterial =
   | "stoneDeep"
   /** Exterior render ("טיח"), as an elevation calls for it. */
   | "render"
+  /** Aluminium slats: a laundry screen ("מסתור כביסה"). */
+  | "louvre"
   | "stoneDark"
   | "concrete"
   | "plaster"

@@ -200,6 +200,24 @@ export function readFloorSheet(strip: DwfGeometry, box: { x: number; y: number; 
   const walled = closedByWalls(mask);
   const area = (m: Mask) => m.data.reduce((n, v) => n + v, 0);
   // Its entrances and lobby fronts are wider than a window: gaps bridged to 8 m.
-  if (area(footprint) < 0.5 * area(walled)) return { sheet, floor, level, units, roof, walls, footprint: closedByWalls(mask, 200) };
+  if (area(footprint) < 0.5 * area(walled)) return { sheet, floor, level, units, roof, walls, footprint: closedByWalls(mask, 200), walled: true };
   return { sheet, floor, level, units, roof, walls, footprint };
+}
+
+/** `f`'s footprint, kept where the floor above stands within `reachM` of it. */
+export function clipUnder(f: ReadFloor, shift: { x: number; y: number }, above: ReadFloor, shiftAbove: { x: number; y: number }, reachM: number): Mask {
+  const r = Math.round((reachM * 100) / above.floor.cm);
+  const over = dilate(above.footprint, r);
+  const m = f.floor.cm / 100;
+  const ma = above.floor.cm / 100;
+  const out = emptyMask(f.footprint.cols, f.footprint.rows);
+  for (let i = 0; i < out.data.length; i++) {
+    if (!f.footprint.data[i]) continue;
+    const x = i % out.cols;
+    const y = (i - x) / out.cols;
+    const ax = Math.round((x * m + shift.x - shiftAbove.x) / ma);
+    const ay = Math.round((y * m + shift.y - shiftAbove.y) / ma);
+    if (ax >= 0 && ay >= 0 && ax < over.cols && ay < over.rows && over.data[ay * over.cols + ax]) out.data[i] = 1;
+  }
+  return out;
 }
