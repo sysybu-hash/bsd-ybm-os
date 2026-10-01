@@ -21,6 +21,8 @@ export type PlanOpening = {
   kind: "window" | "curtain" | "doorway";
   /** Which side is outside, for an exterior opening: +1 toward larger x or y. */
   outward?: 1 | -1;
+  /** Glazed to the floor: a door onto a terrace, not a window over a sill. */
+  full?: boolean;
 };
 
 export type Footprint = { mask: Mask; cm: number };

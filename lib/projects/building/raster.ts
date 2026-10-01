@@ -167,3 +167,114 @@ export function runLengths(mask: Mask, horizontal: boolean): Uint16Array {
   }
   return out;
 }
+
+/**
+ * The outer outline of a mask's largest part, in pixel corners.
+ *
+ * Every set pixel's side that faces a clear one is an edge, directed so the
+ * part is on its left; the edges chain into loops, and the loop enclosing the
+ * most is the part's outline. Where two corners of the part touch at one
+ * point the chain turns left, keeping to one side. Runs of edges along a line
+ * become one side, and the staircase a slanted wall leaves is straightened to
+ * within `tolerancePx`.
+ */
+export function traceOutline(mask: Mask, tolerancePx = 3): Array<[number, number]> {
+  const { cols, rows, data } = mask;
+  const at = (x: number, y: number) => x >= 0 && y >= 0 && x < cols && y < rows && data[y * cols + x] === 1;
+  const key = (x: number, y: number) => y * (cols + 1) + x;
+  // Outgoing edges from each corner: [to x, to y].
+  const out = new Map<number, Array<[number, number, number, number]>>();
+  const add = (x0: number, y0: number, x1: number, y1: number) => {
+    const k = key(x0, y0);
+    const list = out.get(k);
+    if (list) list.push([x0, y0, x1, y1]);
+    else out.set(k, [[x0, y0, x1, y1]]);
+  };
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      if (!data[y * cols + x]) continue;
+      if (!at(x, y - 1)) add(x + 1, y, x, y);
+      if (!at(x - 1, y)) add(x, y, x, y + 1);
+      if (!at(x, y + 1)) add(x, y + 1, x + 1, y + 1);
+      if (!at(x + 1, y)) add(x + 1, y + 1, x + 1, y);
+    }
+  }
+  let best: Array<[number, number]> = [];
+  let bestArea = 0;
+  for (const [, list] of out) {
+    while (list.length) {
+      const first = list.pop()!;
+      const loop: Array<[number, number]> = [[first[0], first[1]]];
+      let [, , cx, cy] = first;
+      let dx = first[2] - first[0];
+      let dy = first[3] - first[1];
+      for (let guard = 0; guard < 4 * data.length; guard++) {
+        if (cx === first[0] && cy === first[1]) break;
+        loop.push([cx, cy]);
+        const nexts = out.get(key(cx, cy));
+        if (!nexts || nexts.length === 0) break;
+        // Turn left where there is a choice: (dx, dy) turned left is (dy, -dx) with y down.
+        let pick = 0;
+        if (nexts.length > 1) {
+          const left = nexts.findIndex(([ax, ay, bx, by]) => bx - ax === dy && by - ay === -dx);
+          pick = left >= 0 ? left : 0;
+        }
+        const [ax, ay, bx, by] = nexts.splice(pick, 1)[0]!;
+        dx = bx - ax;
+        dy = by - ay;
+        cx = bx;
+        cy = by;
+      }
+      let area = 0;
+      for (let i = 0; i < loop.length; i++) {
+        const [x0, y0] = loop[i]!;
+        const [x1, y1] = loop[(i + 1) % loop.length]!;
+        area += x0 * y1 - x1 * y0;
+      }
+      if (Math.abs(area) > bestArea) {
+        bestArea = Math.abs(area);
+        best = loop;
+      }
+    }
+  }
+  return simplifyRing(best, tolerancePx);
+}
+
+/** A closed ring with its collinear corners dropped and staircases straightened (Douglas–Peucker). */
+function simplifyRing(ring: Array<[number, number]>, tolerance: number): Array<[number, number]> {
+  if (ring.length < 4) return ring;
+  // Split the ring at its two farthest-apart corners and simplify each half.
+  let far = 0;
+  let d0 = -1;
+  for (let i = 1; i < ring.length; i++) {
+    const d = (ring[i]![0] - ring[0]![0]) ** 2 + (ring[i]![1] - ring[0]![1]) ** 2;
+    if (d > d0) {
+      d0 = d;
+      far = i;
+    }
+  }
+  const halfA = simplifyChain(ring.slice(0, far + 1), tolerance);
+  const halfB = simplifyChain([...ring.slice(far), ring[0]!], tolerance);
+  return [...halfA.slice(0, -1), ...halfB.slice(0, -1)];
+}
+
+function simplifyChain(pts: Array<[number, number]>, tolerance: number): Array<[number, number]> {
+  if (pts.length <= 2) return pts;
+  const [ax, ay] = pts[0]!;
+  const [bx, by] = pts[pts.length - 1]!;
+  const len = Math.hypot(bx - ax, by - ay) || 1;
+  let worst = 0;
+  let at = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const [px, py] = pts[i]!;
+    const d = Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / len;
+    if (d > worst) {
+      worst = d;
+      at = i;
+    }
+  }
+  if (worst <= tolerance) return [pts[0]!, pts[pts.length - 1]!];
+  const left = simplifyChain(pts.slice(0, at + 1), tolerance);
+  const right = simplifyChain(pts.slice(at), tolerance);
+  return [...left.slice(0, -1), ...right];
+}

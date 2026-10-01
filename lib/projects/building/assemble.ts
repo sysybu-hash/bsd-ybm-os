@@ -151,7 +151,9 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       continue;
     }
     if (o.kind === "window") {
-      const { sill, head, surround } = floor.window;
+      const { head, surround } = floor.window;
+      // A door onto a terrace is glazed from the floor, to a door's head at least.
+      const sill = o.full ? 0 : floor.window.sill;
       wallPiece(o, y0, y0 + sill, side);
       wallPiece(o, y0 + head, top, side);
       // The stone surround, standing proud of the facade by 6 cm.
@@ -169,7 +171,9 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
         else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
       }
       // The sill: a stone ledge standing 8 cm proud under the surround.
-      if (o.orientation === "h") box(o.x - 0.05, outer - 0.03, o.w + 0.1, SKIN + proud + 0.04, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
+      if (o.full) {
+        // No ledge under a door.
+      } else if (o.orientation === "h") box(o.x - 0.05, outer - 0.03, o.w + 0.1, SKIN + proud + 0.04, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
       else box(outer - 0.03, o.y - 0.05, SKIN + proud + 0.04, o.h + 0.1, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
       glazing(out, o, y0 + sill + surround, y0 + head - surround, surround, side, `${tag}:window`, 1);
       continue;

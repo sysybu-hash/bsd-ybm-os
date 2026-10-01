@@ -619,6 +619,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
+    pageCentre: { x: p.cx, y: p.cy },
     extent: {
       x: extentCorner.x,
       z: extentCorner.z,

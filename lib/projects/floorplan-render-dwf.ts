@@ -67,19 +67,21 @@ export async function renderFlatFromDwf(
   };
 }
 
-/**
- * The sheet round a box, an eighth of its size beyond it on each side, as a
- * JPEG 2000 px wide. Lines and text only: the sheet's fills are the masks laid
- * under its level marks, in the paper's colour, and drawn in any other they
- * black the marks out. Walls are hatched in lines, so nothing is lost.
- */
+/** The sheet round a box, an eighth of its size beyond it on each side. */
 async function sheetAround(sheet: DwfGeometry, box: { x: number; y: number; width: number; height: number }): Promise<Buffer> {
   const margin = Math.max(box.width, box.height) * 0.12;
-  const x0 = box.x - margin;
-  const y0 = box.y - margin;
-  const w = box.width + 2 * margin;
-  const h = box.height + 2 * margin;
-  const px = 2000;
+  return dwfSheetJpeg(sheet, { x: box.x - margin, y: box.y - margin, width: box.width + 2 * margin, height: box.height + 2 * margin });
+}
+
+/**
+ * A box of a DWF sheet drawn as a JPEG `px` wide, in the sheet's own frame:
+ * its lines, and its text as the reader read it. The sheet's fills are left
+ * out: they are the masks laid under its level marks, in the paper's colour,
+ * and drawn in any other they black the marks out. Walls are hatched in
+ * lines, so nothing is lost.
+ */
+export async function dwfSheetJpeg(sheet: DwfGeometry, box: { x: number; y: number; width: number; height: number }, px = 2000): Promise<Buffer> {
+  const { x: x0, y: y0, width: w, height: h } = box;
   const scale = px / w;
   const inside = (x: number, y: number) => x >= x0 && x <= x0 + w && y >= y0 && y <= y0 + h;
   const lines = [...sheet.segments, ...sheet.curves]
@@ -90,7 +92,6 @@ async function sheetAround(sheet: DwfGeometry, box: { x: number; y: number; widt
     })
     .join("");
   const escape = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]!);
-  // The room names, written as the sheet writes them: the reader's text, not strokes.
   const texts = sheet.texts
     .filter((t) => inside(t.x, t.y) && t.text.trim())
     .map((t) => `<text x="${((t.x - x0) * scale).toFixed(1)}" y="${((t.y - y0) * scale).toFixed(1)}" font-size="${(t.height * scale).toFixed(1)}" font-family="Arial, sans-serif" fill="#1f2937" text-anchor="middle" direction="rtl">${escape(t.text)}</text>`)
