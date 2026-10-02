@@ -1,4 +1,4 @@
-import { asCutPlan, cutModel } from "@/lib/projects/building/cut-model";
+import { asCutPlan, cutModel, forTracing } from "@/lib/projects/building/cut-model";
 import type { BuildingModel } from "@/lib/projects/building/model";
 import { outlineEdges } from "@/lib/projects/scene3d/floors";
 
@@ -32,6 +32,14 @@ describe("a plan's cut, made in the geometry", () => {
     expect(plan.camera.cutAboveM).toBeUndefined();
     expect(plan.camera.studio).toBe(true);
     expect(plan.model.primitives.some((p) => p.tag === "sheet")).toBe(true);
+  });
+});
+
+describe("a traced view from outside", () => {
+  it("leaves the apartments' furnishings out", () => {
+    const traced = forTracing({ model, width: 100, height: 100, exposure: 1, ao: false, sun: { azimuthDeg: 0, elevationDeg: 60 }, camera: { position: { x: 30, y: 10, z: 30 }, target: { x: 5, y: 3, z: 5 }, fovDeg: 30 }, pathTrace: { samples: 8 } });
+    expect(traced.model.primitives.some((p) => (p.tag ?? "").includes(":inside:"))).toBe(false);
+    expect(traced.model.primitives).toHaveLength(3);
   });
 });
 

@@ -70,7 +70,12 @@ function topOf(p: Primitive): number {
 
 /** A traced frame of a cut plan: the cut moved into the geometry. */
 export function forTracing(payload: BuildingRenderPayload): BuildingRenderPayload {
-  return payload.pathTrace ? asCutPlan(payload) : payload;
+  if (!payload.pathTrace) return payload;
+  if (payload.camera.cutAboveM != null) return asCutPlan(payload);
+  // From outside, the apartments' furnishings are a glimpse through dark
+  // glass, and with them in the scene the tracer lost its sky — every
+  // elevation came back on black. They are left out of an outside view.
+  return { ...payload, model: { ...payload.model, primitives: payload.model.primitives.filter((p) => !(p.tag ?? "").includes(":inside:")) } };
 }
 
 /** A plan with its cut in the geometry, the storey alone on a white sheet — traced or not. */
