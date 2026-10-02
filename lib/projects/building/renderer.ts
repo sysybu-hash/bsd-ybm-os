@@ -5,6 +5,7 @@ import type { HTTPRequest } from "puppeteer-core";
 import sharp from "sharp";
 
 import { launchChromium } from "@/lib/pdf/chromium-launch";
+import { forTracing } from "@/lib/projects/building/cut-model";
 import { BUILDING_ORIGIN, buildingPageHtml, type BuildingRenderPayload } from "@/lib/projects/building/render-page";
 
 /**
@@ -56,7 +57,7 @@ export async function renderBuildingFrames(
         if (m.type() === "error") process.stderr.write(`[page] ${m.text()}\n`);
       });
       await page.setRequestInterception(true);
-      const html = buildingPageHtml(payload);
+      const html = buildingPageHtml(forTracing(payload));
       page.on("request", (req: HTTPRequest) => {
         const url = req.url();
         if (!url.startsWith(BUILDING_ORIGIN)) return void req.abort();

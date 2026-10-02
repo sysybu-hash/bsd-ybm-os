@@ -194,22 +194,32 @@ export type Edge = {
  * these, which is how the railing follows the terrace instead of boxing it in —
  * the SVG plate rails the bounding box, and therefore rails across the door.
  */
-export function outlineEdges(rects: Rect[]): Edge[] {
-  const counted = new Map<string, Edge & { count: number }>();
-  const add = (edge: Edge) => {
-    const key = `${edge.orientation}:${edge.at}:${edge.from}:${edge.to}`;
-    const seen = counted.get(key);
-    if (seen) seen.count += 1;
-    else counted.set(key, { ...edge, count: 1 });
-  };
-  for (const r of rects) {
-    add({ orientation: "h", at: r.y, from: r.x, to: r.x + r.w });
-    add({ orientation: "h", at: r.y + r.h, from: r.x, to: r.x + r.w });
-    add({ orientation: "v", at: r.x, from: r.y, to: r.y + r.h });
-    add({ orientation: "v", at: r.x + r.w, from: r.y, to: r.y + r.h });
+export function outlineEdges(rects: Rect[], tolerance = 1e-6): Edge[] {
+  type Sided = Edge & { rect: number };
+  const all: Sided[] = [];
+  rects.forEach((r, rect) => {
+    all.push({ orientation: "h", at: r.y, from: r.x, to: r.x + r.w, rect });
+    all.push({ orientation: "h", at: r.y + r.h, from: r.x, to: r.x + r.w, rect });
+    all.push({ orientation: "v", at: r.x, from: r.y, to: r.y + r.h, rect });
+    all.push({ orientation: "v", at: r.x + r.w, from: r.y, to: r.y + r.h, rect });
+  });
+  // What is left of each edge once every stretch another rectangle sits
+  // against is taken out — two rectangles of unequal widths share only part
+  // of an edge, and the shared part is inside.
+  const out: Edge[] = [];
+  for (const e of all) {
+    let pieces: Array<[number, number]> = [[e.from, e.to]];
+    for (const o of all) {
+      if (o.rect === e.rect || o.orientation !== e.orientation || Math.abs(o.at - e.at) > tolerance) continue;
+      pieces = pieces.flatMap(([a, b]) => {
+        if (o.to <= a + tolerance || o.from >= b - tolerance) return [[a, b] as [number, number]];
+        const left: Array<[number, number]> = [];
+        if (o.from > a + tolerance) left.push([a, o.from]);
+        if (o.to < b - tolerance) left.push([o.to, b]);
+        return left;
+      });
+    }
+    for (const [from, to] of pieces) if (to - from > tolerance) out.push({ orientation: e.orientation, at: e.at, from, to });
   }
-  return [...counted.values()]
-    .filter((edge) => edge.count === 1)
-    .map(({ orientation, at, from, to }) => ({ orientation, at, from, to }))
-    .sort((a, b) => a.orientation.localeCompare(b.orientation) || a.at - b.at || a.from - b.from);
+  return out.sort((a, b) => a.orientation.localeCompare(b.orientation) || a.at - b.at || a.from - b.from);
 }

@@ -3,13 +3,18 @@ import { assembleBookletHtml } from "@/lib/projects/building/dwf-booklet-html";
 import { dwfBuildingViews } from "@/lib/projects/building/dwf-views";
 import { elevationFrame, type ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import type { BuildingModel } from "@/lib/projects/building/model";
+import { asCutPlan } from "@/lib/projects/building/cut-model";
 import { renderBuildingFrames } from "@/lib/projects/building/renderer";
 import { massMatch } from "@/lib/projects/building/finish";
 import { forEachDwfFlat, listDwfUnits, readDwfStrip } from "@/lib/projects/dwf-building";
 import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { floorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import { dwfSheetJpeg } from "@/lib/projects/floorplan-render-dwf";
-import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
+import { frameToContent } from "@/lib/projects/building/flat-finish";
+import { dollhouseView, flatToPrimitives } from "@/lib/projects/building/flat-model";
+import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
+import { buildSceneFromPayload } from "@/lib/projects/scene3d/from-payload";
+import { sceneStyleFor } from "@/lib/projects/scene3d/style";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
 import { splitStrip } from "@/lib/projects/sheet-split";
 
@@ -145,15 +150,16 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
       if (Date.now() > input.deadline) return { stage: "views", state };
       const batch = pending.slice(i, i + 3);
       say(`drawing ${batch.map((v) => v.id).join(", ")}`);
-      // Only the outside views: a plan is cut, and the tracer cuts nothing.
-      const traced = (v: (typeof batch)[number]) => (input.traceSamples && !v.id.startsWith("plan-") ? { pathTrace: { samples: input.traceSamples } } : {});
+      // A plan is traced too: its cut is made in the geometry (cut-model.ts).
+      const traced = (_v: (typeof batch)[number]) => (input.traceSamples ? { pathTrace: { samples: input.traceSamples } } : {});
       const frames = await renderBuildingFrames(batch.map((v) => ({ ...v.payload, model, ...traced(v) })), { outputWidthPx: 2000, timeoutMs: 1_200_000 });
       // A traced frame is checked against the plain one of the same view: its
       // masses must be the same. A tracer that ran out of GPU drew floors
       // without walls, and the finish then painted that faithfully.
       if (input.traceSamples) {
         const plainOf = batch.filter((v) => Object.keys(traced(v)).length > 0);
-        const plain = plainOf.length ? await renderBuildingFrames(plainOf.map((v) => ({ ...v.payload, model })), { outputWidthPx: 2000 }) : [];
+        // A plan's reference is cut the same way as its traced frame.
+        const plain = plainOf.length ? await renderBuildingFrames(plainOf.map((v) => asCutPlan({ ...v.payload, model })), { outputWidthPx: 2000 }) : [];
         for (let k = 0, j = 0; k < batch.length; k++) {
           if (!Object.keys(traced(batch[k]!)).length) continue;
           const reference = plain[j++]!;
@@ -183,15 +189,26 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
       const entry: BookletApartment = { key: unitKey(u), label, levelM, areaM2: 0, bedrooms: 0, spaces: 0, terraces: 0 };
       if (flat) {
         say(`drawing ${label}`);
-        const still = await renderMeasuredStill({
-          geometry: floorplanGeometryPayload(flat.flat, flat.rooms, { labelled: [], page: { width: flat.sheet.pageWidth, height: flat.sheet.pageHeight } }),
-          styleKit: style,
-          unitTitle: label,
-          areaM2: flat.flat.floorM2,
-          deadlineMs: Date.now() + 120_000,
-          selected: true,
-        });
-        if (still) await keep(`unit-${entry.key}.jpg`, Buffer.from(still.base64, "base64"));
+        // The flat as the building is drawn: its finishes, its furniture
+        // upholstered, its walls cut solid at 1.1 m — traced where the
+        // booklet traces.
+        const scene = buildSceneFromPayload(
+          floorplanGeometryPayload(flat.flat, flat.rooms, { labelled: [], page: { width: flat.sheet.pageWidth, height: flat.sheet.pageHeight } }),
+          { rules: sceneStyleFor(style).rules },
+        );
+        if (scene.meshes.length) {
+          const view = dollhouseView(scene);
+          const model = flatToPrimitives(scene, { cutAboveM: view.cutAboveM });
+          const [frame] = await renderBuildingFrames(
+            [{ ...view.payload, model, ...(input.traceSamples ? { pathTrace: { samples: input.traceSamples } } : {}) }],
+            { outputWidthPx: 2000, timeoutMs: 600_000 },
+          );
+          if (frame) {
+            const framed = await frameToContent(frame, 1.45);
+            const stamped = await stampFloorplanStill({ base64: framed.toString("base64"), mimeType: "image/jpeg" }, { unitLabel: label, areaM2: flat.flat.floorM2 });
+            await keep(`unit-${entry.key}.jpg`, Buffer.from(stamped.base64, "base64"));
+          }
+        }
         entry.areaM2 = Math.round(flat.flat.floorM2 * 10) / 10;
         entry.bedrooms = flat.rooms.filter((r) => r.kind === "bedroom" || r.kind === "mmd").length;
         entry.spaces = flat.rooms.length;

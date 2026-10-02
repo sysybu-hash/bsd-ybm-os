@@ -32,50 +32,28 @@ export function bed(spec: PieceSpec): PiecePart[] {
   // A twin stands along the long wall, at the edge its headboard is against.
   const offsetX = spec.haredi ? -(w - mattressW) / 2 : 0;
   const offsetZ = spec.haredi ? -(d - mattressD) / 2 : 0;
-  const baseH = h * 0.6;
+  const baseH = h * 0.55;
+  const mattressH = h - baseH;
+  const back = offsetZ - mattressD / 2;
   const parts: PiecePart[] = [
-    part("base", "timber", { x: offsetX, y: baseH / 2, z: offsetZ, w: mattressW, h: baseH, d: mattressD }),
-    part("mattress", "linen", {
-      x: offsetX,
-      y: baseH + (h - baseH) / 2,
-      z: offsetZ,
-      w: mattressW * 0.98,
-      h: h - baseH,
-      d: mattressD * 0.99,
-    }),
-    part("headboard", "timber", {
-      x: offsetX,
-      y: h * 0.75,
-      z: offsetZ - mattressD / 2 + 0.03,
-      w: mattressW,
-      h: h * 1.5,
-      d: 0.06,
-    }),
+    part("base", "timber", { x: offsetX, y: baseH / 2, z: offsetZ, w: mattressW, h: baseH, d: mattressD }, 0.01),
+    part("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.03, w: mattressW * 0.98, h: mattressH, d: mattressD - 0.08 }, 0.05),
+    // An upholstered headboard, padded, standing behind the mattress.
+    part("headboard", "upholstery", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.035),
   ];
   const pillows = !spec.haredi && mattressW >= DOUBLE_BED_MIN_M ? 2 : 1;
-  const pillowW = Math.min(0.5, (mattressW / pillows) * 0.8);
+  const pillowW = Math.min(0.62, (mattressW / pillows) * 0.82);
+  const pillowD = Math.min(0.36, mattressD * 0.3);
   for (let i = 0; i < pillows; i++) {
     const spread = pillows === 1 ? 0 : (i - 0.5) * (mattressW / 2);
-    parts.push(
-      part("pillow", "linen", {
-        x: offsetX + spread,
-        y: h + 0.04,
-        z: offsetZ - mattressD / 2 + 0.22,
-        w: pillowW,
-        h: 0.09,
-        d: 0.34,
-      }),
-    );
+    parts.push(part("pillow", "linen", { x: offsetX + spread, y: h + 0.06, z: back + 0.1 + pillowD / 2, w: pillowW, h: 0.12, d: pillowD }, 0.055));
   }
+  // The duvet over the lower two-thirds, its top edge turned down.
+  const duvetD = mattressD * 0.66;
+  const duvetZ = offsetZ + mattressD / 2 - duvetD / 2 - 0.02;
   parts.push(
-    part("duvet", "linen", {
-      x: offsetX,
-      y: h + 0.02,
-      z: offsetZ + mattressD * 0.12,
-      w: mattressW * 0.98,
-      h: 0.05,
-      d: mattressD * 0.62,
-    }),
+    part("duvet", "upholstery", { x: offsetX, y: h + 0.03, z: duvetZ, w: mattressW, h: 0.07, d: duvetD }, 0.03),
+    part("fold", "linen", { x: offsetX, y: h + 0.075, z: duvetZ - duvetD / 2 + 0.12, w: mattressW * 0.99, h: 0.03, d: 0.22 }, 0.014),
   );
   return parts;
 }
@@ -125,38 +103,53 @@ export function desk(spec: PieceSpec): PiecePart[] {
 }
 
 /**
- * A sofa: a solid base to the floor, a back and two arms. Built as a chair —
- * a pad on four legs — דירה 16's two-seaters read from above as a board.
+ * A sofa: a plinth, a seat cushion and a back cushion a place, padded arms.
+ * Built as a sofa is upholstered — דירה 16's two-seaters, one box each, read
+ * from above as a board.
  */
 function sofa(w: number, d: number, h: number): PiecePart[] {
-  const backD = Math.min(0.2, d * 0.25);
-  const armW = Math.min(0.16, w * 0.1);
-  const backH = h + 0.35;
-  return [
-    part("base", "upholstery", { x: 0, y: h / 2, z: backD / 2, w, h, d: d - backD }),
-    part("back", "upholstery", { x: 0, y: backH / 2, z: -d / 2 + backD / 2, w, h: backH, d: backD }),
-    part("arm", "upholstery", { x: -w / 2 + armW / 2, y: (h + 0.15) / 2, z: backD / 2, w: armW, h: h + 0.15, d: d - backD }),
-    part("arm", "upholstery", { x: w / 2 - armW / 2, y: (h + 0.15) / 2, z: backD / 2, w: armW, h: h + 0.15, d: d - backD }),
+  const armW = Math.min(0.18, w * 0.1);
+  const backD = Math.min(0.22, d * 0.26);
+  const plinthH = Math.max(0.12, h - 0.2);
+  const seats = Math.max(1, Math.round((w - 2 * armW) / 0.7));
+  const seatW = (w - 2 * armW) / seats;
+  const seatD = d - backD - 0.02;
+  const parts: PiecePart[] = [
+    part("base", "upholstery", { x: 0, y: plinthH / 2, z: 0, w, h: plinthH, d }, 0.03),
+    part("back", "upholstery", { x: 0, y: (h + 0.32) / 2, z: -d / 2 + backD / 2, w, h: h + 0.32, d: backD }, 0.05),
   ];
+  for (const sx of [-1, 1]) {
+    parts.push(part("arm", "upholstery", { x: sx * (w / 2 - armW / 2), y: (h + 0.16) / 2, z: 0, w: armW, h: h + 0.16, d }, 0.06));
+  }
+  for (let i = 0; i < seats; i++) {
+    const x = -w / 2 + armW + seatW * (i + 0.5);
+    parts.push(
+      part("seat", "upholstery", { x, y: plinthH + (h - plinthH) / 2, z: d / 2 - seatD / 2, w: seatW - 0.015, h: h - plinthH, d: seatD }, 0.06),
+      part("cushion", "linen", { x, y: h + 0.2, z: -d / 2 + backD + 0.09, w: seatW - 0.05, h: 0.38, d: 0.16 }, 0.07),
+    );
+  }
+  return parts;
 }
 
-/** A seat: pad, a back on the side away from what it faces, four legs. */
+/** A seat: padded pad, a back on the side away from what it faces, four legs. */
 export function seat(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   if (w > 1.0) return sofa(w, d, h);
-  const padH = 0.06;
-  const legW = Math.min(0.04, w * 0.12);
+  // An armchair: a sofa of one place.
+  if (w > 0.7 && d > 0.7) return sofa(w, d, h);
+  const padH = 0.07;
+  const legW = Math.min(0.035, w * 0.1);
   const parts = [
-    part("pad", "upholstery", { x: 0, y: h - padH / 2, z: 0, w, h: padH, d }),
-    part("back", "upholstery", { x: 0, y: h + 0.2, z: -d / 2 + 0.03, w, h: 0.4, d: 0.05 }),
+    part("pad", "upholstery", { x: 0, y: h - padH / 2, z: 0.01, w: w * 0.96, h: padH, d: d * 0.94 }, 0.025),
+    part("back", "upholstery", { x: 0, y: h + 0.22, z: -d / 2 + 0.035, w: w * 0.92, h: 0.42, d: 0.06 }, 0.025),
   ];
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
       parts.push(
         part("leg", "timber", {
-          x: sx * (w / 2 - legW),
+          x: sx * (w / 2 - legW * 1.5),
           y: (h - padH) / 2,
-          z: sz * (d / 2 - legW),
+          z: sz * (d / 2 - legW * 1.5),
           w: legW,
           h: h - padH,
           d: legW,

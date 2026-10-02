@@ -1,4 +1,4 @@
-import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
+import type { Primitive } from "@/lib/projects/building/model";
 import type { PlanWalls } from "@/lib/projects/building/plan-walls";
 import type { Mask } from "@/lib/projects/building/raster";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
@@ -8,7 +8,7 @@ import type { DwfTerrace } from "@/lib/projects/dwf-terrace";
 import { levelMarks } from "@/lib/projects/floor-split";
 import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { buildFlatScene } from "@/lib/projects/scene3d/build-scene";
-import type { MaterialId } from "@/lib/projects/scene3d/types";
+import { apartmentFinish, roomKindOf } from "@/lib/projects/building/flat-finish";
 import { splitStrip } from "@/lib/projects/sheet-split";
 
 /**
@@ -151,23 +151,6 @@ export function topLevel(strip: DwfGeometry): number | null {
   return top;
 }
 
-/** The flat engine's materials, as the building's. */
-const MATERIAL: Partial<Record<MaterialId, BuildingMaterial>> = {
-  floorWood: "floorWood",
-  floorTile: "floorStone",
-  floorStone: "floorStone",
-  glass: "glass",
-  joinery: "timber",
-  metal: "metal",
-  linen: "linen",
-  upholstery: "upholstery",
-  timber: "timber",
-  worktop: "worktop",
-  ceramic: "ceramic",
-  steel: "metal",
-  neutral: "plaster",
-};
-
 /**
  * The apartments' insides — each room's floor finish and the furniture the
  * sheet draws — as the flat engine builds them for a flat's own render, moved
@@ -183,16 +166,20 @@ export function furnishedFlats(f: ReadFloor, terraces: DwfTerrace[], shift: { x:
     if (!centre) continue;
     const ox = centre.x / scene.unitsPerMetre + shift.x;
     const oz = centre.y / scene.unitsPerMetre + shift.y;
+    const kindOf = roomKindOf(scene);
     for (const mesh of scene.meshes) {
-      if (mesh.kind !== "furniture" && mesh.kind !== "floor") continue;
-      const material = MATERIAL[mesh.material];
-      if (!material) continue;
+      if (mesh.kind !== "furniture" && mesh.kind !== "floor" && mesh.kind !== "prop") continue;
+      const finish = apartmentFinish(mesh, kindOf);
+      if (!finish) continue;
+      // A rug a hair above the floor's finish, the finish a hair above the slab.
+      const lift = mesh.kind === "floor" ? 0.012 : mesh.kind === "prop" ? 0.014 : 0;
       out.push({
         type: "box",
-        centre: { x: mesh.centre.x + ox, y: f.level + mesh.centre.y + (mesh.kind === "floor" ? 0.012 : 0), z: mesh.centre.z + oz },
+        centre: { x: mesh.centre.x + ox, y: f.level + mesh.centre.y + lift, z: mesh.centre.z + oz },
         size: mesh.size,
-        material,
+        material: finish.material,
         tag: `${tag}:inside:${mesh.kind === "floor" ? "finish" : "furniture"}`,
+        ...(finish.round ? { round: finish.round } : {}),
       });
     }
   }

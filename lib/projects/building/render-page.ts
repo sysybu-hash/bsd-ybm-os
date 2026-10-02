@@ -27,6 +27,8 @@ export type BuildingCamera = {
   up?: { x: number; y: number; z: number };
   /** A vertical section: everything on the far side of the plane x (or z) = at is kept, the near side cut away. */
   section?: { axis: "x" | "z"; at: number; keep: 1 | -1 };
+  /** A model on a table, not a building on its site: no hills, no haze. */
+  studio?: boolean;
 };
 
 export type BuildingRenderPayload = {
@@ -238,6 +240,46 @@ async function main() {
       for (let k = 0; k < 40; k++) { g.strokeStyle = "rgba(90,55,25," + rnd() * 0.18 + ")"; g.beginPath(); const y = r * plank + rnd() * plank; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + rnd() * 4 - 2, w * 0.6, y + rnd() * 4 - 2, w, y); g.stroke(); } }
   }, 1.6);
   const vinylTex = plainTex("#a9a192", 8, 2);
+  // An apartment's floors: oak in long planks, porcelain in 80 cm slabs, a wet room's 30 cm tile.
+  const oakTex = canvasTex(1024, 1024, (g, w, h) => {
+    g.fillStyle = "#a88a66"; g.fillRect(0, 0, w, h);
+    const rows = 10, plank = h / rows;
+    for (let r = 0; r < rows; r++) {
+      let x = -rnd() * 400;
+      while (x < w) {
+        const len = 300 + rnd() * 420, l = rnd() * 22;
+        g.fillStyle = "rgb(" + (206 + l) + "," + (176 + l * 0.85) + "," + (136 + l * 0.6) + ")";
+        g.fillRect(x + 1, r * plank + 1, len - 2, plank - 2);
+        for (let k = 0; k < 16; k++) { g.strokeStyle = "rgba(120,85,50," + rnd() * 0.12 + ")"; g.lineWidth = 0.6 + rnd(); g.beginPath(); const y = r * plank + 2 + rnd() * (plank - 4); g.moveTo(x, y); g.bezierCurveTo(x + len * 0.3, y + rnd() * 3 - 1.5, x + len * 0.7, y + rnd() * 3 - 1.5, x + len, y); g.stroke(); }
+        x += len;
+      }
+    }
+    noise(g, w, h, 6);
+  }, 2.0);
+  const slabTex = (base, joint, n, sizeM, vary) => canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = joint; g.fillRect(0, 0, w, h);
+    const s = w / n;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const l = (rnd() - 0.5) * vary;
+      g.fillStyle = "rgb(" + (base[0] + l) + "," + (base[1] + l) + "," + (base[2] + l) + ")";
+      g.fillRect(x * s + 1.5, y * s + 1.5, s - 3, s - 3);
+      for (let k = 0; k < 6; k++) { g.strokeStyle = "rgba(150,140,125," + rnd() * 0.08 + ")"; g.beginPath(); const yy = y * s + rnd() * s; g.moveTo(x * s, yy); g.bezierCurveTo(x * s + s * 0.4, yy + rnd() * 20 - 10, x * s + s * 0.6, yy + rnd() * 20 - 10, x * s + s, yy + rnd() * 10 - 5); g.stroke(); }
+    }
+    noise(g, w, h, 4);
+  }, sizeM);
+  const porcelainTex = slabTex([232, 226, 216], "#c9c1b4", 4, 3.2, 6);
+  const wetTex = slabTex([214, 214, 210], "#a9a7a2", 8, 2.4, 8);
+  const terraceTex = slabTex([188, 176, 160], "#8f8576", 6, 3.6, 14);
+  const weaveTex = (hex) => canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = hex; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < w; i += 2) { g.fillStyle = "rgba(0,0,0," + (0.03 + rnd() * 0.04) + ")"; g.fillRect(i, 0, 1, h); g.fillStyle = "rgba(255,255,255," + rnd() * 0.04 + ")"; g.fillRect(0, i, w, 1); }
+  }, 0.5);
+  const rugTex = canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = "#7f8b92"; g.fillRect(0, 0, w, h);
+    g.strokeStyle = "#c9c2b6"; g.lineWidth = 10; g.strokeRect(24, 24, w - 48, h - 48);
+    g.lineWidth = 3; g.strokeRect(48, 48, w - 96, h - 96);
+    for (let k = 0; k < 20000; k++) { g.fillStyle = "rgba(90,75,55," + rnd() * 0.08 + ")"; g.fillRect(rnd() * w, rnd() * h, 1, 1.5); }
+  }, 2.4);
   const carpetTex = plainTex("#5f6a78", 18, 1);
 
   const MAT = {
@@ -281,6 +323,17 @@ async function main() {
     ceiling: new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.95 }),
     seatFabric: new THREE.MeshStandardMaterial({ color: 0x1f5c66, roughness: 0.92 }),
     linen: new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.85 }),
+    sofaFabric: new THREE.MeshStandardMaterial({ map: weaveTex("#8f8476"), roughness: 0.95 }),
+    quartz: new THREE.MeshStandardMaterial({ color: 0x5d5a57, roughness: 0.25 }),
+    cushion: new THREE.MeshStandardMaterial({ map: weaveTex("#d9d0c2"), roughness: 0.95 }),
+    rug: new THREE.MeshStandardMaterial({ map: rugTex, roughness: 1 }),
+    floorOak: new THREE.MeshStandardMaterial({ map: oakTex, roughness: 0.5 }),
+    floorPorcelain: new THREE.MeshStandardMaterial({ map: porcelainTex, roughness: 0.32 }),
+    floorWet: new THREE.MeshStandardMaterial({ map: wetTex, roughness: 0.4 }),
+    terraceTile: new THREE.MeshStandardMaterial({ map: terraceTex, roughness: 0.7 }),
+    cabinet: new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.45 }),
+    railGlass: new THREE.MeshPhysicalMaterial({ color: 0xe8f1f2, roughness: 0.03, metalness: 0, transmission: 1, thickness: 0.01, ior: 1.5, transparent: true, opacity: 0.22, depthWrite: false }),
+    poche: new THREE.MeshStandardMaterial({ color: 0x3b3a38, roughness: 0.9 }),
     lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
@@ -329,7 +382,12 @@ async function main() {
     const siteTag = p.tag && /^(site:|tree|car)/.test(p.tag);
     const mat = siteTag && P.camera.cutAboveM != null ? unclipped(MAT[p.material] || MAT.plaster) : MAT[p.material] || MAT.plaster;
     let mesh;
-    if (p.type === "box") {
+    if (p.type === "box" && p.round) {
+      const r = Math.min(p.round, p.size.x / 2.01, p.size.y / 2.01, p.size.z / 2.01);
+      mesh = new THREE.Mesh(new RoundedBoxGeometry(p.size.x, p.size.y, p.size.z, 3, r), mat);
+      mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
+      if (p.rotY) mesh.rotation.y = p.rotY;
+    } else if (p.type === "box") {
       mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat)), mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
       if (p.rotY) mesh.rotation.y = p.rotY;
@@ -443,14 +501,14 @@ async function main() {
       mesh.rotation.y = Math.atan2(p.facing.x, p.facing.z);
     }
     if (!mesh) continue;
-    mesh.castShadow = p.material !== "glass";
+    mesh.castShadow = p.material !== "glass" && p.material !== "railGlass";
     mesh.receiveShadow = true;
-    if (p.material === "glass") mesh.renderOrder = 2;
+    if (p.material === "glass" || p.material === "railGlass") mesh.renderOrder = 2;
     scene.add(mesh);
   }
 
   // The hills round the site, to the horizon, fading into haze.
-  if (P.camera.cutAboveM == null) {
+  if (P.camera.cutAboveM == null && !P.camera.studio) {
     const far = new THREE.Mesh(new THREE.CircleGeometry(2500, 64), MAT.soilFar);
     far.rotation.x = -Math.PI / 2; far.position.set(cx, -3, cz); far.receiveShadow = true;
     scene.add(far);

@@ -87,7 +87,7 @@ describe("the measured flat as a scene", () => {
     // as thin as a board, which is only true at the short end.
     const head = parts.find((m) => m.sourceId.endsWith("/headboard"))!;
     expect(head.size.x).toBeCloseTo(0.9, 9);
-    expect(head.size.z).toBeCloseTo(0.06, 9);
+    expect(head.size.z).toBeCloseTo(0.08, 9);
     // One pillow on a 0.90 mattress.
     expect(parts.filter((m) => m.sourceId.endsWith("/pillow"))).toHaveLength(1);
   });

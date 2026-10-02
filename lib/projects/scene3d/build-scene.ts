@@ -557,8 +557,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         edge.orientation === "h"
           ? { x: edge.from, y: edge.at - GLASS_T_M * upm * 0.5, w: edge.to - edge.from, h: GLASS_T_M * upm }
           : { x: edge.at - GLASS_T_M * upm * 0.5, y: edge.from, w: GLASS_T_M * upm, h: edge.to - edge.from };
-      // An edge the flat's own wall stands on is a wall, not a drop.
-      if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.12) continue;
+      // An edge the flat's own wall stands on, or runs along a hand's breadth
+      // off (the facade's cladding), is a wall, not a drop.
+      if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.35) continue;
       meshes.push(boxFrom(p, rect, -TERRACE_DROP_M, RAILING_H_M - RAIL_CAP_M, "railing", "glass", id));
       meshes.push(
         boxFrom(p, rect, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`),
@@ -611,6 +612,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         centre: { x: centre.x + built.x, y: built.y, z: centre.z + built.z },
         size: { x: built.w, y: built.h, z: built.d },
         sourceId: `furniture:${index}/${built.tag}`,
+        ...(built.round ? { round: built.round } : {}),
       });
     }
   });

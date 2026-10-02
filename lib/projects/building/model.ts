@@ -48,10 +48,35 @@ export type BuildingMaterial =
   | "ceiling"
   | "lightPanel"
   | "seatFabric"
-  | "linen";
+  | "linen"
+  /** An apartment's own finishes: a sofa's weave, a rug, oak and porcelain, a wet room's tile. */
+  | "sofaFabric"
+  | "cushion"
+  | "rug"
+  | "floorOak"
+  | "floorPorcelain"
+  | "floorWet"
+  /** A terrace's outdoor tile, a shade deeper than the rooms' porcelain. */
+  | "terraceTile"
+  | "cabinet"
+  /** A kitchen's worktop: dark quartz over white cabinets. */
+  | "quartz"
+  /** A balustrade's clear glass. */
+  | "railGlass"
+  /** The cut top of a wall in a plan: drawn solid, as a plan draws it. */
+  | "poche";
 
 export type Primitive =
-  | { type: "box"; centre: Vec3; size: Vec3; material: BuildingMaterial; tag?: string; rotY?: number }
+  | {
+      type: "box";
+      centre: Vec3;
+      size: Vec3;
+      material: BuildingMaterial;
+      tag?: string;
+      rotY?: number;
+      /** Edges rounded to this radius, metres: a cushion, a mattress. */
+      round?: number;
+    }
   | {
       type: "prism";
       /** Outline in plan, metres (x, z), counter-clockwise or not. */

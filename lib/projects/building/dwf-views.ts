@@ -146,6 +146,7 @@ export function planPayload(f: BuildingFloorMeta, widthPx: number): Omit<Buildin
       // The sheet draws the floor alone: no ground round it, no roof over it.
       hideTags: ["roof", "site"],
     },
-    sun: { azimuthDeg: 200, elevationDeg: 60 },
+    // High, so a wall's shadow is a soft edge along it rather than half the room.
+    sun: { azimuthDeg: 200, elevationDeg: 76 },
   };
 }

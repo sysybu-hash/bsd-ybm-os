@@ -72,6 +72,8 @@ export type SceneBox = {
    * there is no bowl. It is how "lived-in" stays honest.
    */
   anchorId?: string;
+  /** Edges rounded to this radius, metres, where the renderer can. */
+  round?: number;
 };
 
 export type SceneRoomKind =

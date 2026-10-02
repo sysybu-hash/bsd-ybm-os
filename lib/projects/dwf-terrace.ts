@@ -182,9 +182,87 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
     }
   }
 
+  // The pieces no label is in. A covered terrace is drawn with the edge of
+  // the roof over it, and the beams, as doubled lines across it, and those
+  // cut it into pieces only one of which carries the label. A piece with no
+  // label of its own, closed, beside a labelled one, is that terrace's — as
+  // far as the area the sheet prints for it allows.
+  const labelled = cells.length;
+  for (let i = 0; i < n; i++) {
+    if (seen[i] || barrier[i] || !near[i] || floor.room[i] !== floor.outside) continue;
+    const mark = cells.length + 1;
+    const cell = { labels: [] as Array<(typeof labels)[number]>, pix: [] as number[], open: false };
+    cells.push(cell);
+    const stack = [i];
+    seen[i] = mark;
+    while (stack.length) {
+      const c = stack.pop()!;
+      cell.pix.push(c);
+      const x = c % cols;
+      for (const nb of [x > 0 ? c - 1 : -1, x < cols - 1 ? c + 1 : -1, c - cols, c + cols]) {
+        if (nb < 0 || nb >= n) { cell.open = true; continue; }
+        if (seen[nb] || barrier[nb]) continue;
+        if (!near[nb] || floor.room[nb] !== floor.outside) { cell.open = true; continue; }
+        seen[nb] = mark;
+        stack.push(nb);
+      }
+    }
+  }
+  const CROSS = 6; // px: a doubled line and its gap, 12 cm
+  const absorbed = new Set<number>();
+  for (let ci = 0; ci < labelled; ci++) {
+    const cell = cells[ci]!;
+    if (cell.open) continue;
+    const printed = cell.labels.map((q) => areaNear(q.x, q.y, q.height)).find((p) => p != null);
+    if (!printed) continue;
+    const areaOf = (count: number) => (count * cm * cm) / 10_000;
+    // Hebrew SHX may set the digits reversed: the reading that is larger than
+    // what the label's own piece already holds, and not past twice as large.
+    const own = areaOf(cell.pix.length);
+    const target = [printed.v, printed.rev].filter((v) => v > own && v < own * 1.8).sort((a, b) => a - b)[0];
+    if (target == null) continue;
+    for (let grew = true; grew; ) {
+      grew = false;
+      // Neighbouring pieces across a thin line, and the line's pixels between.
+      const across = new Map<number, Set<number>>();
+      for (const c of cell.pix) {
+        const x = c % cols;
+        const y = (c - x) / cols;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+          const crossed: number[] = [];
+          for (let t = 1; t <= CROSS + 1; t++) {
+            const qx = x + dx * t;
+            const qy = y + dy * t;
+            if (qx < 0 || qy < 0 || qx >= cols || qy >= rows) break;
+            const q = qy * cols + qx;
+            if (floor.wall[q]) break;
+            if (barrier[q]) { crossed.push(q); continue; }
+            const id = seen[q]! - 1;
+            if (t > 1 && id >= labelled && !absorbed.has(id) && !cells[id]!.open) {
+              const set = across.get(id) ?? new Set<number>();
+              for (const b of crossed) set.add(b);
+              across.set(id, set);
+            }
+            break;
+          }
+        }
+      }
+      for (const [id, line] of across) {
+        const piece = cells[id]!;
+        if (areaOf(cell.pix.length + piece.pix.length + line.size) > target * 1.08) continue;
+        absorbed.add(id);
+        for (const q of line) cell.pix.push(q);
+        for (const q of piece.pix) { cell.pix.push(q); seen[q] = ci + 1; }
+        grew = true;
+      }
+    }
+  }
+  cells.length = labelled;
+
   const out: DwfTerrace[] = [];
   const limit = Math.round((80 * 10_000) / (cm * cm));
-  for (const { labels: ls, pix, open } of cells) {
+  for (const { labels: ls, pix: rawPix, open } of cells) {
+    const pix = [...new Set(rawPix)];
     if (open || pix.length > limit) continue;
     const areaM2 = (pix.length * cm * cm) / 10_000;
     if (areaM2 < 1.5) continue;
