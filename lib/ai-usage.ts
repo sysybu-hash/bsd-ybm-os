@@ -139,7 +139,14 @@ async function scheduleAfterResponse(job: () => Promise<void>): Promise<boolean>
 /** The route a request came in on, without its query — the "feature" a call is billed to. */
 export function featureFromRequest(req: Request): string {
   try {
-    return new URL(req.url).pathname.replace(/\/[a-z0-9]{20,}(?=\/|$)/gi, "/:id");
+    return (
+      new URL(req.url).pathname
+        .replace(/\/[a-z0-9]{20,}(?=\/|$)/gi, "/:id")
+        // The visualizer's handler lives at /visualize-floorplan-run and is
+        // reached by a rewrite (next.config.js); it is billed as the route
+        // the client calls.
+        .replace(/^\/api\/projects\/visualize-floorplan-run$/, "/api/projects/visualize-floorplan")
+    );
   } catch {
     return "unknown";
   }

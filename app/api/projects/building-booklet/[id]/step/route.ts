@@ -4,7 +4,8 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonNotFound } from "@/lib/api-json";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
-import { advanceBookletJob, getBookletJob } from "@/lib/projects/building/booklet-job";
+import { getBookletJob } from "@/lib/projects/building/booklet-job";
+import { advanceBookletJob } from "@/lib/projects/building/booklet-job-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;

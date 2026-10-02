@@ -22,7 +22,7 @@ jest.mock("@/lib/projects/building/dwf-booklet", () => ({ runBookletStage: jest.
 jest.mock("@/lib/projects/building/booklet-html", () => ({ BUILDING_BOOKLET_PAGE: {} }));
 
 import { prisma } from "@/lib/prisma";
-import { advanceBookletJob } from "@/lib/projects/building/booklet-job";
+import { advanceBookletJob } from "@/lib/projects/building/booklet-job-run";
 import { runBookletStage } from "@/lib/projects/building/dwf-booklet";
 
 const db = prisma.buildingBookletJob as unknown as Record<string, jest.Mock>;

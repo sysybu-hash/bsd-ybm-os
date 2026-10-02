@@ -5,7 +5,7 @@
     "app/api/documents/issued/[id]/export/route.ts": {
       "maxDuration": 60
     },
-    "app/api/projects/visualize-floorplan/route.ts": {
+    "app/api/projects/visualize-floorplan-run/route.ts": {
       "maxDuration": 300
     },
     "app/api/projects/visualize-floorplan/[id]/stills/[stillId]/route.ts": {

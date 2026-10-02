@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
-import { advanceBookletJob } from "@/lib/projects/building/booklet-job";
+import { advanceBookletJob } from "@/lib/projects/building/booklet-job-run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
