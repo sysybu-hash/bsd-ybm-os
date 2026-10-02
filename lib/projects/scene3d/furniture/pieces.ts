@@ -52,8 +52,10 @@ export function bed(spec: PieceSpec): PiecePart[] {
   const duvetD = mattressD * 0.66;
   const duvetZ = offsetZ + mattressD / 2 - duvetD / 2 - 0.02;
   parts.push(
-    part("duvet", "upholstery", { x: offsetX, y: h + 0.03, z: duvetZ, w: mattressW, h: 0.07, d: duvetD }, 0.03),
+    part("duvet", "linen", { x: offsetX, y: h + 0.03, z: duvetZ, w: mattressW, h: 0.07, d: duvetD }, 0.03),
     part("fold", "linen", { x: offsetX, y: h + 0.075, z: duvetZ - duvetD / 2 + 0.12, w: mattressW * 0.99, h: 0.03, d: 0.22 }, 0.014),
+    // A throw across the foot, the one colour on the bed.
+    part("throw", "upholstery", { x: offsetX, y: h + 0.075, z: offsetZ + mattressD / 2 - Math.min(0.5, mattressD * 0.25) / 2 - 0.03, w: mattressW * 0.99, h: 0.02, d: Math.min(0.5, mattressD * 0.25) }, 0.01),
   );
   return parts;
 }
@@ -268,7 +270,7 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
   if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath")) {
     return [
-      part("tub", "ceramic", { x: 0, y: h / 2, z: 0, w, h, d }),
+      part("tub", "ceramic", { x: 0, y: h / 2, z: 0, w, h, d }, 0.04),
       part("water", "ceramic", {
         x: 0,
         y: h - 0.03,
@@ -292,16 +294,16 @@ function toilet(w: number, d: number): PiecePart[] {
   const cisternD = Math.min(0.16, d * 0.3);
   const bowlD = d - cisternD;
   return [
-    part("cistern", "ceramic", { x: 0, y: 0.38, z: -d / 2 + cisternD / 2, w: w * 0.95, h: 0.76, d: cisternD }),
-    part("bowl", "ceramic", { x: 0, y: 0.19, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.8, h: 0.38, d: bowlD }),
-    part("seat", "ceramic", { x: 0, y: 0.395, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.9, h: 0.03, d: bowlD * 0.95 }),
+    part("cistern", "ceramic", { x: 0, y: 0.38, z: -d / 2 + cisternD / 2, w: w * 0.95, h: 0.76, d: cisternD }, 0.03),
+    part("bowl", "ceramic", { x: 0, y: 0.19, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.8, h: 0.38, d: bowlD }, Math.min(w, bowlD) * 0.38),
+    part("seat", "ceramic", { x: 0, y: 0.395, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.9, h: 0.03, d: bowlD * 0.95 }, Math.min(w, bowlD) * 0.4),
   ];
 }
 
 /** A shower: the tray, a glass screen along its open front, the riser at the back. */
 function shower(w: number, d: number): PiecePart[] {
   return [
-    part("tray", "ceramic", { x: 0, y: 0.03, z: 0, w, h: 0.06, d }),
+    part("tray", "ceramic", { x: 0, y: 0.03, z: 0, w, h: 0.06, d }, 0.02),
     part("screen", "glass", { x: 0, y: 1.03, z: d / 2 - 0.005, w, h: 1.94, d: 0.01 }),
     part("riser", "metal", { x: 0, y: 1.05, z: -d / 2 + 0.03, w: 0.03, h: 1.9, d: 0.03 }),
   ];
@@ -313,7 +315,7 @@ function vanity(w: number, d: number): PiecePart[] {
   return [
     part("cabinet", "joinery", { x: 0, y: (top - 0.04 + 0.15) / 2, z: 0, w, h: top - 0.04 - 0.15, d: d * 0.95 }),
     part("top", "worktop", { x: 0, y: top - 0.02, z: 0, w, h: 0.04, d }),
-    part("bowl", "ceramic", { x: 0, y: top + 0.04, z: 0.02, w: Math.min(w - 0.08, 0.5), h: 0.08, d: Math.min(d - 0.12, 0.38) }),
+    part("bowl", "ceramic", { x: 0, y: top + 0.04, z: 0.02, w: Math.min(w - 0.08, 0.5), h: 0.08, d: Math.min(d - 0.12, 0.38) }, 0.04),
     part("tap", "metal", { x: 0, y: top + 0.1, z: -d / 2 + 0.05, w: 0.035, h: 0.2, d: 0.035 }),
   ];
 }

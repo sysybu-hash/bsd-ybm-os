@@ -1,6 +1,6 @@
 import type { DwfFloor } from "@/lib/projects/dwf-floor";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
-import type { BuiltFlat } from "@/lib/projects/floorplan-build";
+import type { BuiltFlat, DoorLeaf } from "@/lib/projects/floorplan-build";
 import { type FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { readDwfFurniture } from "@/lib/projects/dwf-furniture";
 import { type DwfTerrace, readDwfTerraces } from "@/lib/projects/dwf-terrace";
@@ -94,9 +94,16 @@ export function flatFromDwfFloor(floor: DwfFloor, sheet: DwfGeometry, unit: numb
     const mid = (opening.from + opening.to) / 2;
     const cx = orientation === "h" ? mid : opening.centre;
     const cy = orientation === "h" ? opening.centre : mid;
-    const swung = swings.some((arc) => Math.hypot(arc.cx - cx, arc.cy - cy) <= arc.r * 0.75 + 0.1 * upm);
-    const kind: OpeningKind = swung && widthM <= 1.3 ? "door" : "opening";
-    openings.push({ ...opening, kind });
+    const swing = swings.find((arc) => Math.hypot(arc.cx - cx, arc.cy - cy) <= arc.r * 0.75 + 0.1 * upm);
+    const kind: OpeningKind = swing && widthM <= 1.3 ? "door" : "opening";
+    // The leaf drawn open: the end of the arc square to the wall.
+    let leaf: DoorLeaf | undefined;
+    if (swing && kind === "door") {
+      const across = (a: number) => Math.abs(orientation === "h" ? Math.sin(a) : Math.cos(a));
+      const a = across(swing.start) >= across(swing.end) ? swing.start : swing.end;
+      if (across(a) > 0.95) leaf = { x: swing.cx, y: swing.cy, dx: swing.r * Math.cos(a), dy: swing.r * Math.sin(a) };
+    }
+    openings.push({ ...opening, kind, ...(leaf ? { leaf } : {}) });
   }
 
   // The floor, a row of spans a pixel high, in page units.

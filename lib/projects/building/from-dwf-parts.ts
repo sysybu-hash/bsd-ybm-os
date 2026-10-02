@@ -8,7 +8,7 @@ import type { DwfTerrace } from "@/lib/projects/dwf-terrace";
 import { levelMarks } from "@/lib/projects/floor-split";
 import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { buildFlatScene } from "@/lib/projects/scene3d/build-scene";
-import { apartmentFinish, roomKindOf } from "@/lib/projects/building/flat-finish";
+import { apartmentFinish, roomKindOf, stagedPlants } from "@/lib/projects/building/flat-finish";
 import { splitStrip } from "@/lib/projects/sheet-split";
 
 /**
@@ -166,6 +166,9 @@ export function furnishedFlats(f: ReadFloor, terraces: DwfTerrace[], shift: { x:
     if (!centre) continue;
     const ox = centre.x / scene.unitsPerMetre + shift.x;
     const oz = centre.y / scene.unitsPerMetre + shift.y;
+    for (const p of stagedPlants(scene)) {
+      out.push({ type: "plant", at: { x: p.at.x + ox, y: f.level + p.at.y, z: p.at.z + oz }, height: p.height, spread: p.spread, tag: `${tag}:inside:plant` });
+    }
     const kindOf = roomKindOf(scene);
     for (const mesh of scene.meshes) {
       if (mesh.kind !== "furniture" && mesh.kind !== "floor" && mesh.kind !== "prop") continue;

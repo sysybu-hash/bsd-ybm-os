@@ -37,7 +37,7 @@ export function cutModel(model: BuildingModel, cutM: number): BuildingModel {
       out.push({ ...p, centre: { ...p.centre, y: (bottom + top) / 2 }, height: top - bottom });
     } else if (p.type === "terrain") {
       out.push(p);
-    } else if (p.type === "tree" || p.type === "car" || p.type === "person") {
+    } else if (p.type === "tree" || p.type === "car" || p.type === "person" || p.type === "plant") {
       if (p.at.y < cutM) out.push(p);
     } else if (p.type === "text") {
       if (p.at.y < cutM) out.push(p);
@@ -60,6 +60,7 @@ function topOf(p: Primitive): number {
     case "terrain":
       return Math.max(...p.heights);
     case "tree":
+    case "plant":
     case "car":
     case "person":
     case "text":

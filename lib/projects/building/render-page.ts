@@ -269,6 +269,17 @@ async function main() {
   }, sizeM);
   const porcelainTex = slabTex([232, 226, 216], "#c9c1b4", 4, 3.2, 6);
   const wetTex = slabTex([214, 214, 210], "#a9a7a2", 8, 2.4, 8);
+  const walnutTex = canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = "#5e4a3c"; g.fillRect(0, 0, w, h);
+    const rows = 6, plank = h / rows;
+    for (let r = 0; r < rows; r++) {
+      const l = rnd() * 16;
+      g.fillStyle = "rgb(" + (112 + l) + "," + (88 + l * 0.8) + "," + (70 + l * 0.6) + ")";
+      g.fillRect(0, r * plank + 1, w, plank - 2);
+      for (let k = 0; k < 30; k++) { g.strokeStyle = "rgba(40,28,20," + rnd() * 0.25 + ")"; g.lineWidth = 0.5 + rnd(); g.beginPath(); const y = r * plank + rnd() * plank; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + rnd() * 6 - 3, w * 0.6, y + rnd() * 6 - 3, w, y); g.stroke(); }
+    }
+    noise(g, w, h, 6);
+  }, 1.2);
   const terraceTex = slabTex([188, 176, 160], "#8f8576", 6, 3.6, 14);
   const weaveTex = (hex) => canvasTex(256, 256, (g, w, h) => {
     g.fillStyle = hex; g.fillRect(0, 0, w, h);
@@ -314,7 +325,7 @@ async function main() {
     worktop: new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.35 }),
     ceramic: new THREE.MeshStandardMaterial({ color: 0xf4f4f2, roughness: 0.2 }),
     signage: new THREE.MeshStandardMaterial({ color: 0xd9c08a, roughness: 0.3, metalness: 0.7 }),
-    planter: new THREE.MeshStandardMaterial({ color: 0x6d6a66, roughness: 0.8 }),
+    planter: new THREE.MeshStandardMaterial({ color: 0x5f5a54, roughness: 0.7 }),
     foliage: new THREE.MeshStandardMaterial({ color: 0x4f6b35, roughness: 0.95 }),
     foliage0: new THREE.MeshStandardMaterial({ color: 0x566f37, roughness: 0.95 }),
     foliage1: new THREE.MeshStandardMaterial({ color: 0x6a7f3e, roughness: 0.95 }),
@@ -325,6 +336,7 @@ async function main() {
     linen: new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.85 }),
     sofaFabric: new THREE.MeshStandardMaterial({ map: weaveTex("#8f8476"), roughness: 0.95 }),
     quartz: new THREE.MeshStandardMaterial({ color: 0x5d5a57, roughness: 0.25 }),
+    walnut: new THREE.MeshStandardMaterial({ map: walnutTex, roughness: 0.42 }),
     cushion: new THREE.MeshStandardMaterial({ map: weaveTex("#d9d0c2"), roughness: 0.95 }),
     rug: new THREE.MeshStandardMaterial({ map: rugTex, roughness: 1 }),
     floorOak: new THREE.MeshStandardMaterial({ map: oakTex, roughness: 0.5 }),
@@ -448,6 +460,34 @@ async function main() {
         const d = k === 0 ? 0 : p.crown * 0.45 * rnd() + p.crown * 0.2;
         leaf.position.set(Math.cos(a) * d, trunkH + p.crown * 0.55 + (rnd() - 0.3) * p.crown * 0.6, Math.sin(a) * d);
         leaf.castShadow = true; leaf.receiveShadow = true;
+        g.add(leaf);
+      }
+      g.position.set(p.at.x, p.at.y, p.at.z);
+      g.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
+      scene.add(g);
+      continue;
+    } else if (p.type === "plant") {
+      // A pot, and leaves in clumps over it, each its own green.
+      const g = new THREE.Group();
+      const potH = Math.min(0.42, p.height * 0.35), potR = p.spread * 0.42;
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(potR, potR * 0.8, potH, 24), MAT.planter);
+      pot.position.y = potH / 2; g.add(pot);
+      const clumps = 9;
+      for (let k = 0; k < clumps; k++) {
+        const r = p.spread * (0.32 + rnd() * 0.16);
+        const geo = new THREE.IcosahedronGeometry(r, 2);
+        const pos = geo.attributes.position;
+        const seedK = rnd() * 100;
+        for (let v = 0; v < pos.count; v++) {
+          const x = pos.getX(v), y = pos.getY(v), z = pos.getZ(v);
+          const f = 0.85 + 0.25 * Math.sin((x / r) * 7 + seedK) * Math.sin((z / r) * 6 + seedK);
+          pos.setXYZ(v, x * f, y * f * 1.2, z * f);
+        }
+        geo.computeVertexNormals();
+        const leaf = new THREE.Mesh(geo, MAT["foliage" + (k % 3)]);
+        const a = (k / clumps) * Math.PI * 2 + rnd();
+        const d = k === 0 ? 0 : p.spread * (0.15 + 0.3 * rnd());
+        leaf.position.set(Math.cos(a) * d, potH + (p.height - potH) * (0.35 + 0.55 * rnd()), Math.sin(a) * d);
         g.add(leaf);
       }
       g.position.set(p.at.x, p.at.y, p.at.z);

@@ -43,7 +43,7 @@ export const floorplanGeometrySchema = z.object({
   unitsPerMetre: z.number().positive(),
   bounds: boundsSchema,
   walls: z.array(bandSchema).max(4000),
-  openings: z.array(bandSchema.extend({ kind: z.string().max(20).optional() })).max(2000),
+  openings: z.array(bandSchema.extend({ kind: z.string().max(20).optional(), leaf: z.object({ x: z.number(), y: z.number(), dx: z.number(), dy: z.number() }).optional() })).max(2000),
   /** v2: the walkable region, and each terrace. Absent on a run saved before. */
   floor: rectsSchema.optional(),
   terraces: z.array(rectsSchema).max(40).optional(),
@@ -135,6 +135,7 @@ export function floorplanGeometryPayload(
       // Dropping it made the viewer guess, and a guess is what this engine
       // exists to be rid of.
       kind: opening.kind,
+      ...(opening.leaf ? { leaf: opening.leaf } : {}),
     })),
     furniture: flat.furniture.map((piece) => ({
       x: piece.x,

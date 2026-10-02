@@ -61,6 +61,8 @@ export type BuildingMaterial =
   | "cabinet"
   /** A kitchen's worktop: dark quartz over white cabinets. */
   | "quartz"
+  /** Furniture timber: walnut, a shade darker than the oak floors it stands on. */
+  | "walnut"
   /** A balustrade's clear glass. */
   | "railGlass"
   /** The cut top of a wall in a plan: drawn solid, as a plan draws it. */
@@ -101,6 +103,8 @@ export type Primitive =
       tag?: string;
     }
   | { type: "tree"; at: Vec3; height: number; crown: number; tag?: string }
+  /** A plant in a pot: staging beside a sofa, in a terrace's corner. */
+  | { type: "plant"; at: Vec3; height: number; spread: number; tag?: string }
   | { type: "car"; at: Vec3; rotY: number; colour: number; tag?: string }
   | { type: "person"; at: Vec3; rotY: number; colour: number; height: number; tag?: string }
   | {

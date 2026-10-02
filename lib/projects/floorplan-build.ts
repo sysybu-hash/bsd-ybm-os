@@ -67,12 +67,18 @@ import {
  * against something the sheet itself states.
  */
 
+/**
+ * A door's leaf as the sheet draws it open: from the hinge, page units, to
+ * the leaf's tip — the radius of the swing's arc at its open end.
+ */
+export type DoorLeaf = { x: number; y: number; dx: number; dy: number };
+
 export type BuiltFlat = {
   unitsPerMetre: number;
   bodies: WallBody[];
   floor: SpanRow[];
   furniture: FurniturePiece[];
-  openings: Array<Opening & { kind: OpeningKind }>;
+  openings: Array<Opening & { kind: OpeningKind; leaf?: DoorLeaf }>;
   /** Paved outdoor areas, each verified against the area the sheet prints in it. */
   terraces: SpanRow[][];
   /**

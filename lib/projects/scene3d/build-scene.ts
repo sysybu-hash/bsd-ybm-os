@@ -3,6 +3,7 @@ import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import { fillEnclosedHoles, mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
 import {
   DEFAULT_FURNITURE_HEIGHT_M,
+  DOOR_LEAF_T_M,
   FRAME_INSET_M,
   FRAME_T_M,
   SKIRTING_H_M,
@@ -156,7 +157,7 @@ export type SceneInput = {
   unitsPerMetre: number;
   bounds: { x: number; y: number; width: number; height: number };
   bodies: Band[];
-  openings: Array<Band & { kind: SceneOpeningKind | "door" | "window" | "opening" }>;
+  openings: Array<Band & { kind: SceneOpeningKind | "door" | "window" | "opening"; leaf?: { x: number; y: number; dx: number; dy: number } }>;
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
@@ -382,6 +383,8 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   // --- openings, first: the walls are built around them.
   const holes: WallHole[] = [];
+  // One leaf a hinge: a door read as two openings has one leaf.
+  const leaves = new Set<string>();
   flat.openings.forEach((opening, index) => {
     const rect = bandToRect(opening);
     const centre = rectCentre(rect);
@@ -412,6 +415,19 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     // Glass only where there is glass: a doorway is a hole, not a pane.
     if (kind === "window" || kind === "slider") {
       meshes.push({ ...box, size: { ...box.size, ...glazingThickness(opening, box.size) } });
+    }
+    // A door stands open as the sheet draws it: its leaf square to the wall
+    // at the hinge, the length of the swing's radius.
+    const hinge = opening.leaf ? `${Math.round(opening.leaf.x)},${Math.round(opening.leaf.y)}` : "";
+    if (kind === "door" && opening.leaf && !leaves.has(hinge)) {
+      leaves.add(hinge);
+      const { x, y, dx, dy } = opening.leaf;
+      const t = DOOR_LEAF_T_M * upm;
+      const leafRect: Rect =
+        Math.abs(dx) >= Math.abs(dy)
+          ? { x: Math.min(x, x + dx), y: y - t / 2, w: Math.abs(dx), h: t }
+          : { x: x - t / 2, y: Math.min(y, y + dy), w: t, h: Math.abs(dy) };
+      meshes.push(boxFrom(p, leafRect, 0.01, headM, "furniture", "joinery", `${id}/leaf`));
     }
   });
 

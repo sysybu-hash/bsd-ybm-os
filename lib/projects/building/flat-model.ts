@@ -2,7 +2,7 @@ import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
 import type { BuildingRenderPayload } from "@/lib/projects/building/render-page";
 import { cutBox } from "@/lib/projects/scene3d/three-scene";
 import type { FlatScene, SceneRoom } from "@/lib/projects/scene3d/types";
-import { apartmentFinish, roomKindOf } from "@/lib/projects/building/flat-finish";
+import { apartmentFinish, roomKindOf, stagedPlants } from "@/lib/projects/building/flat-finish";
 import { WALL_HEIGHT_M } from "@/lib/projects/scene3d/standards";
 
 /**
@@ -33,6 +33,7 @@ export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number
       prims.push({ type: "box", centre: { ...kept.centre, y: cut + 0.004 }, size: { x: kept.size.x + 0.002, y: 0.008, z: kept.size.z + 0.002 }, material: "poche", tag: "poche" });
     }
   }
+  for (const p of stagedPlants(scene)) prims.push({ type: "plant", ...p, tag: "plant" });
   const { x, z, width, depth } = scene.extent;
   if (options.ceiling) {
     for (const room of scene.rooms) {
@@ -79,7 +80,7 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
       exposure: 0.62,
       ao: true,
       camera: { position: { x: cx, y: d * Math.sin(pitch), z: cz + d * Math.cos(pitch) }, target: { x: cx, y: 0.2, z: cz }, fovDeg: fov, studio: true },
-      sun: { azimuthDeg: 200, elevationDeg: 72 },
+      sun: { azimuthDeg: 215, elevationDeg: 62 },
     },
   };
 }

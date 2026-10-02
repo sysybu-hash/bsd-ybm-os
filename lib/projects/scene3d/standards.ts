@@ -60,6 +60,8 @@ export const TERRACE_DROP_M = 0.02;
 
 /** The frame around a door or window opening, and how far it is set in. */
 export const FRAME_T_M = 0.05;
+/** A door leaf's thickness. */
+export const DOOR_LEAF_T_M = 0.04;
 export const FRAME_INSET_M = 0.02;
 
 /**
