@@ -16,6 +16,25 @@ export async function renderBuildingFrames(
   payloads: BuildingRenderPayload[],
   options?: { outputWidthPx?: number; timeoutMs?: number },
 ): Promise<Buffer[]> {
+  // A traced frame leaves the GPU process holding its scene's textures, and
+  // the next traced frame in the same browser came out with its walls
+  // missing. Each traced frame gets a browser of its own.
+  if (payloads.length > 1 && payloads.some((p) => p.pathTrace)) {
+    const out: Buffer[] = [];
+    let batch: BuildingRenderPayload[] = [];
+    const flush = async () => {
+      if (batch.length) out.push(...(await renderBuildingFrames(batch, options)));
+      batch = [];
+    };
+    for (const p of payloads) {
+      if (p.pathTrace) {
+        await flush();
+        out.push(...(await renderBuildingFrames([p], options)));
+      } else batch.push(p);
+    }
+    await flush();
+    return out;
+  }
   const browser = await launchChromium({ webgl: true, viewport: { width: 900, height: 700 } });
   const cache = new Map<string, string>();
   const source = async (file: string) => {
@@ -26,6 +45,9 @@ export async function renderBuildingFrames(
     return text;
   };
   const three = path.join(process.cwd(), "node_modules", "three");
+  // The path tracer and its BVH, for a frame that asks for one: local only.
+  const tracer = path.join(process.cwd(), "node_modules", "three-gpu-pathtracer", "build");
+  const bvh = path.join(process.cwd(), "node_modules", "three-mesh-bvh", "build");
   const out: Buffer[] = [];
   try {
     for (const payload of payloads) {
@@ -46,8 +68,12 @@ export async function renderBuildingFrames(
           ? path.join(three, "build", name.slice("three/".length))
           : name.startsWith("jsm/")
             ? path.join(three, "examples", "jsm", name.slice("jsm/".length))
-            : null;
-        if (!file || !file.startsWith(three)) {
+            : name.startsWith("ptr/")
+              ? path.join(tracer, name.slice("ptr/".length))
+              : name.startsWith("bvh/")
+                ? path.join(bvh, name.slice("bvh/".length))
+                : null;
+        if (!file || !(file.startsWith(three) || file.startsWith(tracer) || file.startsWith(bvh))) {
           process.stderr.write(`[page] not served: ${name}
 `);
           return void req.respond({ status: 404, body: "" });

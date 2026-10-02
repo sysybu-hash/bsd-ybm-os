@@ -39,6 +39,13 @@ export type BuildingRenderPayload = {
   exposure: number;
   /** Ambient occlusion on: slower, and the frame reads as a photograph. */
   ao: boolean;
+  /**
+   * Trace the frame's light — bounced light, soft shadows, real glass —
+   * with this many samples a pixel, rather than rasterise it. Local only:
+   * the path tracer is a development dependency. A frame with a cut or a
+   * section is rasterised whatever this says: the tracer clips nothing.
+   */
+  pathTrace?: { samples: number };
 };
 
 export const BUILDING_ORIGIN = "https://building3d.local";
@@ -47,7 +54,7 @@ export function buildingPageHtml(payload: BuildingRenderPayload): string {
   return `<!doctype html>
 <html><head><meta charset="utf-8">
 <style>html,body{margin:0;background:#fff}canvas{display:block}</style>
-<script type="importmap">{"imports":{"three":"${BUILDING_ORIGIN}/three/three.module.js","three/addons/":"${BUILDING_ORIGIN}/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"${BUILDING_ORIGIN}/three/three.module.js","three/webgpu":"${BUILDING_ORIGIN}/three/three.webgpu.js","three/addons/":"${BUILDING_ORIGIN}/jsm/","three/examples/jsm/":"${BUILDING_ORIGIN}/jsm/","three-gpu-pathtracer":"${BUILDING_ORIGIN}/ptr/index.module.js","three-mesh-bvh":"${BUILDING_ORIGIN}/bvh/index.module.js"}}</script>
 </head>
 <body>
 <script>
@@ -531,6 +538,12 @@ async function main() {
   cam.position.set(P.camera.position.x, P.camera.position.y, P.camera.position.z);
   cam.lookAt(P.camera.target.x, P.camera.target.y, P.camera.target.z);
 
+  if (P.pathTrace && P.camera.cutAboveM == null && !P.camera.section) {
+    await traceFrame(renderer, scene, cam, sky, sunDir, P);
+    window.__renderDone = true;
+    return;
+  }
+
   const composer = new EffectComposer(renderer);
   composer.setSize(P.width, P.height);
   composer.addPass(new RenderPass(scene, cam));
@@ -545,5 +558,55 @@ async function main() {
   composer.render();
   window.__renderDone = true;
 }
+/**
+ * The frame path-traced. The tracer draws only what has a standard material,
+ * so the shader sky goes and an equirectangular one of the same sun comes in
+ * its place — a gradient from zenith to a hazed horizon, and the sun itself,
+ * bright past white — as background and light both. The fog goes: the
+ * tracer's own air is the sky's light.
+ */
+async function traceFrame(renderer, scene, cam, sky, sunDir, P) {
+  const { WebGLPathTracer } = await import("three-gpu-pathtracer");
+  scene.remove(sky);
+  scene.fog = null;
+  const W = 1024, H = 512;
+  const data = new Float32Array(W * H * 4);
+  const zen = [0.32, 0.52, 0.86], hor = [0.86, 0.9, 0.95], gnd = [0.42, 0.4, 0.37];
+  for (let y = 0; y < H; y++) {
+    const el = Math.PI / 2 - (y / (H - 1)) * Math.PI;
+    for (let x = 0; x < W; x++) {
+      const az = (x / W) * Math.PI * 2;
+      const d = [Math.cos(el) * Math.cos(az), Math.sin(el), Math.cos(el) * Math.sin(az)];
+      let c;
+      if (el >= 0) {
+        const t = Math.pow(1 - el / (Math.PI / 2), 3);
+        c = zen.map((z, i) => z + (hor[i] - z) * t);
+      } else c = gnd;
+      const cosS = d[0] * sunDir.x + d[1] * sunDir.y + d[2] * sunDir.z;
+      const glow = Math.pow(Math.max(0, cosS), 64) * 2.5 + (cosS > 0.9995 ? 60 : 0);
+      const i = (y * W + x) * 4;
+      data[i] = (c[0] * 0.55 + glow); data[i + 1] = (c[1] * 0.55 + glow * 0.95); data[i + 2] = (c[2] * 0.55 + glow * 0.85); data[i + 3] = 1;
+    }
+  }
+  const env = new THREE.DataTexture(data, W, H, THREE.RGBAFormat, THREE.FloatType);
+  env.mapping = THREE.EquirectangularReflectionMapping;
+  env.needsUpdate = true;
+  scene.background = env;
+  scene.environment = env;
+  scene.environmentIntensity = 1;
+  // Traced, the light is what reaches the face — no ambient fill the
+  // rasteriser adds — so the exposure the plates were set at reads dark.
+  renderer.toneMappingExposure = P.exposure * 1.6;
+  const tracer = new WebGLPathTracer(renderer);
+  tracer.tiles.set(2, 2);
+  tracer.filterGlossyFactor = 0.5;
+  tracer.setScene(scene, cam);
+  const samples = P.pathTrace.samples;
+  for (let i = 0; i < samples; i++) {
+    tracer.renderSample();
+    if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
 main().catch((e) => { window.__renderError = String(e && e.stack || e); });
 `;

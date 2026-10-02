@@ -16,7 +16,7 @@ import { getFloorplanVizModelChain } from "@/lib/gemini-model";
  */
 export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo";
 
-export function finishPrompt(kind: FinishKind, subject: string): string {
+export function finishPrompt(kind: FinishKind, subject: string, options?: { plainGround?: boolean }): string {
   const keep = [
     "This image is an exact architectural render. Repaint it as a professional architectural photograph.",
     "KEEP EXACTLY: the camera position, lens and framing; every wall, opening, window, mullion, column, slab and roof edge in the same place and size; every piece of furniture, its position, size and count; the stair; the trees and cars where they are. There are NO people: do not add any person or human figure anywhere.",
@@ -24,8 +24,18 @@ export function finishPrompt(kind: FinishKind, subject: string): string {
     "Do NOT add any sign, lettering, logo or text anywhere. Where the render has lettering, keep it where it is.",
     "Keep every retaining wall, terrace edge, ramp and the shape of the ground exactly; do not open up views that the render's walls close.",
   ];
+  // Where the render stands the building on a plain plot — no site plan read
+  // yet — the model is not to furnish one: it invented a car park, cars, olive
+  // trees and a wall round a building whose sheets draw none of them.
+  if (options?.plainGround) {
+    keep.push(
+      "The surroundings are ONLY what the render shows: plain paving round the building. Do NOT add cars, parking bays, roads, trees, planting, lawns, walls, fences, people or neighbouring buildings. Keep the ground plain paving to the edge of the frame, and the sky clear.",
+    );
+  }
   const look =
-    kind === "exterior" || kind === "photo"
+    options?.plainGround && (kind === "exterior" || kind === "photo")
+      ? "Luxury architectural visualization, the finest quality: warm honey-toned Jerusalem limestone with natural variation, crisp arrises and fine chisel texture; slim anthracite aluminium frames and laundry screens; deep reflective glazing mirroring the sky; the soft raking light of a clear golden-hour sky, long gentle shadows on clean pale stone paving. Perfect exposure, rich but natural colour, no haze, tack-sharp, photographed by a top architectural photographer on a tilt-shift lens."
+      : kind === "exterior" || kind === "photo"
       ? "Luxury architectural visualization, the finest quality: warm honey-toned Jerusalem limestone with natural variation, crisp arrises and fine chisel texture; slim anthracite aluminium frames; deep reflective glazing mirroring the sky; the soft raking light of a clear golden-hour sky over the Judean hills, long gentle shadows; immaculate stone paving and asphalt; mature olive trees and manicured Mediterranean planting; premium cars. Perfect exposure, rich but natural colour, no haze, tack-sharp, photographed by a top architectural photographer on a tilt-shift lens."
       : kind === "elevation"
         ? "Luxury architectural visualization of a straight-on orthographic elevation — keep it perfectly flat-on, no perspective: warm honey-toned Jerusalem limestone with natural variation and fine texture, anthracite aluminium frames, reflective glazing, soft golden-hour light, clean sky, the ground as drawn. Presentation-board quality."
@@ -118,4 +128,40 @@ export async function structuralMatch(render: Buffer, finish: Buffer): Promise<n
     }
   }
   return Math.min(aOn ? aHit / aOn : 0, bOn ? bHit / bOn : 0);
+}
+
+/**
+ * Whether the finish keeps the render's masses where they are: both images
+ * at 96 px wide, blurred, as light and dark, and the correlation of the two.
+ * Edges alone pass a close-up the model redrew: stone courses line up with
+ * stone courses wherever they fall. The light and dark of the masses — a
+ * wing in shadow, a band of sky, a slab's underside — does not.
+ */
+export async function massMatch(render: Buffer, finish: Buffer): Promise<number> {
+  const meta = await sharp(render).metadata();
+  const w = 96;
+  const h = Math.max(8, Math.round((w * (meta.height ?? 300)) / (meta.width ?? 480)));
+  const grey = async (img: Buffer) => (await sharp(img).resize(w, h, { fit: "fill" }).greyscale().blur(1.5).raw().toBuffer({ resolveWithObject: true })).data;
+  const a = await grey(render);
+  const b = await grey(finish);
+  const n = a.length;
+  let ma = 0;
+  let mb = 0;
+  for (let i = 0; i < n; i++) {
+    ma += a[i]!;
+    mb += b[i]!;
+  }
+  ma /= n;
+  mb /= n;
+  let ab = 0;
+  let aa = 0;
+  let bb = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i]! - ma;
+    const db = b[i]! - mb;
+    ab += da * db;
+    aa += da * da;
+    bb += db * db;
+  }
+  return aa > 0 && bb > 0 ? ab / Math.sqrt(aa * bb) : 0;
 }
