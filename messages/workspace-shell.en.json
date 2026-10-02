@@ -752,6 +752,8 @@
       "dwfNeedUnit": "Choose an apartment from the permit set",
       "bookletTitle": "Building booklet",
       "bookletHint": "A booklet for the whole building from the permit set: each floor's sheet beside its render, the elevations, aerial views and a page per apartment. About 8 minutes, no paid renders.",
+      "bookletBeta": "Beta",
+      "bookletLimits": "Beta: the structure, floors and elevations are read from the permit set; a terrace with furniture drawn on it may be read in part, and there are no views from inside the rooms yet. Check the booklet against the permit set before sending it.",
       "bookletName": "Project name",
       "bookletStart": "Create building booklet",
       "bookletBackground": "The booklet is being made in the background — you can close this window and come back",

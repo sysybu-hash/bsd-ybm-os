@@ -91,8 +91,12 @@ export default function FloorplanVizBuildingBooklet({ t, drawing, projectId }: {
       <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold">
         <BookOpen size={14} className="text-violet-600" aria-hidden />
         {t("workspaceWidgets.floorplanViz.bookletTitle")}
+        <span className="rounded-full bg-violet-100 px-1.5 py-px text-[9px] font-semibold text-violet-700 dark:bg-violet-900/40 dark:text-violet-200">
+          {t("workspaceWidgets.floorplanViz.bookletBeta")}
+        </span>
       </p>
-      <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">{t("workspaceWidgets.floorplanViz.bookletHint")}</p>
+      <p className="mb-1 text-[10px] text-[color:var(--foreground-muted)]">{t("workspaceWidgets.floorplanViz.bookletHint")}</p>
+      <p className="mb-2 text-[10px] text-[color:var(--foreground-muted)]">{t("workspaceWidgets.floorplanViz.bookletLimits")}</p>
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex min-w-0 flex-1 items-center gap-1.5 text-[11px]">
           {t("workspaceWidgets.floorplanViz.bookletName")}
