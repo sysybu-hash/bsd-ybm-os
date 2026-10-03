@@ -17,7 +17,8 @@ export const FURNITURE_HEIGHTS_M: Record<string, number> = {
   counter: 0.9,
   fixture: 0.55,
   hob: 0.92,
-  sink: 0.9,
+  // Proud of the worktop it is set into, or the two tops fight for the pixel.
+  sink: 0.91,
   table: 0.75,
   // A seat, not a seat back. At 0.85 a chair stood as tall as a worktop at
   // 0.9, and the model read the blocks as what they matched: the island's

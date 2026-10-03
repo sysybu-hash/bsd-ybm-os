@@ -1,4 +1,10 @@
-import { buildFlatScene, pieceBelongsIn, sceneOpeningKind } from "@/lib/projects/scene3d/build-scene";
+import {
+  buildFlatScene,
+  enclosedOnFourSides,
+  pieceBelongsIn,
+  sceneOpeningKind,
+  slicesByEnclosure,
+} from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
 import { mergeSpanRows, outlineEdges } from "@/lib/projects/scene3d/floors";
 import {
@@ -81,7 +87,7 @@ describe("the measured flat as a scene", () => {
     // as thin as a board, which is only true at the short end.
     const head = parts.find((m) => m.sourceId.endsWith("/headboard"))!;
     expect(head.size.x).toBeCloseTo(0.9, 9);
-    expect(head.size.z).toBeCloseTo(0.06, 9);
+    expect(head.size.z).toBeCloseTo(0.08, 9);
     // One pillow on a 0.90 mattress.
     expect(parts.filter((m) => m.sourceId.endsWith("/pillow"))).toHaveLength(1);
   });
@@ -112,6 +118,19 @@ describe("the measured flat as a scene", () => {
     expect(
       kitchen.meshes.filter((m) => m.kind === "floor" && m.sourceId === "room:1").every((m) => m.material === "floorTile"),
     ).toBe(true);
+  });
+
+  it("builds a cabinet in a bathroom as the basin's vanity, not a wardrobe", () => {
+    // דירה 18's stood two metres tall beside the bath.
+    const cabinet = { x: 40, y: 40, w: 90, h: 50, kind: "storage" as const, widthCm: 90, depthCm: 50 };
+    const tallest = (rooms: typeof ROOMS) =>
+      Math.max(
+        ...buildFlatScene(flat({ furniture: [cabinet] }), rooms)
+          .meshes.filter((m) => m.kind === "furniture")
+          .map((m) => m.centre.y + m.size.y / 2),
+      );
+    expect(tallest([room("ח.רחצה", "bathroom", LEFT, 11.4), ROOMS[1]!])).toBeLessThan(1);
+    expect(tallest(ROOMS)).toBeGreaterThan(1.5);
   });
 
   it("is the same scene every time it is built", () => {
@@ -187,5 +206,54 @@ describe("where a piece may stand", () => {
     expect(pieceBelongsIn("fixture", "bathroom")).toBe(true);
     expect(pieceBelongsIn("fixture", "living")).toBe(false);
     expect(pieceBelongsIn("fixture", "bedroom")).toBe(false);
+  });
+});
+
+describe("a room's floor, with its printed name's holes filled", () => {
+  it("fills a small hole the room surrounds and keeps the room's edge", async () => {
+    const { fillEnclosedHoles } = await import("@/lib/projects/scene3d/floors");
+    // A 100 x 100 room with a 10 x 6 letter-shaped hole in its middle.
+    const rows = Array.from({ length: 50 }, (_, i) => {
+      const y = i * 2;
+      const spans: Array<[number, number]> = y >= 40 && y < 46 ? [[0, 44], [54, 100]] : [[0, 100]];
+      return { y, spans };
+    });
+    const filled = fillEnclosedHoles(rows, 200);
+    expect(filled.every((row) => row.spans.length === 1)).toBe(true);
+    expect(filled[0]!.spans[0]![0]).toBeCloseTo(0, 0);
+    expect(filled[0]!.spans[0]![1]).toBeCloseTo(100, 0);
+  });
+
+  it("leaves a hole larger than the limit, and a notch open to the outside", async () => {
+    const { fillEnclosedHoles } = await import("@/lib/projects/scene3d/floors");
+    const holed = Array.from({ length: 50 }, (_, i) => ({ y: i * 2, spans: (i >= 10 && i < 30 ? [[0, 30], [70, 100]] : [[0, 100]]) as Array<[number, number]> }));
+    expect(fillEnclosedHoles(holed, 200)).toBe(holed);
+    const notched = Array.from({ length: 50 }, (_, i) => ({ y: i * 2, spans: (i < 5 ? [[0, 40], [60, 100]] : [[0, 100]]) as Array<[number, number]> }));
+    expect(fillEnclosedHoles(notched, 10_000)).toBe(notched);
+  });
+});
+
+describe("floor nobody claimed: inside the flat or outside it", () => {
+  // A room from 0 to 100 walled on all four sides.
+  const walls = [
+    { x: 0, y: -5, w: 100, h: 5 },
+    { x: 0, y: 100, w: 100, h: 5 },
+    { x: -5, y: 0, w: 5, h: 100 },
+    { x: 100, y: 0, w: 5, h: 100 },
+  ];
+
+  it("is inside where a wall stands every way", () => {
+    expect(enclosedOnFourSides({ x: 50, y: 50 }, walls)).toBe(true);
+  });
+
+  it("is outside where the drawing runs out one way", () => {
+    expect(enclosedOnFourSides({ x: 150, y: 50 }, walls)).toBe(false);
+  });
+
+  it("judges a strip that crosses the outer wall slice by slice", () => {
+    // דירה 22's north strip: a roof, under the wall, into the flat.
+    const runs = slicesByEnclosure({ x: 40, y: 40, w: 120, h: 10 }, walls, 10);
+    expect(runs.map((run) => run.inside)).toEqual([true, false]);
+    expect(runs[0]!.rect.x + runs[0]!.rect.w).toBeCloseTo(runs[1]!.rect.x);
   });
 });

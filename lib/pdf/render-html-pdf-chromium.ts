@@ -34,6 +34,14 @@ export type RenderHtmlPdfOptions = {
   timeoutMs?: number;
   /** טקסט קטן בתחתית כל עמוד (עברית נתמכת ב-Arial/Segoe) */
   footer?: string;
+  /**
+   * For renderHtmlSectionsPdf: the page each section is laid on — its size in
+   * CSS pixels and in PDF points. A4 portrait when absent; a building's
+   * booklet is A3 landscape, the shape of the sheets it is drawn from.
+   */
+  sheet?: { cssWidth: number; cssHeight: number; ptWidth: number; ptHeight: number };
+  /** Embed each page as JPEG at this quality instead of PNG: a photographic booklet at a fifth of the size. */
+  jpegQuality?: number;
 };
 
 /**
@@ -101,7 +109,9 @@ export async function renderHtmlSectionsPdf(
   try {
     const page = await browser.newPage();
     const timeout = options.timeoutMs ?? 45_000;
-    await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
+    const cssW = options.sheet?.cssWidth ?? 794;
+    const cssH = options.sheet?.cssHeight ?? 1123;
+    await page.setViewport({ width: cssW, height: cssH, deviceScaleFactor: 2 });
     await page.emulateMediaType("screen");
     await page.setContent(html, { waitUntil: "load", timeout });
     await page.evaluate(() => document.fonts.ready);
@@ -121,12 +131,12 @@ export async function renderHtmlSectionsPdf(
     }
     await page.addStyleTag({
       content: `
-        html, body { width: 794px; height: auto; margin: 0; padding: 0 !important; background: #fff; overflow: visible; }
+        html, body { width: ${cssW}px; height: auto; margin: 0; padding: 0 !important; background: #fff; overflow: visible; }
         .cover, .plate {
-          width: 794px;
-          height: 1123px !important;
-          min-height: 1123px !important;
-          max-height: 1123px !important;
+          width: ${cssW}px;
+          height: ${cssH}px !important;
+          min-height: ${cssH}px !important;
+          max-height: ${cssH}px !important;
           overflow: hidden !important;
           break-before: auto !important;
           page-break-before: auto !important;
@@ -137,8 +147,8 @@ export async function renderHtmlSectionsPdf(
     const handles = await page.$$(".cover, .plate");
     const { PDFDocument } = await import("pdf-lib");
     const doc = await PDFDocument.create();
-    const a4w = 595.28;
-    const a4h = 841.89;
+    const a4w = options.sheet?.ptWidth ?? 595.28;
+    const a4h = options.sheet?.ptHeight ?? 841.89;
     const inset = 0;
     for (const handle of handles) {
       // Clip against the page viewport reused the first sheet four times.
@@ -146,7 +156,9 @@ export async function renderHtmlSectionsPdf(
       await handle.evaluate((el) => {
         el.scrollIntoView({ block: "start" });
       });
-      const png = await handle.screenshot({ type: "png" });
+      const shot = options.jpegQuality
+        ? await handle.screenshot({ type: "jpeg", quality: options.jpegQuality })
+        : await handle.screenshot({ type: "png" });
       const links = await handle.evaluate((el) => {
         const root = el.getBoundingClientRect();
         return Array.from(el.querySelectorAll("a.brand-link")).map((node) => {
@@ -160,7 +172,7 @@ export async function renderHtmlSectionsPdf(
           };
         });
       });
-      const image = await doc.embedPng(png);
+      const image = options.jpegQuality ? await doc.embedJpg(shot) : await doc.embedPng(shot);
       const sheet = doc.addPage([a4w, a4h]);
       const scale = Math.min((a4w - inset * 2) / image.width, (a4h - inset * 2) / image.height);
       const w = image.width * scale;
@@ -177,10 +189,10 @@ export async function renderHtmlSectionsPdf(
         addUriLink(
           sheet,
           {
-            x: originX + (link.x / 794) * w,
-            y: originY + (1 - (link.y + link.height) / 1123) * h,
-            width: (link.width / 794) * w,
-            height: (link.height / 1123) * h,
+            x: originX + (link.x / cssW) * w,
+            y: originY + (1 - (link.y + link.height) / cssH) * h,
+            width: (link.width / cssW) * w,
+            height: (link.height / cssH) * h,
           },
           link.href,
         );

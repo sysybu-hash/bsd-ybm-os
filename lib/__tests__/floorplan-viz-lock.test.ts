@@ -174,3 +174,15 @@ describe("floorplan viz lock", () => {
     expect(GEOMETRY_LOCK).toMatch(/If the sheet draws only a dining table, there is no sofa/);
   });
 });
+
+describe("a permit strip's runs, one apartment each", () => {
+  const base = { planBase64: "c3RyaXA=", mimeType: "model/vnd.dwf", planKind: "auto" };
+
+  it("fingerprints each apartment apart, and leaves a run with no apartment as it was", () => {
+    const seven = floorplanExtractFingerprint({ ...base, unit: "7" });
+    const eight = floorplanExtractFingerprint({ ...base, unit: "8" });
+    expect(seven).not.toBe(eight);
+    expect(floorplanExtractFingerprint({ ...base, unit: undefined })).toBe(floorplanExtractFingerprint(base));
+    expect(floorplanExtractFingerprint({ ...base, unit: "34/upper" })).not.toBe(floorplanExtractFingerprint({ ...base, unit: "34/lower" }));
+  });
+});

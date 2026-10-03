@@ -6,11 +6,17 @@ export const TARGET_SHORT_EDGE = 2400;
 
 export const DXF_MIME = "image/vnd.dxf";
 export const DWG_MIME = "image/vnd.dwg";
+/**
+ * A permit strip (DWF), or the W2D drawing stream inside one — the browser
+ * uploads the stream alone. Not an image and not a CAD file the DXF reader
+ * takes: it has its own reader, and a building's worth of apartments in it.
+ */
+export const DWF_MIME = "model/vnd.dwf";
 
 export type PreparedFloorplanSource = {
   base64: string;
   mimeType: string;
-  /** "cad" is a DXF or DWG: vectors with layers, read without rasterising anything. */
+  /** "cad" is a DXF, a DWG or a DWF: vectors, read without rasterising anything. */
   sourceKind: "pdf" | "photo" | "drawing" | "cad";
 };
 
@@ -23,6 +29,16 @@ export function looksLikeDxf(bytes: Buffer | Uint8Array): boolean {
 /** DWG is binary, and its first bytes name the release that wrote it. */
 export function looksLikeDwg(bytes: Buffer | Uint8Array): boolean {
   return /^AC10\d{2}/.test(Buffer.from(bytes.subarray(0, 6)).toString("latin1"));
+}
+
+/** A W2D stream opens with its own name; a DWF package with "(DWF V". */
+export function looksLikeDwf(bytes: Buffer | Uint8Array): boolean {
+  const head = Buffer.from(bytes.subarray(0, 8)).toString("latin1");
+  return head.startsWith("(W2D") || head.startsWith("(DWF V");
+}
+
+export function isDwfFloorplanMime(mime: string): boolean {
+  return mime === DWF_MIME;
 }
 
 export function isCadFloorplanMime(mime: string): boolean {
@@ -40,6 +56,7 @@ export function floorplanSourceFileName(mimeType: string): string {
   if (mimeType === "application/pdf") return "floorplan.pdf";
   if (mimeType === DXF_MIME) return "floorplan.dxf";
   if (mimeType === DWG_MIME) return "floorplan.dwg";
+  if (mimeType === DWF_MIME) return "floorplan.w2d";
   if (mimeType.includes("png")) return "floorplan.png";
   if (mimeType.includes("webp")) return "floorplan.webp";
   return "floorplan.jpg";
@@ -61,6 +78,7 @@ export function sniffFloorplanMime(base64: string, mimeType: string): string {
     const buf = Buffer.from(base64.slice(0, 1024), "base64");
     if (buf.slice(0, 4).toString("latin1") === "%PDF") return "application/pdf";
     if (looksLikeDwg(buf)) return DWG_MIME;
+    if (looksLikeDwf(buf)) return DWF_MIME;
     if (looksLikeDxf(buf)) return DXF_MIME;
     if (buf[0] === 0xff && buf[1] === 0xd8) return "image/jpeg";
     if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";

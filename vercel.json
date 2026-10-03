@@ -1,11 +1,11 @@
 {
-  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ':(exclude)lib/__tests__' ':(exclude)e2e' ':(exclude)docs' ':(exclude)*.md' ':(exclude).github'",
+  "ignoreCommand": "git cat-file -e ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} 2>/dev/null && git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- . ':(exclude)lib/__tests__' ':(exclude)e2e' ':(exclude)docs' ':(exclude)*.md' ':(exclude).github' || exit 1",
   "regions": ["fra1"],
   "functions": {
     "app/api/documents/issued/[id]/export/route.ts": {
       "maxDuration": 60
     },
-    "app/api/projects/visualize-floorplan/route.ts": {
+    "app/api/projects/visualize-floorplan-run/route.ts": {
       "maxDuration": 300
     },
     "app/api/projects/visualize-floorplan/[id]/stills/[stillId]/route.ts": {
@@ -13,6 +13,12 @@
     },
     "app/api/projects/visualize-floorplan/export-pdf/route.ts": {
       "maxDuration": 90
+    },
+    "app/api/projects/building-booklet/[id]/step/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/building-booklet-step/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

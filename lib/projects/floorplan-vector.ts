@@ -330,23 +330,7 @@ export async function extractFloorplanVectorGeometry(
     }
 
     const page2 = { width: viewport.width, height: viewport.height };
-    // Two ways to be a wall, because this CAD draws them two ways: partitions
-    // get a heavy pen, exterior bodies get a thin outline round a hatch fill.
-    // Requiring both tests at once loses the exterior and rooms merge; requiring
-    // neither lets every bed through and rooms fragment around the furniture.
-    const geometric = segments.filter((s) => isWallCandidate(s, page2, options?.minWallLength ?? 12));
-    const heavy = geometric.filter((s) => s.lineWidth >= WALL_MIN_LINE_WIDTH);
-    const faced = geometric.filter((s) => hasParallelFace(s, geometric));
-    // Take BOTH, not whichever looks healthier. This used to read
-    // `heavy.length >= 40 ? heavy : faced`, and on דירה 14 heavy won with 172
-    // segments — every one of them an internal partition, because this sheet
-    // draws its exterior as a thin-outlined hatch body that the heavy pen never
-    // sees. The model was handed a plan with no envelope at all and did the only
-    // thing it could: invent one. That is the whole family of complaints on this
-    // batch — wrong footprint, whole invented spaces down one side. The union is
-    // 860 segments and closes the outline.
-    const union = new Set<VectorSegment>([...heavy, ...faced]);
-    const walls = largestWallCluster([...union]);
+    const walls = wallsFromSegments(segments, page2, options?.minWallLength);
     return { pageWidth: viewport.width, pageHeight: viewport.height, segments, curves, walls };
   } catch (err: unknown) {
     log.warn("vector extraction failed", {
@@ -354,6 +338,31 @@ export async function extractFloorplanVectorGeometry(
     });
     return null;
   }
+}
+
+/** The wall candidates among a sheet's segments, whatever the sheet was read from. */
+export function wallsFromSegments(
+  segments: VectorSegment[],
+  page2: { width: number; height: number },
+  minWallLength = 12,
+): VectorSegment[] {
+  // Two ways to be a wall, because this CAD draws them two ways: partitions
+  // get a heavy pen, exterior bodies get a thin outline round a hatch fill.
+  // Requiring both tests at once loses the exterior and rooms merge; requiring
+  // neither lets every bed through and rooms fragment around the furniture.
+  const geometric = segments.filter((s) => isWallCandidate(s, page2, minWallLength));
+  const heavy = geometric.filter((s) => s.lineWidth >= WALL_MIN_LINE_WIDTH);
+  const faced = geometric.filter((s) => hasParallelFace(s, geometric));
+  // Take BOTH, not whichever looks healthier. This used to read
+  // `heavy.length >= 40 ? heavy : faced`, and on דירה 14 heavy won with 172
+  // segments — every one of them an internal partition, because this sheet
+  // draws its exterior as a thin-outlined hatch body that the heavy pen never
+  // sees. The model was handed a plan with no envelope at all and did the only
+  // thing it could: invent one. That is the whole family of complaints on this
+  // batch — wrong footprint, whole invented spaces down one side. The union is
+  // 860 segments and closes the outline.
+  const union = new Set<VectorSegment>([...heavy, ...faced]);
+  return largestWallCluster([...union]);
 }
 
 /**

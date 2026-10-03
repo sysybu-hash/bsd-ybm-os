@@ -43,6 +43,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
           "image/webp",
           "image/heic",
           "image/heif",
+          // A permit strip's W2D stream, cut out of the DWF in the browser.
+          "model/vnd.dwf",
         ],
         maximumSizeInBytes: FLOORPLAN_BLOB_MAX_BYTES,
         addRandomSuffix: true,

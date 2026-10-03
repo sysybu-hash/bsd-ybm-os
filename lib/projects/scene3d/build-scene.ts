@@ -1,8 +1,9 @@
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
+import { fillEnclosedHoles, mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
 import {
   DEFAULT_FURNITURE_HEIGHT_M,
+  DOOR_LEAF_T_M,
   FRAME_INSET_M,
   FRAME_T_M,
   SKIRTING_H_M,
@@ -25,7 +26,7 @@ import type {
   SceneRoom,
   SceneRoomKind,
 } from "@/lib/projects/scene3d/types";
-import { partsFor } from "@/lib/projects/scene3d/furniture";
+import { partsFor, type PieceSpec } from "@/lib/projects/scene3d/furniture";
 import { rulesFor, type AudienceRules } from "@/lib/projects/scene3d/rules";
 import { mezuzot, stageScene } from "@/lib/projects/scene3d/staging";
 import { openingHeights } from "@/lib/projects/scene3d/openings";
@@ -156,11 +157,11 @@ export type SceneInput = {
   unitsPerMetre: number;
   bounds: { x: number; y: number; width: number; height: number };
   bodies: Band[];
-  openings: Array<Band & { kind: SceneOpeningKind | "door" | "window" | "opening" }>;
+  openings: Array<Band & { kind: SceneOpeningKind | "door" | "window" | "opening"; leaf?: { x: number; y: number; dx: number; dy: number } }>;
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
-  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string }>;
+  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"] }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
   /**
    * The rooms as the sheet labels them, in page units.
@@ -223,6 +224,52 @@ export function roomsForScene(input: SceneInput): SceneInput["rooms"] {
   return out.length > 0 ? out : input.rooms;
 }
 
+/**
+ * Whether a point is shut in on all four sides: a ray from it, left, right,
+ * up and down, meets one of the blockers before it runs off the drawing.
+ */
+export function enclosedOnFourSides(point: { x: number; y: number }, blockers: Rect[]): boolean {
+  const spansY = (r: Rect) => point.y >= r.y && point.y <= r.y + r.h;
+  const spansX = (r: Rect) => point.x >= r.x && point.x <= r.x + r.w;
+  return (
+    blockers.some((r) => spansY(r) && r.x + r.w <= point.x) &&
+    blockers.some((r) => spansY(r) && r.x >= point.x) &&
+    blockers.some((r) => spansX(r) && r.y + r.h <= point.y) &&
+    blockers.some((r) => spansX(r) && r.y >= point.y)
+  );
+}
+
+/**
+ * A rect cut along its longer side into slices of about `step`, each judged by
+ * enclosedOnFourSides at its centre, with neighbouring slices that agree
+ * joined back into one run.
+ */
+export function slicesByEnclosure(
+  rect: Rect,
+  blockers: Rect[],
+  step: number,
+): Array<{ rect: Rect; inside: boolean }> {
+  const horizontal = rect.w >= rect.h;
+  const length = horizontal ? rect.w : rect.h;
+  const count = Math.max(1, Math.round(length / step));
+  const size = length / count;
+  const runs: Array<{ rect: Rect; inside: boolean }> = [];
+  for (let i = 0; i < count; i++) {
+    const slice: Rect = horizontal
+      ? { x: rect.x + i * size, y: rect.y, w: size, h: rect.h }
+      : { x: rect.x, y: rect.y + i * size, w: rect.w, h: size };
+    const inside = enclosedOnFourSides(rectCentre(slice), blockers);
+    const last = runs[runs.length - 1];
+    if (last && last.inside === inside) {
+      if (horizontal) last.rect.w += size;
+      else last.rect.h += size;
+    } else {
+      runs.push({ rect: slice, inside });
+    }
+  }
+  return runs;
+}
+
 /** The measured flat, which carries every region as scan rows. */
 export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): SceneInput {
   return {
@@ -237,7 +284,7 @@ export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): Sce
       name: room.name,
       kind: room.kind,
       areaM2: room.areaM2,
-      rects: mergeSpanRows(room.rows),
+      rects: mergeSpanRows(fillEnclosedHoles(room.rows, 0.5 * flat.unitsPerMetre ** 2)),
     })),
   };
 }
@@ -336,6 +383,8 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   // --- openings, first: the walls are built around them.
   const holes: WallHole[] = [];
+  // One leaf a hinge: a door read as two openings has one leaf.
+  const leaves = new Set<string>();
   flat.openings.forEach((opening, index) => {
     const rect = bandToRect(opening);
     const centre = rectCentre(rect);
@@ -366,6 +415,19 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     // Glass only where there is glass: a doorway is a hole, not a pane.
     if (kind === "window" || kind === "slider") {
       meshes.push({ ...box, size: { ...box.size, ...glazingThickness(opening, box.size) } });
+    }
+    // A door stands open as the sheet draws it: its leaf square to the wall
+    // at the hinge, the length of the swing's radius.
+    const hinge = opening.leaf ? `${Math.round(opening.leaf.x)},${Math.round(opening.leaf.y)}` : "";
+    if (kind === "door" && opening.leaf && !leaves.has(hinge)) {
+      leaves.add(hinge);
+      const { x, y, dx, dy } = opening.leaf;
+      const t = DOOR_LEAF_T_M * upm;
+      const leafRect: Rect =
+        Math.abs(dx) >= Math.abs(dy)
+          ? { x: Math.min(x, x + dx), y: y - t / 2, w: Math.abs(dx), h: t }
+          : { x: x - t / 2, y: Math.min(y, y + dy), w: t, h: Math.abs(dy) };
+      meshes.push(boxFrom(p, leafRect, 0.01, headM, "furniture", "joinery", `${id}/leaf`));
     }
   });
 
@@ -482,11 +544,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   // Floor the segmenter did not claim for any room — thresholds, the odd sliver
-  // — still has to be walked on, so it is laid in the neutral timber.
+  // — still has to be walked on, so it is laid in the neutral timber. Floor
+  // with open drawing on one side of it is outside the flat, and timber there
+  // read as a deck stuck onto the building: דירה 22's two paved roofs at
+  // +14.36 came out as floorboards past its outer walls. It is laid as pale
+  // stone, as the sheet paves it.
   const claimed = roomRects.flatMap((entry) => entry.rects);
+  const blockers = [...claimed, ...bodies.map(bandToRect)];
+  // One scan rect can run from a roof, under an outer wall, into the flat —
+  // דירה 22's strip along its north side crosses both roofs — so it is judged
+  // in slices along its length, and each run of slices gets its own floor.
   for (const rect of floorRects) {
     if (pointInRects(rectCentre(rect), claimed)) continue;
-    meshes.push(boxFrom(p, rect, -FLOOR_T_M, 0, "floor", "floorWood", "floor:unclaimed"));
+    for (const run of slicesByEnclosure(rect, blockers, upm * 0.25)) {
+      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", run.inside ? "floorWood" : "floorStone", "floor:unclaimed"));
+    }
   }
 
   // --- terraces, and the railing along the edges that are not walls.
@@ -501,8 +573,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         edge.orientation === "h"
           ? { x: edge.from, y: edge.at - GLASS_T_M * upm * 0.5, w: edge.to - edge.from, h: GLASS_T_M * upm }
           : { x: edge.at - GLASS_T_M * upm * 0.5, y: edge.from, w: GLASS_T_M * upm, h: edge.to - edge.from };
-      // An edge the flat's own wall stands on is a wall, not a drop.
-      if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.12) continue;
+      // An edge the flat's own wall stands on, or runs along a hand's breadth
+      // off (the facade's cladding), is a wall, not a drop.
+      if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.35) continue;
       meshes.push(boxFrom(p, rect, -TERRACE_DROP_M, RAILING_H_M - RAIL_CAP_M, "railing", "glass", id));
       meshes.push(
         boxFrom(p, rect, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`),
@@ -519,8 +592,12 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   furniture.forEach((piece, index) => {
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
-    const height = FURNITURE_HEIGHT_M[piece.kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     const host = roomAt(rectCentre(box), roomRects);
+    // A cabinet in a bathroom is the basin's vanity, at worktop height: built
+    // as a wardrobe, דירה 18's stood two metres tall beside the bath.
+    const kind =
+      piece.kind === "storage" && host && isWetRoom(host.room.kind as SceneRoomKind) ? "counter" : piece.kind;
+    const height = FURNITURE_HEIGHT_M[kind] ?? DEFAULT_FURNITURE_HEIGHT_M;
     // The written rules, kept here and not only asked of a model: a bed only
     // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
     // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
@@ -537,12 +614,13 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     });
     const facing = piece.kind === "bed" ? headFacing(box, decided) : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
-    for (const built of partsFor(piece.kind, {
+    for (const built of partsFor(kind, {
       wM: box.w / upm,
       dM: box.h / upm,
       hM: height,
       facing,
       haredi: options?.rules?.singleBeds ?? options?.haredi,
+      ...(piece.fixture ? { fixture: piece.fixture } : {}),
     })) {
       meshes.push({
         kind: "furniture",
@@ -550,6 +628,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         centre: { x: centre.x + built.x, y: built.y, z: centre.z + built.z },
         size: { x: built.w, y: built.h, z: built.d },
         sourceId: `furniture:${index}/${built.tag}`,
+        ...(built.round ? { round: built.round } : {}),
       });
     }
   });
@@ -558,6 +637,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
+    pageCentre: { x: p.cx, y: p.cy },
     extent: {
       x: extentCorner.x,
       z: extentCorner.z,

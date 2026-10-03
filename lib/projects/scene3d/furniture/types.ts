@@ -22,6 +22,8 @@ export type PieceSpec = {
   facing: Facing;
   /** Modesty rules, applied by the constructors that have to obey them. */
   haredi?: boolean;
+  /** Which sanitary fixture, where the reading knows; otherwise told by shape. */
+  fixture?: "bath" | "shower" | "toilet" | "basin";
 };
 
 export type PiecePart = {
@@ -34,14 +36,17 @@ export type PiecePart = {
   w: number;
   h: number;
   d: number;
+  /** Edges rounded to this radius, metres, where the renderer can: a cushion is soft. */
+  round?: number;
 };
 
 export function part(
   tag: string,
   material: MaterialId,
   box: { x: number; y: number; z: number; w: number; h: number; d: number },
+  round?: number,
 ): PiecePart {
-  return { tag, material, ...box };
+  return round ? { tag, material, ...box, round } : { tag, material, ...box };
 }
 
 /** Rotate a part from "facing north" into the facing the piece actually has. */

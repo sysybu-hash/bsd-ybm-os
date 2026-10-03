@@ -72,6 +72,8 @@ export type SceneBox = {
    * there is no bowl. It is how "lived-in" stays honest.
    */
   anchorId?: string;
+  /** Edges rounded to this radius, metres, where the renderer can. */
+  round?: number;
 };
 
 export type SceneRoomKind =
@@ -133,6 +135,8 @@ export type FlatScene = {
   version: 1;
   /** Drawing units per metre, kept so a caller can go back to page space. */
   unitsPerMetre: number;
+  /** The page point the scene's origin stands on: page = origin · upm + this. */
+  pageCentre?: { x: number; y: number };
   /** The flat's footprint in scene coordinates, metres. */
   extent: { x: number; z: number; width: number; depth: number };
   meshes: SceneBox[];

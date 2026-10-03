@@ -5,6 +5,7 @@ import {
   markEntranceHall,
   roomsForLayout,
   segmentRooms,
+  wetCellAtDoorway,
   type SegmentedRoom,
 } from "@/lib/projects/floorplan-segment";
 import type { Opening, SpanRow, WallBody } from "@/lib/projects/floorplan-solid";
@@ -379,5 +380,31 @@ describe("the ממ\"ד the sheet's +2 stands at", () => {
 
   it("names no bedroom from a mark 0.9 m away — דירה 17's shelter was not read, the bedroom beside it was", () => {
     expect(withMark({ x: W / 4, y: H + 0.9 * UPM }).filter((room) => room.kind === "mmd")).toHaveLength(0);
+  });
+});
+
+describe("a bathroom cut off its hall at the door", () => {
+  // דירה 23: the bathroom opens off the hall that runs into the kitchen, with
+  // no wall inside the region to cut along, and its own lettering is a row
+  // of holes across it narrower than its door.
+  const room: SpanRow[] = [];
+  const m = (v: number) => v * UPM;
+  for (let y = 0; y < m(5); y += 2) {
+    if (y < m(3)) room.push({ y, spans: [[0, m(4)]] }); // living and hall
+    else if (y < m(3.1)) room.push({ y, spans: [[m(0.6), m(1.4)]] }); // the door, 0.8 m
+    else if (y > m(3.8) && y < m(3.95)) {
+      // "ח.אמבטיה", outlined: holes across the room, gaps between the letters.
+      room.push({ y, spans: [[0, m(0.1)], [m(0.35), m(0.45)], [m(0.7), m(0.8)], [m(1.05), m(1.15)], [m(1.4), m(1.6)]] });
+    } else room.push({ y, spans: [[0, m(1.6)]] }); // the bathroom, 1.6 by 1.9
+  }
+  const bath: FurniturePiece = { x: m(0.1), y: m(4.2), w: m(1.4), h: m(0.7), widthCm: 140, depthCm: 70, kind: "fixture" };
+
+  it("takes the whole bathroom, cut at its door and not at its lettering", () => {
+    const split = wetCellAtDoorway(room, [bath], UPM);
+    expect(split).not.toBeNull();
+    const area = (rows: SpanRow[]) => rows.reduce((s, r) => s + r.spans.reduce((a, [p, q]) => a + q - p, 0) * 2, 0) / (UPM * UPM);
+    expect(area(split![0])).toBeGreaterThan(2.6);
+    expect(area(split![0])).toBeLessThan(3.6);
+    expect(area(split![1])).toBeGreaterThan(11);
   });
 });

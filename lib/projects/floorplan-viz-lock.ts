@@ -108,6 +108,12 @@ export function floorplanExtractFingerprint(input: {
   planBase64: string;
   mimeType: string;
   planKind: string;
+  /**
+   * On a permit strip, the apartment: one upload draws a whole building, and
+   * without it the second flat asked for came back as the first one's run.
+   * Left out, the fingerprint is what it always was.
+   */
+  unit?: string;
 }): string {
   return sha256Utf8(
     [
@@ -115,6 +121,7 @@ export function floorplanExtractFingerprint(input: {
       input.mimeType.trim(),
       input.planKind.trim() || "auto",
       sha256Utf8(input.planBase64),
+      ...(input.unit ? [`unit:${input.unit}`] : []),
     ].join("\n"),
   );
 }
@@ -123,6 +130,7 @@ export function floorplanVizInputFingerprint(input: {
   planBase64: string;
   mimeType: string;
   planKind: string;
+  unit?: string;
   scope: string;
   styleKit: { id: string; audience: string; promptBlock: string };
 }): string {

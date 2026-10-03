@@ -48,9 +48,20 @@ function escapeXml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * The unit as the caption says it: the caption supplies the word "דירה", and a
+ * label that already carries it — the 3D render passes its title, "דירה 20" —
+ * came out as "דירה דירה 20".
+ */
+function unitOnly(label: string | undefined): string | undefined {
+  const unit = label?.replace(/^\s*דירה\s*/u, "").trim();
+  return unit || undefined;
+}
+
 export function buildStampCaption(fields: FloorplanStampFields): string {
   const parts: string[] = [];
-  if (fields.unitLabel) parts.push(`דירה ${fields.unitLabel}`);
+  const unit = unitOnly(fields.unitLabel);
+  if (unit) parts.push(`דירה ${unit}`);
   if (fields.areaM2 != null) parts.push(`${fields.areaM2.toFixed(2)} מ"ר`);
   return parts.join("  ·  ");
 }
@@ -97,9 +108,10 @@ export function placeRtlRuns(
 
 export function captionRuns(fields: FloorplanStampFields, rightX: number, fontSize: number): StampRun[] {
   const runs: Array<{ text: string; hebrew?: boolean }> = [];
-  if (fields.unitLabel) {
+  const unit = unitOnly(fields.unitLabel);
+  if (unit) {
     runs.push({ text: "דירה", hebrew: true });
-    runs.push({ text: fields.unitLabel });
+    runs.push({ text: unit });
   }
   if (fields.areaM2 != null) {
     if (runs.length) runs.push({ text: "·" });

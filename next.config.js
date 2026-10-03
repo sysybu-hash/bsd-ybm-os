@@ -58,6 +58,34 @@ function buildAllowedDevOrigins() {
 }
 
 /** @type {import('next').NextConfig} */
+/** What a building booklet's steps read off disk; see outputFileTracingIncludes. */
+const BUILDING_BOOKLET_FILES = [
+  "./lib/pdf/fonts/**",
+  "./lib/pdf/load-pdf-font-buffers.ts",
+  "./node_modules/three/build/three.module.js",
+  "./node_modules/three/build/three.core.js",
+  "./node_modules/three/examples/jsm/environments/**",
+  "./node_modules/three/examples/jsm/postprocessing/**",
+  "./node_modules/three/examples/jsm/objects/**",
+  "./node_modules/three/examples/jsm/geometries/**",
+  "./node_modules/three/examples/jsm/shaders/**",
+  "./node_modules/three/examples/jsm/math/**",
+  "./node_modules/@sparticuz/chromium/**",
+  ...PDF_READER_FILES,
+];
+
+/*
+ * outputFileTracingIncludes keys are matched against routes as substrings,
+ * by Turbopack as by picomatch's `contains`: "/api/projects/visualize-floorplan"
+ * also took in /upload, /[id], /style-kit and every other route under it, so
+ * ten functions carried Chromium, pdfjs and the Skia bindings where two use
+ * them — and Vercel bills the storage of each, on every deployment it keeps.
+ * There is no anchoring a key; so the visualizer's handler lives at
+ * /visualize-floorplan-run, a path no other route contains, and the old path
+ * is rewritten to it. A literal "[id]" in a key matches nothing (it is a
+ * character class); "*" stands for a dynamic segment.
+ */
+
 const nextConfig = {
   outputFileTracingRoot: path.resolve(__dirname),
   allowedDevOrigins: buildAllowedDevOrigins(),
@@ -164,6 +192,10 @@ const nextConfig = {
   async redirects() {
     return LEGACY_REDIRECTS;
   },
+  // The visualizer's handler, at a path no other route contains (see above).
+  async rewrites() {
+    return [{ source: "/api/projects/visualize-floorplan", destination: "/api/projects/visualize-floorplan-run" }];
+  },
   transpilePackages: ["react-signature-canvas", "signature_pad", "@hebcal/core"],
   serverExternalPackages: [
     "pdf-parse",
@@ -180,7 +212,7 @@ const nextConfig = {
     "@napi-rs/canvas",
   ],
   outputFileTracingIncludes: {
-    "/api/documents/issued/[id]/export": [
+    "/api/documents/issued/*/export": [
       "./lib/pdf/font-data.generated.ts",
       "./lib/pdf/fonts/**",
       "./lib/pdf/invoice-print-html.ts",
@@ -206,7 +238,7 @@ const nextConfig = {
     // empty, silently: 28-8-23-2 reported "no vector walls" for a drawing that
     // reads as 5,326 segments on a laptop. Named here so the functions that
     // read a plan actually carry what they read it with.
-    "/api/projects/visualize-floorplan": [
+    "/api/projects/visualize-floorplan-run": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
       // The deterministic renderer draws the measured flat in a headless
@@ -219,7 +251,13 @@ const nextConfig = {
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
-    "/api/projects/visualize-floorplan/[id]/stills/[stillId]": [
+    // A building booklet's steps draw the building in Chromium with three and
+    // the add-ons its page imports (environment, post-processing, sky, rounded
+    // boxes, and the shaders and noise those import), each apartment with the
+    // flat renderer, and the PDF in the booklet's fonts — all read by path.
+    "/api/projects/building-booklet/*/step": BUILDING_BOOKLET_FILES,
+    "/api/cron/building-booklet-step": BUILDING_BOOKLET_FILES,
+    "/api/projects/visualize-floorplan/*/stills/*": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
       ...PDF_READER_FILES,

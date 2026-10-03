@@ -41,6 +41,12 @@ export type FurniturePiece = {
   kind: FurnitureKind;
   widthCm: number;
   depthCm: number;
+  /**
+   * Which sanitary fixture a "fixture" is, where the reading knows. A sales
+   * sheet's reading does not, and the render tells a bath from a basin by
+   * shape; a permit plan's knows a pan from a basin by how each is drawn.
+   */
+  fixture?: "bath" | "shower" | "toilet" | "basin";
 };
 
 type Edge = { at: number; a: number; b: number };
@@ -231,14 +237,20 @@ export function settleFixtures(pieces: FurniturePiece[], unitsPerMetre: number):
   });
 }
 
-/** A free-standing kitchen island: deep enough to work at, long enough to seat. */
+/**
+ * A free-standing kitchen island: deep enough to work at, long enough to seat.
+ *
+ * Long enough is two stools, 1.2 m: דירה 22's island is 54 by 128 cm with two
+ * stools drawn at it, and at a 1.4 m floor it stood in the render as a
+ * two-metre wardrobe in the middle of the kitchen.
+ */
 export function looksLikeKitchenIsland(piece: FurniturePiece): boolean {
   if (piece.kind !== "storage" && piece.kind !== "counter" && piece.kind !== "unknown") {
     return false;
   }
   const depthCm = Math.min(piece.widthCm, piece.depthCm);
   const lengthCm = Math.max(piece.widthCm, piece.depthCm);
-  return depthCm >= 40 && depthCm <= 75 && lengthCm >= 140 && lengthCm <= 320;
+  return depthCm >= 40 && depthCm <= 75 && lengthCm >= 120 && lengthCm <= 320;
 }
 
 /**
@@ -574,11 +586,17 @@ export function findKitchenFittings(
   curves: VectorSegment[],
   unitsPerMetre: number,
 ): FurniturePiece[] {
-  const rects = dedupeRectangles(dropNested(findRectangles([...segments, ...curves], {
+  const found = findRectangles([...segments, ...curves], {
     unitsPerMetre,
     minSideM: 0.25,
     maxSideM: 1.2,
-  })));
+  });
+  const rects = dedupeRectangles(dropNested(found));
+  // The hob is judged on every rectangle, stair filter or not: at the end of a
+  // run the hob's square, the worktop past it and the run to the wall share
+  // an x and a width, and דירה 22's hob went out with them as a "stair". The
+  // burners inside are what vouch for it.
+  const hobRects = dedupeRectangles(found);
   const burners = findCurveFixtures(curves, unitsPerMetre, {
     cell: 4,
     minChords: 3,
@@ -588,12 +606,11 @@ export function findKitchenFittings(
 
   const out: FurniturePiece[] = [];
   const basins: FurniturePiece[] = [];
-  for (const r of rects) {
+  for (const r of hobRects) {
     const widthCm = (r.w / unitsPerMetre) * 100;
     const depthCm = (r.h / unitsPerMetre) * 100;
     const short = Math.min(widthCm, depthCm);
     const long = Math.max(widthCm, depthCm);
-
     if (short >= 50 && short <= 80 && long >= 50 && long <= 80) {
       const inside = burners.filter(
         (b) =>
@@ -604,11 +621,19 @@ export function findKitchenFittings(
       ).length;
       if (inside >= 3) {
         out.push({ ...r, widthCm, depthCm, kind: "hob" });
-        continue;
       }
     }
+  }
+  for (const r of rects) {
+    const widthCm = (r.w / unitsPerMetre) * 100;
+    const depthCm = (r.h / unitsPerMetre) * 100;
+    const short = Math.min(widthCm, depthCm);
+    const long = Math.max(widthCm, depthCm);
+    if (out.some((hob) => hob.kind === "hob" && Math.abs(hob.x - r.x) < 4 && Math.abs(hob.y - r.y) < 4)) continue;
     // A basin: half as wide as it is deep, at worktop depth.
-    if (short >= 26 && short <= 42 && long >= 52 && long <= 78) {
+    // דירה 22 draws its pair 46 by 37 cm, so the long side starts at 40; the
+    // pairing below is what keeps a bedside table out.
+    if (short >= 26 && short <= 42 && long >= 40 && long <= 78) {
       basins.push({ ...r, widthCm, depthCm, kind: "sink" });
     }
   }
@@ -620,8 +645,8 @@ export function findKitchenFittings(
     const paired = basins.some(
       (other) =>
         other !== basin &&
-        Math.abs(other.x - basin.x) < Math.max(basin.w, basin.h) * 1.4 &&
-        Math.abs(other.y - basin.y) < Math.max(basin.w, basin.h) * 1.4,
+        Math.abs(other.x - basin.x) < Math.max(basin.w, basin.h, other.w, other.h) * 1.5 &&
+        Math.abs(other.y - basin.y) < Math.max(basin.w, basin.h, other.w, other.h) * 1.5,
     );
     if (paired) out.push(basin);
   }
@@ -693,7 +718,7 @@ export function findSeatsAroundTable(
 export function findRoundedFurniture(
   curves: VectorSegment[],
   unitsPerMetre: number,
-  options?: { gapM?: number },
+  options?: { gapM?: number; segments?: VectorSegment[] },
 ): FurniturePiece[] {
   // Measured between the arcs' edges, not their centres. Centre distance
   // depends on how big the arcs happen to be drawn — a small corner puts the
@@ -712,27 +737,34 @@ export function findRoundedFurniture(
   });
   if (knots.length === 0) return [];
 
-  const seen = new Array<boolean>(knots.length).fill(false);
-  const out: FurniturePiece[] = [];
-  for (let i = 0; i < knots.length; i++) {
-    if (seen[i]) continue;
-    const stack = [i];
-    const group: number[] = [];
-    seen[i] = true;
-    while (stack.length) {
-      const cur = stack.pop()!;
-      group.push(cur);
-      for (let j = 0; j < knots.length; j++) {
-        if (seen[j]) continue;
-        const a = knots[cur]!;
-        const b = knots[j]!;
-        const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
-        const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
-        if (Math.hypot(dx, dy) > gap) continue;
-        seen[j] = true;
-        stack.push(j);
+  const cluster = (members: number[], link: number): number[][] => {
+    const seen = new Set<number>();
+    const groups: number[][] = [];
+    for (const i of members) {
+      if (seen.has(i)) continue;
+      const stack = [i];
+      const group: number[] = [];
+      seen.add(i);
+      while (stack.length) {
+        const cur = stack.pop()!;
+        group.push(cur);
+        for (const j of members) {
+          if (seen.has(j)) continue;
+          const a = knots[cur]!;
+          const b = knots[j]!;
+          const dx = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0);
+          const dy = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0);
+          if (Math.hypot(dx, dy) > link) continue;
+          seen.add(j);
+          stack.push(j);
+        }
       }
+      groups.push(group);
     }
+    return groups;
+  };
+
+  const judge = (group: number[]): FurniturePiece[] => {
     let x0 = Infinity;
     let y0 = Infinity;
     let x1 = -Infinity;
@@ -755,11 +787,85 @@ export function findRoundedFurniture(
     // deep. Anything outside that is not seating.
     const stool = short >= 20 && short <= 45 && long >= 40 && long <= 80;
     const chair = short >= 38 && short <= 95 && long >= 38 && long <= 100;
-    const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260;
-    if (!stool && !chair && !sofa) continue;
-    out.push({ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" });
-  }
-  return out;
+    // A sofa is rounded at its corners, so an arc stands at three of them at
+    // least. A door's swing and the small marks round a doorway, joined at the
+    // half-metre link, made a 1.86 m "sofa" in דירה 21's bedroom doorway with
+    // no arc at any corner.
+    const reachCorner = 0.2 * unitsPerMetre;
+    const cornered = [
+      [x0, y0],
+      [x1, y0],
+      [x0, y1],
+      [x1, y1],
+    ].filter(([cx, cy]) =>
+      group.some((g) => {
+        const k = knots[g]!;
+        const dx = Math.max(k.x - cx!, 0, cx! - (k.x + k.w));
+        const dy = Math.max(k.y - cy!, 0, cy! - (k.y + k.h));
+        return Math.hypot(dx, dy) <= reachCorner;
+      }),
+    ).length;
+    const sofa = short >= 45 && short <= 115 && long > 100 && long <= 260 && cornered >= 3;
+    // Pieces standing in a row join into one block: דירה 16's pair of
+    // two-seaters 25 cm apart, דירה 14's armchair beside its two-seater. The
+    // arcs cannot part them — inside one sofa they stand 40 cm apart — but the
+    // drawing can: each piece's own straight edges run on from arc to arc, and
+    // between two pieces nothing is drawn. So the row is cut where neither an
+    // arc nor an edge covers it, at the bare stretch nearest its middle.
+    // Tried only on a block that is no one piece or longer than a two-metre
+    // sofa, and kept only when both sides are seating in their own right.
+    const whole = stool || chair || sofa;
+    if (!whole || long > 200) {
+      const parts = split(group, x0, y0, w, h);
+      if (parts) return parts;
+    }
+    return whole ? [{ x: x0, y: y0, w, h, widthCm, depthCm, kind: "seat" }] : [];
+  };
+  const split = (group: number[], x0: number, y0: number, w: number, h: number): FurniturePiece[] | null => {
+    if (group.length < 2) return null;
+    const alongX = w >= h;
+    const span = (lo: number, hi: number) => ({ lo, hi });
+    const covered = group.map((g) => {
+      const k = knots[g]!;
+      return alongX ? span(k.x, k.x + k.w) : span(k.y, k.y + k.h);
+    });
+    // Edges inside the block, not along its rim: the wall a sofa backs onto
+    // runs the whole row and would join everything.
+    const insetX = w * 0.1;
+    const insetY = h * 0.1;
+    for (const s of options?.segments ?? []) {
+      const sx0 = Math.min(s.x1, s.x2);
+      const sx1 = Math.max(s.x1, s.x2);
+      const sy0 = Math.min(s.y1, s.y2);
+      const sy1 = Math.max(s.y1, s.y2);
+      if (sx0 < x0 - 1 || sx1 > x0 + w + 1 || sy0 < y0 - 1 || sy1 > y0 + h + 1) continue;
+      const parallel = alongX ? sy1 - sy0 <= 0.02 * unitsPerMetre : sx1 - sx0 <= 0.02 * unitsPerMetre;
+      const length = alongX ? sx1 - sx0 : sy1 - sy0;
+      if (!parallel || length < 0.2 * unitsPerMetre) continue;
+      const across = alongX ? sy0 : sx0;
+      const inside = alongX ? across > y0 + insetY && across < y0 + h - insetY : across > x0 + insetX && across < x0 + w - insetX;
+      if (!inside) continue;
+      covered.push(alongX ? span(sx0, sx1) : span(sy0, sy1));
+    }
+    covered.sort((a, b) => a.lo - b.lo);
+    const mid = alongX ? x0 + w / 2 : y0 + h / 2;
+    let reach = covered[0]!.hi;
+    let cut: number | null = null;
+    for (const c of covered.slice(1)) {
+      if (c.lo - reach >= 0.15 * unitsPerMetre) {
+        const centre = (reach + c.lo) / 2;
+        if (cut == null || Math.abs(centre - mid) < Math.abs(cut - mid)) cut = centre;
+      }
+      reach = Math.max(reach, c.hi);
+    }
+    if (cut == null) return null;
+    const at = cut;
+    const centreOf = (g: number) => (alongX ? knots[g]!.x + knots[g]!.w / 2 : knots[g]!.y + knots[g]!.h / 2);
+    const before = judge(group.filter((g) => centreOf(g) < at));
+    const after = judge(group.filter((g) => centreOf(g) >= at));
+    return before.length > 0 && after.length > 0 ? [...before, ...after] : null;
+  };
+  return cluster(knots.map((_, i) => i), gap).flatMap((group) => judge(group));
 }
 
 /**
@@ -827,6 +933,93 @@ export function seatsAroundTable(
 }
 
 /**
+ * The chairs round a table where the sheet draws them.
+ *
+ * seatsAroundTable puts two on each side and one at each end, and דירה 18
+ * draws three a side and none at the ends. A chair here is a handful of
+ * small arcs — its corners and its back — joined by short straight edges, in
+ * a band beside the table. The strokes in each band are gathered along the
+ * side, and every gathering a chair wide is one chair where it stands. Null when nothing is drawn, so
+ * the caller can fall back to the rule.
+ */
+export function seatsDrawnAroundTable(
+  table: FurniturePiece,
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+  segments: VectorSegment[] = [],
+): FurniturePiece[] | null {
+  const upm = unitsPerMetre;
+  const seat = 0.5 * upm;
+  const reach = 0.7 * upm;
+  const clear = 0.02 * upm;
+  const margin = 0.1 * upm;
+  const make = (cx: number, cy: number): FurniturePiece => ({
+    x: cx - seat / 2,
+    y: cy - seat / 2,
+    w: seat,
+    h: seat,
+    widthCm: 50,
+    depthCm: 50,
+    kind: "seat",
+  });
+  type Band = { x0: number; x1: number; y0: number; y1: number; alongX: boolean; across: number };
+  const bands: Band[] = [
+    { x0: table.x - margin, x1: table.x + table.w + margin, y0: table.y - reach, y1: table.y - clear, alongX: true, across: table.y - seat / 2 - 0.06 * upm },
+    { x0: table.x - margin, x1: table.x + table.w + margin, y0: table.y + table.h + clear, y1: table.y + table.h + reach, alongX: true, across: table.y + table.h + seat / 2 + 0.06 * upm },
+    { x0: table.x - reach, x1: table.x - clear, y0: table.y - margin, y1: table.y + table.h + margin, alongX: false, across: table.x - seat / 2 - 0.06 * upm },
+    { x0: table.x + table.w + clear, x1: table.x + table.w + reach, y0: table.y - margin, y1: table.y + table.h + margin, alongX: false, across: table.x + table.w + seat / 2 + 0.06 * upm },
+  ];
+  const out: FurniturePiece[] = [];
+  for (const band of bands) {
+    const strokes = [
+      ...curves,
+      ...segments.filter((seg) => Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1) < 0.6 * upm),
+    ];
+    // Each stroke as its extent along the side and across it.
+    const spans = strokes
+      .filter((c) => {
+        const cx = (c.x1 + c.x2) / 2;
+        const cy = (c.y1 + c.y2) / 2;
+        return cx >= band.x0 && cx <= band.x1 && cy >= band.y0 && cy <= band.y1;
+      })
+      .map((c) => {
+        const along: [number, number] = band.alongX ? [Math.min(c.x1, c.x2), Math.max(c.x1, c.x2)] : [Math.min(c.y1, c.y2), Math.max(c.y1, c.y2)];
+        const across: [number, number] = band.alongX ? [Math.min(c.y1, c.y2), Math.max(c.y1, c.y2)] : [Math.min(c.x1, c.x2), Math.max(c.x1, c.x2)];
+        const straight = Math.abs(c.x2 - c.x1) < 0.01 * upm || Math.abs(c.y2 - c.y1) < 0.01 * upm ? Math.hypot(c.x2 - c.x1, c.y2 - c.y1) : 0;
+        return { along, across, straight };
+      })
+      .sort((p, q) => p.along[0] - q.along[0]);
+    // A chair's strokes run on into each other; a stray mark between two
+    // chairs stands a few centimetres off, so the link is short.
+    // A chair has straight edges; a door's swing drawn dashed is short
+    // diagonal strokes only, and on דירה 18 made a chair at the table's end.
+    type Group = { a: number; b: number; lo: number; hi: number; edge: number };
+    let group: Group | null = null;
+    const groups: Group[] = [];
+    for (const span of spans) {
+      if (group && span.along[0] - group.b <= 0.05 * upm) {
+        group.b = Math.max(group.b, span.along[1]);
+        group.lo = Math.min(group.lo, span.across[0]);
+        group.hi = Math.max(group.hi, span.across[1]);
+        group.edge = Math.max(group.edge, span.straight);
+      } else {
+        if (group) groups.push(group);
+        group = { a: span.along[0], b: span.along[1], lo: span.across[0], hi: span.across[1], edge: span.straight };
+      }
+    }
+    if (group) groups.push(group);
+    for (const g of groups) {
+      const width = g.b - g.a;
+      const depth = g.hi - g.lo;
+      if (width < 0.3 * upm || width > 0.75 * upm || depth < 0.25 * upm || g.edge < 0.12 * upm) continue;
+      const mid = (g.a + g.b) / 2;
+      out.push(band.alongX ? make(mid, band.across) : make(band.across, mid));
+    }
+  }
+  return out.length >= 2 ? out : null;
+}
+
+/**
  * The stools along a kitchen island, placed the same way and for the reason.
  *
  * The audit had been failing every finish on "island stools 0, plan has 3" and
@@ -884,6 +1077,79 @@ export function stoolsAlongRun(
   return out;
 }
 
+/**
+ * Tables drawn with rounded corners.
+ *
+ * A rounded corner stops each edge short of the corner by its radius, so the
+ * four edges never meet and findRectangles cannot close them. דירה 18's
+ * dining table, 2.13 by 0.95 m with 11 cm corners, was not found, and the
+ * chair ring settled instead on the bath with the pan and basin round it.
+ *
+ * Two parallel edges of one length, the two edges across set out by the same
+ * radius beyond their ends, and an arc in each of the four corners: that is
+ * a rounded rectangle and nothing else on a sheet. Table-sized ones only.
+ */
+export function findRoundedTables(
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+): FurniturePiece[] {
+  const upm = unitsPerMetre;
+  const tol = 0.04 * upm;
+  const horizontal: Edge[] = [];
+  const vertical: Edge[] = [];
+  for (const s of segments) {
+    if (!isAxisAligned(s) || segmentLength(s) < 0.3 * upm) continue;
+    if (Math.abs(s.y2 - s.y1) < Math.abs(s.x2 - s.x1)) {
+      horizontal.push({ at: (s.y1 + s.y2) / 2, a: Math.min(s.x1, s.x2), b: Math.max(s.x1, s.x2) });
+    } else {
+      vertical.push({ at: (s.x1 + s.x2) / 2, a: Math.min(s.y1, s.y2), b: Math.max(s.y1, s.y2) });
+    }
+  }
+  const arcNear = (x0: number, y0: number, x1: number, y1: number) =>
+    curves.some((c) => {
+      const cx = (c.x1 + c.x2) / 2;
+      const cy = (c.y1 + c.y2) / 2;
+      return cx >= Math.min(x0, x1) - tol && cx <= Math.max(x0, x1) + tol && cy >= Math.min(y0, y1) - tol && cy <= Math.max(y0, y1) + tol;
+    });
+  const out: FurniturePiece[] = [];
+  for (let i = 0; i < horizontal.length; i++) {
+    for (let j = 0; j < horizontal.length; j++) {
+      const top = horizontal[i]!;
+      const bottom = horizontal[j]!;
+      const depth = bottom.at - top.at;
+      if (depth < 0.6 * upm || depth > 1.3 * upm) continue;
+      if (Math.abs(top.a - bottom.a) > tol || Math.abs(top.b - bottom.b) > tol) continue;
+      const a = (top.a + bottom.a) / 2;
+      const b = (top.b + bottom.b) / 2;
+      // The radius is how far the edges across stand out beyond the ends.
+      const side = (at: number, outward: -1 | 1) =>
+        vertical.find((v) => {
+          const r = (v.at - at) * outward;
+          return r >= 0.03 * upm && r <= 0.2 * upm && v.a <= top.at + r + tol && v.b >= bottom.at - r - tol && v.a >= top.at - tol && v.b <= bottom.at + tol;
+        });
+      const left = side(a, -1);
+      const right = side(b, 1);
+      if (!left || !right) continue;
+      const x0 = left.at;
+      const x1 = right.at;
+      const corners =
+        arcNear(x0, top.at, a, left.a) &&
+        arcNear(b, top.at, x1, right.a) &&
+        arcNear(x0, bottom.at, a, left.b) &&
+        arcNear(b, bottom.at, x1, right.b);
+      if (!corners) continue;
+      const widthCm = ((x1 - x0) / upm) * 100;
+      const depthCm = (depth / upm) * 100;
+      const short = Math.min(widthCm, depthCm);
+      const long = Math.max(widthCm, depthCm);
+      if (short < 70 || short > 125 || long < 110 || long > 280) continue;
+      out.push({ x: x0, y: top.at, w: x1 - x0, h: depth, widthCm, depthCm, kind: "table" });
+    }
+  }
+  return dedupeRectangles(out).map((r) => out.find((p) => p.x === r.x && p.y === r.y && p.w === r.w)!);
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
@@ -923,10 +1189,16 @@ export function findFurniture(
         )
         .sort((a, b) => b.w * b.h - a.w * a.h)[0]
     : undefined;
-  const ring = drawnInRing ? null : ringFound;
-  const table = ring ?? pieces.find((p) => p.kind === "table");
+  // A table drawn with rounded corners is the table outright: the ring is an
+  // inference from what stands round it, and on דירה 18 it inferred the bath.
+  const roundedTable = findRoundedTables(segments, options?.curves ?? [], unitsPerMetre)
+    .filter((t) => options?.acceptTable?.(t) ?? true)
+    .sort((p, q) => q.w * q.h - p.w * p.h)[0];
+  const ring = drawnInRing || roundedTable ? null : ringFound;
+  const table = roundedTable ?? ring ?? pieces.find((p) => p.kind === "table");
   const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
   const withCurves = [
+    ...(roundedTable ? [roundedTable] : []),
     ...(ring ? [ring] : []),
     ...kitchen,
     ...seats.filter(
@@ -945,7 +1217,7 @@ export function findFurniture(
   ];
   return panPartsAreNotSeats(
     chairsAreNotPans(
-      settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, ring ?? drawnInRing),
+      settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, roundedTable ?? ring ?? drawnInRing),
       unitsPerMetre,
     ),
   );

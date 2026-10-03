@@ -68,7 +68,8 @@ import {
   renderDxfPageJpeg,
 } from "@/lib/projects/floorplan-dxf";
 import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
-import { DWG_MIME, isCadFloorplanMime } from "@/lib/projects/photo-prep/mime";
+import { DWG_MIME, isCadFloorplanMime, isDwfFloorplanMime } from "@/lib/projects/photo-prep/mime";
+import { tryDwfOverview, type DwfUnitChoice } from "@/lib/projects/floorplan-viz-dwf";
 import {
   companionImage,
   geometryViewPrompt,
@@ -206,6 +207,8 @@ type VisualizeFloorplanOptions = {
    * "render3d" ships the measured render as the one the booklet uses.
    */
   renderMode?: "ai" | "render3d" | "both";
+  /** On a permit strip (DWF), the apartment to draw; the strip draws a building. */
+  dwfUnit?: DwfUnitChoice;
 };
 
 /**
@@ -258,11 +261,16 @@ async function visualizeWithSpend(
     ? await rasterizeNativeCadReference(prepared)
     : null;
   const extractionSource = nativeCad?.raster ?? prepared;
+  // A permit strip names its rooms in text the reader has already read, so
+  // there is nothing for a model to read off it: the run starts from nothing.
+  const dwf = isDwfFloorplanMime(prepared.mimeType);
 
   const reused =
     options?.existingLayout && typeof options.existingLayout === "object"
       ? parseFloorplanLayout(options.existingLayout as Record<string, unknown>)
-      : null;
+      : dwf
+        ? parseFloorplanLayout({})
+        : null;
   let extracted: FloorplanLayoutExtractResult = reused
     ? {
         layout: reused,
@@ -311,7 +319,9 @@ async function visualizeWithSpend(
   }
 
 
-  const cadResult = await tryCadOverview({
+  const cadResult = dwf
+    ? await tryDwfOverview({ base64: prepared.base64, choice: options?.dwfUnit, extractedLayout: extracted.layout, spend })
+    : await tryCadOverview({
     prepared,
     nativeCad,
     photo,
@@ -578,7 +588,7 @@ async function visualizeWithSpend(
   };
 }
 
-type CadOverviewAttempt =
+export type CadOverviewAttempt =
   | {
       outcome: "ok";
       layout: FloorplanLayout;

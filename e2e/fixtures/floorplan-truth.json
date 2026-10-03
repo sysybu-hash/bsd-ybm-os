@@ -1,5 +1,5 @@
 {
-  "_note": "Read off the ten sheets by eye. The regression harness checks the pipeline against these, and prints what the sheet's own text layer says so the two can be reconciled. levelM is the ⊕ elevation mark; a terrace whose level differs from the flat's is a roof terrace and is NOT part of the floor plate. bedrooms does not include the ממ\"ד, which is counted apart, as the booklet counts it. Corrected on 2026-09-25 against the sheets: דירה 14-17 have four sleeping rooms, one of them the ממ\"ד, not five; דירה 19 and 23 have a ממ\"ד (concrete on four sides, a steel frame, the \"+2\" sill mark).",
+  "_note": "Read off the ten sheets by eye. accessFromUnit marks a terrace at another level that the flat nonetheless opens onto (דירה 20's middle bedroom, per the owner on 2026-09-28): it is the flat's, and counts. The regression harness checks the pipeline against these, and prints what the sheet's own text layer says so the two can be reconciled. levelM is the ⊕ elevation mark; a terrace whose level differs from the flat's is a roof terrace and is NOT part of the floor plate. bedrooms does not include the ממ\"ד, which is counted apart, as the booklet counts it. Corrected on 2026-09-25 against the sheets: דירה 14-17 have four sleeping rooms, one of them the ממ\"ד, not five; דירה 19 and 23 have a ממ\"ד (concrete on four sides, a steel frame, the \"+2\" sill mark).",
   "plans": [
     {
       "file": "דירה 14 .pdf",
@@ -83,7 +83,7 @@
       "bathrooms": 2,
       "terraces": [
         { "m2": 13.2, "levelM": 15.94 },
-        { "m2": 6.45, "levelM": 15.94 }
+        { "m2": 6.45, "levelM": 15.94, "accessFromUnit": true }
       ]
     },
     {

@@ -89,6 +89,7 @@ mobile-shot-*.png
 /output/
 # working folder: source sales sheets fed through the viz pipeline
 תוכניות לביצוע הדמיות/
+תוכניות בנין/
 e2e/_*-capture.spec.ts
 e2e/_boot-capture.spec.ts
 e2e/_dash-capture.spec.ts

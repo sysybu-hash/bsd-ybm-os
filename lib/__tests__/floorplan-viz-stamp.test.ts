@@ -152,3 +152,13 @@ describe("the caption when the sheet prints no unit label", () => {
     expect(stampFieldsFromLayout(layout, "דירה 15").unitLabel).toBe("22");
   });
 });
+
+describe("the unit in the caption", () => {
+  it("says דירה once when the label already carries it", async () => {
+    const { buildStampCaption, captionRuns } = await import("@/lib/projects/floorplan-viz-stamp");
+    // The 3D render passes its title, "דירה 20", and the caption came out "דירה דירה 20".
+    expect(buildStampCaption({ unitLabel: "דירה 20", areaM2: 90.86 })).toBe('דירה 20  ·  90.86 מ"ר');
+    expect(buildStampCaption({ unitLabel: "20", areaM2: 90.86 })).toBe('דירה 20  ·  90.86 מ"ר');
+    expect(captionRuns({ unitLabel: "דירה 20" }, 1000, 20).map((run) => run.text)).toEqual(["דירה", "20"]);
+  });
+});

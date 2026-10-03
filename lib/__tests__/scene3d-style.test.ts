@@ -88,7 +88,8 @@ describe("where the camera stands", () => {
   it("stands further back for a bigger flat, and for a narrower frame", () => {
     const small = overviewDistance(8, 6, 4 / 3);
     const large = overviewDistance(16, 12, 4 / 3);
-    expect(large).toBeGreaterThan(small * 1.8);
+    // Not twice: the walls add the same height to both.
+    expect(large).toBeGreaterThan(small * 1.5);
     expect(overviewDistance(16, 12, 0.6)).toBeGreaterThan(large);
   });
 

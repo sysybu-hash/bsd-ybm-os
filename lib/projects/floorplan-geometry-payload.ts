@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
+import { fillEnclosedHoles, mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
  * The measured flat, in the smallest shape a viewer needs.
@@ -43,7 +43,7 @@ export const floorplanGeometrySchema = z.object({
   unitsPerMetre: z.number().positive(),
   bounds: boundsSchema,
   walls: z.array(bandSchema).max(4000),
-  openings: z.array(bandSchema.extend({ kind: z.string().max(20).optional() })).max(2000),
+  openings: z.array(bandSchema.extend({ kind: z.string().max(20).optional(), leaf: z.object({ x: z.number(), y: z.number(), dx: z.number(), dy: z.number() }).optional() })).max(2000),
   /** v2: the walkable region, and each terrace. Absent on a run saved before. */
   floor: rectsSchema.optional(),
   terraces: z.array(rectsSchema).max(40).optional(),
@@ -57,6 +57,8 @@ export const floorplanGeometrySchema = z.object({
         kind: z.string().max(40),
         widthCm: z.number(),
         depthCm: z.number(),
+        /** Which sanitary fixture, where the reading knew; see FurniturePiece. */
+        fixture: z.enum(["bath", "shower", "toilet", "basin"]).optional(),
       }),
     )
     .max(2000),
@@ -133,6 +135,7 @@ export function floorplanGeometryPayload(
       // Dropping it made the viewer guess, and a guess is what this engine
       // exists to be rid of.
       kind: opening.kind,
+      ...(opening.leaf ? { leaf: opening.leaf } : {}),
     })),
     furniture: flat.furniture.map((piece) => ({
       x: piece.x,
@@ -142,6 +145,7 @@ export function floorplanGeometryPayload(
       kind: piece.kind,
       widthCm: piece.widthCm,
       depthCm: piece.depthCm,
+      ...(piece.fixture ? { fixture: piece.fixture } : {}),
     })),
     // Page fractions become page units, which is what the geometry speaks.
     labelledRooms:
@@ -164,7 +168,8 @@ export function floorplanGeometryPayload(
       kind: room.kind,
       areaM2: room.areaM2,
       bounds: room.bounds,
-      rects: toRects(mergeSpanRows(room.rows)),
+      // The room's printed name left letter-shaped holes; see fillEnclosedHoles.
+      rects: toRects(mergeSpanRows(fillEnclosedHoles(room.rows, 0.5 * flat.unitsPerMetre ** 2))),
       bedCount: room.bedCount,
     })),
   };

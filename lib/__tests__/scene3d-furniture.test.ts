@@ -51,6 +51,30 @@ describe("every piece fits the box it was measured in", () => {
     });
   }
 
+  for (const fixture of ["bath", "shower", "toilet", "basin"] as const) {
+    it(`a ${fixture} the reading named stays inside its footprint`, () => {
+      for (const facing of FACINGS) {
+        for (const box of [...BOXES, { wM: 0.36, dM: 0.54 }, { wM: 0.8, dM: 0.8 }]) {
+          for (const p of partsFor("fixture", { ...box, hM: FURNITURE_HEIGHT_M.fixture ?? 0.5, facing, fixture })) {
+            expect(Math.abs(p.x) + p.w / 2).toBeLessThanOrEqual(box.wM / 2 + PROUD_M + 1e-9);
+            expect(Math.abs(p.z) + p.d / 2).toBeLessThanOrEqual(box.dM / 2 + PROUD_M + 1e-9);
+            expect(p.y - p.h / 2).toBeGreaterThanOrEqual(-1e-9);
+            expect(p.y + p.h / 2).toBeLessThan(2.7);
+            expect(p.w).toBeGreaterThan(0);
+            expect(p.d).toBeGreaterThan(0);
+          }
+        }
+      }
+    });
+  }
+
+  it("builds a pan low and a shower with its screen, as the reading named them", () => {
+    const pan = partsFor("fixture", { wM: 0.36, dM: 0.54, hM: 0.55, facing: "north", fixture: "toilet" });
+    expect(Math.max(...pan.map((p) => p.y + p.h / 2))).toBeLessThan(0.8);
+    const shower = partsFor("fixture", { wM: 0.8, dM: 0.8, hM: 0.55, facing: "north", fixture: "shower" });
+    expect(shower.some((p) => p.material === "glass" && p.h > 1.8)).toBe(true);
+  });
+
   it("is the same piece every time it is built", () => {
     const spec = { wM: 1.6, dM: 0.6, hM: 0.9, facing: "north" as const };
     expect(partsFor("counter", spec)).toEqual(partsFor("counter", spec));
@@ -125,5 +149,21 @@ describe("which way a piece faces", () => {
     const wide = { x: 0, y: 0, w: 200, h: 90 };
     expect(headFacing(wide, "north")).toBe("west");
     expect(headFacing(wide, "east")).toBe("east");
+  });
+});
+
+describe("seating longer than a metre is a sofa", () => {
+  it("stands on a solid base with two arms, not on four legs", () => {
+    // דירה 16's two-seaters, 1.4 by 0.7 m.
+    const parts = partsFor("seat", { wM: 1.4, dM: 0.7, hM: 0.45, facing: "north" });
+    const tags = parts.map((p) => p.tag);
+    expect(tags).toContain("base");
+    expect(tags.filter((t) => t === "arm")).toHaveLength(2);
+    expect(tags).not.toContain("leg");
+  });
+
+  it("leaves a dining chair a chair", () => {
+    const parts = partsFor("seat", { wM: 0.5, dM: 0.5, hM: 0.45, facing: "north" });
+    expect(parts.filter((p) => p.tag === "leg")).toHaveLength(4);
   });
 });

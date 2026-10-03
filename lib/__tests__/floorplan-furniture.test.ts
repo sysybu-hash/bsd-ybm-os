@@ -7,6 +7,8 @@ import {
   findDiningTable,
   findKitchenFittings,
   findRectangles,
+  findRoundedTables,
+  seatsDrawnAroundTable,
   looksLikeKitchenIsland,
   panPartsAreNotSeats,
   findSeatsAroundTable,
@@ -161,6 +163,12 @@ describe("a fixture needs a wet room to stand in", () => {
     expect(settled.every((p) => p.kind === "fixture")).toBe(true);
   });
 
+  it("takes דירה 22's two-stool island, 54 by 128 cm, as an island", () => {
+    expect(
+      looksLikeKitchenIsland({ x: 0, y: 0, w: 54, h: 128, widthCm: 54, depthCm: 128, kind: "storage" }),
+    ).toBe(true);
+  });
+
   it("recognises a free-standing island even when the rectangle was left unnamed", () => {
     expect(
       looksLikeKitchenIsland({
@@ -296,6 +304,25 @@ describe("the hob and the sink, which make a kitchen a kitchen", () => {
     expect(found.filter((p) => p.kind === "hob")).toHaveLength(1);
   });
 
+  it("keeps a hob that shares its x and width with the run past it", () => {
+    // דירה 22: the run to the wall, the worktop past the hob and the hob stack
+    // up like treads, and the stair filter took the hob out with them.
+    const side = 0.64 * UPM;
+    const top = 100 + side * 1.6;
+    const burners = [
+      ...ring(100 + side * 0.3, top + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.7, top + side * 0.3, 0.07 * UPM),
+      ...ring(100 + side * 0.3, top + side * 0.7, 0.07 * UPM),
+      ...ring(100 + side * 0.7, top + side * 0.7, 0.07 * UPM),
+    ];
+    const stack = [
+      ...box(100, 100, side, side * 0.9),
+      ...box(100, 100 + side * 0.9, side, side * 0.7),
+      ...box(100, top, side, side),
+    ];
+    expect(findKitchenFittings(stack, burners, UPM).filter((p) => p.kind === "hob")).toHaveLength(1);
+  });
+
   it("does not call a plain square of that size a hob", () => {
     const side = 0.64 * UPM;
     expect(findKitchenFittings(box(100, 100, side, side), [], UPM).filter((p) => p.kind === "hob")).toEqual([]);
@@ -303,6 +330,11 @@ describe("the hob and the sink, which make a kitchen a kitchen", () => {
 
   it("takes two basins side by side as the kitchen sink", () => {
     const rects = [...box(600, 600, 0.32 * UPM, 0.64 * UPM), ...box(600, 640, 0.32 * UPM, 0.64 * UPM)];
+    expect(findKitchenFittings(rects, [], UPM).filter((p) => p.kind === "sink")).toHaveLength(2);
+  });
+
+  it("takes דירה 22's small pair, 46 by 37 cm and 64 cm apart, as the sink", () => {
+    const rects = [...box(600, 600, 0.46 * UPM, 0.37 * UPM), ...box(600 + 0.64 * UPM, 600, 0.45 * UPM, 0.37 * UPM)];
     expect(findKitchenFittings(rects, [], UPM).filter((p) => p.kind === "sink")).toHaveLength(2);
   });
 
@@ -439,5 +471,63 @@ describe("the dining table, from the ring of chairs round it", () => {
   it("is not placed where the caller says no table can stand", () => {
     // דירה 18's bathroom fixtures made a ring, and its "table" stood in a wall.
     expect(findDiningTable(ring, UPM, { accept: () => false })).toBeNull();
+  });
+});
+
+describe("a dining table drawn with rounded corners, and the chairs drawn round it", () => {
+  // דירה 18: 2.13 by 0.95 m, corners of 11 cm.
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+  const r = 0.11 * UPM;
+  const x0 = 200;
+  const y0 = 300;
+  const w = 2.13 * UPM;
+  const h = 0.95 * UPM;
+  const edges = [
+    seg(x0 + r, y0, x0 + w - r, y0),
+    seg(x0 + r, y0 + h, x0 + w - r, y0 + h),
+    seg(x0, y0 + r, x0, y0 + h - r),
+    seg(x0 + w, y0 + r, x0 + w, y0 + h - r),
+  ];
+  const corners = [
+    seg(x0, y0 + r, x0 + r, y0),
+    seg(x0 + w - r, y0, x0 + w, y0 + r),
+    seg(x0, y0 + h - r, x0 + r, y0 + h),
+    seg(x0 + w - r, y0 + h, x0 + w, y0 + h - r),
+  ];
+
+  it("finds the table the rectangle finder cannot close", () => {
+    expect(findRectangles(edges, { unitsPerMetre: UPM })).toEqual([]);
+    const tables = findRoundedTables(edges, corners, UPM);
+    expect(tables).toHaveLength(1);
+    expect(tables[0]!.widthCm).toBeCloseTo(213, 0);
+    expect(tables[0]!.depthCm).toBeCloseTo(95, 0);
+  });
+
+  it("wants an arc in every corner: four lines alone are not a table", () => {
+    expect(findRoundedTables(edges, corners.slice(0, 3), UPM)).toEqual([]);
+  });
+
+  it("puts a chair where each is drawn — three a side, none at the ends", () => {
+    const table = findRoundedTables(edges, corners, UPM)[0]!;
+    // A chair: a 52 cm seat, its front and back edges straight, its corners arcs.
+    const chair = (cx: number, top: number) => [
+      seg(cx - 0.26 * UPM, top, cx + 0.26 * UPM, top),
+      seg(cx - 0.26 * UPM, top + 0.45 * UPM, cx + 0.26 * UPM, top + 0.45 * UPM),
+      seg(cx - 0.26 * UPM, top, cx - 0.26 * UPM, top + 0.45 * UPM),
+      seg(cx + 0.26 * UPM, top, cx + 0.26 * UPM, top + 0.45 * UPM),
+    ];
+    const along = [0.2, 0.5, 0.8].map((t) => x0 + w * t);
+    const drawn = [
+      ...along.flatMap((cx) => chair(cx, y0 - 0.55 * UPM)),
+      ...along.flatMap((cx) => chair(cx, y0 + h + 0.1 * UPM)),
+    ];
+    const seats = seatsDrawnAroundTable(table, [], UPM, drawn);
+    expect(seats).toHaveLength(6);
+    expect(seats!.every((s) => s.x > table.x && s.x + s.w < table.x + table.w)).toBe(true);
+  });
+
+  it("gives the rule back to the caller where no chair is drawn", () => {
+    const table = findRoundedTables(edges, corners, UPM)[0]!;
+    expect(seatsDrawnAroundTable(table, [], UPM, [])).toBeNull();
   });
 });

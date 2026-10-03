@@ -33,7 +33,7 @@ import type { FloorplanLayout } from "@/lib/projects/floorplan-layout";
 import { extractFloorplanVectorGeometry } from "@/lib/projects/floorplan-vector";
 
 const dir = process.env.FLOORPLAN_BENCH_DIR ?? "תוכניות לביצוע הדמיות";
-type TruthTerrace = { levelM: number; m2: number };
+type TruthTerrace = { levelM: number; m2: number; accessFromUnit?: boolean };
 type TruthPlan = {
   file: string;
   grossM2: number;
@@ -66,7 +66,10 @@ for (const plan of truth.plans.filter((row) => !filter || row.file.includes(filt
     const geo = await extractFloorplanVectorGeometry(pdf);
     const rooms = segmentRooms({ bodies: flat.bodies, openings: flat.openings, floor: flat.floor, furniture: flat.furniture, terraces: flat.terraces, bounds: flat.bounds, unitsPerMetre: flat.unitsPerMetre, segments: geo?.segments, colouredDoorways: flat.colouredDoorways, shelterMarks: flat.shelterMarks, programme: programme?.rooms, page: geo ? { width: geo.pageWidth, height: geo.pageHeight } : undefined });
     const count = (kind: string) => rooms.filter((room) => room.kind === kind).length;
-    const expectedTerraces = onLevel.length;
+    // The flat's terraces: those at its level, and — access, not level,
+    // decides — one another level with a door from the flat onto it.
+    const expectedTerraces =
+      onLevel.length + (plan.terraces ?? []).filter((t) => !onLevel.includes(t) && t.accessFromUnit === true).length;
     const actual = {
       bedrooms: count("bedroom"),
       mmd: count("mmd"),

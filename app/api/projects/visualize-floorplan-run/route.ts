@@ -7,6 +7,7 @@ import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { visualizeFloorplanFromDrawing, parseFloorplanVizScope } from "@/lib/projects/floorplan-viz";
 import { FloorplanCadUnreadableError } from "@/lib/projects/floorplan-dxf";
+import type { DwfUnitChoice } from "@/lib/projects/floorplan-viz-dwf";
 import { DwgConversionUnavailableError } from "@/lib/projects/floorplan-dwg-convert";
 import { existingImagesForAppend } from "@/lib/projects/floorplan-viz-scope";
 import { titleFromFloorplanLayout } from "@/lib/projects/floorplan-viz-ids";
@@ -167,6 +168,14 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     const planKind =
       planKindRaw === "sales-sheet" || planKindRaw === "photo" ? planKindRaw : "auto";
     const scope = parseFloorplanVizScope(String(formData.get("scope") ?? "full"));
+    // A permit strip draws a building; the caller says which apartment.
+    const unitRaw = Number(String(formData.get("unit") ?? "").trim());
+    const levelRaw = String(formData.get("level") ?? "").trim();
+    const dwfUnit: DwfUnitChoice | undefined =
+      Number.isInteger(unitRaw) && unitRaw > 0
+        ? { unit: unitRaw, level: levelRaw === "upper" || levelRaw === "lower" ? levelRaw : null }
+        : undefined;
+    const unitKey = dwfUnit ? `${dwfUnit.unit}${dwfUnit.level ? `/${dwfUnit.level}` : ""}` : undefined;
     let customKit: unknown;
     const kitRaw = String(formData.get("styleKit") ?? "").trim();
     if (kitRaw) {
@@ -216,11 +225,13 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       planBase64: base64,
       mimeType,
       planKind,
+      unit: unitKey,
     });
     const inputFp = floorplanVizInputFingerprint({
       planBase64: base64,
       mimeType,
       planKind,
+      unit: unitKey,
       scope,
       styleKit,
     });
@@ -249,7 +260,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       scope,
       existingLayout: scope === "rooms" ? existingLayout : existingLayout ?? cachedLayout ?? undefined,
       existingImages: scope === "rooms" ? existingImages : undefined,
-      sourceName,
+      sourceName: dwfUnit ? `${sourceName} — דירה ${dwfUnit.unit}` : sourceName,
+      dwfUnit,
     });
 
     try {

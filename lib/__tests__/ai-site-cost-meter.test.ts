@@ -47,6 +47,10 @@ describe("billing every call to a customer and a screen", () => {
     expect(featureFromRequest(req)).toBe("/api/projects/visualize-floorplan/:id/stills/:id");
   });
 
+  it("bills the visualizer's rewritten handler as the route the client calls", () => {
+    expect(featureFromRequest({ url: "https://x.test/api/projects/visualize-floorplan-run" } as Request)).toBe("/api/projects/visualize-floorplan");
+  });
+
   it("tells the providers apart, Groq's hosted OpenAI models included", () => {
     expect(providerOf("gemini-3-pro-image")).toBe("google");
     expect(providerOf("claude-opus-5")).toBe("anthropic");

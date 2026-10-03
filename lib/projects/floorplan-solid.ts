@@ -2744,6 +2744,92 @@ export function findLevelMarks(
   return out;
 }
 
+/** A level figure's strokes, scaled to a text height of one. */
+export type LevelText = { segs: Array<[number, number, number, number]>; width: number };
+
+/**
+ * The level printed beside a ⊕ mark, as strokes.
+ *
+ * The figure is drawn in outlines, not text, so it cannot be read — but it
+ * does not have to be. Every level on a sheet is set in the same CAD font, so
+ * "+11.42" beside a terrace is the same strokes as "+11.42" in the flat's
+ * label, whatever size each is set at. דירה 18 and 22 are one drawing at two
+ * storeys: the same terraces, the flat's own on 18 (+11.42 beside +11.42) and
+ * the roofs of the storey below 22's (+14.36 beside +11.42).
+ *
+ * The figure is the line of strokes sitting on the mark's own line, to the
+ * right of the circle; a line above it (the label's "59.01 מ״ר") is another
+ * line and is left out.
+ */
+export function levelTextAt(
+  mark: { x: number; y: number; r: number },
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+): LevelText | null {
+  const r = mark.r;
+  const near = [...segments, ...curves].filter((s) => {
+    const cx = (s.x1 + s.x2) / 2;
+    const cy = (s.y1 + s.y2) / 2;
+    return (
+      cx > mark.x + r * 0.9 &&
+      cx < mark.x + r * 9 &&
+      cy < mark.y - r * 0.15 &&
+      cy > mark.y - r * 2.6 &&
+      Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < r * 2
+    );
+  });
+  // The figure is set in one pen, heavier than the paving's joints — which
+  // outnumber it on a paved terrace. Each pen is tried, heaviest first.
+  const pens = [...new Set(near.map((s) => s.lineWidth))].sort((a, b) => b - a);
+  for (const pen of pens) {
+    const text = figureIn(near.filter((s) => s.lineWidth === pen), r);
+    if (text) return text;
+  }
+  return null;
+}
+
+function figureIn(inPen: VectorSegment[], r: number): LevelText | null {
+  if (inPen.length < 8) return null;
+  // Lines of text, by their vertical extent; the lowest is the figure.
+  const spans = inPen
+    .map((s) => ({ s, lo: Math.min(s.y1, s.y2), hi: Math.max(s.y1, s.y2) }))
+    .sort((a, b) => b.hi - a.hi);
+  const lineOf: typeof spans = [];
+  let top = Infinity;
+  for (const span of spans) {
+    if (lineOf.length > 0 && span.hi < top - r * 0.25) break;
+    lineOf.push(span);
+    top = Math.min(top, span.lo);
+  }
+  const strokes = lineOf.map((span) => span.s);
+  if (strokes.length < 8) return null;
+  const xs = strokes.flatMap((s) => [s.x1, s.x2]);
+  const ys = strokes.flatMap((s) => [s.y1, s.y2]);
+  const x0 = Math.min(...xs);
+  const y0 = Math.min(...ys);
+  const h = Math.max(...ys) - y0;
+  if (!(h > 0)) return null;
+  const width = (Math.max(...xs) - x0) / h;
+  // A level is a sign, digits and a point: several characters wide.
+  if (width < 3 || width > 6.5) return null;
+  return {
+    width,
+    segs: strokes.map((s) => [(s.x1 - x0) / h, (s.y1 - y0) / h, (s.x2 - x0) / h, (s.y2 - y0) / h]),
+  };
+}
+
+/** Whether two level figures are the same figure: stroke for stroke. */
+export function sameLevelText(a: LevelText, b: LevelText): boolean {
+  const d = (p: readonly number[], q: readonly number[]) =>
+    Math.min(
+      Math.hypot(p[0]! - q[0]!, p[1]! - q[1]!) + Math.hypot(p[2]! - q[2]!, p[3]! - q[3]!),
+      Math.hypot(p[0]! - q[2]!, p[1]! - q[3]!) + Math.hypot(p[2]! - q[0]!, p[3]! - q[1]!),
+    );
+  const found = (from: LevelText["segs"], into: LevelText["segs"]) =>
+    from.filter((p) => into.some((q) => d(p, q) < 0.15)).length / Math.max(1, from.length);
+  return Math.min(found(a.segs, b.segs), found(b.segs, a.segs)) >= 0.85;
+}
+
 /**
  * A printed terrace figure whose ink flood was trapped in paving: walk the
  * already-locked floor slab and stop at wall bodies. Paving is not a barrier
@@ -2759,6 +2845,12 @@ export function findTerracesOnFloor(
     tolerance?: number;
     /** What an unlabelled seed's region may measure; see findTerraces. */
     unlabelledM2?: { min: number; max: number };
+    /**
+     * Give an unlabelled region its rim back too. Only for a seed known to be
+     * a terrace by other means — its level is the flat's; grown blind, a
+     * roof's region reached the size window.
+     */
+    growRim?: boolean;
   },
 ): Terrace[] {
   if (floor.length === 0 || areas.length === 0 || !(unitsPerMetre > 0)) return [];
@@ -2837,7 +2929,7 @@ export function findTerracesOnFloor(
     // there is a figure to check it against: grown, an unlabelled region from a
     // level mark reached the size window on דירה 22's roof below the flat, and
     // made two terraces the flat does not have.
-    for (const cell of area.value != null ? [...cells] : []) {
+    for (const cell of area.value != null || options?.growRim ? [...cells] : []) {
       for (const [dx, dy] of [
         [step, 0],
         [-step, 0],
@@ -2850,6 +2942,43 @@ export function findTerracesOnFloor(
         if (seen.has(key) || !onFloor(x, y) || pointHitsBody(x, y, bodies)) continue;
         seen.add(key);
         cells.push({ x, y });
+      }
+    }
+    // A terrace known by its level is paved and lettered, and every joint in
+    // the paving, every outlined letter of "שטח המרפסת" and the ⊕ itself stop
+    // the flood: דירה 18's 8 m² terrace flooded to 2.9. Inside the box the
+    // flood already spans, everything but wall is filled back, and nothing
+    // past the box is touched.
+    if (options?.growRim) {
+      let bx0 = Infinity;
+      let bx1 = -Infinity;
+      let by0 = Infinity;
+      let by1 = -Infinity;
+      for (const cell of cells) {
+        bx0 = Math.min(bx0, cell.x);
+        bx1 = Math.max(bx1, cell.x);
+        by0 = Math.min(by0, cell.y);
+        by1 = Math.max(by1, cell.y);
+      }
+      const has = (x: number, y: number) => seen.has(`${Math.round(x / step)}:${Math.round(y / step)}`);
+      for (let round = 0; round < 400; round++) {
+        let grew = false;
+        for (const cell of [...cells]) {
+          for (const [dx, dy] of [
+            [step, 0],
+            [-step, 0],
+            [0, step],
+            [0, -step],
+          ] as const) {
+            const x = cell.x + dx;
+            const y = cell.y + dy;
+            if (x < bx0 || x > bx1 || y < by0 || y > by1 || has(x, y) || pointHitsBody(x, y, bodies)) continue;
+            seen.add(`${Math.round(x / step)}:${Math.round(y / step)}`);
+            cells.push({ x, y });
+            grew = true;
+          }
+        }
+        if (!grew) break;
       }
     }
     const floodedM2 = (cells.length * step * step) / (unitsPerMetre * unitsPerMetre);

@@ -56,9 +56,15 @@ function centreOf(scene: FlatScene): Vec3 {
 /**
  * How far back a perspective camera has to stand to hold the whole flat.
  *
- * Solved rather than guessed: the footprint is tilted by the camera's pitch,
- * so its apparent height is depth·sin(pitch) plus what the walls add, and the
- * distance is whichever of width and height needs more room.
+ * Solved rather than guessed, corner by corner. Seen in perspective the near
+ * edge of the footprint is closer than the centre the camera aims at, so it
+ * spreads wider and lower in the frame than the far edge: a terrace along the
+ * near side came out cut off at the bottom of the frame when the footprint was
+ * taken as symmetric. With h half the depth, H the wall height, t the tangent
+ * of half the field of view:
+ *   the near edge, on the floor:   D ≥ h·sin(p)/t + h·cos(p)
+ *   the far wall top:              D ≥ (H·cos(p) + h·sin(p))/t + H·sin(p) − h·cos(p)
+ *   the near corners, across:      D ≥ (w/2)/tx + h·cos(p)
  */
 export function overviewDistance(
   widthM: number,
@@ -69,11 +75,16 @@ export function overviewDistance(
 ): number {
   const pitch = (pitchDeg * Math.PI) / 180;
   const fovY = (fovDeg * Math.PI) / 180;
-  const fovX = 2 * Math.atan(Math.tan(fovY / 2) * Math.max(aspect, 0.2));
-  const apparentHeight = depthM * Math.sin(pitch) + WALL_HEIGHT_M * Math.cos(pitch);
-  const forHeight = apparentHeight / 2 / Math.tan(fovY / 2);
-  const forWidth = widthM / 2 / Math.tan(fovX / 2);
-  return Math.max(forHeight, forWidth) * MARGIN;
+  const t = Math.tan(fovY / 2);
+  const tx = t * Math.max(aspect, 0.2);
+  const h = depthM / 2;
+  const H = WALL_HEIGHT_M;
+  const sin = Math.sin(pitch);
+  const cos = Math.cos(pitch);
+  const nearEdge = (h * sin) / t + h * cos;
+  const farTop = (H * cos + h * sin) / t + H * sin - h * cos;
+  const across = widthM / 2 / tx + h * cos;
+  return Math.max(nearEdge, farTop, across) * MARGIN;
 }
 
 export function cameraFor(scene: FlatScene, view: ViewSpec, aspect: number): CameraRig {
