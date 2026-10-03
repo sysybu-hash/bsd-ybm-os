@@ -18,6 +18,7 @@ export type Facing = "north" | "east" | "south" | "west";
 
 /** Page axes: north is up the page (-y), east is +x. */
 const ORDER: Facing[] = ["north", "east", "south", "west"];
+const OPPOSITE: Record<Facing, Facing> = { north: "south", south: "north", east: "west", west: "east" };
 
 function gapTo(piece: Rect, other: Rect, side: Facing): number | null {
   const overlapsX = other.x < piece.x + piece.w && other.x + other.w > piece.x;
@@ -56,6 +57,12 @@ export type FacingInput = {
   /** The centre of the room the piece stands in, page units. */
   roomCentre: { x: number; y: number };
   unitsPerMetre: number;
+  /**
+   * A seat: its back goes AWAY from the table it stands at. Rule 2 turns a
+   * piece's back to the counter beside it, which is right for a sink's tap
+   * and backwards for a chair — דירה 21's dining chairs sat facing out.
+   */
+  seat?: boolean;
 };
 
 /**
@@ -69,10 +76,15 @@ export type FacingInput = {
  */
 export function facingFor(input: FacingInput): Facing {
   const reach = FACING_REACH_M * input.unitsPerMetre;
+  // A chair at a table faces the table, even where a wall is as near.
+  if (input.seat) {
+    const table = nearestSide(input.piece, input.anchors, reach);
+    if (table) return OPPOSITE[table];
+  }
   const wall = nearestSide(input.piece, input.walls, reach);
   if (wall) return wall;
   const anchor = nearestSide(input.piece, input.anchors, reach);
-  if (anchor) return anchor;
+  if (anchor) return input.seat ? OPPOSITE[anchor] : anchor;
 
   const cx = input.piece.x + input.piece.w / 2;
   const cy = input.piece.y + input.piece.h / 2;

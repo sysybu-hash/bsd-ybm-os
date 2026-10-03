@@ -7,6 +7,7 @@ import {
 } from "@/lib/projects/floorplan-booklet-rooms";
 import { type ConfidenceReport } from "@/lib/projects/floorplan-confidence";
 import {
+  atOtherLevel,
   inferRoomKind,
   isBuildingCoreRoom,
   parseFloorplanLayout,
@@ -469,18 +470,46 @@ export function measuredPlateMatchesSheet(
   // A measured drawing is only useful if segmentation recovers the printed
   // programme. A missing kitchen/balcony or an extra bedroom changes the flat
   // itself, so compare every room category the sheet actually supplied.
+  // The bedrooms and the ממ"ד are the programme; they must match exactly —
+  // as one count where the room read names no ממ"ד: it calls the shelter a
+  // bedroom (15, 16, 17, 19 and 23 of the reference set), and the
+  // measurement, which finds the shelter's concrete and its door, does not.
+  const readsShelter = countKind(wanted, "mmd") > 0;
+  const sleeping = (rooms: Array<{ kind?: string; name?: string }>) => countKind(rooms, "bedroom") + countKind(rooms, "mmd");
+  const coreMatches = readsShelter
+    ? ["bedroom", "mmd"].every((kind) => countKind(measured, kind) === countKind(wanted, kind))
+    : sleeping(measured) === sleeping(wanted);
   for (const kind of ["living", "kitchen", "bedroom", "mmd", "bathroom", "balcony"]) {
     const expected =
       kind === "balcony" && truth && truth.terraces.length > 0
         ? floorPlateTerraces(truth).length
         : countKind(wanted, kind);
     const found = countKind(measured, kind);
+    if ((kind === "bedroom" || kind === "mmd") && !readsShelter) {
+      if (coreMatches) continue;
+      return false;
+    }
+    // Terraces counted two ways, and either can fall short: the figures the
+    // sheet prints as text (דירה 14 prints two of its three areas as text and
+    // the third as outlines), and the terraces the room read lists at the
+    // flat's level. A measured count that matches either is the flat's.
+    if (kind === "balcony" && found === countKind(wanted.filter((room) => !atOtherLevel(room, sheet)), "balcony")) continue;
+    // The room read miscounts bathrooms — it read דירה 20's two as one —
+    // and the measurement, which finds each pan and basin, is the better
+    // count. Off by one, with the bedrooms and the ממ"ד exact, it stands.
+    if (kind === "bathroom" && coreMatches && Math.abs(found - expected) <= 1) continue;
     // An open kitchen has no wall between it and the living room, so the
     // segmenter rightly measures one space where the sheet names two —
-    // דירה 21's מטבח stands in its ח.מגורים. It is the same flat when the
-    // living space holds the kitchen's own fittings; a plate with no kitchen
-    // anywhere is another flat (28-8-23-2), and is refused.
-    if (kind === "kitchen" && found === 0 && measured.some((room) => room.kind === "living" && holdsKitchen(room))) continue;
+    // דירה 21's מטבח stands in its ח.מגורים, and 14's and 20's run into a
+    // space of their own. It is the same flat when a living room was measured
+    // and some measured room holds the kitchen's fittings; a plate with no
+    // kitchen anywhere is another flat (28-8-23-2), and is refused.
+    if (
+      kind === "kitchen" &&
+      found === 0 &&
+      countKind(measured, "living") >= 1 &&
+      measured.some((room) => holdsKitchen(room))
+    ) continue;
     if (expected > 0 && found !== expected) return false;
   }
   return true;

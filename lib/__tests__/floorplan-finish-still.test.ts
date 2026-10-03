@@ -4,11 +4,13 @@ import { emptyFloorplanSpend } from "@/lib/projects/floorplan-spend";
 const pass = jest.fn();
 const edges = jest.fn();
 const masses = jest.fn();
+const walls = jest.fn();
 jest.mock("@/lib/projects/building/finish", () => ({
   ...jest.requireActual("@/lib/projects/building/finish"),
   finishPass: (...args: unknown[]) => pass(...args),
   structuralMatch: (...args: unknown[]) => edges(...args),
   massMatch: (...args: unknown[]) => masses(...args),
+  wallMatch: (...args: unknown[]) => walls(...args),
 }));
 jest.mock("@/lib/gemini-api-key", () => ({ hasGeminiApiKey: () => true, getGeminiApiKey: () => "k" }));
 jest.mock("@google/genai", () => ({ GoogleGenAI: jest.fn() }));
@@ -54,13 +56,35 @@ describe("a measured still, painted", () => {
   });
 });
 
+describe("a measured still, designed", () => {
+  const withWalls = { ...still, walls: Buffer.from("walls") };
+
+  it("holds the design to the measured walls, not to the render's furniture", async () => {
+    pass.mockResolvedValue({ image: Buffer.from("designed"), model: "m" });
+    walls.mockResolvedValue(0.9);
+    edges.mockResolvedValue(0.1);
+    const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() });
+    expect(done?.origin).toBe("finish");
+    expect(walls).toHaveBeenCalledWith(Buffer.from("walls"), Buffer.from("designed"));
+    expect(edges).not.toHaveBeenCalled();
+    // The prompt hands the model the layout to design on.
+    expect(String(pass.mock.calls[0]![1])).toContain("LAYOUT");
+  });
+
+  it("refuses a design whose walls moved", async () => {
+    pass.mockResolvedValue({ image: Buffer.from("moved"), model: "m" });
+    walls.mockResolvedValue(0.5);
+    expect(await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() })).toBeNull();
+  });
+});
+
 describe("the judge of a haredi flat's painting", () => {
-  const none: FinishComparison = { bedWidened: false, bedAdded: false, bedRemoved: false, furnitureAdded: false, bedsInRender: 3, bedsInPainting: 3, sofasInRender: 2, sofasInPainting: 2, screenAdded: false, textAdded: false, spaceAdded: false, turnedOrMirrored: false, notes: "" };
+  const none: FinishComparison = { bedWidened: false, bedAdded: false, bedRemoved: false, furnitureAdded: false, bedsInRender: 3, bedsInPainting: 3, sofasInRender: 2, sofasInPainting: 2, extraPieces: [], missingPieces: [], doubleBed: false, screenAdded: false, textAdded: false, spaceAdded: false, turnedOrMirrored: false, notes: "" };
 
   it("refuses a bed painted wider than the render's", async () => {
     const compare = jest.fn().mockResolvedValue({ ...none, bedWidened: true });
     expect(await finishJudge(kit, Buffer.from("render"), compare)(Buffer.from("painted"))).toBe("bed widened");
-    expect(compare).toHaveBeenCalledWith(Buffer.from("render"), Buffer.from("painted"));
+    expect(compare).toHaveBeenCalledWith(Buffer.from("render"), Buffer.from("painted"), undefined);
   });
 
   it("refuses a bed painted as a sofa, and a sofa where the render has nothing", async () => {
@@ -68,6 +92,16 @@ describe("the judge of a haredi flat's painting", () => {
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, furnitureAdded: true }))(Buffer.from("p"))).toBe("furniture added");
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, bedsInPainting: 2 }))(Buffer.from("p"))).toBe("beds counted otherwise");
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, sofasInPainting: 3 }))(Buffer.from("p"))).toBe("sofa added");
+  });
+
+  it("refuses a design with more than the measured inventory", async () => {
+    const compare = jest.fn().mockResolvedValue({ ...none, extraPieces: ["living room: 2 sofas, 1 coffee table"] });
+    expect(await finishJudge(kit, Buffer.from("r"), compare, "- living room 1: 2 sofas")(Buffer.from("p"))).toBe("extra: living room: 2 sofas, 1 coffee table");
+    expect(compare).toHaveBeenCalledWith(Buffer.from("r"), Buffer.from("p"), "- living room 1: 2 sofas");
+  });
+
+  it("refuses a painting when no judge answers", async () => {
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(null))(Buffer.from("p"))).toBe("no judge");
   });
 
   it("lets a painting that changed nothing pass", async () => {

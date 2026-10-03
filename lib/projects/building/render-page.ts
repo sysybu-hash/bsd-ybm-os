@@ -29,6 +29,11 @@ export type BuildingCamera = {
   section?: { axis: "x" | "z"; at: number; keep: 1 | -1 };
   /** A model on a table, not a building on its site: no hills, no haze. */
   studio?: boolean;
+  /**
+   * A map, not a picture: every primitive flat black on white, no light, no
+   * tone mapping — what a check lays a painting's edges against.
+   */
+  mask?: boolean;
 };
 
 export type BuildingRenderPayload = {
@@ -351,7 +356,7 @@ async function main() {
     terraceTile: new THREE.MeshStandardMaterial({ map: terraceTex, roughness: 0.7 }),
     cabinet: new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.45 }),
     railGlass: new THREE.MeshPhysicalMaterial({ color: 0xe8f1f2, roughness: 0.03, metalness: 0, transmission: 1, thickness: 0.01, ior: 1.5, transparent: true, opacity: 0.22, depthWrite: false }),
-    poche: new THREE.MeshStandardMaterial({ color: 0x3b3a38, roughness: 0.9 }),
+    poche: new THREE.MeshStandardMaterial({ color: P.camera.studio ? 0xd8cbb8 : 0x3b3a38, roughness: 0.9 }),
     lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
@@ -641,6 +646,18 @@ async function main() {
   if (P.camera.up) cam.up.set(P.camera.up.x, P.camera.up.y, P.camera.up.z);
   cam.position.set(P.camera.position.x, P.camera.position.y, P.camera.position.z);
   cam.lookAt(P.camera.target.x, P.camera.target.y, P.camera.target.z);
+
+  if (P.camera.mask) {
+    const ink = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    scene.traverse((o) => { if (o.isMesh) o.material = ink; });
+    scene.remove(sky);
+    scene.fog = null;
+    scene.background = new THREE.Color(0xffffff);
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.render(scene, cam);
+    window.__renderDone = true;
+    return;
+  }
 
   if (P.pathTrace && P.camera.cutAboveM == null && !P.camera.section) {
     await traceFrame(renderer, scene, cam, sky, sunDir, P);

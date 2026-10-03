@@ -9,7 +9,8 @@ jest.mock("@/lib/projects/building/renderer", () => ({
 }));
 jest.mock("@/lib/projects/building/flat-finish", () => ({
   ...jest.requireActual("@/lib/projects/building/flat-finish"),
-  frameToContent: (image: Buffer) => Promise.resolve(image),
+  contentFrame: () => Promise.resolve({}),
+  applyContentFrame: (image: Buffer) => Promise.resolve(image),
 }));
 jest.mock("@/lib/projects/floorplan-viz-stamp", () => ({
   stampFloorplanStill: (image: { base64: string; mimeType: string }) => Promise.resolve(image),
@@ -35,8 +36,10 @@ beforeEach(() => jest.clearAllMocks());
 
 describe("the measured still", () => {
   it("comes back as an overview attempt the booklet already knows how to place", async () => {
-    render.mockResolvedValue([Buffer.from("frame")]);
+    render.mockResolvedValue([Buffer.from("frame"), Buffer.from("walls")]);
     const still = await renderMeasuredStill({ ...options(), selected: true });
+    // The walls' map, in the same frame, for a design to be checked against.
+    expect(still?.walls?.toString()).toBe("walls");
     expect(still).toMatchObject({ viewId: "overview", origin: "render3d", selected: true, base64: Buffer.from("frame").toString("base64") });
     // The frame before its caption travels with it, for a finish to be checked against.
     expect(still?.plain.toString()).toBe("frame");
@@ -55,8 +58,11 @@ describe("the measured still", () => {
     render.mockResolvedValue([Buffer.from("f")]);
     await renderMeasuredStill(options());
     const [payloads] = render.mock.calls[0]! as [Array<{ camera: { studio?: boolean }; model: { primitives: Array<{ tag?: string; material: string }> } }>];
-    expect(payloads).toHaveLength(1);
+    expect(payloads).toHaveLength(2);
     expect(payloads[0]!.camera.studio).toBe(true);
+    // The second frame is the walls alone, as a map.
+    expect((payloads[1]!.camera as { mask?: boolean }).mask).toBe(true);
+    expect(payloads[1]!.model.primitives.every((p) => (p.tag ?? "").startsWith("wall:"))).toBe(true);
     // The bed is built, and the cut walls are drawn solid.
     expect(payloads[0]!.model.primitives.some((p) => (p.tag ?? "").startsWith("furniture:"))).toBe(true);
     expect(payloads[0]!.model.primitives.some((p) => p.material === "poche")).toBe(true);

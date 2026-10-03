@@ -28,6 +28,11 @@ export type FinishComparison = {
   bedsInPainting: number;
   sofasInRender: number;
   sofasInPainting: number;
+  /** Against the measured inventory: pieces the painting has beyond it, and ones it lacks. */
+  extraPieces: string[];
+  missingPieces: string[];
+  /** A bed two people wide: two pillows side by side. */
+  doubleBed: boolean;
   screenAdded: boolean;
   textAdded: boolean;
   spaceAdded: boolean;
@@ -49,21 +54,37 @@ Compare image 2 to image 1, bed by bed and room by room. Report only what the pa
 - spaceAdded: the painting adds a room, terrace, balcony or outdoor area the render does not have, or opens a wall the render closes.
 - turnedOrMirrored: the painting is rotated or mirrored relative to the render.
 Also COUNT the beds in each image (a bed is a mattress with a pillow; a sofa has a back and arms): bedsInRender, bedsInPainting; and the sofas and armchairs: sofasInRender, sofasInPainting.
-Judge by comparison, not by your idea of a typical flat. If a bed has the same width in both images it is NOT widened, whatever its size.
+Judge by comparison, not by your idea of a typical flat.
+{INVENTORY} If a bed has the same width in both images it is NOT widened, whatever its size.
 
 Return JSON only:
-{"bedWidened": false, "bedAdded": false, "bedRemoved": false, "furnitureAdded": false, "screenAdded": false, "textAdded": false, "spaceAdded": false, "turnedOrMirrored": false, "bedsInRender": 0, "bedsInPainting": 0, "sofasInRender": 0, "sofasInPainting": 0, "notes": "one short sentence"}
+{"bedWidened": false, "bedAdded": false, "bedRemoved": false, "furnitureAdded": false, "screenAdded": false, "textAdded": false, "spaceAdded": false, "turnedOrMirrored": false, "bedsInRender": 0, "bedsInPainting": 0, "sofasInRender": 0, "sofasInPainting": 0, "extraPieces": [], "missingPieces": [], "doubleBed": false, "notes": "one short sentence"}
 `;
 
 function imagePart(base64: string) {
   return { type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg", data: base64 } };
 }
 
-export async function compareFinishWithClaude(render: Buffer, painting: Buffer): Promise<FinishComparison | null> {
+/**
+ * The models that judge. A judge has to see a pillow: the fallback chain ends
+ * on Haiku, which passed a painting with four sofas, a coffee table and an
+ * island where the drawing has two sofas.
+ */
+const JUDGE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-4-7", "claude-sonnet-4-6"];
+
+export async function compareFinishWithClaude(render: Buffer, painting: Buffer, inventory?: string): Promise<FinishComparison | null> {
   if (!isAnthropicConfigured()) return null;
   recordAmbientFloorplanSpend("audit", "claude-finish-judge");
   const key = env.ANTHROPIC_API_KEY!.trim();
-  for (const model of getAnthropicModelCandidates()) {
+  const instruction = INSTRUCTION.replace(
+    "{INVENTORY}",
+    inventory
+      ? `The apartment's furniture, room by room, as measured from the drawing:
+${inventory}
+Count the PAINTING against this list, room by room. extraPieces: every piece the painting has beyond it — a sofa, armchair, chair, table, coffee table, kitchen island, bed or wardrobe more than listed in a room (plants, rugs, cushions, lamps and small decor do not count). missingPieces: every listed piece the painting lacks. doubleBed: any bed painted two people wide, two pillows side by side.`
+      : "extraPieces and missingPieces: leave empty. doubleBed: any bed painted two people wide, two pillows side by side.",
+  );
+  for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -75,7 +96,7 @@ export async function compareFinishWithClaude(render: Buffer, painting: Buffer):
           messages: [
             {
               role: "user",
-              content: [imagePart(render.toString("base64")), imagePart(painting.toString("base64")), { type: "text", text: INSTRUCTION }],
+              content: [imagePart(render.toString("base64")), imagePart(painting.toString("base64")), { type: "text", text: instruction }],
             },
           ],
         }),
@@ -98,6 +119,9 @@ export async function compareFinishWithClaude(render: Buffer, painting: Buffer):
         bedsInPainting: Number.isFinite(Number(raw.bedsInPainting)) ? Math.round(Number(raw.bedsInPainting)) : -1,
         sofasInRender: Number.isFinite(Number(raw.sofasInRender)) ? Math.round(Number(raw.sofasInRender)) : -1,
         sofasInPainting: Number.isFinite(Number(raw.sofasInPainting)) ? Math.round(Number(raw.sofasInPainting)) : -1,
+        extraPieces: Array.isArray(raw.extraPieces) ? raw.extraPieces.map(String).slice(0, 12) : [],
+        missingPieces: Array.isArray(raw.missingPieces) ? raw.missingPieces.map(String).slice(0, 12) : [],
+        doubleBed: raw.doubleBed === true,
         screenAdded: raw.screenAdded === true,
         textAdded: raw.textAdded === true,
         spaceAdded: raw.spaceAdded === true,

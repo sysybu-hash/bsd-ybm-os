@@ -38,7 +38,7 @@ export function finishPrompt(kind: FinishKind, subject: string, options?: { plai
   // add one.
   if (kind === "apartment") {
     keep.push(
-      "The walls are cut at about one metre, as in a 3D sales floor plan: keep the cut tops of the walls flat and dark exactly as rendered, and keep every wall's length and thickness.",
+      "Seen straight from above, the walls cut at about one metre, as in a 3D sales floor plan: keep the cut tops of the walls flat and in the colour rendered, and keep every wall's length and thickness.",
       "Keep every bed single and where it is. Every piece stays the piece it is: a bed stays a bed, a table a table, a cabinet a cabinet — never turn one into a sofa or anything else. Where the render's floor is bare, leave it bare: do not add a sofa, chair, table or cabinet there.",
       "Do NOT add a television, a screen, artwork with faces, people, pets, or any text. Keep the plain light background round the apartment empty.",
     );
@@ -58,6 +58,32 @@ export function finishPrompt(kind: FinishKind, subject: string, options?: { plai
             ? "Luxury architectural section visualization: the building cut exactly where it is cut, the cut faces of walls and slabs crisp and solid, the rooms behind furnished and softly lit, real materials — oak and stone floors, fabric seats, warm white walls — the ground cut as a clean earth section, a clean pale sky. Presentation-board quality."
             : "Luxury architectural cutaway model photograph: the same cut and view, exquisite real materials — oak and stone floors, fabric seats, warm white walls with a crisp section cut — soft daylight from above, gentle ambient occlusion, like a museum-grade presentation model photographed in a studio.";
   return [...keep, look, `Subject: ${subject}.`].join("\n");
+}
+
+/**
+ * The apartment designed, not repainted: the measured render is the layout,
+ * and the model designs the flat on it as a sales brochure's 3D plan —
+ * furniture, upholstery, materials, light and styling all its own — while
+ * every wall, opening and piece of furniture stays where, how big and what
+ * it is. The checks that follow look at the walls and at the furniture's
+ * count and kind, not at how the model styled them.
+ */
+export function designPrompt(subject: string, options: { haredi: boolean; inventory?: string }): string {
+  return [
+    "Image 1 is an exact top-down LAYOUT of an apartment, measured from the architect's drawing: its walls, doors, windows and every piece of furniture are where they really are.",
+    "Design this apartment as a premium, photorealistic 3D floor plan for a real-estate sales brochure, by a top interior designer.",
+    "KEEP EXACTLY: the camera — straight down, north up — the framing and the scale; every wall, its length and thickness, and its cut top as a flat band; every door and window opening; every room's shape.",
+    "KEEP every piece of furniture where it is, the same size and the same kind: each bed stays a bed in its place (single beds stay single), the dining table with its chairs, each sofa and armchair, each wardrobe, the kitchen run with the hob and the sink exactly where they are, each toilet, basin, shower and bath where it is.",
+    ...(options.inventory
+      ? [`The furniture, room by room, exactly as measured — no more, no fewer, nothing else of these kinds (a bed is ONE person wide: one pillow, never two side by side):
+${options.inventory}`]
+      : []),
+    "DESIGN FREELY: the style of each piece, upholstery and bedding, rugs, floor and wall finishes, kitchen fronts and worktops, lighting and soft shadows, plants and small decor on and beside the furniture.",
+    "Do NOT add or remove a room, wall, door, window, bed, sofa, armchair, table, kitchen island or unit, or wardrobe — no coffee table, no extra seating group. Do NOT add a terrace, a garden or anything outside the walls; keep the plain light ground round the apartment. No people, no text, no logos" +
+      (options.haredi ? ", no television or screen, no artwork with faces." : "."),
+    "Look: bright natural daylight from above, warm and inviting, crisp and tack-sharp, magazine-quality materials — oak and porcelain floors, woven fabrics, crisp white bedding, stone worktops — rich but natural colour.",
+    `Subject: ${subject}.`,
+  ].join("\n");
 }
 
 /** One image call over the model chain. */
@@ -141,6 +167,60 @@ export async function structuralMatch(render: Buffer, finish: Buffer): Promise<n
     }
   }
   return Math.min(aOn ? aHit / aOn : 0, bOn ? bHit / bOn : 0);
+}
+
+/**
+ * Whether a painting keeps the walls where the measurement put them.
+ *
+ * `walls` is the measured walls alone, black on white, in the painting's
+ * frame. Its outline — every wall face — is the structure; the share of it
+ * the painting also has an edge on, within 3 px at 480 px wide, is the score.
+ * Nothing but walls is asked of the painting here: it may restyle every piece
+ * of furniture, which the edges of a whole render would have counted against
+ * it.
+ */
+export async function wallMatch(walls: Buffer, painting: Buffer): Promise<number> {
+  const meta = await sharp(walls).metadata();
+  const w = 480;
+  const h = Math.round((w * (meta.height ?? 300)) / (meta.width ?? 480));
+  const wallsPx = (await sharp(walls).resize(w, h, { fit: "fill" }).greyscale().raw().toBuffer({ resolveWithObject: true })).data;
+  const ink = (k: number) => wallsPx[k]! < 128;
+  const outline = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const k = y * w + x;
+      if (ink(k) && (!ink(k - 1) || !ink(k + 1) || !ink(k - w) || !ink(k + w))) outline[k] = 1;
+    }
+  }
+  const { data } = await sharp(painting).resize(w, h, { fit: "fill" }).greyscale().blur(0.8).raw().toBuffer({ resolveWithObject: true });
+  const mag = new Float32Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const k = y * w + x;
+      mag[k] = Math.hypot(data[k + 1]! - data[k - 1]!, data[k + w]! - data[k - w]!);
+    }
+  }
+  const sorted = Float32Array.from(mag).sort();
+  const cut = sorted[Math.floor(sorted.length * 0.85)]!;
+  let on = 0;
+  let hit = 0;
+  for (let k = 0; k < outline.length; k++) {
+    if (!outline[k]) continue;
+    on++;
+    const x = k % w;
+    const y = (k - x) / w;
+    search: for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const qx = x + dx;
+        const qy = y + dy;
+        if (qx >= 0 && qy >= 0 && qx < w && qy < h && mag[qy * w + qx]! > cut && cut > 0) {
+          hit++;
+          break search;
+        }
+      }
+    }
+  }
+  return on ? hit / on : 0;
 }
 
 /**

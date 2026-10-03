@@ -17,7 +17,20 @@ import { WALL_HEIGHT_M } from "@/lib/projects/scene3d/standards";
 
 const CEILING_T_M = 0.12;
 
-export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number; ceiling?: boolean } = {}): BuildingModel {
+const WALL_KINDS = new Set(["wall", "wallHead", "wallSill", "wallCap"]);
+
+export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number; ceiling?: boolean; wallsOnly?: boolean } = {}): BuildingModel {
+  if (options.wallsOnly) {
+    // The walls alone, cut: the map a painting's walls are checked against.
+    const walls: Primitive[] = [];
+    for (const mesh of scene.meshes) {
+      if (!WALL_KINDS.has(mesh.kind)) continue;
+      const kept = options.cutAboveM != null ? cutBox(mesh, options.cutAboveM) : mesh;
+      if (kept) walls.push({ type: "box", centre: kept.centre, size: kept.size, material: "plaster", tag: `wall:${kept.sourceId}` });
+    }
+    const { x, z, width, depth } = scene.extent;
+    return { name: "walls", primitives: walls, extent: { x, z, width, depth, yMin: 0, yMax: WALL_HEIGHT_M }, north: { x: 0, z: -1 } };
+  }
   const prims: Primitive[] = [];
   const kindOf = roomKindOf(scene);
   const cut = options.cutAboveM;
@@ -62,15 +75,15 @@ export type FlatView = { id: string; title: string; payload: Omit<BuildingRender
 /** The whole flat from above and in front, its walls cut at 1.1 m. */
 export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
   const { x, z, width, depth } = scene.extent;
-  const aspect = Math.min(1.8, Math.max(1.1, width / depth));
+  // Straight down, north up, as a sales sheet's 3D plan is shown — the
+  // oblique view read as a model on a table, and hid what stood against the
+  // near walls. A little perspective keeps the walls' cut tops reading as
+  // walls.
+  const aspect = Math.min(1.8, Math.max(0.62, width / depth));
   const height = Math.round(widthPx / aspect);
-  // Steep enough that a bed against the near wall shows over the wall's cut
-  // top: at 58° a 1.1 m wall hid 0.7 m of floor behind it, and a painting
-  // guessed a sofa where the bed was.
-  const pitch = (68 * Math.PI) / 180;
-  const fov = 30;
+  const fov = 32;
   const t = Math.tan(((fov / 2) * Math.PI) / 180);
-  const d = Math.max((depth / 2) / t + depth * 0.3, (width / 2) / (t * aspect) + depth * 0.3) * 1.08;
+  const above = Math.max(depth / 2 / t, width / 2 / (t * aspect)) * 1.06 + 1.1;
   const cx = x + width / 2;
   const cz = z + depth / 2;
   return {
@@ -82,8 +95,14 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
       height,
       exposure: 0.62,
       ao: true,
-      camera: { position: { x: cx, y: d * Math.sin(pitch), z: cz + d * Math.cos(pitch) }, target: { x: cx, y: 0.2, z: cz }, fovDeg: fov, studio: true },
-      sun: { azimuthDeg: 215, elevationDeg: 62 },
+      camera: {
+        position: { x: cx, y: above, z: cz + 0.001 },
+        target: { x: cx, y: 0, z: cz },
+        up: { x: 0, y: 0, z: -1 },
+        fovDeg: fov,
+        studio: true,
+      },
+      sun: { azimuthDeg: 215, elevationDeg: 70 },
     },
   };
 }

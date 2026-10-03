@@ -376,7 +376,7 @@ async function visualizeWithSpend(
                 areaM2: cadResult.truth?.grossM2,
                 spend: cadResult.spend,
                 deadlineMs,
-                judge: finishJudge(styleKit, measured.plain, compareFinishWithClaude),
+                judge: finishJudge(styleKit, measured.plain, compareFinishWithClaude, measured.inventory),
               }),
             )
           : null;

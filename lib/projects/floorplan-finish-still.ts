@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { hasGeminiApiKey, getGeminiApiKey } from "@/lib/gemini-api-key";
 import { createLogger } from "@/lib/logger";
-import { finishPass, finishPrompt, massMatch, structuralMatch } from "@/lib/projects/building/finish";
+import { designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatch } from "@/lib/projects/building/finish";
 import type { FinishComparison } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
@@ -11,14 +11,15 @@ import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 
 /**
- * The measured still, painted.
+ * The measured still, designed.
  *
  * The image model is not asked to draw the flat from the sheet — that is how
  * a sink and a hob swapped places, a laundry appeared and a roof terrace was
- * furnished. It is handed the measured render and asked to repaint its
- * surfaces; what comes back is laid over the render edge for edge and mass for
- * mass, and kept only if it moved nothing. Otherwise the render ships: it is
- * never wrong about the flat.
+ * furnished. It is handed the measured render as the layout and designs the
+ * flat on it — the brochure's look is the model's — and what comes back is
+ * checked where accuracy lives: its walls against the measured walls' map,
+ * and its furniture, piece by piece and kind by kind, by a judge beside the
+ * render. Otherwise the render ships: it is never wrong about the flat.
  */
 
 const log = createLogger("floorplan-finish-still");
@@ -26,6 +27,12 @@ const log = createLogger("floorplan-finish-still");
 /** Thresholds the building's finishes are held to, measured on its cover and aerials. */
 export const FINISH_MIN_EDGES = 0.6;
 export const FINISH_MIN_MASSES = 0.5;
+/**
+ * A designed flat's walls: the share of the measured walls' outline the
+ * design keeps an edge on. Its own furniture is the model's to style; its
+ * walls are not.
+ */
+export const DESIGN_MIN_WALLS = 0.75;
 /** A call can take a minute; none starts closer than this to the deadline. */
 const CALL_MS = 75_000;
 
@@ -54,25 +61,41 @@ export async function finishMeasuredStill(
 ): Promise<(FloorplanVizImage & { edges: number; masses: number }) | null> {
   if (!hasGeminiApiKey()) return null;
   const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
-  const prompt = finishPrompt("apartment", finishSubject(options.styleKit));
+  // Designed where the measured walls' map is to hand — the model styles the
+  // flat and the walls are checked against the map; otherwise repainted, and
+  // the whole render's edges and masses checked.
+  const design = still.walls != null;
+  const prompt = design
+    ? designPrompt(finishSubject(options.styleKit), { haredi: options.styleKit.audience === "haredi", inventory: still.inventory })
+    : finishPrompt("apartment", finishSubject(options.styleKit));
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
   for (let attempt = 1; attempt <= (options.tries ?? 2); attempt++) {
     if (options.deadlineMs && Date.now() + CALL_MS > options.deadlineMs) break;
     const done = await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
-    const edges = await structuralMatch(still.plain, done.image);
-    const masses = await massMatch(still.plain, done.image);
+    let edges: number;
+    let masses: number;
+    let held: boolean;
+    if (design) {
+      edges = await wallMatch(still.walls!, done.image);
+      masses = 1;
+      held = edges >= DESIGN_MIN_WALLS;
+    } else {
+      edges = await structuralMatch(still.plain, done.image);
+      masses = await massMatch(still.plain, done.image);
+      held = edges >= FINISH_MIN_EDGES && masses >= FINISH_MIN_MASSES;
+    }
     const score = Math.min(edges, masses + 0.1);
-    log.info("finish attempt", { attempt, model: done.model, edges: Number(edges.toFixed(3)), masses: Number(masses.toFixed(3)) });
-    if (edges < FINISH_MIN_EDGES || masses < FINISH_MIN_MASSES || (best && score <= best.score)) continue;
+    log.info("finish attempt", { attempt, design, model: done.model, edges: Number(edges.toFixed(3)), masses: Number(masses.toFixed(3)) });
+    if (!held || (best && score <= best.score)) continue;
     const refused = options.judge ? await options.judge(done.image) : null;
     if (refused) {
       log.info("finish refused by the judge", { attempt, refused });
       continue;
     }
     best = { image: done.image, edges, masses, score };
-    if (best && best.score >= 0.7) break;
+    if (best.score >= (design ? 0.85 : 0.7)) break;
   }
   if (!best) {
     log.info("no finish held the measured still; the render ships");
@@ -105,11 +128,13 @@ export async function finishMeasuredStill(
 export function finishJudge(
   styleKit: FloorplanVizStyleKit,
   reference: Buffer,
-  compare: (render: Buffer, painting: Buffer) => Promise<FinishComparison | null>,
+  compare: (render: Buffer, painting: Buffer, inventory?: string) => Promise<FinishComparison | null>,
+  inventory?: string,
 ): (image: Buffer) => Promise<string | null> {
   return async (image) => {
-    const found = await compare(reference, image);
-    if (!found) return null;
+    const found = await compare(reference, image, inventory);
+    // No judge, no pass: a painting nobody checked does not ship.
+    if (!found) return "no judge";
     const haredi = styleKit.audience === "haredi";
     if (found.turnedOrMirrored) return "turned or mirrored";
     if (found.bedAdded) return "bed added";
@@ -117,7 +142,9 @@ export function finishJudge(
     if (found.bedsInRender >= 0 && found.bedsInPainting >= 0 && found.bedsInRender !== found.bedsInPainting) return "beds counted otherwise";
     if (found.sofasInRender >= 0 && found.sofasInPainting > found.sofasInRender) return "sofa added";
     if (found.furnitureAdded) return "furniture added";
-    if (haredi && found.bedWidened) return "bed widened";
+    if (haredi && (found.bedWidened || found.doubleBed)) return "bed widened";
+    if (found.extraPieces.length > 0) return `extra: ${found.extraPieces.join(", ")}`;
+    if (found.missingPieces.length > 0) return `missing: ${found.missingPieces.join(", ")}`;
     if (haredi && found.screenAdded) return "screen";
     if (found.textAdded) return "lettering";
     if (found.spaceAdded) return "space added";

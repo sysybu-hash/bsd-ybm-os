@@ -615,6 +615,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       piece: box,
       walls: wallRectsAll,
       anchors: anchorRects.filter((rect) => rect !== box),
+      seat: piece.kind === "seat",
       roomCentre: hostBounds
         ? { x: hostBounds.x + hostBounds.w / 2, y: hostBounds.y + hostBounds.h / 2 }
         : rectCentre(box),

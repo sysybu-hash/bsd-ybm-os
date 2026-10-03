@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
-import { frameToContent } from "@/lib/projects/building/flat-finish";
+import { applyContentFrame, contentFrame } from "@/lib/projects/building/flat-finish";
 import { dollhouseView, flatToPrimitives } from "@/lib/projects/building/flat-model";
 import { renderBuildingFrames } from "@/lib/projects/building/renderer";
 import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
@@ -9,6 +9,7 @@ import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
+import { flatInventory, inventoryText } from "@/lib/projects/scene3d/inventory";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
 
 /**
@@ -41,6 +42,10 @@ export type Render3dStillOptions = {
 export type MeasuredStill = FloorplanVizImage & {
   /** The frame before its caption bar: what a finish is painted over and checked against. */
   plain: Buffer;
+  /** The walls alone, black on white, in the same frame: where a painting's walls must be. */
+  walls?: Buffer;
+  /** What stands in each room, as lines — what a design must keep, and is counted against. */
+  inventory?: string;
 };
 
 /** Milliseconds a frame is given, the browser's launch included. */
@@ -76,12 +81,17 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
     // Traced on a machine that has the tracer (a development dependency);
     // rasterised on the platform.
     const samples = Number(env.FLOORPLAN_TRACE_SAMPLES ?? 0);
-    const [frame] = await renderBuildingFrames(
-      [{ ...view.payload, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }), ...(samples > 0 ? { pathTrace: { samples } } : {}) }],
+    const [frame, wallsFrame] = await renderBuildingFrames(
+      [
+        { ...view.payload, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }), ...(samples > 0 ? { pathTrace: { samples } } : {}) },
+        { ...view.payload, ao: false, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM, wallsOnly: true }), camera: { ...view.payload.camera, mask: true } },
+      ],
       { outputWidthPx: 2000, timeoutMs: FRAME_MS },
     );
     if (!frame) return null;
-    const plain = await frameToContent(frame, "auto");
+    const crop = await contentFrame(frame, "auto");
+    const plain = await applyContentFrame(frame, crop);
+    const walls = wallsFrame ? await applyContentFrame(wallsFrame, crop, { r: 255, g: 255, b: 255 }) : undefined;
     const stamped = await stampFloorplanStill(
       { base64: plain.toString("base64"), mimeType: "image/jpeg" },
       { unitLabel: options.unitTitle, areaM2: options.areaM2 },
@@ -95,6 +105,8 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       origin: "render3d",
       selected: options.selected ?? false,
       plain,
+      ...(walls ? { walls } : {}),
+      inventory: inventoryText(flatInventory(scene)),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

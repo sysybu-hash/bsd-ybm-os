@@ -127,12 +127,22 @@ describe("which way a piece faces", () => {
     );
   });
 
-  it("turns a chair's back to the table when no wall is near", () => {
+  it("turns a piece's back to the counter beside it — a sink's tap", () => {
+    const piece = { x: 100, y: 200, w: 45, h: 45 };
+    const counter = { x: 100, y: 250, w: 140, h: 90 };
+    expect(
+      facingFor({ piece, walls: [], anchors: [counter], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm }),
+    ).toBe("south");
+  });
+
+  it("turns a chair to face its table, even with a wall as near", () => {
+    // North of the table: its back to the north, its seat to the table.
     const piece = { x: 100, y: 200, w: 45, h: 45 };
     const table = { x: 100, y: 250, w: 140, h: 90 };
+    const sideWall = { x: 80, y: 150, w: 10, h: 300 };
     expect(
-      facingFor({ piece, walls: [], anchors: [table], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm }),
-    ).toBe("south");
+      facingFor({ piece, walls: [sideWall], anchors: [table], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm, seat: true }),
+    ).toBe("north");
   });
 
   it("otherwise turns it away from the middle of the room", () => {
