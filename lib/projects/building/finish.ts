@@ -81,7 +81,9 @@ ${options.inventory}`]
     "DESIGN FREELY: the style of each piece, upholstery and bedding, rugs, floor and wall finishes, kitchen fronts and worktops, lighting and soft shadows, plants and small decor on and beside the furniture.",
     "Do NOT add or remove a room, wall, door, window, bed, sofa, armchair, table, kitchen island or unit, or wardrobe — no coffee table, no extra seating group. Do NOT add a terrace, a garden or anything outside the walls; keep the plain light ground round the apartment. No people, no text, no logos" +
       (options.haredi ? ", no television or screen, no artwork with faces." : "."),
-    "Look: bright natural daylight from above, warm and inviting, crisp and tack-sharp, magazine-quality materials — oak and porcelain floors, woven fabrics, crisp white bedding, stone worktops — rich but natural colour.",
+    // The look the owner chose from the sheet-drawn stills: golden hour and
+    // warm tones. "Bright daylight" turned them cool and flat.
+    "Look: warm golden-hour sunlight streaming in low through the windows, long soft warm shadows across the floors, glowing warm lamps; a warm palette — honey oak, warm beige and cream, caramel leather and walnut, soft terracotta and olive accents; magazine-quality materials and crisp white bedding; rich, inviting, cinematic, tack-sharp.",
     `Subject: ${subject}.`,
   ].join("\n");
 }
