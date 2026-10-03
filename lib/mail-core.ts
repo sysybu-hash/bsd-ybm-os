@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
-import type SMTPTransport from "nodemailer/lib/smtp-transport";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { getCanonicalSiteUrl } from "@/lib/site-metadata";
@@ -18,7 +17,7 @@ import {
 export const TAGLINE = "BSD-YBM-OS - השדרה שמחברת בין כולם";
 const log = createLogger("mail-core");
 
-function createSmtpTransporter(): nodemailer.Transporter<SMTPTransport.SentMessageInfo> {
+function createSmtpTransporter() {
   const port = Number(env.SMTP_PORT?.trim() || "587");
   const secure = env.SMTP_SECURE === true || port === 465;
   const user = env.SMTP_USER?.trim();
