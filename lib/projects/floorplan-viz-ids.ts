@@ -10,7 +10,7 @@ export function floorplanVizViewKey(viewId: string, roomName?: string | null): s
 }
 
 export function parseFloorplanVizOrigin(raw: string | null | undefined): FloorplanVizStillOrigin {
-  if (raw === "edit" || raw === "cad" || raw === "render3d") return raw;
+  if (raw === "edit" || raw === "cad" || raw === "render3d" || raw === "finish") return raw;
   return "generate";
 }
 

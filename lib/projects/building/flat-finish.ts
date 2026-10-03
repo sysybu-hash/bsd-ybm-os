@@ -63,9 +63,14 @@ export function roomKindOf(scene: FlatScene): (id: string) => SceneRoomKind | un
  * A render framed to what it shows: the empty sheet round the flat trimmed
  * away, and an even margin put back, at the aspect the page wants.
  */
-export async function frameToContent(image: Buffer, aspect: number, margin = 0.05): Promise<Buffer> {
+export async function frameToContent(image: Buffer, aspect: number | "auto", margin = 0.05): Promise<Buffer> {
   const sharp = (await import("sharp")).default;
   const { data, info } = await sharp(image).trim({ threshold: 18 }).toBuffer({ resolveWithObject: true });
+  // "auto": the page shape nearest the flat's own — a tall flat on a tall page.
+  if (aspect === "auto") {
+    const own = info.width / info.height;
+    aspect = [0.75, 1, 1.45].sort((a, b) => Math.abs(Math.log(a / own)) - Math.abs(Math.log(b / own)))[0]!;
+  }
   const bg = await sharp(image).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer();
   let w = Math.round(info.width * (1 + 2 * margin));
   let h = Math.round(info.height * (1 + 2 * margin));

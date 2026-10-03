@@ -64,7 +64,10 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
   const { x, z, width, depth } = scene.extent;
   const aspect = Math.min(1.8, Math.max(1.1, width / depth));
   const height = Math.round(widthPx / aspect);
-  const pitch = (58 * Math.PI) / 180;
+  // Steep enough that a bed against the near wall shows over the wall's cut
+  // top: at 58° a 1.1 m wall hid 0.7 m of floor behind it, and a painting
+  // guessed a sofa where the bed was.
+  const pitch = (68 * Math.PI) / 180;
   const fov = 30;
   const t = Math.tan(((fov / 2) * Math.PI) / 180);
   const d = Math.max((depth / 2) / t + depth * 0.3, (width / 2) / (t * aspect) + depth * 0.3) * 1.08;

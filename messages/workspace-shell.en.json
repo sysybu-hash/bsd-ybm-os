@@ -900,6 +900,7 @@
       "originEdit": "Edit",
       "originCad": "Geometry",
       "originRender3d": "Measured",
+      "originFinish": "Painted over the measured render",
       "styles": {
         "contemporary": { "title": "Contemporary Israeli", "blurb": "Light parquet, natural light" },
         "luxury": { "title": "Luxury", "blurb": "Stone, tall kitchen, cove lighting" },

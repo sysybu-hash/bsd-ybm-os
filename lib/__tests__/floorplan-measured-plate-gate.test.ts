@@ -29,6 +29,13 @@ describe("whether a measured plate is a measurement of this flat", () => {
     expect(measuredPlateMatchesSheet(sheet(), plate)).toBe(false);
   });
 
+  it("accepts an open kitchen measured as part of the living room", () => {
+    // דירה 21: no wall between מטבח and ח.מגורים — one space, its counter in it.
+    const living = { ...measured("living"), contents: [{ kind: "counter" }, { kind: "hob" }] } as unknown as SegmentedRoom;
+    const plate = [measured("bedroom"), measured("bedroom"), measured("bedroom"), living];
+    expect(measuredPlateMatchesSheet(sheet(), plate)).toBe(true);
+  });
+
   it("accepts a plate that shows the whole programme", () => {
     const plate = [
       measured("bedroom"),

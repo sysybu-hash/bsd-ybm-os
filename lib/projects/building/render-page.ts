@@ -127,7 +127,13 @@ async function main() {
   const envRoom = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   const inside = P.camera.interior === true;
   scene.environment = P.camera.cutAboveM != null || inside ? envRoom : envSky;
-  scene.environmentIntensity = inside ? 0.38 : P.camera.cutAboveM != null ? 0.55 : 0.45;
+  // A model on a table, rasterised, takes the sky's whole fill on pale walls
+  // and floors and washes out; traced, the fill is the tracer's own.
+  const studioRaster = P.camera.studio === true && !inside && !P.pathTrace;
+  scene.environmentIntensity = inside ? 0.38 : P.camera.cutAboveM != null ? 0.55 : studioRaster ? 0.22 : 0.45;
+  // and the room environment, not the blue sky, for its reflections.
+  if (studioRaster) scene.environment = envRoom;
+  if (studioRaster) renderer.toneMappingExposure = P.exposure * 0.82;
 
   const M = P.model;
   const ext = M.extent;
@@ -146,7 +152,7 @@ async function main() {
   sun.shadow.normalBias = 0.04;
   sun.shadow.radius = 3;
   scene.add(sun, sun.target);
-  scene.add(new THREE.HemisphereLight(inside ? 0xfff3e2 : 0xdfe9f5, 0x8a7a66, inside ? 0.18 : 0.35));
+  scene.add(new THREE.HemisphereLight(inside ? 0xfff3e2 : studioRaster ? 0xf6efe4 : 0xdfe9f5, 0x8a7a66, inside ? 0.18 : studioRaster ? 0.22 : 0.35));
   // Inside, the ceiling's panels light the room: a warm light over each.
   if (inside) {
     for (const p of P.model.primitives) {

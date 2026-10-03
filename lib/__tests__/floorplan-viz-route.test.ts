@@ -258,6 +258,20 @@ describe("overviewImageFromCad / rasterFallbackConfidence", () => {
     expect(cadTargetAreaM2(lean)).toBeUndefined();
   });
 
+  it("leaves a roof terrace at another level out of the floor plate's target", () => {
+    // דירה 21: the flat at +12.79, two roof terraces drawn at +15.94.
+    const read = parseFloorplanLayout({
+      grossAreaM2: 91.84,
+      unitLevelM: 12.79,
+      rooms: [
+        { name: "מרפסת גג", kind: "balcony", areaM2: 13.2, levelM: 15.94 },
+        { name: "מרפסת גג", kind: "balcony", areaM2: 6.45, levelM: 15.94 },
+        { name: "מרפסת", kind: "balcony", areaM2: 4.1, levelM: 12.79 },
+      ],
+    });
+    expect(cadTargetAreaM2(read)).toBeCloseTo(91.84 + 4.1, 2);
+  });
+
   it("reads terrace figures off the sheet when the extract has no balconies", () => {
     expect(printedTerraceM2([{ value: 4.1 }, { value: 6.4 }, { value: 3.16 }, { value: 111.29 }], 111.29)).toBeCloseTo(
       13.66,

@@ -900,6 +900,7 @@
       "originEdit": "עריכה",
       "originCad": "גיאומטריה",
       "originRender3d": "מדוד",
+      "originFinish": "הדמיה על בסיס המדידה",
       "styles": {
         "contemporary": { "title": "עכשווי ישראלי", "blurb": "פרקט בהיר, אור טבעי" },
         "luxury": { "title": "פרמיום", "blurb": "שיש, מטבח גבוה, תאורת נסתרת" },

@@ -601,7 +601,15 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     // The written rules, kept here and not only asked of a model: a bed only
     // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
     // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
-    if (!pieceBelongsIn(piece.kind, host?.room.kind)) return;
+    // A bed whose middle fell just outside its bedroom — the segmenter closed
+    // only part of דירה 21's corner bedroom, and the bed's centre landed in
+    // the strip beside it — still stands where a quarter of it is in one.
+    const inSleeping =
+      piece.kind === "bed" &&
+      roomRects.some(
+        (room) => SLEEPING.has(room.room.kind) && overlapArea(box, room.rects) >= 0.25 * box.w * box.h,
+      );
+    if (!inSleeping && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
@@ -668,6 +676,17 @@ function glazingThickness(
 }
 
 const SLEEPING = new Set(["bedroom", "mmd"]);
+
+/** How much of a rectangle lies within a set of rectangles (assumed apart). */
+function overlapArea(a: Rect, rects: Rect[]): number {
+  let total = 0;
+  for (const b of rects) {
+    const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (w > 0 && h > 0) total += w * h;
+  }
+  return total;
+}
 const DRY = new Set(["bedroom", "mmd", "living", "kitchen"]);
 
 /** Whether a measured piece may stand in the room it was measured in. */

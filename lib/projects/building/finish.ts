@@ -14,7 +14,7 @@ import { getFloorplanVizModelChain } from "@/lib/gemini-model";
  * finish whose edges wander from the render's has moved the building, and is
  * not used.
  */
-export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo";
+export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo" | "apartment";
 
 export function finishPrompt(kind: FinishKind, subject: string, options?: { plainGround?: boolean }): string {
   const keep = [
@@ -32,8 +32,21 @@ export function finishPrompt(kind: FinishKind, subject: string, options?: { plai
       "The surroundings are ONLY what the render shows: plain paving round the building. Do NOT add cars, parking bays, roads, trees, planting, lawns, walls, fences, people or neighbouring buildings. Keep the ground plain paving to the edge of the frame, and the sky clear.",
     );
   }
+  // An apartment from above, cut at the height of a hand on a door: a sales
+  // plan. Its audience's rules are kept here as they are in the render — the
+  // render cannot hold a television or a double bed, and the finish may not
+  // add one.
+  if (kind === "apartment") {
+    keep.push(
+      "The walls are cut at about one metre, as in a 3D sales floor plan: keep the cut tops of the walls flat and dark exactly as rendered, and keep every wall's length and thickness.",
+      "Keep every bed single and where it is. Every piece stays the piece it is: a bed stays a bed, a table a table, a cabinet a cabinet — never turn one into a sofa or anything else. Where the render's floor is bare, leave it bare: do not add a sofa, chair, table or cabinet there.",
+      "Do NOT add a television, a screen, artwork with faces, people, pets, or any text. Keep the plain light background round the apartment empty.",
+    );
+  }
   const look =
-    options?.plainGround && (kind === "exterior" || kind === "photo")
+    kind === "apartment"
+      ? "A premium 3D floor plan for a real-estate sales brochure, photographic quality: realistic light oak plank floors in the bedrooms and large-format warm porcelain tiles elsewhere with fine grout lines, small grey tiles in the bathrooms; sofas in soft woven fabric with plump cushions; beds made with crisp white linen and a folded throw; walnut tables and chairs; a dark quartz worktop over white kitchen cabinets with a black glass hob and steel sink; white sanitaryware; potted plants; soft even daylight from above with gentle contact shadows and ambient occlusion in the corners. Clean, bright, calm, true to scale."
+      : options?.plainGround && (kind === "exterior" || kind === "photo")
       ? "Luxury architectural visualization, the finest quality: warm honey-toned Jerusalem limestone with natural variation, crisp arrises and fine chisel texture; slim anthracite aluminium frames and laundry screens; deep reflective glazing mirroring the sky; the soft raking light of a clear golden-hour sky, long gentle shadows on clean pale stone paving. Perfect exposure, rich but natural colour, no haze, tack-sharp, photographed by a top architectural photographer on a tilt-shift lens."
       : kind === "exterior" || kind === "photo"
       ? "Luxury architectural visualization, the finest quality: warm honey-toned Jerusalem limestone with natural variation, crisp arrises and fine chisel texture; slim anthracite aluminium frames; deep reflective glazing mirroring the sky; the soft raking light of a clear golden-hour sky over the Judean hills, long gentle shadows; immaculate stone paving and asphalt; mature olive trees and manicured Mediterranean planting; premium cars. Perfect exposure, rich but natural colour, no haze, tack-sharp, photographed by a top architectural photographer on a tilt-shift lens."

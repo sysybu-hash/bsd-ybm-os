@@ -38,8 +38,10 @@ export function bed(spec: PieceSpec): PiecePart[] {
   const parts: PiecePart[] = [
     part("base", "timber", { x: offsetX, y: baseH / 2, z: offsetZ, w: mattressW, h: baseH, d: mattressD }, 0.01),
     part("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.03, w: mattressW * 0.98, h: mattressH, d: mattressD - 0.08 }, 0.05),
-    // An upholstered headboard, padded, standing behind the mattress.
-    part("headboard", "upholstery", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.035),
+    // A timber headboard behind the mattress. Upholstered in the sofas'
+    // fabric it made a bed read from above as a sofa, and the painting
+    // repainted it as one.
+    part("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.02),
   ];
   const pillows = !spec.haredi && mattressW >= DOUBLE_BED_MIN_M ? 2 : 1;
   const pillowW = Math.min(0.62, (mattressW / pillows) * 0.82);

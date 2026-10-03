@@ -202,6 +202,21 @@ describe("where a piece may stand", () => {
     expect(pieceBelongsIn("bed", undefined)).toBe(false);
   });
 
+  it("stands a bed whose middle fell just outside the bedroom the segmenter closed", () => {
+    // דירה 21: only a strip of the corner bedroom was closed, and the bed's
+    // centre (x 85) landed in the unnamed space beside it; 40% of it is in
+    // the bedroom.
+    const beds = (bedroomTo: number) =>
+      buildFlatScene(flat(), [
+        room("ח.שינה", "bedroom", rows(10, bedroomTo, 10, 390), 3),
+        room("חלל", "other", rows(bedroomTo, 296, 10, 390), 8),
+        ROOMS[1]!,
+      ]).meshes.filter((m) => m.sourceId.endsWith("/mattress")).length;
+    expect(beds(80)).toBe(1);
+    // Not a corner of it in a bedroom: no bed, as on דירה 15's roof terrace.
+    expect(beds(30)).toBe(0);
+  });
+
   it("keeps a pan out of the dry rooms", () => {
     expect(pieceBelongsIn("fixture", "bathroom")).toBe(true);
     expect(pieceBelongsIn("fixture", "living")).toBe(false);

@@ -79,11 +79,17 @@ export function cadTargetAreaM2(
   if (known) {
     return known.grossM2 + floorPlateTerraceM2(known);
   }
+  // A terrace printed at another level than the flat is a roof terrace — the
+  // floor above or below, drawn for context — and is not this floor's plate,
+  // as floorPlateTerraces holds when the sheet's own figures are read. דירה 21
+  // adds two at +15.94 beside a flat at +12.79, and with them in the target no
+  // scale reproduced the plan (an area error of 6%).
   let terraces = 0;
+  const unit = layout.unitLevelM;
   for (const room of layout.rooms) {
-    if (room.kind === "balcony" && room.areaM2 != null && room.areaM2 > 0) {
-      terraces += room.areaM2;
-    }
+    if (room.kind !== "balcony" || room.areaM2 == null || !(room.areaM2 > 0)) continue;
+    if (unit != null && room.levelM != null && Math.abs(room.levelM - unit) > 0.05) continue;
+    terraces += room.areaM2;
   }
   if (terraces === 0 && extra?.printedTerraceM2 && extra.printedTerraceM2 > 0) {
     terraces = extra.printedTerraceM2;
@@ -444,6 +450,11 @@ export function rasterFallbackConfidence(reason?: string): ConfidenceReport {
  * measured plate that cannot show those is not a measurement of this flat, and
  * the drawing itself is the better reference.
  */
+/** A run, a hob or a sink in the room: where its kitchen is. */
+function holdsKitchen(room: SegmentedRoom): boolean {
+  return (room.contents ?? []).some((piece) => piece.kind === "counter" || piece.kind === "hob" || piece.kind === "sink");
+}
+
 export function measuredPlateMatchesSheet(
   sheet: FloorplanLayout,
   measured: SegmentedRoom[],
@@ -463,7 +474,14 @@ export function measuredPlateMatchesSheet(
       kind === "balcony" && truth && truth.terraces.length > 0
         ? floorPlateTerraces(truth).length
         : countKind(wanted, kind);
-    if (expected > 0 && countKind(measured, kind) !== expected) return false;
+    const found = countKind(measured, kind);
+    // An open kitchen has no wall between it and the living room, so the
+    // segmenter rightly measures one space where the sheet names two —
+    // דירה 21's מטבח stands in its ח.מגורים. It is the same flat when the
+    // living space holds the kitchen's own fittings; a plate with no kitchen
+    // anywhere is another flat (28-8-23-2), and is refused.
+    if (kind === "kitchen" && found === 0 && measured.some((room) => room.kind === "living" && holdsKitchen(room))) continue;
+    if (expected > 0 && found !== expected) return false;
   }
   return true;
 }
