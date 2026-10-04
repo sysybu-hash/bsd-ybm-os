@@ -170,7 +170,9 @@ const SEEN_AS: Record<string, string[]> = {
   // A seat for one is the designer's to style: a pouf is one.
   armchairs: ["armchair", "sofa", "chair", "ottoman", "other"],
   "dining tables": ["dining table", "coffee table"],
-  toilets: ["toilet"],
+  // A WC the layout draws small, in its wall's shadow, the design may draw as
+  // any sanitary piece; a bed, a sofa or open floor there is what it may not.
+  toilets: ["toilet", "basin", "bath", "shower", "cabinet", "other"],
 };
 
 /**
