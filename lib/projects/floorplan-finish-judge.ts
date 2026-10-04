@@ -171,9 +171,15 @@ const SEEN_AS: Record<string, string[]> = {
   armchairs: ["armchair", "sofa", "chair", "ottoman", "other"],
   "dining tables": ["dining table", "coffee table"],
   toilets: ["toilet"],
-  // A run against the wall, or the island the stools stand at.
-  "kitchen counters": ["kitchen counter", "kitchen island", "cabinet"],
 };
+
+/**
+ * A kitchen run is looked for only as something there: cut to its spot, a run
+ * against the wall reads as the wall and an island with its stools as a
+ * table and chairs. What counts is that it was not taken away — דירה 22's
+ * island came back as open floor.
+ */
+const GONE = new Set(["empty floor", "rug", "plant"]);
 
 /** What a design may put on the layout's open floor: decor, never furniture. */
 const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wall", "other"]);
@@ -186,7 +192,7 @@ const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wal
  * or null when nobody answered.
  */
 export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<string[] | null> {
-  const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor") && s.w > 4 && s.h > 4);
+  const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor" || s.kind === "kitchen counters") && s.w > 4 && s.h > 4);
   const sets = spots.filter((s) => s.kind === "dining set" && s.chairs != null && s.w > 4 && s.h > 4);
   if (checked.length === 0) return [];
   if (!isAnthropicConfigured()) return null;
@@ -217,7 +223,9 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const missing: string[] = [];
   checked.forEach((s, i) => {
     const seen = answers[i] ?? [];
-    if (s.kind === "open floor") {
+    if (s.kind === "kitchen counters") {
+      if (seen.length > 0 && seen.every((w) => GONE.has(w))) missing.push(`kitchen run at the ${s.place} (the design has ${seen.join(", ")} there)`);
+    } else if (s.kind === "open floor") {
       const added = seen.filter((w) => !DECOR.has(w));
       if (added.length > 0) missing.push(`open floor at the ${s.place} (the design added ${added.join(", ")} there)`);
     } else if (!seen.some((w) => SEEN_AS[s.kind]!.includes(w))) {
