@@ -270,7 +270,9 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   if (spec.fixture === "toilet") return toilet(w, d);
   if (spec.fixture === "shower") return shower(w, d);
   if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
-  if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath")) {
+  // A bath is long as well as narrow: a pan with the room's dimension written
+  // in it measured 60 by 100 and was built as a third bath in 17.
+  if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath" && Math.max(w, d) >= 1.2)) {
     // A tub, not a block: a rim round a basin sunk nearly to the floor. Built
     // solid with a plate on top, from above it read as a white box, and the
     // designs drew a cabinet there.
@@ -289,7 +291,9 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   // A sales sheet draws both as curves, with no name; every one was built as
   // a basin, and דירה 14's two bathrooms had no WC. A square is neither —
   // its 57 cm washer is one — and stays the plain block it was.
-  if (!spec.fixture && d >= w * 1.05 && d >= 0.45) return toilet(w, d);
+  // And a pan is at most 60 cm across: an 80 cm "pan" was a level mark's
+  // hatched circle on 18's roof.
+  if (!spec.fixture && d >= w * 1.05 && d >= 0.45 && w <= 0.6 && d <= 0.85) return toilet(w, d);
   return [
     part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
     part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),
