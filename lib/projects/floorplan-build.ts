@@ -392,7 +392,16 @@ export async function buildFlatFromGeometry(
     // worktop's front line and the wall can be closed off from the floor:
     // דירה 14's double sink was on no floor at all, and was dropped. Floor
     // within a worktop's depth of it will do.
-    const reach = piece.kind === "sink" || piece.kind === "hob" ? unitsPerMetre * 0.6 : 0;
+    // A pan or a basin is a closed outline, often with a dimension written in
+    // it, and the floor flood stops at its ink: דירה 14's two WCs and its
+    // basin stood on no floor of their own, and both bathrooms came out bare.
+    // Floor just past the outline will do.
+    const reach =
+      piece.kind === "sink" || piece.kind === "hob"
+        ? unitsPerMetre * 0.6
+        : piece.kind === "fixture"
+          ? Math.max(piece.w, piece.h) / 2 + unitsPerMetre * 0.15
+          : 0;
     // Floor on this side of a wall only: past the wall is the neighbour's
     // kitchen, and דירה 15 and 22 took in the sinks drawn beyond theirs.
     const wallBetween = (tx: number, ty: number) =>
@@ -411,6 +420,24 @@ export async function buildFlatFromGeometry(
       [0, -reach],
     ].some(([dx, dy]) => inside(cx + dx!, cy + dy!) && (dx === 0 && dy === 0 ? true : !wallBetween(cx + dx!, cy + dy!)));
     if (!onFloor) return false;
+    // A pan stands against its wall, and its drawn outline, cistern and all,
+    // reaches into the wall's line: דירה 14's WC had its middle 3 cm inside
+    // the wall behind it, and its box more than half in the wall's measured
+    // thickness. A fixture goes only when it is nearly all in one wall (a
+    // bath in a corner lies a quarter in each of two).
+    if (piece.kind === "fixture") {
+      const area = piece.w * piece.h;
+      const inWall = Math.max(
+        0,
+        ...bodies.map((body) => {
+          const r = bodyRect(body);
+          const ox = Math.min(piece.x + piece.w, r.x + r.w) - Math.max(piece.x, r.x);
+          const oy = Math.min(piece.y + piece.h, r.y + r.h) - Math.max(piece.y, r.y);
+          return ox > 0 && oy > 0 ? ox * oy : 0;
+        }),
+      );
+      return inWall < 0.7 * area;
+    }
     return !bodies.some((body) => centreInsideBody(piece, body));
   });
   // The run the hob and the sink are set into; see findWorktopRuns.

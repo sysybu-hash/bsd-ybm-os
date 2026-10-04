@@ -284,6 +284,11 @@ export function fixture(spec: PieceSpec): PiecePart[] {
       part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + 0.06, w: 0.04, h: 0.16, d: 0.04 }),
     ];
   }
+  // Unnamed and not a bath: a pan runs out from its wall, a basin along it.
+  // A sales sheet draws both as curves, with no name; every one was built as
+  // a basin, and דירה 14's two bathrooms had no WC. A square is neither —
+  // its 57 cm washer is one — and stays the plain block it was.
+  if (!spec.fixture && d >= w * 1.05 && d >= 0.45) return toilet(w, d);
   return [
     part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
     part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),

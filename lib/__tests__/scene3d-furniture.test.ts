@@ -177,3 +177,17 @@ describe("seating longer than a metre is a sofa", () => {
     expect(parts.filter((p) => p.tag === "leg")).toHaveLength(4);
   });
 });
+
+describe("an unnamed sanitary fixture", () => {
+  const tags = (spec: { wM: number; dM: number }) => partsFor("fixture", { ...spec, hM: 0.5, facing: "north" }).map((p) => p.tag);
+
+  it("is a pan when it runs out from its wall, and a basin or a block when it does not", () => {
+    // דירה 14's WC, drawn as curves: 60 wide, 66 out from the wall.
+    expect(tags({ wM: 0.6, dM: 0.66 })).toContain("cistern");
+    // Its 57 cm square washer, and a basin along the wall.
+    expect(tags({ wM: 0.57, dM: 0.57 })).not.toContain("cistern");
+    expect(tags({ wM: 0.6, dM: 0.45 })).not.toContain("cistern");
+    // A bath is still a bath.
+    expect(tags({ wM: 0.7, dM: 1.6 })).toContain("tub");
+  });
+});

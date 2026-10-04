@@ -141,7 +141,21 @@ Count the PAINTING against this list, place by place. extraPieces: every piece t
 }
 
 /** A spot in the design where the layout has a piece: its box in the layout's frame, pixels. */
-export type PieceSpot = { kind: string; place: string; x: number; y: number; w: number; h: number };
+export type PieceSpot = { kind: string; place: string; x: number; y: number; w: number; h: number; chairs?: number };
+
+const CHAIRS = `
+This is a top-down picture of a dining table. Count every chair, stool and bench seat standing round it, one by one.
+Return JSON only: {"chairs": 0}
+`;
+
+async function cropSpot(sized: Buffer, frame: { width: number; height: number }, s: PieceSpot, pad: number) {
+  const left = Math.max(0, s.x - pad);
+  const top = Math.max(0, s.y - pad);
+  const width = Math.min(frame.width - left, s.w + 2 * pad);
+  const height = Math.min(frame.height - top, s.h + 2 * pad);
+  const crop = await sharp(sized).extract({ left, top, width, height }).resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
+  return imagePart(crop.toString("base64"));
+}
 
 const SPOTS = `
 Each image is a crop of a top-down picture of an apartment, centred on one spot. For each image, list every piece that stands in its MIDDLE HALF (the centre area, not the margins), in these words:
@@ -171,25 +185,31 @@ const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wal
  */
 export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<string[] | null> {
   const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor") && s.w > 4 && s.h > 4);
+  const sets = spots.filter((s) => s.kind === "dining set" && s.chairs != null && s.w > 4 && s.h > 4);
   if (checked.length === 0) return [];
   if (!isAnthropicConfigured()) return null;
   recordAmbientFloorplanSpend("audit", "claude-finish-spots");
   const meta = await sharp(layout).metadata();
   const frame = { width: meta.width ?? 0, height: meta.height ?? 0 };
   const sized = await sharp(design).resize(frame.width, frame.height, { fit: "fill" }).toBuffer();
+  // Open floor is looked at as it is; a piece with room round it, for a
+  // design that moved it a little.
   const crops = await Promise.all(
-    checked.map(async (s) => {
-      // Open floor is looked at as it is; a piece with room round it, for a design that moved it a little.
-      const pad = s.kind === "open floor" ? 0 : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35));
-      const left = Math.max(0, s.x - pad);
-      const top = Math.max(0, s.y - pad);
-      const width = Math.min(frame.width - left, s.w + 2 * pad);
-      const height = Math.min(frame.height - top, s.h + 2 * pad);
-      const crop = await sharp(sized).extract({ left, top, width, height }).resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
-      return imagePart(crop.toString("base64"));
+    checked.map((s) => cropSpot(sized, frame, s, s.kind === "open floor" ? 0 : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35)))),
+  );
+  // Each dining set's chairs, counted by a call of its own: asked alongside
+  // the spots, the count came back 4 for a table with eight round it.
+  const key = env.ANTHROPIC_API_KEY!.trim();
+  const counting = Promise.all(
+    sets.map(async (s) => {
+      const crop = await cropSpot(sized, frame, s, Math.round(Math.max(s.w, s.h) * 0.12));
+      const said = await askClaude(key, [crop, { type: "text", text: CHAIRS }], 200);
+      const n = Number(said?.raw.chairs);
+      return said && Number.isFinite(n) ? n : null;
     }),
   );
-  const asked = await askClaude(env.ANTHROPIC_API_KEY!.trim(), [...crops, { type: "text", text: SPOTS }], 900);
+  const asked = await askClaude(key, [...crops, { type: "text", text: SPOTS }], 900);
+  const counts = await counting;
   if (!asked || !Array.isArray(asked.raw.answers)) return null;
   const answers = (asked.raw.answers as unknown[]).map((a) => (Array.isArray(a) ? a : [a]).map((w) => String(w).toLowerCase().trim()));
   const missing: string[] = [];
@@ -201,6 +221,10 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
     } else if (!seen.some((w) => SEEN_AS[s.kind]!.includes(w))) {
       missing.push(`${s.kind.replace(/s$/, "")} at the ${s.place} (the design has ${seen.join(", ") || "nothing"} there)`);
     }
+  });
+  sets.forEach((s, i) => {
+    const n = counts[i];
+    if (n != null && n !== s.chairs) missing.push(`dining table at the ${s.place} with ${n} chairs (the layout has ${s.chairs})`);
   });
   log.info("finish spots", { model: asked.model, checked: checked.length, missing });
   return missing;

@@ -51,12 +51,28 @@ export type MeasuredStill = FloorplanVizImage & {
   pieceBoxes?: PieceBox[];
 };
 
-export type PieceBox = { kind: ListedKind | "open floor"; place: string; x: number; y: number; w: number; h: number };
+export type PieceBox = { kind: ListedKind | "open floor" | "dining set"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
 
 /** The listed pieces' boxes in the cropped frame. */
 function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; height: number }, crop: ContentFrame): PieceBox[] {
   const out: PieceBox[] = [];
-  for (const p of flatPieces(scene)) {
+  const pieces = flatPieces(scene);
+  // Each dining table with the chairs drawn round it, counted: a design that
+  // seated ten at a table drawn for six passed every piece's own spot.
+  for (const table of pieces) {
+    if (table.what !== "table" || !table.box) continue;
+    const t = table.box;
+    const near = (b: NonNullable<typeof t>) => b.x1 >= t.x0 - 0.6 && b.x0 <= t.x1 + 0.6 && b.z1 >= t.z0 - 0.6 && b.z0 <= t.z1 + 0.6;
+    const chairs = pieces.filter((p) => p.what === "chair" && p.box && near(p.box));
+    const x0 = Math.min(t.x0, ...chairs.map((c) => c.box!.x0));
+    const x1 = Math.max(t.x1, ...chairs.map((c) => c.box!.x1));
+    const z0 = Math.min(t.z0, ...chairs.map((c) => c.box!.z0));
+    const z1 = Math.max(t.z1, ...chairs.map((c) => c.box!.z1));
+    const a = dollhousePixel(view, size, { x: x0, y: t.top, z: z0 });
+    const b = dollhousePixel(view, size, { x: x1, y: t.top, z: z1 });
+    out.push({ kind: "dining set", place: planPlace(table.x, table.z, scene.extent), x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y), chairs: chairs.length });
+  }
+  for (const p of pieces) {
     const kind = listedKind(p.what);
     if (!kind || !p.box) continue;
     const a = dollhousePixel(view, size, { x: p.box.x0, y: p.box.top, z: p.box.z0 });

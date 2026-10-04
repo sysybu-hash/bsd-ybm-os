@@ -120,15 +120,26 @@ function distanceToRects(point: { x: number; y: number }, rects: Rect[]): number
 
 type MeasuredRoom = { room: SceneInput["rooms"][number]; rects: Rect[]; index: number };
 
-/** The measured room a point belongs to, or the nearest one to it. */
+/**
+ * The measured room a point belongs to, or the nearest one to it. Where rooms
+ * overlap, the smallest: a segmented region and the labelled rooms within it
+ * both come through, and דירה 14's bath and pans, assigned to a 28 m²
+ * "bedroom" that also covered both bathrooms, were dropped as fixtures in a
+ * dry room.
+ */
 function roomAt(point: { x: number; y: number }, rooms: MeasuredRoom[]): MeasuredRoom | null {
   let nearest: { room: MeasuredRoom; distance: number } | null = null;
+  let within: { room: MeasuredRoom; area: number } | null = null;
   for (const entry of rooms) {
-    if (pointInRects(point, entry.rects)) return entry;
+    if (pointInRects(point, entry.rects)) {
+      const area = entry.rects.reduce((sum, r) => sum + r.w * r.h, 0);
+      if (!within || area < within.area) within = { room: entry, area };
+      continue;
+    }
     const distance = distanceToRects(point, entry.rects);
     if (!nearest || distance < nearest.distance) nearest = { room: entry, distance };
   }
-  return nearest?.room ?? null;
+  return within?.room ?? nearest?.room ?? null;
 }
 
 export type BuildSceneOptions = {
@@ -609,7 +620,15 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       roomRects.some(
         (room) => SLEEPING.has(room.room.kind) && overlapArea(box, room.rects) >= 0.25 * box.w * box.h,
       );
-    if (!inSleeping && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
+    // A pan beside a bathroom whose measured region stops short of it — the
+    // label's region covered half of דירה 14's main bathroom, and its WC and
+    // washer fell in the dry region round it — is that bathroom's.
+    const besideWet =
+      piece.kind === "fixture" &&
+      roomRects.some(
+        (room) => isWetRoom(room.room.kind as SceneRoomKind) && distanceToRects(rectCentre(box), room.rects) <= input.unitsPerMetre * 1.2,
+      );
+    if (!inSleeping && !besideWet && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
