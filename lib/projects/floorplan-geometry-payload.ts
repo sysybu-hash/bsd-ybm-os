@@ -162,7 +162,8 @@ export function floorplanGeometryPayload(
           }))
         : undefined,
     floor: toRects(mergeSpanRows(flat.floor)),
-    terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(rows))),
+    // A terrace's printed "שטח המרפסת" left its letters as holes too.
+    terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2)))),
     rooms: rooms.map((room) => ({
       name: room.name,
       kind: room.kind,

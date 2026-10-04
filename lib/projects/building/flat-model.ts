@@ -108,6 +108,23 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
 }
 
 /**
+ * Where a point of the scene lands in a frame of the dollhouse view: the
+ * pixel, in a frame of that view's shape at any size. What lets a design be
+ * checked piece by piece where each piece stands.
+ */
+export function dollhousePixel(view: FlatView, frame: { width: number; height: number }, p: { x: number; y: number; z: number }): { x: number; y: number } {
+  const cam = view.payload.camera;
+  const t = Math.tan(((cam.fovDeg / 2) * Math.PI) / 180);
+  const d = cam.position.y - p.y;
+  const aspect = view.payload.width / view.payload.height;
+  return {
+    x: (0.5 + (p.x - cam.target.x) / (d * t * aspect) / 2) * frame.width,
+    // North up: the camera's up is -z, so z grows down the frame.
+    y: (0.5 + (p.z - cam.target.z) / (d * t) / 2) * frame.height,
+  };
+}
+
+/**
  * The rooms worth standing in — the living room and the largest bedroom —
  * each photographed from the corner that sees most of it, the windows in view.
  */

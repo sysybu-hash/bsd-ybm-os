@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { hasGeminiApiKey, getGeminiApiKey } from "@/lib/gemini-api-key";
 import { createLogger } from "@/lib/logger";
-import { designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatch } from "@/lib/projects/building/finish";
+import { correctionPrompt, designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatch } from "@/lib/projects/building/finish";
 import type { FinishComparison } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
@@ -73,9 +73,15 @@ export async function finishMeasuredStill(
       })
     : finishPrompt("apartment", finishSubject(options.styleKit));
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
+  /** The last design the judge refused, and why: the next call corrects it. */
+  const refusedDesigns: Array<{ image: Buffer; reason: string }> = [];
   for (let attempt = 1; attempt <= (options.tries ?? 2); attempt++) {
     if (options.deadlineMs && Date.now() + CALL_MS > options.deadlineMs) break;
-    const done = await finishPass(client, prompt, still.plain);
+    const correcting = design ? refusedDesigns.pop() : undefined;
+    refusedDesigns.length = 0;
+    const done = correcting
+      ? await finishPass(client, correctionPrompt(correcting.reason, { inventory: still.inventory }), [still.plain, correcting.image])
+      : await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
     let edges: number;
@@ -91,11 +97,13 @@ export async function finishMeasuredStill(
       held = edges >= FINISH_MIN_EDGES && masses >= FINISH_MIN_MASSES;
     }
     const score = Math.min(edges, masses + 0.1);
-    log.info("finish attempt", { attempt, design, model: done.model, edges: Number(edges.toFixed(3)), masses: Number(masses.toFixed(3)) });
+    log.info("finish attempt", { attempt, design, correcting: correcting != null, model: done.model, edges: Number(edges.toFixed(3)), masses: Number(masses.toFixed(3)) });
     if (!held || (best && score <= best.score)) continue;
-    const refused = options.judge ? await options.judge(done.image) : null;
+    const refused: string | null = options.judge ? await options.judge(done.image) : null;
     if (refused) {
       log.info("finish refused by the judge", { attempt, refused });
+      // "no judge" has nothing to correct; a turned plan is redrawn.
+      if (refused !== "no judge" && refused !== "turned or mirrored") refusedDesigns.push({ image: done.image, reason: refused });
       continue;
     }
     best = { image: done.image, edges, masses, score };
@@ -134,24 +142,40 @@ export function finishJudge(
   reference: Buffer,
   compare: (render: Buffer, painting: Buffer, inventory?: string) => Promise<FinishComparison | null>,
   inventory?: string,
+  /**
+   * Each piece the layout has, looked for where it stands in the painting:
+   * the pieces missing there, or null when nobody answered.
+   */
+  spots?: (image: Buffer) => Promise<string[] | null>,
 ): (image: Buffer) => Promise<string | null> {
   return async (image) => {
-    const found = await compare(reference, image, inventory);
+    const [found, missing] = await Promise.all([compare(reference, image, inventory), spots ? spots(image) : Promise.resolve([])]);
     // No judge, no pass: a painting nobody checked does not ship.
-    if (!found) return "no judge";
-    const haredi = styleKit.audience === "haredi";
+    if (!found || !missing) return "no judge";
     if (found.turnedOrMirrored) return "turned or mirrored";
-    if (found.bedAdded) return "bed added";
-    if (found.bedRemoved) return "bed removed";
-    if (found.bedsInRender >= 0 && found.bedsInPainting >= 0 && found.bedsInRender !== found.bedsInPainting) return "beds counted otherwise";
-    if (found.sofasInRender >= 0 && found.sofasInPainting > found.sofasInRender) return "sofa added";
-    if (found.furnitureAdded) return "furniture added";
-    if (haredi && (found.bedWidened || found.doubleBed)) return "bed widened";
-    if (found.extraPieces.length > 0) return `extra: ${found.extraPieces.join(", ")}`;
-    if (found.missingPieces.length > 0) return `missing: ${found.missingPieces.join(", ")}`;
-    if (haredi && found.screenAdded) return "screen";
-    if (found.textAdded) return "lettering";
-    if (found.spaceAdded) return "space added";
-    return null;
+    if (missing.length > 0) return `not as the layout: ${missing.join("; ")}`;
+    const reason = refusal(found, styleKit.audience === "haredi");
+    if (!reason) return null;
+    // The pieces named, for the correction that follows (see correctionPrompt).
+    const details = [
+      found.missingPieces.length > 0 && !reason.startsWith("missing") ? `missing: ${found.missingPieces.join(", ")}` : "",
+      found.extraPieces.length > 0 && !reason.startsWith("extra") ? `extra: ${found.extraPieces.join(", ")}` : "",
+    ].filter(Boolean);
+    return details.length > 0 ? `${reason} (${details.join("; ")})` : reason;
   };
+}
+
+function refusal(found: FinishComparison, haredi: boolean): string | null {
+  if (found.bedAdded) return "bed added";
+  if (found.bedRemoved) return "bed removed";
+  if (found.bedsInRender >= 0 && found.bedsInPainting >= 0 && found.bedsInRender !== found.bedsInPainting) return "beds counted otherwise";
+  if (found.sofasInRender >= 0 && found.sofasInPainting > found.sofasInRender) return "sofa added";
+  if (found.furnitureAdded) return "furniture added";
+    if (haredi && (found.bedWidened || found.doubleBed)) return "bed widened";
+  if (found.extraPieces.length > 0) return `extra: ${found.extraPieces.join(", ")}`;
+  if (found.missingPieces.length > 0) return `missing: ${found.missingPieces.join(", ")}`;
+    if (haredi && found.screenAdded) return "screen";
+  if (found.textAdded) return "lettering";
+  if (found.spaceAdded) return "space added";
+  return null;
 }

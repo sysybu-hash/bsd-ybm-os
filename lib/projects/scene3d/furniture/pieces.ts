@@ -139,8 +139,8 @@ function sofa(w: number, d: number, h: number): PiecePart[] {
 export function seat(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   if (w > 1.0) return sofa(w, d, h);
-  // An armchair: a sofa of one place.
-  if (w > 0.7 && d > 0.7) return sofa(w, d, h);
+  // An armchair: a sofa of one place. דירה 14's is 77 × 67 cm.
+  if (w > 0.7 && d > 0.6) return sofa(w, d, h);
   const padH = 0.07;
   const legW = Math.min(0.035, w * 0.1);
   const parts = [

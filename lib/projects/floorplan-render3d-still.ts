@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
-import { applyContentFrame, contentFrame } from "@/lib/projects/building/flat-finish";
-import { dollhouseView, flatToPrimitives } from "@/lib/projects/building/flat-model";
+import { applyContentFrame, contentFrame, type ContentFrame } from "@/lib/projects/building/flat-finish";
+import { dollhousePixel, dollhouseView, flatToPrimitives, type FlatView } from "@/lib/projects/building/flat-model";
 import { renderBuildingFrames } from "@/lib/projects/building/renderer";
 import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
@@ -9,8 +9,9 @@ import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
-import { flatInventory, inventoryText } from "@/lib/projects/scene3d/inventory";
+import { flatPieces, inventoryByPlace, listedKind, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
+import type { FlatScene } from "@/lib/projects/scene3d/types";
 
 /**
  * The measured flat, photographed by the renderer rather than imagined.
@@ -46,10 +47,45 @@ export type MeasuredStill = FloorplanVizImage & {
   walls?: Buffer;
   /** What stands in each room, as lines — what a design must keep, and is counted against. */
   inventory?: string;
+  /** Each of those pieces' box in the plain frame, pixels: where a design is checked for it. */
+  pieceBoxes?: PieceBox[];
 };
 
-/** Milliseconds a frame is given, the browser's launch included. */
-const FRAME_MS = 120_000;
+export type PieceBox = { kind: ListedKind | "open floor"; place: string; x: number; y: number; w: number; h: number };
+
+/** The listed pieces' boxes in the cropped frame. */
+function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; height: number }, crop: ContentFrame): PieceBox[] {
+  const out: PieceBox[] = [];
+  for (const p of flatPieces(scene)) {
+    const kind = listedKind(p.what);
+    if (!kind || !p.box) continue;
+    const a = dollhousePixel(view, size, { x: p.box.x0, y: p.box.top, z: p.box.z0 });
+    const b = dollhousePixel(view, size, { x: p.box.x1, y: p.box.top, z: p.box.z1 });
+    out.push({
+      kind,
+      place: planPlace(p.x, p.z, scene.extent),
+      x: Math.round(Math.min(a.x, b.x) - crop.left + crop.padLeft),
+      y: Math.round(Math.min(a.y, b.y) - crop.top + crop.padTop),
+      w: Math.round(Math.abs(b.x - a.x)),
+      h: Math.round(Math.abs(b.y - a.y)),
+    });
+  }
+  // And the open floor, where a design may add decor and nothing else.
+  for (const sq of openFloorSquares(scene)) {
+    const a = dollhousePixel(view, size, { x: sq.x - 0.5, y: 0, z: sq.z - 0.5 });
+    const b = dollhousePixel(view, size, { x: sq.x + 0.5, y: 0, z: sq.z + 0.5 });
+    out.push({ kind: "open floor", place: sq.place, x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y) });
+  }
+  return out;
+}
+
+/**
+ * Milliseconds a frame is given, the browser's launch included. A flat's two
+ * frames take about 8 s; 120 s reserved skipped the render whenever the sheet's
+ * reading was slow, and the run fell back to the model drawing from the sheet.
+ */
+const FRAME_MS = 45_000;
+const OUTPUT_WIDTH_PX = 2000;
 
 export async function renderMeasuredStill(options: Render3dStillOptions): Promise<MeasuredStill | null> {
   try {
@@ -86,12 +122,15 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
         { ...view.payload, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }), ...(samples > 0 ? { pathTrace: { samples } } : {}) },
         { ...view.payload, ao: false, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM, wallsOnly: true }), camera: { ...view.payload.camera, mask: true } },
       ],
-      { outputWidthPx: 2000, timeoutMs: FRAME_MS },
+      { outputWidthPx: OUTPUT_WIDTH_PX, timeoutMs: FRAME_MS },
     );
     if (!frame) return null;
     const crop = await contentFrame(frame, "auto");
     const plain = await applyContentFrame(frame, crop);
     const walls = wallsFrame ? await applyContentFrame(wallsFrame, crop, { r: 255, g: 255, b: 255 }) : undefined;
+    // The frame's size as the renderer returns it: scaled to OUTPUT_WIDTH_PX.
+    const scale = Math.min(1, OUTPUT_WIDTH_PX / view.payload.width);
+    const size = { width: Math.round(view.payload.width * scale), height: Math.round(view.payload.height * scale) };
     const stamped = await stampFloorplanStill(
       { base64: plain.toString("base64"), mimeType: "image/jpeg" },
       { unitLabel: options.unitTitle, areaM2: options.areaM2 },
@@ -106,7 +145,8 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       selected: options.selected ?? false,
       plain,
       ...(walls ? { walls } : {}),
-      inventory: inventoryText(flatInventory(scene)),
+      inventory: inventoryByPlace(flatPieces(scene), scene.extent),
+      pieceBoxes: boxesInFrame(scene, view, size, crop),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

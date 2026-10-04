@@ -278,7 +278,7 @@ export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): Sce
     bodies: flat.bodies,
     openings: flat.openings,
     floorRects: mergeSpanRows(flat.floor),
-    terraceRects: flat.terraces.map((rows) => mergeSpanRows(rows)),
+    terraceRects: flat.terraces.map((rows) => mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2))),
     furniture: flat.furniture,
     rooms: rooms.map((room) => ({
       name: room.name,

@@ -75,7 +75,7 @@ export function designPrompt(subject: string, options: { haredi: boolean; invent
     "KEEP EXACTLY: the camera — straight down, north up — the framing and the scale; every wall, its length and thickness, and its cut top as a flat band; every door and window opening; every room's shape.",
     "KEEP every piece of furniture where it is, the same size and the same kind: each bed stays a bed in its place (single beds stay single), the dining table with its chairs, each sofa and armchair, each wardrobe, the kitchen run with the hob and the sink exactly where they are, each toilet, basin, shower and bath where it is.",
     ...(options.inventory
-      ? [`The furniture, room by room, exactly as measured — no more, no fewer, nothing else of these kinds (a bed is ONE person wide: one pillow, never two side by side):
+      ? [`The furniture exactly as measured, with where each piece stands on the plan (north up) — no more, no fewer, nothing else of these kinds (a bed is ONE person wide: one pillow, never two side by side):
 ${options.inventory}`]
       : []),
     "DESIGN FREELY: the style of each piece, upholstery and bedding, rugs, floor and wall finishes, kitchen fronts and worktops, lighting and soft shadows, plants and small decor on and beside the furniture.",
@@ -88,28 +88,64 @@ ${options.inventory}`]
   ].join("\n");
 }
 
-/** One image call over the model chain. */
+/**
+ * A refused design, corrected rather than redrawn: the model is handed the
+ * layout and its own design, and told exactly what the judge found wrong. A
+ * fresh design keeps the look the model chose and loses a different bed.
+ */
+export function correctionPrompt(reason: string, options: { inventory?: string }): string {
+  return [
+    "Image 1 is the exact top-down LAYOUT of an apartment, measured from the architect's drawing. Image 2 is your DESIGN of it.",
+    `The design was refused against the layout: ${reason}.`,
+    "Edit image 2 so it matches image 1 piece for piece: put back every missing piece where image 1 has it, at its size and of its kind (each bed a single bed, one pillow), and remove every piece image 1 does not have — fill its place with the floor around it.",
+    ...(options.inventory ? [`The furniture exactly as measured, with where each piece stands on the plan (north up):
+${options.inventory}`] : []),
+    "Change nothing else: keep the design's style, materials, colours, golden-hour light and shadows, the camera, the framing, every wall, door and window. No text, no people.",
+  ].join("\n");
+}
+
+/** One image call over the model chain; images after the first ride along as references. */
 export async function finishPass(
   client: GoogleGenAI,
   prompt: string,
-  image: Buffer,
+  image: Buffer | Buffer[],
 ): Promise<{ image: Buffer; model: string } | null> {
-  const data = (await sharp(image).jpeg({ quality: 92 }).toBuffer()).toString("base64");
+  const images = await Promise.all(
+    (Array.isArray(image) ? image : [image]).map(async (one) => ({
+      inlineData: { mimeType: "image/jpeg", data: (await sharp(one).jpeg({ quality: 92 }).toBuffer()).toString("base64") },
+    })),
+  );
+  const first = await sharp(Array.isArray(image) ? image[0]! : image).metadata();
+  // 2K costs what 1K does; a 1K design of a flat was 896 px wide. The ratio
+  // the layout has, or the model returns its own frame and the walls drift.
+  const imageConfig = { imageSize: "2K", aspectRatio: nearestAspectRatio((first.width ?? 1) / (first.height ?? 1)) };
   for (const model of getFloorplanVizModelChain()) {
-    try {
-      const res = await client.models.generateContent({
-        model,
-        contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data } }] }],
-        config: { responseModalities: ["IMAGE"] },
-      });
-      recordAiUsage(model, usageFromGemini(res));
-      const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-      if (part?.inlineData?.data) return { image: Buffer.from(part.inlineData.data, "base64"), model };
-    } catch {
-      // The next model in the chain.
+    // A model that refuses the sizing is asked once more without it.
+    for (const sized of [true, false]) {
+      try {
+        const res = await client.models.generateContent({
+          model,
+          contents: [{ role: "user", parts: [{ text: prompt }, ...images] }],
+          config: { responseModalities: ["IMAGE"], ...(sized ? { imageConfig } : {}) },
+        });
+        recordAiUsage(model, usageFromGemini(res));
+        const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
+        if (part?.inlineData?.data) return { image: Buffer.from(part.inlineData.data, "base64"), model };
+        break;
+      } catch {
+        // Unsized, then the next model in the chain.
+      }
     }
   }
   return null;
+}
+
+const ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+
+/** The image model's aspect ratio closest to width / height. */
+export function nearestAspectRatio(ratio: number): string {
+  const of = (r: string) => { const [w, h] = r.split(":").map(Number); return w! / h!; };
+  return ASPECT_RATIOS.reduce((best, r) => (Math.abs(Math.log(of(r) / ratio)) < Math.abs(Math.log(of(best) / ratio)) ? r : best));
 }
 
 /**

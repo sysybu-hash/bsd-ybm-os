@@ -71,6 +71,17 @@ describe("a measured still, designed", () => {
     expect(String(pass.mock.calls[0]![1])).toContain("LAYOUT");
   });
 
+  it("corrects a refused design with the layout beside it, instead of drawing a new one", async () => {
+    pass.mockResolvedValueOnce({ image: Buffer.from("first"), model: "m" }).mockResolvedValueOnce({ image: Buffer.from("fixed"), model: "m" });
+    walls.mockResolvedValue(0.9);
+    const judge = jest.fn().mockResolvedValueOnce("missing: bedroom 2: 1 single bed").mockResolvedValueOnce(null);
+    const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend(), judge });
+    expect(done?.base64).toBe(Buffer.from("fixed").toString("base64"));
+    const [, prompt, images] = pass.mock.calls[1]!;
+    expect(String(prompt)).toContain("missing: bedroom 2: 1 single bed");
+    expect(images).toEqual([Buffer.from("render"), Buffer.from("first")]);
+  });
+
   it("refuses a design whose walls moved", async () => {
     pass.mockResolvedValue({ image: Buffer.from("moved"), model: "m" });
     walls.mockResolvedValue(0.5);
@@ -80,6 +91,14 @@ describe("a measured still, designed", () => {
 
 describe("the judge of a haredi flat's painting", () => {
   const none: FinishComparison = { bedWidened: false, bedAdded: false, bedRemoved: false, furnitureAdded: false, bedsInRender: 3, bedsInPainting: 3, sofasInRender: 2, sofasInPainting: 2, extraPieces: [], missingPieces: [], doubleBed: false, screenAdded: false, textAdded: false, spaceAdded: false, turnedOrMirrored: false, notes: "" };
+  it("refuses a painting missing a piece where the layout has it, before anything else, and names it", async () => {
+    const spots = jest.fn().mockResolvedValue(["bed at the top left (the design has a wardrobe there)"]);
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, spots)(Buffer.from("p"))).toBe("not as the layout: bed at the top left (the design has a wardrobe there)");
+    expect(spots).toHaveBeenCalledWith(Buffer.from("p"));
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, jest.fn().mockResolvedValue([]))(Buffer.from("p"))).toBeNull();
+    // A spot check nobody answered passes nothing.
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, jest.fn().mockResolvedValue(null))(Buffer.from("p"))).toBe("no judge");
+  });
 
   it("refuses a bed painted wider than the render's", async () => {
     const compare = jest.fn().mockResolvedValue({ ...none, bedWidened: true });
@@ -91,6 +110,8 @@ describe("the judge of a haredi flat's painting", () => {
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, bedRemoved: true }))(Buffer.from("p"))).toBe("bed removed");
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, furnitureAdded: true }))(Buffer.from("p"))).toBe("furniture added");
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, bedsInPainting: 2 }))(Buffer.from("p"))).toBe("beds counted otherwise");
+    // The pieces are named for the correction.
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, bedRemoved: true, missingPieces: ["bedroom 2: 1 single bed"] }))(Buffer.from("p"))).toBe("bed removed (missing: bedroom 2: 1 single bed)");
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, sofasInPainting: 3 }))(Buffer.from("p"))).toBe("sofa added");
   });
 

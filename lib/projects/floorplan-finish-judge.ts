@@ -1,3 +1,5 @@
+import sharp from "sharp";
+
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { getAnthropicModelCandidates, isAnthropicConfigured, isAnthropicEligibleForModelFallback } from "@/lib/ai-providers";
 import { recordAiUsage, usageFromAnthropic } from "@/lib/ai-usage";
@@ -72,6 +74,33 @@ function imagePart(base64: string) {
  */
 const JUDGE_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"];
 
+async function askClaude(key: string, content: unknown[], maxTokens: number): Promise<{ raw: Record<string, unknown>; model: string } | null> {
+  for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+        body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] }),
+      });
+      const body = await res.text().catch(() => res.statusText);
+      if (!res.ok) {
+        if (isAnthropicEligibleForModelFallback(res.status, body)) {
+          log.info("finish judge model unavailable; next", { model, status: res.status });
+          continue;
+        }
+        log.warn("finish judge failed", { model, status: res.status });
+        return null;
+      }
+      const parsed = JSON.parse(body) as { model?: string; content?: Array<{ type?: string; text?: string }> };
+      recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
+      return { raw: parseModelJsonText(parsed.content?.find((c) => c.type === "text")?.text ?? body), model };
+    } catch (err: unknown) {
+      log.warn("finish judge error", { model, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return null;
+}
+
 export async function compareFinishWithClaude(render: Buffer, painting: Buffer, inventory?: string): Promise<FinishComparison | null> {
   if (!isAnthropicConfigured()) return null;
   recordAmbientFloorplanSpend("audit", "claude-finish-judge");
@@ -79,64 +108,100 @@ export async function compareFinishWithClaude(render: Buffer, painting: Buffer, 
   const instruction = INSTRUCTION.replace(
     "{INVENTORY}",
     inventory
-      ? `The apartment's furniture, room by room, as measured from the drawing:
+      ? `The apartment's furniture as measured from the drawing, with where each piece stands on the plan (seen from above, north up):
 ${inventory}
-Count the PAINTING against this list, room by room. extraPieces: every piece the painting has beyond it — a sofa, armchair, chair, table, coffee table, kitchen island, bed or wardrobe more than listed in a room (plants, rugs, cushions, lamps and small decor do not count). missingPieces: every listed piece the painting lacks. doubleBed: any bed painted two people wide, two pillows side by side.`
+Count the PAINTING against this list, place by place. extraPieces: every piece the painting has beyond it — a sofa, armchair, chair, table, coffee table, kitchen island, bed or wardrobe more than listed at a place (plants, rugs, cushions, lamps and small decor do not count). missingPieces: every listed piece the painting lacks. doubleBed: any bed painted two people wide, two pillows side by side.`
       : "extraPieces and missingPieces: leave empty. doubleBed: any bed painted two people wide, two pillows side by side.",
   );
-  for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model,
-          // Room-by-room lists and a note: 400 tokens cut the JSON off mid-list.
-          max_tokens: 1500,
-          temperature: 0,
-          messages: [
-            {
-              role: "user",
-              content: [imagePart(render.toString("base64")), imagePart(painting.toString("base64")), { type: "text", text: instruction }],
-            },
-          ],
-        }),
-      });
-      const body = await res.text().catch(() => res.statusText);
-      if (!res.ok) {
-        if (isAnthropicEligibleForModelFallback(res.status, body)) {
-          log.info("finish comparison model unavailable; next", { model, status: res.status });
-          continue;
-        }
-        log.warn("finish comparison failed", { model, status: res.status });
-        return null;
-      }
-      const parsed = JSON.parse(body) as { model?: string; content?: Array<{ type?: string; text?: string }> };
-      recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
-      const raw = parseModelJsonText(parsed.content?.find((c) => c.type === "text")?.text ?? body);
-      const out: FinishComparison = {
-        bedWidened: raw.bedWidened === true,
-        bedAdded: raw.bedAdded === true,
-        bedRemoved: raw.bedRemoved === true,
-        furnitureAdded: raw.furnitureAdded === true,
-        bedsInRender: Number.isFinite(Number(raw.bedsInRender)) ? Math.round(Number(raw.bedsInRender)) : -1,
-        bedsInPainting: Number.isFinite(Number(raw.bedsInPainting)) ? Math.round(Number(raw.bedsInPainting)) : -1,
-        sofasInRender: Number.isFinite(Number(raw.sofasInRender)) ? Math.round(Number(raw.sofasInRender)) : -1,
-        sofasInPainting: Number.isFinite(Number(raw.sofasInPainting)) ? Math.round(Number(raw.sofasInPainting)) : -1,
-        extraPieces: Array.isArray(raw.extraPieces) ? raw.extraPieces.map(String).slice(0, 12) : [],
-        missingPieces: Array.isArray(raw.missingPieces) ? raw.missingPieces.map(String).slice(0, 12) : [],
-        doubleBed: raw.doubleBed === true,
-        screenAdded: raw.screenAdded === true,
-        textAdded: raw.textAdded === true,
-        spaceAdded: raw.spaceAdded === true,
-        turnedOrMirrored: raw.turnedOrMirrored === true,
-        notes: typeof raw.notes === "string" ? raw.notes.slice(0, 200) : "",
-      };
-      log.info("finish comparison", { model, ...out });
-      return out;
-    } catch (err: unknown) {
-      log.warn("finish comparison error", { model, error: err instanceof Error ? err.message : String(err) });
+  // Room-by-room lists and a note: 400 tokens cut the JSON off mid-list.
+  const asked = await askClaude(key, [imagePart(render.toString("base64")), imagePart(painting.toString("base64")), { type: "text", text: instruction }], 1500);
+  if (!asked) return null;
+  const { raw, model } = asked;
+  const count = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : -1);
+  const out: FinishComparison = {
+    bedWidened: raw.bedWidened === true,
+    bedAdded: raw.bedAdded === true,
+    bedRemoved: raw.bedRemoved === true,
+    furnitureAdded: raw.furnitureAdded === true,
+    bedsInRender: count(raw.bedsInRender),
+    bedsInPainting: count(raw.bedsInPainting),
+    sofasInRender: count(raw.sofasInRender),
+    sofasInPainting: count(raw.sofasInPainting),
+    extraPieces: Array.isArray(raw.extraPieces) ? raw.extraPieces.map(String).slice(0, 12) : [],
+    missingPieces: Array.isArray(raw.missingPieces) ? raw.missingPieces.map(String).slice(0, 12) : [],
+    doubleBed: raw.doubleBed === true,
+    screenAdded: raw.screenAdded === true,
+    textAdded: raw.textAdded === true,
+    spaceAdded: raw.spaceAdded === true,
+    turnedOrMirrored: raw.turnedOrMirrored === true,
+    notes: typeof raw.notes === "string" ? raw.notes.slice(0, 200) : "",
+  };
+  log.info("finish comparison", { model, ...out });
+  return out;
+}
+
+/** A spot in the design where the layout has a piece: its box in the layout's frame, pixels. */
+export type PieceSpot = { kind: string; place: string; x: number; y: number; w: number; h: number };
+
+const SPOTS = `
+Each image is a crop of a top-down picture of an apartment, centred on one spot. For each image, list every piece that stands in its MIDDLE HALF (the centre area, not the margins), in these words:
+bed, sofa, armchair, ottoman, chair, dining table, coffee table, side table, lamp, wardrobe, cabinet, kitchen counter, kitchen island, toilet, bath, shower, basin, television, plant, rug, empty floor, wall, other.
+Return JSON only, one list per image in order: {"answers": [["bed", "wall"], ["empty floor"], ...]}
+`;
+
+/** What each layout piece may be seen as in the design. */
+const SEEN_AS: Record<string, string[]> = {
+  beds: ["bed"],
+  sofas: ["sofa"],
+  // A seat for one is the designer's to style: a pouf is one.
+  armchairs: ["armchair", "sofa", "chair", "ottoman", "other"],
+  "dining tables": ["dining table", "coffee table"],
+  toilets: ["toilet"],
+};
+
+/** What a design may put on the layout's open floor: decor, never furniture. */
+const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wall", "other"]);
+
+/**
+ * Each piece the layout has, looked for where it stands in the design: the
+ * design cut to that spot, and a call shown the crops alone asked what is at
+ * each centre. Shown the whole flat, judges counted beds as one and missed an
+ * added sofa; a crop has one thing in the middle. Answers the pieces missing,
+ * or null when nobody answered.
+ */
+export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<string[] | null> {
+  const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor") && s.w > 4 && s.h > 4);
+  if (checked.length === 0) return [];
+  if (!isAnthropicConfigured()) return null;
+  recordAmbientFloorplanSpend("audit", "claude-finish-spots");
+  const meta = await sharp(layout).metadata();
+  const frame = { width: meta.width ?? 0, height: meta.height ?? 0 };
+  const sized = await sharp(design).resize(frame.width, frame.height, { fit: "fill" }).toBuffer();
+  const crops = await Promise.all(
+    checked.map(async (s) => {
+      // Open floor is looked at as it is; a piece with room round it, for a design that moved it a little.
+      const pad = s.kind === "open floor" ? 0 : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35));
+      const left = Math.max(0, s.x - pad);
+      const top = Math.max(0, s.y - pad);
+      const width = Math.min(frame.width - left, s.w + 2 * pad);
+      const height = Math.min(frame.height - top, s.h + 2 * pad);
+      const crop = await sharp(sized).extract({ left, top, width, height }).resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
+      return imagePart(crop.toString("base64"));
+    }),
+  );
+  const asked = await askClaude(env.ANTHROPIC_API_KEY!.trim(), [...crops, { type: "text", text: SPOTS }], 900);
+  if (!asked || !Array.isArray(asked.raw.answers)) return null;
+  const answers = (asked.raw.answers as unknown[]).map((a) => (Array.isArray(a) ? a : [a]).map((w) => String(w).toLowerCase().trim()));
+  const missing: string[] = [];
+  checked.forEach((s, i) => {
+    const seen = answers[i] ?? [];
+    if (s.kind === "open floor") {
+      const added = seen.filter((w) => !DECOR.has(w));
+      if (added.length > 0) missing.push(`open floor at the ${s.place} (the design added ${added.join(", ")} there)`);
+    } else if (!seen.some((w) => SEEN_AS[s.kind]!.includes(w))) {
+      missing.push(`${s.kind.replace(/s$/, "")} at the ${s.place} (the design has ${seen.join(", ") || "nothing"} there)`);
     }
-  }
-  return null;
+  });
+  log.info("finish spots", { model: asked.model, checked: checked.length, missing });
+  return missing;
 }

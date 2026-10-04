@@ -23,9 +23,10 @@ const ROOM_WORD: Record<SceneRoomKind, string> = {
   other: "room",
 };
 
-function pieceOf(tags: Set<string>): string | null {
+function pieceOf(tags: Set<string>, seats: number): string | null {
   if (tags.has("mattress")) return "single bed";
-  if (tags.has("seat") && tags.has("arm")) return tags.has("cushion") ? "sofa" : "armchair";
+  // A sofa of one place is an armchair.
+  if (tags.has("seat") && tags.has("arm")) return seats > 1 ? "sofa" : "armchair";
   if (tags.has("pad")) return "chair";
   if (tags.has("panel")) return "desk";
   if (tags.has("top") && tags.has("leg")) return "table";
@@ -41,25 +42,39 @@ function pieceOf(tags: Set<string>): string | null {
   return null;
 }
 
-export function flatInventory(scene: FlatScene): RoomInventory[] {
-  const parts = new Map<string, { tags: Set<string>; x: number; z: number; n: number }>();
+/** One piece of furniture and where its middle stands, metres in scene space. */
+export type PlacedPiece = { what: string; x: number; z: number; box?: { x0: number; x1: number; z0: number; z1: number; top: number } };
+
+export function flatPieces(scene: FlatScene): PlacedPiece[] {
+  const parts = new Map<string, { tags: Set<string>; x: number; z: number; n: number; seats: number; x0: number; x1: number; z0: number; z1: number; top: number }>();
   for (const m of scene.meshes) {
     if (m.kind !== "furniture") continue;
     const [id, tag] = m.sourceId.split("/");
     if (!id || !tag || !id.startsWith("furniture:")) continue;
-    const p = parts.get(id) ?? { tags: new Set<string>(), x: 0, z: 0, n: 0 };
+    const p = parts.get(id) ?? { tags: new Set<string>(), x: 0, z: 0, n: 0, seats: 0, x0: Infinity, x1: -Infinity, z0: Infinity, z1: -Infinity, top: 0 };
     p.tags.add(tag);
+    p.x0 = Math.min(p.x0, m.centre.x - m.size.x / 2);
+    p.x1 = Math.max(p.x1, m.centre.x + m.size.x / 2);
+    p.z0 = Math.min(p.z0, m.centre.z - m.size.z / 2);
+    p.z1 = Math.max(p.z1, m.centre.z + m.size.z / 2);
+    p.top = Math.max(p.top, m.centre.y + m.size.y / 2);
+    if (tag === "seat") p.seats += 1;
     p.x += m.centre.x;
     p.z += m.centre.z;
     p.n += 1;
     parts.set(id, p);
   }
-  const rooms = scene.rooms.map((r) => ({ room: r.name, kind: r.kind, rects: r.rects, pieces: {} as Record<string, number> }));
+  const out: PlacedPiece[] = [];
   for (const p of parts.values()) {
-    const what = pieceOf(p.tags);
-    if (!what) continue;
-    const x = p.x / p.n;
-    const z = p.z / p.n;
+    const what = pieceOf(p.tags, p.seats);
+    if (what) out.push({ what, x: p.x / p.n, z: p.z / p.n, box: { x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, top: p.top } });
+  }
+  return out;
+}
+
+export function flatInventory(scene: FlatScene): RoomInventory[] {
+  const rooms = scene.rooms.map((r) => ({ room: r.name, kind: r.kind, rects: r.rects, pieces: {} as Record<string, number> }));
+  for (const { what, x, z } of flatPieces(scene)) {
     const room = rooms.find((r) => r.rects.some((q) => x >= q.x && x <= q.x + q.w && z >= q.z && z <= q.z + q.d));
     if (!room) continue;
     room.pieces[what] = (room.pieces[what] ?? 0) + 1;
@@ -77,9 +92,115 @@ export function inventoryText(inventory: RoomInventory[]): string {
       seen.set(word, n);
       const items = Object.entries(r.pieces)
         .sort((a, b) => b[1] - a[1])
-        .map(([what, count]) => `${count} ${what}${count > 1 ? (what.endsWith("ch") ? "es" : "s") : ""}`)
+        .map(([what, count]) => plural(what, count))
         .join(", ");
       return `- ${word} ${n}: ${items}`;
     })
     .join("\n");
+}
+
+const plural = (what: string, count: number) => `${count} ${what}${count > 1 ? (what.endsWith("ch") ? "es" : "s") : ""}`;
+
+/** Where on the plan a point stands, in thirds: "top left", "middle", "bottom right". */
+export function planPlace(x: number, z: number, extent: FlatScene["extent"]): string {
+  const third = (v: number, from: number, size: number) => (size > 0 ? Math.min(2, Math.max(0, Math.floor(((v - from) / size) * 3))) : 1);
+  const row = ["top", "middle", "bottom"][third(z, extent.z, extent.depth)]!;
+  const col = ["left", "centre", "right"][third(x, extent.x, extent.width)]!;
+  return row === "middle" && col === "centre" ? "middle" : row === "middle" ? `middle ${col}` : col === "centre" ? `${row} centre` : `${row} ${col}`;
+}
+
+/** The pieces a design most often loses or invents, listed one by one with their place. */
+const PLACED = ["single bed", "sofa", "armchair", "wardrobe", "table", "desk", "bath", "toilet"];
+
+/**
+ * The furniture as the image model and the judge are given it: the totals,
+ * and where each of the pieces that matter stands on the plan (north up).
+ * Counted from the scene, not from its rooms: a room the measurement merged
+ * with the living room — a bedroom open to it through a doorway — put a bed
+ * on the living room's list, and the judge, told so, refused every design for
+ * the bed it could not find there.
+ */
+export function inventoryByPlace(pieces: PlacedPiece[], extent: FlatScene["extent"]): string {
+  if (pieces.length === 0) return "";
+  const totals = new Map<string, number>();
+  for (const p of pieces) totals.set(p.what, (totals.get(p.what) ?? 0) + 1);
+  const lines = [
+    `In all: ${[...totals.entries()].sort((a, b) => b[1] - a[1]).map(([what, n]) => plural(what, n)).join(", ")}.`,
+  ];
+  for (const what of PLACED) {
+    const at = new Map<string, number>();
+    for (const p of pieces) if (p.what === what) { const place = planPlace(p.x, p.z, extent); at.set(place, (at.get(place) ?? 0) + 1); }
+    if (at.size === 0) continue;
+    lines.push(`- ${plural(what, totals.get(what)!)}: ${[...at.entries()].map(([place, n]) => `${n} at the ${place}`).join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+/** The kinds a design is counted by, piece by piece: what designs lost or invented. */
+export const LISTED_PIECES = ["beds", "sofas", "armchairs", "dining tables", "wardrobes", "toilets", "screens"] as const;
+export type ListedKind = (typeof LISTED_PIECES)[number];
+
+const LISTED_AS: Record<string, ListedKind> = {
+  "single bed": "beds",
+  sofa: "sofas",
+  armchair: "armchairs",
+  table: "dining tables",
+  wardrobe: "wardrobes",
+  toilet: "toilets",
+};
+
+/** Which listed kind a piece is, if any. */
+export function listedKind(what: string): ListedKind | undefined {
+  return LISTED_AS[what];
+}
+
+/** Rooms whose open floor a design must leave open. */
+const OPEN_FLOOR_ROOMS = new Set(["living", "kitchen", "bedroom", "mmd"]);
+
+/**
+ * Squares of open floor: a metre square in a living room, kitchen or bedroom
+ * with nothing within 15 cm of it — no furniture, no wall. Where a design is
+ * checked for what it added: a second sofa and an armchair painted on the
+ * living room's open floor passed every judge shown the whole flat. At most
+ * `max`, spread over the flat (each the farthest from those already chosen).
+ */
+export function openFloorSquares(scene: FlatScene, max = 14, sizeM = 1, clearM = 0.15): Array<{ x: number; z: number; place: string }> {
+  const blockers = scene.meshes
+    .filter((m) => m.kind === "furniture" || m.kind === "wall" || m.kind === "wallSill" || m.kind === "wallHead" || m.kind === "railing")
+    .map((m) => ({ x0: m.centre.x - m.size.x / 2, x1: m.centre.x + m.size.x / 2, z0: m.centre.z - m.size.z / 2, z1: m.centre.z + m.size.z / 2 }));
+  // A square touching a bathroom, a hall or a terrace is not a room's open
+  // floor: the measured rooms overlap, and a WC a design drew in a bathroom
+  // the big region also covered is not an addition.
+  for (const room of scene.rooms) {
+    if (OPEN_FLOOR_ROOMS.has(room.kind)) continue;
+    for (const r of room.rects) blockers.push({ x0: r.x, x1: r.x + r.w, z0: r.z, z1: r.z + r.d });
+  }
+  const half = sizeM / 2;
+  const reach = half + clearM;
+  const candidates: Array<{ x: number; z: number }> = [];
+  for (const room of scene.rooms) {
+    // A small "bedroom" is as often a bathroom read wrong, its WC a design's to draw.
+    if (!OPEN_FLOOR_ROOMS.has(room.kind) || room.areaM2 < 7) continue;
+    const inside = (x: number, z: number) => room.rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d);
+    for (let x = room.bounds.x + half; x <= room.bounds.x + room.bounds.w - half; x += sizeM / 2) {
+      for (let z = room.bounds.z + half; z <= room.bounds.z + room.bounds.d - half; z += sizeM / 2) {
+        if (![[-half, -half], [half, -half], [-half, half], [half, half], [0, 0]].every(([dx, dz]) => inside(x + dx!, z + dz!))) continue;
+        if (blockers.some((b) => x + reach > b.x0 && x - reach < b.x1 && z + reach > b.z0 && z - reach < b.z1)) continue;
+        candidates.push({ x, z });
+      }
+    }
+  }
+  const chosen: Array<{ x: number; z: number }> = [];
+  while (chosen.length < max && candidates.length > 0) {
+    let best = 0;
+    let bestD = -1;
+    candidates.forEach((c, i) => {
+      const d = chosen.length === 0 ? -Math.hypot(c.x - scene.extent.x, c.z - scene.extent.z) : Math.min(...chosen.map((q) => Math.hypot(c.x - q.x, c.z - q.z)));
+      if (d > bestD) { bestD = d; best = i; }
+    });
+    const [pick] = candidates.splice(best, 1);
+    if (chosen.length > 0 && bestD < sizeM) break;
+    chosen.push(pick!);
+  }
+  return chosen.map((c) => ({ ...c, place: planPlace(c.x, c.z, scene.extent) }));
 }

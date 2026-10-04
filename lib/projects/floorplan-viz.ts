@@ -1,6 +1,6 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
 import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
-import { compareFinishWithClaude } from "@/lib/projects/floorplan-finish-judge";
+import { checkSpotsWithClaude, compareFinishWithClaude } from "@/lib/projects/floorplan-finish-judge";
 import { finishJudge, finishMeasuredStill } from "@/lib/projects/floorplan-finish-still";
 import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
@@ -376,7 +376,13 @@ async function visualizeWithSpend(
                 areaM2: cadResult.truth?.grossM2,
                 spend: cadResult.spend,
                 deadlineMs,
-                judge: finishJudge(styleKit, measured.plain, compareFinishWithClaude, measured.inventory),
+                judge: finishJudge(
+                  styleKit,
+                  measured.plain,
+                  compareFinishWithClaude,
+                  measured.inventory,
+                  measured.pieceBoxes ? (image) => checkSpotsWithClaude(image, measured.plain, measured.pieceBoxes!) : undefined,
+                ),
               }),
             )
           : null;
