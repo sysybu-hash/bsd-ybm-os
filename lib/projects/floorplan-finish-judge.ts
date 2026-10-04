@@ -148,6 +148,11 @@ This is a top-down picture of a dining table. Count every chair, stool and bench
 Return JSON only: {"chairs": 0}
 `;
 
+const SCREEN_SPOT = `
+This is a top-down picture of part of a living room, the view from a sofa toward the wall across. Is there a television, monitor or any other screen in it — a flat dark panel on the wall or on a low cabinet? Lamps, mirrors, paintings, windows, doors, wardrobes, bookcases and kitchen appliances are not screens.
+Return JSON only: {"screen": false}
+`;
+
 const SEATS = `
 This is a top-down picture of a living room's seating. Count the separate sofas and armchairs, one by one: a long sofa is one piece, two sofas set end to end are two. Do not count cushions, side tables or coffee tables.
 Return JSON only: {"chairs": 0}
@@ -201,6 +206,7 @@ const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wal
 export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<string[] | null> {
   const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor" || s.kind === "kitchen counters") && s.w > 4 && s.h > 4);
   const sets = spots.filter((s) => (s.kind === "dining set" || s.kind === "seating group") && s.chairs != null && s.w > 4 && s.h > 4);
+  const facing = spots.filter((s) => s.kind === "facing sofa" && s.w > 4 && s.h > 4);
   if (checked.length === 0) return [];
   if (!isAnthropicConfigured()) return null;
   recordAmbientFloorplanSpend("audit", "claude-finish-spots");
@@ -235,6 +241,18 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const counts = await counting;
   if (batches.some((asked) => !asked || !Array.isArray(asked.raw.answers))) return null;
   const asked = batches[0];
+  // What each sofa faces, asked twice over: a screen there refuses a haredi
+  // design only if both looks see one.
+  const screens = await Promise.all(
+    facing.map(async (s) => {
+      const crop = await cropSpot(sized, frame, s, 0);
+      for (let look = 0; look < 2; look++) {
+        const said = await askClaude(key, [crop, { type: "text", text: SCREEN_SPOT }], 150);
+        if (said?.raw.screen !== true) return null;
+      }
+      return `a screen facing the sofa at the ${s.place}`;
+    }),
+  );
   const answers = batches.flatMap((said, k) => {
     const list = (said!.raw.answers as unknown[]).map((a) => (Array.isArray(a) ? a : [a]).map((w) => String(w).toLowerCase().trim()));
     // A batch that answered for fewer crops than it was shown is padded, not shifted.
@@ -270,6 +288,7 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
     const wrong = verdict(checked[i]!, again ?? answers[i] ?? []);
     if (wrong) missing.push(wrong);
   });
+  for (const found of screens) if (found) missing.push(found);
   sets.forEach((s, i) => {
     const n = counts[i];
     if (n == null || n === s.chairs) return;
@@ -282,3 +301,4 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   log.info("finish spots", { model: asked?.model, checked: checked.length, calls: batches.length, missing });
   return missing;
 }
+

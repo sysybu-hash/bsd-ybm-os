@@ -384,11 +384,18 @@ async function main() {
   if (clip) for (const m of Object.values(MAT)) { m.clippingPlanes = clip; m.clipShadows = true; if (sec && P.camera.interior) m.side = THREE.DoubleSide; }
 
   // A box whose faces carry UVs in metres, so every texture keeps its scale.
-  const worldBox = (sx, sy, sz, repeatM) => {
+  // Its top and bottom take them from where they are in the world: a floor
+  // is many rectangles, and each starting its boards and tiles at its own
+  // corner drew the floor as patches with a seam at every join.
+  const worldBox = (sx, sy, sz, repeatM, at) => {
     const geo = new THREE.BoxGeometry(sx, sy, sz);
-    const uv = geo.attributes.uv, nrm = geo.attributes.normal;
+    const uv = geo.attributes.uv, nrm = geo.attributes.normal, pos = geo.attributes.position;
     for (let i = 0; i < uv.count; i++) {
       const nx = Math.abs(nrm.getX(i)), ny = Math.abs(nrm.getY(i));
+      if (ny > 0.5 && at) {
+        uv.setXY(i, (pos.getX(i) + at.x) / repeatM, -(pos.getZ(i) + at.z) / repeatM);
+        continue;
+      }
       const [a, b] = nx > 0.5 ? [sz, sy] : ny > 0.5 ? [sx, sz] : [sx, sy];
       uv.setXY(i, (uv.getX(i) * a) / repeatM, (uv.getY(i) * b) / repeatM);
     }
@@ -411,7 +418,7 @@ async function main() {
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
       if (p.rotY) mesh.rotation.y = p.rotY;
     } else if (p.type === "box") {
-      mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat)), mat);
+      mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat), p.rotY ? null : p.centre), mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
       if (p.rotY) mesh.rotation.y = p.rotY;
     } else if (p.type === "prism") {

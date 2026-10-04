@@ -44,10 +44,17 @@ function pieceOf(tags: Set<string>, lengthM: number): string | null {
 }
 
 /** One piece of furniture and where its middle stands, metres in scene space. */
-export type PlacedPiece = { what: string; x: number; z: number; box?: { x0: number; x1: number; z0: number; z1: number; top: number } };
+export type PlacedPiece = {
+  what: string;
+  x: number;
+  z: number;
+  box?: { x0: number; x1: number; z0: number; z1: number; top: number };
+  /** Where a seat's back stands, for which way it faces. */
+  backAt?: { x: number; z: number };
+};
 
 export function flatPieces(scene: FlatScene): PlacedPiece[] {
-  const parts = new Map<string, { tags: Set<string>; x: number; z: number; n: number; x0: number; x1: number; z0: number; z1: number; top: number }>();
+  const parts = new Map<string, { tags: Set<string>; x: number; z: number; n: number; x0: number; x1: number; z0: number; z1: number; top: number; back?: { x: number; z: number } }>();
   for (const m of scene.meshes) {
     if (m.kind !== "furniture") continue;
     const [id, tag] = m.sourceId.split("/");
@@ -59,6 +66,7 @@ export function flatPieces(scene: FlatScene): PlacedPiece[] {
     p.z0 = Math.min(p.z0, m.centre.z - m.size.z / 2);
     p.z1 = Math.max(p.z1, m.centre.z + m.size.z / 2);
     p.top = Math.max(p.top, m.centre.y + m.size.y / 2);
+    if (tag === "back") p.back = { x: m.centre.x, z: m.centre.z };
     p.x += m.centre.x;
     p.z += m.centre.z;
     p.n += 1;
@@ -67,7 +75,7 @@ export function flatPieces(scene: FlatScene): PlacedPiece[] {
   const out: PlacedPiece[] = [];
   for (const p of parts.values()) {
     const what = pieceOf(p.tags, Math.max(p.x1 - p.x0, p.z1 - p.z0));
-    if (what) out.push({ what, x: p.x / p.n, z: p.z / p.n, box: { x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, top: p.top } });
+    if (what) out.push({ what, x: p.x / p.n, z: p.z / p.n, box: { x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, top: p.top }, ...(p.back ? { backAt: p.back } : {}) });
   }
   return out;
 }

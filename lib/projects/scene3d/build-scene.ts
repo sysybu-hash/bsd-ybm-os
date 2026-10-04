@@ -532,11 +532,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   // --- floors, one material per room kind, cut to the measured region.
+  // Where measured rooms overlap — a segmented region and the labelled rooms
+  // inside it both come through — the smallest lays its floor and the larger
+  // only round it: two floors at one height in two materials fought, and the
+  // render drew them as patches of boards and tiles.
+  const floorOwner = new Map<number, Rect[]>();
+  const laid: Rect[] = [];
+  for (const entry of [...roomRects].sort((a, b) => rectsArea(a.rects) - rectsArea(b.rects))) {
+    floorOwner.set(entry.index, subtractRects(entry.rects, laid));
+    laid.push(...entry.rects);
+  }
   const sceneRooms: SceneRoom[] = roomRects.map(({ room, rects, index }) => {
     const kind = room.kind as SceneRoomKind;
     const material = FLOOR_MATERIAL[kind] ?? "floorWood";
     const id = `room:${index}`;
-    for (const rect of rects) {
+    for (const rect of floorOwner.get(index) ?? rects) {
       meshes.push(boxFrom(p, rect, -FLOOR_T_M, 0, "floor", material, id));
     }
     const bounds = rectsBounds(rects) ?? { x: 0, y: 0, w: 0, h: 0 };
@@ -640,7 +650,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         : rectCentre(box),
       unitsPerMetre: upm,
     });
-    const facing = piece.kind === "bed" ? headFacing(box, decided) : decided;
+    const facing = piece.kind === "bed" ? headFacing(box, decided, wallRectsAll) : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
     for (const built of partsFor(kind, {
       wM: box.w / upm,
@@ -688,6 +698,35 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   if (rules.mezuzah) scene.meshes.push(...mezuzot(scene));
   scene.lights.push(...staged.lights);
   return scene;
+}
+
+function rectsArea(rects: Rect[]): number {
+  return rects.reduce((sum, r) => sum + r.w * r.h, 0);
+}
+
+/** Each rectangle with the cutters taken out of it, as rectangles. */
+export function subtractRects(rects: Rect[], cutters: Rect[]): Rect[] {
+  let out = rects;
+  for (const c of cutters) {
+    const next: Rect[] = [];
+    for (const r of out) {
+      const x0 = Math.max(r.x, c.x);
+      const x1 = Math.min(r.x + r.w, c.x + c.w);
+      const y0 = Math.max(r.y, c.y);
+      const y1 = Math.min(r.y + r.h, c.y + c.h);
+      if (x1 <= x0 || y1 <= y0) {
+        next.push(r);
+        continue;
+      }
+      // Above, below, and the two sides of the overlap.
+      if (y0 > r.y) next.push({ x: r.x, y: r.y, w: r.w, h: y0 - r.y });
+      if (y1 < r.y + r.h) next.push({ x: r.x, y: y1, w: r.w, h: r.y + r.h - y1 });
+      if (x0 > r.x) next.push({ x: r.x, y: y0, w: x0 - r.x, h: y1 - y0 });
+      if (x1 < r.x + r.w) next.push({ x: x1, y: y0, w: r.x + r.w - x1, h: y1 - y0 });
+    }
+    out = next.filter((r) => r.w > 1e-6 && r.h > 1e-6);
+  }
+  return out;
 }
 
 // The windows and frames set in those walls go with them.

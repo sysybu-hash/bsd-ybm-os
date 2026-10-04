@@ -51,7 +51,7 @@ export type MeasuredStill = FloorplanVizImage & {
   pieceBoxes?: PieceBox[];
 };
 
-export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
+export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group" | "facing sofa"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
 
 /**
  * Where the flat's floor is open, for the design to leave open: told only
@@ -64,9 +64,48 @@ function openFloorLine(scene: FlatScene): string {
 }
 
 /** The listed pieces' boxes in the cropped frame. */
-function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; height: number }, crop: ContentFrame): PieceBox[] {
+function boxesInFrame(
+  scene: FlatScene,
+  view: FlatView,
+  size: { width: number; height: number },
+  crop: ContentFrame,
+  options: { screens: boolean },
+): PieceBox[] {
   const out: PieceBox[] = [];
   const pieces = flatPieces(scene);
+  const toFrame = (x0: number, z0: number, x1: number, z1: number, y: number) => {
+    const a = dollhousePixel(view, size, { x: x0, y, z: z0 });
+    const b = dollhousePixel(view, size, { x: x1, y, z: z1 });
+    return { x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y) };
+  };
+  // What each sofa faces, out to the wall across: where a screen would stand.
+  // A haredi flat has none, and asked about the whole flat the judge called a
+  // black hob a screen and missed a dark panel facing the sofa.
+  if (options.screens) {
+    const e = scene.extent;
+    for (const p of pieces) {
+      if (p.what !== "sofa" || !p.box || !p.backAt) continue;
+      const dx = p.x - p.backAt.x;
+      const dz = p.z - p.backAt.z;
+      const b = p.box;
+      const region =
+        Math.abs(dx) >= Math.abs(dz)
+          ? dx > 0
+            ? [b.x1, b.z0 - 0.6, b.x1 + 4, b.z1 + 0.6]
+            : [b.x0 - 4, b.z0 - 0.6, b.x0, b.z1 + 0.6]
+          : dz > 0
+            ? [b.x0 - 0.6, b.z1, b.x1 + 0.6, b.z1 + 4]
+            : [b.x0 - 0.6, b.z0 - 4, b.x1 + 0.6, b.z0];
+      const [x0, z0, x1, z1] = [
+        Math.max(e.x, region[0]!),
+        Math.max(e.z, region[1]!),
+        Math.min(e.x + e.width, region[2]!),
+        Math.min(e.z + e.depth, region[3]!),
+      ];
+      if (x1 - x0 < 0.5 || z1 - z0 < 0.5) continue;
+      out.push({ kind: "facing sofa", place: planPlace(p.x, p.z, e), ...toFrame(x0, z0, x1, z1, 0) });
+    }
+  }
   // Each dining table with the chairs drawn round it, counted: a design that
   // seated ten at a table drawn for six passed every piece's own spot.
   for (const table of pieces) {
@@ -198,7 +237,7 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       plain,
       ...(walls ? { walls } : {}),
       inventory: [inventoryByPlace(flatPieces(scene), scene.extent), openFloorLine(scene)].filter(Boolean).join("\n"),
-      pieceBoxes: boxesInFrame(scene, view, size, crop),
+      pieceBoxes: boxesInFrame(scene, view, size, crop, { screens: options.styleKit.audience === "haredi" }),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

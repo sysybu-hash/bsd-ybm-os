@@ -271,17 +271,18 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   if (spec.fixture === "shower") return shower(w, d);
   if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
   if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath")) {
+    // A tub, not a block: a rim round a basin sunk nearly to the floor. Built
+    // solid with a plate on top, from above it read as a white box, and the
+    // designs drew a cabinet there.
+    const rim = Math.min(0.08, Math.min(w, d) * 0.12);
+    const inner = { w: Math.max(0.1, w - 2 * rim), d: Math.max(0.1, d - 2 * rim) };
     return [
-      part("tub", "ceramic", { x: 0, y: h / 2, z: 0, w, h, d }, 0.04),
-      part("water", "ceramic", {
-        x: 0,
-        y: h - 0.03,
-        z: 0,
-        w: Math.max(0.1, w - 0.12),
-        h: 0.02,
-        d: Math.max(0.1, d - 0.12),
-      }),
-      part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + 0.06, w: 0.04, h: 0.16, d: 0.04 }),
+      part("tub", "ceramic", { x: 0, y: 0.04, z: 0, w, h: 0.08, d }, 0.03),
+      part("rim", "ceramic", { x: 0, y: h / 2, z: -d / 2 + rim / 2, w, h, d: rim }, 0.02),
+      part("rim", "ceramic", { x: 0, y: h / 2, z: d / 2 - rim / 2, w, h, d: rim }, 0.02),
+      part("rim", "ceramic", { x: -w / 2 + rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
+      part("rim", "ceramic", { x: w / 2 - rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
+      part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + rim / 2, w: 0.04, h: 0.16, d: 0.04 }),
     ];
   }
   // Unnamed and not a bath: a pan runs out from its wall, a basin along it.

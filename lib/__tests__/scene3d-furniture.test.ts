@@ -191,3 +191,19 @@ describe("an unnamed sanitary fixture", () => {
     expect(tags({ wM: 0.7, dM: 1.6 })).toContain("tub");
   });
 });
+
+describe("a bed against a wall along its side", () => {
+  it("puts the head at the short end nearer a wall, not north by default", () => {
+    // A bed 90 × 200 down the page, its long side on the west wall, its foot end
+    // a metre clear of the north wall and its head end at the south wall.
+    const bed = { x: 10, y: 100, w: 90, h: 200 };
+    const walls = [
+      { x: 0, y: 0, w: 10, h: 400 }, // west
+      { x: 0, y: 0, w: 400, h: 10 }, // north, 90 above the bed
+      { x: 0, y: 300, w: 400, h: 10 }, // south, at the bed's end
+    ];
+    expect(headFacing(bed, "west", walls)).toBe("south");
+    // With no wall at either end, north as before.
+    expect(headFacing(bed, "west", [walls[0]!])).toBe("north");
+  });
+});
