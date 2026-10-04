@@ -100,12 +100,17 @@ function framePlace(fx: number, fy: number): string {
  * layout and its own design, and told exactly what the judge found wrong. A
  * fresh design keeps the look the model chose and loses a different bed.
  */
-export function correctionPrompt(reason: string, options: { inventory?: string; style?: string }): string {
+export function correctionPrompt(reason: string, options: { inventory?: string; style?: string; marked?: boolean }): string {
   return [
     // The design first: the model edits the first image it is given, and
     // with the layout first a correction came back as pale as the layout.
     "Image 1 is your DESIGN of an apartment seen from above. Image 2 is the exact top-down LAYOUT it was designed on, measured from the architect's drawing.",
     `The design was refused against the layout: ${reason}.`,
+    ...(options.marked
+      ? [
+          "Image 3 is image 1 with the faults framed: inside each RED frame the design added something image 2 does not have there — take it out and leave plain floor; inside each BLUE frame image 2 has a piece the design lost or changed — put image 2's piece back there. The frames show you where; do not draw any frame, line or mark in your image.",
+        ]
+      : []),
     "Edit image 1 so it matches image 2 where it was refused: put every wall, door and window and every piece of furniture back where image 2 has it, at its size and of its kind (each bed a single bed, one pillow), and take out what image 2 does not have, filling its place with the floor around it.",
     ...(options.inventory ? [`The furniture exactly as measured, with where each piece stands on the plan (north up):
 ${options.inventory}`] : []),

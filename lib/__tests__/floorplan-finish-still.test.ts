@@ -118,8 +118,13 @@ describe("the judge of a haredi flat's painting", () => {
   });
 
   it("refuses a painting missing a piece where the layout has it, before anything else, and names it", async () => {
-    const spots = jest.fn().mockResolvedValue(["bed at the top left (the design has a wardrobe there)"]);
-    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, spots)(Buffer.from("p"))).toBe("not as the layout: bed at the top left (the design has a wardrobe there)");
+    const finding = { reason: "bed at the top left (the design has a wardrobe there)", box: { x: 10, y: 20, w: 30, h: 60 }, action: "restore" as const };
+    const spots = jest.fn().mockResolvedValue([finding]);
+    // The reason, and where: for the correction to frame.
+    expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, spots)(Buffer.from("p"))).toEqual({
+      reason: "not as the layout: bed at the top left (the design has a wardrobe there)",
+      marks: [finding],
+    });
     expect(spots).toHaveBeenCalledWith(Buffer.from("p"));
     expect(await finishJudge(kit, Buffer.from("r"), jest.fn().mockResolvedValue(none), undefined, jest.fn().mockResolvedValue([]))(Buffer.from("p"))).toBeNull();
     // A spot check nobody answered passes nothing.
@@ -162,5 +167,28 @@ describe("the judge of a haredi flat's painting", () => {
     expect(await finishJudge(modern, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, spaceAdded: true }))(Buffer.from("p"))).toBe("space added");
     // A wider bed is the haredi rule, not every audience's.
     expect(await finishJudge(modern, Buffer.from("r"), jest.fn().mockResolvedValue({ ...none, bedWidened: true }))(Buffer.from("p"))).toBeNull();
+  });
+});
+
+describe("a refused design's faults, framed for its correction", () => {
+  it("draws red where to clear and blue where a piece goes back, scaled to the design", async () => {
+    const sharp = (await import("sharp")).default;
+    const { markDesign } = await import("@/lib/projects/floorplan-finish-still");
+    const white = (w: number, h: number) => sharp({ create: { width: w, height: h, channels: 3, background: "#ffffff" } }).jpeg().toBuffer();
+    const layout = await white(200, 100);
+    const design = await white(400, 200);
+    const marked = await markDesign(design, layout, [
+      { reason: "added", box: { x: 10, y: 10, w: 40, h: 40 }, action: "clear" },
+      { reason: "lost", box: { x: 120, y: 10, w: 40, h: 40 }, action: "restore" },
+    ]);
+    const { data, info } = await sharp(marked).raw().toBuffer({ resolveWithObject: true });
+    const px = (x: number, y: number) => Array.from(data.subarray((y * info.width + x) * 3, (y * info.width + x) * 3 + 3));
+    // The frames' left edges, at twice the layout's coordinates.
+    const [r1, , b1] = px(21, 60);
+    const [r2, , b2] = px(241, 60);
+    expect(r1).toBeGreaterThan(200);
+    expect(b1).toBeLessThan(120);
+    expect(b2).toBeGreaterThan(200);
+    expect(r2).toBeLessThan(120);
   });
 });

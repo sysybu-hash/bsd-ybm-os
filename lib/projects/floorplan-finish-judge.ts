@@ -158,17 +158,28 @@ This is a top-down picture of a living room's seating. Count the separate sofas 
 Return JSON only: {"chairs": 0}
 `;
 
-async function cropSpot(sized: Buffer, frame: { width: number; height: number }, s: PieceSpot, pad: number) {
+/**
+ * The design cut to a spot with room round it, the spot itself framed in red
+ * when asked: told to look at the middle half, the judge named the sofa
+ * standing just past a square of open floor as standing on it.
+ */
+async function cropSpot(sized: Buffer, frame: { width: number; height: number }, s: PieceSpot, pad: number, framed = false) {
   const left = Math.max(0, s.x - pad);
   const top = Math.max(0, s.y - pad);
   const width = Math.min(frame.width - left, s.w + 2 * pad);
   const height = Math.min(frame.height - top, s.h + 2 * pad);
-  const crop = await sharp(sized).extract({ left, top, width, height }).resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
-  return imagePart(crop.toString("base64"));
+  let crop = sharp(sized).extract({ left, top, width, height });
+  if (framed) {
+    const line = Math.max(3, Math.round(Math.max(width, height) / 140));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect x="${s.x - left}" y="${s.y - top}" width="${s.w}" height="${s.h}" fill="none" stroke="#ff0000" stroke-width="${line}"/></svg>`;
+    crop = sharp(await crop.composite([{ input: Buffer.from(svg) }]).toBuffer());
+  }
+  const out = await crop.resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
+  return imagePart(out.toString("base64"));
 }
 
 const SPOTS = `
-Each image is a crop of a top-down picture of an apartment, centred on one spot. For each image, list every piece that stands in its MIDDLE HALF (the centre area, not the margins), in these words:
+Each image is a crop of a top-down picture of an apartment, with one spot framed by a thin red line. For each image, list every piece that stands INSIDE THE RED FRAME — on it or reaching into it — and nothing that stands wholly outside the frame, in these words:
 bed, sofa, armchair, ottoman, chair, dining table, coffee table, side table, lamp, wardrobe, cabinet, kitchen counter, kitchen island, toilet, bath, shower, basin, television, plant, rug, empty floor, wall, other.
 Return JSON only, one list per image in order: {"answers": [["bed", "wall"], ["empty floor"], ...]}
 `;
@@ -203,7 +214,13 @@ const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wal
  * added sofa; a crop has one thing in the middle. Answers the pieces missing,
  * or null when nobody answered.
  */
-export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<string[] | null> {
+/**
+ * What a spot check found wrong, and where, in the layout's frame: "clear"
+ * where the design added something, "restore" where it lost a piece.
+ */
+export type SpotFinding = { reason: string; box: { x: number; y: number; w: number; h: number }; action: "clear" | "restore" };
+
+export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<SpotFinding[] | null> {
   const checked = spots.filter((s) => (SEEN_AS[s.kind] || s.kind === "open floor" || s.kind === "kitchen counters") && s.w > 4 && s.h > 4);
   const sets = spots.filter((s) => (s.kind === "dining set" || s.kind === "seating group") && s.chairs != null && s.w > 4 && s.h > 4);
   const facing = spots.filter((s) => s.kind === "facing sofa" && s.w > 4 && s.h > 4);
@@ -213,11 +230,11 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const meta = await sharp(layout).metadata();
   const frame = { width: meta.width ?? 0, height: meta.height ?? 0 };
   const sized = await sharp(design).resize(frame.width, frame.height, { fit: "fill" }).toBuffer();
-  // Open floor with half a square round it, so the crop's middle half — what
-  // the question looks at — is the square itself, to the wall it stands
-  // against; a piece with room round it, for a design that moved it a little.
+  // Each spot framed in red with room round it — half a square for open
+  // floor, a third of a piece for a piece the design may have moved a little
+  // — and asked about inside the frame.
   const crops = await Promise.all(
-    checked.map((s) => cropSpot(sized, frame, s, s.kind === "open floor" ? Math.round(Math.max(s.w, s.h) / 2) : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35)))),
+    checked.map((s) => cropSpot(sized, frame, s, s.kind === "open floor" ? Math.round(Math.max(s.w, s.h) / 2) : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35)), true)),
   );
   // Each dining set's chairs, counted by a call of its own: asked alongside
   // the spots, the count came back 4 for a table with eight round it.
@@ -250,7 +267,7 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
         const said = await askClaude(key, [crop, { type: "text", text: SCREEN_SPOT }], 150);
         if (said?.raw.screen !== true) return null;
       }
-      return `a screen facing the sofa at the ${s.place}`;
+      return { reason: `a screen facing the sofa at the ${s.place}`, box: s, action: "clear" as const };
     }),
   );
   const answers = batches.flatMap((said, k) => {
@@ -281,24 +298,29 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
       return list == null ? null : (Array.isArray(list) ? list : [list]).map((w) => String(w).toLowerCase().trim());
     }),
   );
-  const missing: string[] = [];
+  const missing: SpotFinding[] = [];
+  const at = (s: PieceSpot) => ({ x: s.x, y: s.y, w: s.w, h: s.h });
   failed.forEach((i, k) => {
     const again = second[k];
     // No second answer: the first stands.
-    const wrong = verdict(checked[i]!, again ?? answers[i] ?? []);
-    if (wrong) missing.push(wrong);
+    const spot = checked[i]!;
+    const wrong = verdict(spot, again ?? answers[i] ?? []);
+    if (wrong) missing.push({ reason: wrong, box: at(spot), action: spot.kind === "open floor" ? "clear" : "restore" });
   });
-  for (const found of screens) if (found) missing.push(found);
+  for (const found of screens) if (found) missing.push({ ...found, box: at(found.box) });
   sets.forEach((s, i) => {
     const n = counts[i];
     if (n == null || n === s.chairs) return;
-    missing.push(
-      s.kind === "seating group"
-        ? `sofas and armchairs at the ${s.place}: ${n} pieces (the layout has ${s.chairs})`
-        : `dining table at the ${s.place} with ${n} chairs (the layout has ${s.chairs})`,
-    );
+    missing.push({
+      reason:
+        s.kind === "seating group"
+          ? `sofas and armchairs at the ${s.place}: ${n} pieces (the layout has ${s.chairs})`
+          : `dining table at the ${s.place} with ${n} chairs (the layout has ${s.chairs})`,
+      box: at(s),
+      action: "restore",
+    });
   });
-  log.info("finish spots", { model: asked?.model, checked: checked.length, calls: batches.length, missing });
+  log.info("finish spots", { model: asked?.model, checked: checked.length, calls: batches.length, missing: missing.map((m) => m.reason) });
   return missing;
 }
 

@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { hasGeminiApiKey, getGeminiApiKey } from "@/lib/gemini-api-key";
 import { createLogger } from "@/lib/logger";
 import { correctionPrompt, designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatchDetail } from "@/lib/projects/building/finish";
-import type { FinishComparison } from "@/lib/projects/floorplan-finish-judge";
+import type { FinishComparison, SpotFinding } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { recordFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
@@ -40,6 +40,31 @@ export const DESIGN_MIN_WALL_CELL = 0.65;
 /** A call can take a minute; none starts closer than this to the deadline. */
 const CALL_MS = 75_000;
 
+/** Why a design was refused — with, from the spot check, where — or null. */
+export type Verdict = string | { reason: string; marks: SpotFinding[] } | null;
+
+/**
+ * The refused design with its faults framed: red round what to clear, blue
+ * where a piece goes back. Told "open floor at the middle right" the model
+ * left the seating it had added there; shown a frame, it has a place.
+ */
+export async function markDesign(design: Buffer, layout: Buffer, marks: SpotFinding[]): Promise<Buffer> {
+  const sharp = (await import("sharp")).default;
+  const d = await sharp(design).metadata();
+  const l = await sharp(layout).metadata();
+  const sx = (d.width ?? 1) / (l.width ?? 1);
+  const sy = (d.height ?? 1) / (l.height ?? 1);
+  const line = Math.max(4, Math.round((d.width ?? 1000) / 300));
+  const rects = marks
+    .map((m) => {
+      const colour = m.action === "clear" ? "#ff1a1a" : "#1a5cff";
+      return `<rect x="${m.box.x * sx}" y="${m.box.y * sy}" width="${m.box.w * sx}" height="${m.box.h * sy}" fill="none" stroke="${colour}" stroke-width="${line}"/>`;
+    })
+    .join("");
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${d.width}" height="${d.height}">${rects}</svg>`;
+  return sharp(design).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 90 }).toBuffer();
+}
+
 export function finishSubject(styleKit: FloorplanVizStyleKit): string {
   const who = styleKit.audience === "haredi" ? "an apartment in Israel for a Haredi family" : "an apartment in Israel";
   return `${who}, seen from above, in the style "${styleKit.labelEn}"`;
@@ -60,7 +85,7 @@ export async function finishMeasuredStill(
      * a single bed painted double, a screen, lettering. Answers why it is
      * refused, or null.
      */
-    judge?: (image: Buffer) => Promise<string | null>;
+    judge?: (image: Buffer) => Promise<Verdict>;
   },
 ): Promise<(FloorplanVizImage & { edges: number; masses: number }) | null> {
   if (!hasGeminiApiKey()) return null;
@@ -79,13 +104,18 @@ export async function finishMeasuredStill(
     : finishPrompt("apartment", finishSubject(options.styleKit));
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
   /** The last design the judge refused, and why: the next call corrects it. */
-  const refusedDesigns: Array<{ image: Buffer; reason: string }> = [];
+  const refusedDesigns: Array<{ image: Buffer; reason: string; marks?: SpotFinding[] }> = [];
   for (let attempt = 1; attempt <= (options.tries ?? 2); attempt++) {
     if (options.deadlineMs && Date.now() + CALL_MS > options.deadlineMs) break;
     const correcting = design ? refusedDesigns.pop() : undefined;
     refusedDesigns.length = 0;
+    const marked = correcting?.marks?.length ? await markDesign(correcting.image, still.plain, correcting.marks).catch(() => null) : null;
     const done = correcting
-      ? await finishPass(client, correctionPrompt(correcting.reason, { inventory: still.inventory, style }), [correcting.image, still.plain])
+      ? await finishPass(
+          client,
+          correctionPrompt(correcting.reason, { inventory: still.inventory, style, marked: marked != null }),
+          [correcting.image, still.plain, ...(marked ? [marked] : [])],
+        )
       : await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
@@ -114,11 +144,14 @@ export async function finishMeasuredStill(
     const score = Math.min(edges, masses + 0.1);
     log.info("finish attempt", { attempt, design, correcting: correcting != null, model: done.model, edges: Number(edges.toFixed(3)), masses: Number(masses.toFixed(3)) });
     if (!held || (best && score <= best.score)) continue;
-    const refused: string | null = options.judge ? await options.judge(done.image) : null;
+    const verdict: Verdict = options.judge ? await options.judge(done.image) : null;
+    const refused = typeof verdict === "string" ? verdict : (verdict?.reason ?? null);
     if (refused) {
       log.info("finish refused by the judge", { attempt, refused });
       // "no judge" has nothing to correct; a turned plan is redrawn.
-      if (refused !== "no judge" && refused !== "turned or mirrored" && !correcting) refusedDesigns.push({ image: done.image, reason: refused });
+      if (refused !== "no judge" && refused !== "turned or mirrored" && !correcting) {
+        refusedDesigns.push({ image: done.image, reason: refused, ...(typeof verdict === "object" && verdict ? { marks: verdict.marks } : {}) });
+      }
       continue;
     }
     best = { image: done.image, edges, masses, score };
@@ -161,14 +194,14 @@ export function finishJudge(
    * Each piece the layout has, looked for where it stands in the painting:
    * the pieces missing there, or null when nobody answered.
    */
-  spots?: (image: Buffer) => Promise<string[] | null>,
-): (image: Buffer) => Promise<string | null> {
+  spots?: (image: Buffer) => Promise<SpotFinding[] | null>,
+): (image: Buffer) => Promise<Verdict> {
   return async (image) => {
     const [found, missing] = await Promise.all([compare(reference, image, inventory), spots ? spots(image) : Promise.resolve([])]);
     // No judge, no pass: a painting nobody checked does not ship.
     if (!found || !missing) return "no judge";
     if (found.turnedOrMirrored) return "turned or mirrored";
-    if (missing.length > 0) return `not as the layout: ${missing.join("; ")}`;
+    if (missing.length > 0) return { reason: `not as the layout: ${missing.map((m) => m.reason).join("; ")}`, marks: missing };
     const reason = refusal(found, styleKit.audience === "haredi", spots != null);
     if (!reason) return null;
     if (spots) return reason;
