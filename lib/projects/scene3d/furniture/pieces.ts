@@ -293,7 +293,9 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   // its 57 cm washer is one — and stays the plain block it was.
   // And a pan is at most 60 cm across: an 80 cm "pan" was a level mark's
   // hatched circle on 18's roof.
-  if (!spec.fixture && d >= w * 1.05 && d >= 0.45 && w <= 0.6 && d <= 0.85) return toilet(w, d);
+  // Its bowl is often all that is drawn closed (22's: 34 by 27, the cistern a
+  // pair of loose lines), so a pan is built at a pan's size round it.
+  if (!spec.fixture && d >= w * 1.05 && d >= 0.3 && w <= 0.6 && d <= 0.85) return toilet(Math.max(w, 0.38), Math.max(d, 0.6));
   return [
     part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
     part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),

@@ -1160,6 +1160,104 @@ export function findRoundedTables(
   return dedupeRectangles(out).map((r) => out.find((p) => p.x === r.x && p.y === r.y && p.w === r.w)!);
 }
 
+/** How much of the smaller of two boxes the other covers. */
+function overlapShare(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }): number {
+  const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (ox <= 0 || oy <= 0) return 0;
+  return (ox * oy) / Math.max(1e-9, Math.min(a.w * a.h, b.w * b.h));
+}
+
+/**
+ * Sanitary ware found as the closed outlines it is drawn with.
+ *
+ * Clustering curves by nearness (findCurveFixtures) joins whatever touches:
+ * 22's WC lies under the room's name and against its bath, and the name's
+ * strokes, the "198" beside it and the bath knotted into one piece too big to
+ * be anything, so the WC was lost. A pan, a basin and a bath are each a closed
+ * line; lettering is open strokes. The short strokes are joined end to end,
+ * each closed run the size of a fixture is one, and of nested runs — a bowl
+ * inside its rim — the outer.
+ */
+export function findClosedOutlines(
+  strokes: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minCm?: number; maxCm?: number; maxStrokeM?: number; snap?: number },
+): FurniturePiece[] {
+  const minCm = options?.minCm ?? 25;
+  const maxCm = options?.maxCm ?? 90;
+  const maxStroke = (options?.maxStrokeM ?? 0.5) * unitsPerMetre;
+  // Ends a hair apart are one joint: a CAD's curve chords stop 0.1 units
+  // short of the line they meet, and rounding to a grid split such pairs.
+  const snap = options?.snap ?? 0.35;
+  const joints: Array<{ x: number; y: number; id: string }> = [];
+  const grid = new Map<string, number[]>();
+  const cell = (x: number, y: number) => `${Math.floor(x / snap)},${Math.floor(y / snap)}`;
+  const keyOf = (x: number, y: number): string => {
+    const cx = Math.floor(x / snap);
+    const cy = Math.floor(y / snap);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (const j of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
+          const p = joints[j]!;
+          if (Math.hypot(p.x - x, p.y - y) <= snap) return p.id;
+        }
+      }
+    }
+    const id = `j${joints.length}`;
+    joints.push({ x, y, id });
+    const c = cell(x, y);
+    grid.set(c, [...(grid.get(c) ?? []), joints.length - 1]);
+    return id;
+  };
+  const parent = new Map<string, string>();
+  const find = (a: string): string => {
+    let n = a;
+    while (parent.get(n) !== n) {
+      parent.set(n, parent.get(parent.get(n)!)!);
+      n = parent.get(n)!;
+    }
+    return n;
+  };
+  const degree = new Map<string, number>();
+  const used = strokes.filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= maxStroke && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 0.05);
+  const ends = used.map((s) => [keyOf(s.x1, s.y1), keyOf(s.x2, s.y2)] as const);
+  for (const [a, b] of ends) {
+    for (const k of [a, b]) {
+      if (!parent.has(k)) parent.set(k, k);
+      degree.set(k, (degree.get(k) ?? 0) + 1);
+    }
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+  type Loop = { x0: number; y0: number; x1: number; y1: number; open: boolean; count: number };
+  const loops = new Map<string, Loop>();
+  used.forEach((s, i) => {
+    const root = find(ends[i]![0]);
+    const loop = loops.get(root) ?? { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, open: false, count: 0 };
+    loop.x0 = Math.min(loop.x0, s.x1, s.x2);
+    loop.y0 = Math.min(loop.y0, s.y1, s.y2);
+    loop.x1 = Math.max(loop.x1, s.x1, s.x2);
+    loop.y1 = Math.max(loop.y1, s.y1, s.y2);
+    loop.count++;
+    for (const k of ends[i]!) if ((degree.get(k) ?? 0) % 2 === 1) loop.open = true;
+    loops.set(root, loop);
+  });
+  const closed = [...loops.values()].filter((l) => {
+    if (l.open || l.count < 6) return false;
+    const w = ((l.x1 - l.x0) / unitsPerMetre) * 100;
+    const h = ((l.y1 - l.y0) / unitsPerMetre) * 100;
+    return Math.min(w, h) >= minCm && Math.max(w, h) <= maxCm;
+  });
+  const outer = closed.filter((l) => !closed.some((o) => o !== l && o.x0 <= l.x0 && o.y0 <= l.y0 && o.x1 >= l.x1 && o.y1 >= l.y1));
+  return outer.map((l) => {
+    const w = l.x1 - l.x0;
+    const h = l.y1 - l.y0;
+    return { x: l.x0, y: l.y0, w, h, widthCm: (w / unitsPerMetre) * 100, depthCm: (h / unitsPerMetre) * 100, kind: "fixture" as const };
+  });
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
@@ -1207,6 +1305,12 @@ export function findFurniture(
   const ring = drawnInRing || roundedTable ? null : ringFound;
   const table = roundedTable ?? ring ?? pieces.find((p) => p.kind === "table");
   const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
+  // Closed outlines a fixture's size, where nothing found already stands: a
+  // chair round the table, a rectangle, a kitchen fitting.
+  const taken = [...pieces, ...seats, ...kitchen, ...(roundedTable ? [roundedTable] : []), ...(ring ? [ring] : [])];
+  const outlines = findClosedOutlines([...(options?.curves ?? []), ...segments], unitsPerMetre).filter(
+    (o) => !taken.some((p) => overlapShare(o, p) > 0.3),
+  );
   const withCurves = [
     ...(roundedTable ? [roundedTable] : []),
     ...(ring ? [ring] : []),
@@ -1217,12 +1321,15 @@ export function findFurniture(
     ...pieces.filter(
       (p) => !kitchen.some((k) => Math.abs(k.x - p.x) < 4 && Math.abs(k.y - p.y) < 4),
     ),
+    ...outlines,
     ...findCurveFixtures(options?.curves ?? [], unitsPerMetre).filter(
       (c) =>
         !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h) &&
         // A chair is the same shape and size as a basin; the ones round the
         // table have already been claimed as seats.
-        !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
+        !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4) &&
+        // An outline found already is that fixture.
+        !outlines.some((o) => overlapShare(o, c) > 0.3),
     ),
   ];
   return bathroomSquaresAreNotSeats(panPartsAreNotSeats(
@@ -1260,6 +1367,66 @@ export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number
       ? { ...piece, kind: "seat" as const }
       : piece,
   );
+}
+
+/**
+ * A fixture-sized square standing at the kitchen's run, with no bath near,
+ * is the fridge or an appliance column: 22's fridge was read as a pan, dropped
+ * as sanitary ware in a dry room, and the design furnished the empty corner
+ * with a bookcase. It is built as the tall unit it is.
+ */
+export function kitchenSquaresAreAppliances(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  // "unknown" too: the same column came out unknown on 14, 16, 17, 18 and 21.
+  const kitchen = pieces.filter((p) => p.kind === "counter" || p.kind === "hob" || p.kind === "sink");
+  const baths = pieces.filter((p) => p.kind === "fixture" && Math.max(p.widthCm, p.depthCm) >= 120);
+  const gap = (a: FurniturePiece, b: FurniturePiece) =>
+    Math.hypot(Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0), Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0));
+  return pieces.map((p) => {
+    if ((p.kind !== "fixture" && p.kind !== "unknown") || p.fixture) return p;
+    const long = Math.max(p.widthCm, p.depthCm);
+    const short = Math.min(p.widthCm, p.depthCm);
+    if (long > 90 || short < 50) return p;
+    if (baths.some((b) => gap(p, b) <= unitsPerMetre * 2.5)) return p;
+    return kitchen.some((k) => gap(p, k) <= unitsPerMetre * 0.35) ? { ...p, kind: "storage" as const } : p;
+  });
+}
+
+/**
+ * The diamonds a sheet marks a flat's number with, as their centres.
+ *
+ * The flat's legend — its number in a diamond, its gross area, its level —
+ * is a box the size of a shower tray inside the flat, and it was read as
+ * sanitary ware on 18 and 22 and as an unknown piece on 14, 16, 17 and 21.
+ * The diamond gives it away: four short strokes at 45°, two each way, round
+ * one point.
+ */
+export function findDiamonds(segments: VectorSegment[], unitsPerMetre: number): Array<{ x: number; y: number; r: number }> {
+  const min = unitsPerMetre * 0.04;
+  const max = unitsPerMetre * 0.25;
+  const diagonal = segments
+    .map((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      const deg = (Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI;
+      const a = ((deg % 180) + 180) % 180;
+      return { s, len, way: Math.abs(a - 45) < 8 ? 1 : Math.abs(a - 135) < 8 ? 2 : 0, mx: (s.x1 + s.x2) / 2, my: (s.y1 + s.y2) / 2 };
+    })
+    .filter((d) => d.way !== 0 && d.len >= min && d.len <= max);
+  const out: Array<{ x: number; y: number; r: number }> = [];
+  const used = new Set<number>();
+  diagonal.forEach((d, i) => {
+    if (used.has(i)) return;
+    const group = diagonal.map((o, j) => ({ o, j })).filter(({ o }) => Math.abs(o.len - d.len) <= d.len * 0.25 && Math.hypot(o.mx - d.mx, o.my - d.my) <= d.len * 1.1);
+    if (group.length !== 4) return;
+    if (group.filter(({ o }) => o.way === 1).length !== 2) return;
+    const x = group.reduce((t, { o }) => t + o.mx, 0) / 4;
+    const y = group.reduce((t, { o }) => t + o.my, 0) / 4;
+    // Each edge's middle is the same distance from the centre.
+    const r = group.map(({ o }) => Math.hypot(o.mx - x, o.my - y));
+    if (Math.max(...r) - Math.min(...r) > d.len * 0.2) return;
+    for (const { j } of group) used.add(j);
+    out.push({ x, y, r: d.len * 0.71 });
+  });
+  return out;
 }
 
 /**

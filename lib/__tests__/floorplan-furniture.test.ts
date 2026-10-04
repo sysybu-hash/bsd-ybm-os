@@ -547,3 +547,34 @@ describe("a seat among the sanitary ware", () => {
     expect(out.map((p) => p.kind)).toEqual(["fixture", "fixture", "table", "seat"]);
   });
 });
+
+describe("what the sheet draws closed, and its legend", () => {
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 1 }) as never;
+
+  it("finds a pan's bowl as a closed outline through lettering touching it, ends a hair apart", async () => {
+    const { findClosedOutlines } = await import("@/lib/projects/floorplan-furniture");
+    // An octagon 30 by 24 units (upm 60: 50 by 40 cm), its chords stopping 0.1 short of each other.
+    const pts = [[10, 0], [20, 0], [30, 8], [30, 16], [20, 24], [10, 24], [0, 16], [0, 8]] as const;
+    const ring = pts.map((p, i) => { const q = pts[(i + 1) % pts.length]!; return seg(p[0], p[1], q[0] - 0.1, q[1]); });
+    // An open stroke of lettering touching its top.
+    const letter = [seg(12, -6, 12, 0), seg(12, -6, 18, -6)];
+    const found = findClosedOutlines([...ring, ...letter], 60);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.widthCm).toBeCloseTo(50, 0);
+  });
+
+  it("finds a flat's number diamond: four strokes at 45 degrees round one point", async () => {
+    const { findDiamonds } = await import("@/lib/projects/floorplan-furniture");
+    const d = findDiamonds([seg(100, 90, 110, 100), seg(110, 100, 100, 110), seg(100, 110, 90, 100), seg(90, 100, 100, 90)], 60);
+    expect(d).toHaveLength(1);
+    expect(d[0]!.x).toBeCloseTo(100, 0);
+    expect(d[0]!.y).toBeCloseTo(100, 0);
+  });
+
+  it("builds a fixture-sized square at the kitchen run as a tall unit", async () => {
+    const { kitchenSquaresAreAppliances } = await import("@/lib/projects/floorplan-furniture");
+    const piece = (kind: string, x: number, y: number, wCm: number, dCm: number) => ({ x, y, w: (wCm / 100) * 60, h: (dCm / 100) * 60, widthCm: wCm, depthCm: dCm, kind }) as never;
+    const out = kitchenSquaresAreAppliances([piece("hob", 50, 0, 60, 60), piece("unknown", 0, 0, 78, 68)], 60) as Array<{ kind: string }>;
+    expect(out[1]!.kind).toBe("storage");
+  });
+});

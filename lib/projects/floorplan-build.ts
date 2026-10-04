@@ -14,6 +14,8 @@ import {
   bathroomSquaresAreNotSeats,
   bedHeadsFromDrawing,
   findBaths,
+  findDiamonds,
+  kitchenSquaresAreAppliances,
   findFurniture,
   findKitchenFittings,
   findRoundedFurniture,
@@ -589,10 +591,10 @@ export async function buildFlatFromGeometry(
   // The suite comes in after the furniture pass, so its pieces in a bathroom
   // are settled here too; see bathroomSquaresAreNotSeats.
   const furniture = bedHeadsFromDrawing(
-    bathroomSquaresAreNotSeats(
+    kitchenSquaresAreAppliances(bathroomSquaresAreNotSeats(
       [...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))), ...suite, ...chairs, ...stools],
       unitsPerMetre,
-    ),
+    ), unitsPerMetre),
     geometry.segments,
     unitsPerMetre,
   );
@@ -697,9 +699,20 @@ export async function buildFlatFromGeometry(
   // Within the circle itself, not a margin round it: a terrace's drain is
   // drawn beside its mark, and on דירה 22 a wider margin let the drain pass
   // and the roof below the flat became two terraces.
+  // On a mark, or with a mark inside it: 22's roof mark and its figure,
+  // knotted into one 66 by 48 piece, had the mark off its middle.
+  const diamonds = findDiamonds(geometry.segments, unitsPerMetre);
+  const findDiamondsIn = (piece: FurniturePiece) =>
+    diamonds.filter((d) => d.x >= piece.x && d.x <= piece.x + piece.w && d.y >= piece.y && d.y <= piece.y + piece.h);
   const onMark = (piece: FurniturePiece) =>
     levelMarks.some(
-      (mark) => Math.hypot(piece.x + piece.w / 2 - mark.x, piece.y + piece.h / 2 - mark.y) < mark.r * 1.2,
+      (mark) =>
+        Math.hypot(piece.x + piece.w / 2 - mark.x, piece.y + piece.h / 2 - mark.y) < mark.r * 1.2 ||
+        (piece.kind !== "bed" &&
+          mark.x >= piece.x &&
+          mark.x <= piece.x + piece.w &&
+          mark.y >= piece.y &&
+          mark.y <= piece.y + piece.h),
     );
   // The doorways, from the wall pieces before they are joined across them.
   const pieces = clipBodiesToBounds(
@@ -940,7 +953,21 @@ export async function buildFlatFromGeometry(
     options?.programme,
     page,
   );
+  // The flat's legend — number in a diamond, area, level — is not furniture,
+  // nor anything drawn inside it; see findDiamonds.
+  // Only a box a legend's size and kind: the axes' crossings carry diamonds
+  // too, under the walls and the wardrobes along them.
+  const legends = furnishings.filter(
+    (piece) =>
+      (piece.kind === "fixture" || piece.kind === "unknown") &&
+      Math.max(piece.widthCm, piece.depthCm) >= 80 &&
+      Math.max(piece.widthCm, piece.depthCm) <= 200 &&
+      findDiamondsIn(piece).length > 0,
+  );
+  const inLegend = (piece: FurniturePiece) =>
+    legends.some((box) => piece.x >= box.x - 2 && piece.y >= box.y - 2 && piece.x + piece.w <= box.x + box.w + 2 && piece.y + piece.h <= box.y + box.h + 2);
   const furnitureOffTerrace = furnishings.filter((piece) => {
+    if (inLegend(piece)) return false;
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
     // A level mark is a circle a basin's size and was read as one; on דירה 15
@@ -952,7 +979,8 @@ export async function buildFlatFromGeometry(
     unitsPerMetre,
     bodies,
     floor: flatFloor,
-    furniture: furnitureOffTerrace,
+    // Settled again at the end: pieces join after the furniture pass.
+    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace, unitsPerMetre),
     openings,
     terraces,
     printedTerraceCount: printed.length,
