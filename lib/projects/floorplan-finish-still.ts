@@ -40,18 +40,6 @@ export const DESIGN_MIN_WALL_CELL = 0.65;
 /** A call can take a minute; none starts closer than this to the deadline. */
 const CALL_MS = 75_000;
 
-const OPEN_MAP_NOTE =
-  "Image 2 is the same layout with its open floor shaded GREEN: in your design every green area is bare floor — at most a rug or a plant — with no sofa, armchair, chair, table, cabinet or shelving on it. Do not draw the green.";
-
-/** The layout with its open-floor squares shaded green, for the model to leave bare. */
-export async function markOpenFloor(layout: Buffer, squares: Array<{ x: number; y: number; w: number; h: number }>): Promise<Buffer> {
-  const sharp = (await import("sharp")).default;
-  const m = await sharp(layout).metadata();
-  const rects = squares.map((s) => `<rect x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" fill="#19c35a" fill-opacity="0.55"/>`).join("");
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${m.width}" height="${m.height}">${rects}</svg>`;
-  return sharp(layout).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 90 }).toBuffer();
-}
-
 /** Why a design was refused — with, from the spot check, where — or null. */
 export type Verdict = string | { reason: string; marks: SpotFinding[] } | null;
 
@@ -114,10 +102,6 @@ export async function finishMeasuredStill(
         style,
       })
     : finishPrompt("apartment", finishSubject(options.styleKit));
-  // The open floor shown, not only named: told "the middle right stays open"
-  // the model furnished it with a second seating group in 14, 17 and 21.
-  const openSpots = still.openCover ?? (still.pieceBoxes ?? []).filter((b) => b.kind === "open floor");
-  const openMap = design && openSpots.length > 0 ? await markOpenFloor(still.plain, openSpots).catch(() => null) : null;
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
   /** The last design the judge refused, and why: the next call corrects it. */
   const refusedDesigns: Array<{ image: Buffer; reason: string; marks?: SpotFinding[] }> = [];
@@ -132,7 +116,7 @@ export async function finishMeasuredStill(
           correctionPrompt(correcting.reason, { inventory: still.inventory, style, marked: marked != null }),
           [correcting.image, still.plain, ...(marked ? [marked] : [])],
         )
-      : await finishPass(client, openMap ? `${prompt}\n${OPEN_MAP_NOTE}` : prompt, openMap ? [still.plain, openMap] : still.plain);
+      : await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
     let edges: number;

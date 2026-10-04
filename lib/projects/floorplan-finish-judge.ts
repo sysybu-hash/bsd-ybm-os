@@ -76,26 +76,43 @@ const JUDGE_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"];
 
 async function askClaude(key: string, content: unknown[], maxTokens: number): Promise<{ raw: Record<string, unknown>; model: string } | null> {
   for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-        body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] }),
-      });
+    // A dropped connection or an overloaded API is tried again on the same
+    // model, twice, after a pause: one "fetch failed" left a design unjudged,
+    // and the next models in the list are not served to this key.
+    for (let tryNo = 0; tryNo < 3; tryNo++) {
+      if (tryNo > 0) await new Promise((resolve) => setTimeout(resolve, 1500 * tryNo));
+      let res: Response;
+      try {
+        res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+          body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] }),
+        });
+      } catch (err: unknown) {
+        log.warn("finish judge error", { model, tryNo, error: err instanceof Error ? err.message : String(err) });
+        continue;
+      }
       const body = await res.text().catch(() => res.statusText);
+      if (res.status === 429 || res.status >= 500) {
+        log.info("finish judge busy; again", { model, status: res.status, tryNo });
+        continue;
+      }
       if (!res.ok) {
         if (isAnthropicEligibleForModelFallback(res.status, body)) {
           log.info("finish judge model unavailable; next", { model, status: res.status });
-          continue;
+          break;
         }
         log.warn("finish judge failed", { model, status: res.status });
         return null;
       }
-      const parsed = JSON.parse(body) as { model?: string; content?: Array<{ type?: string; text?: string }> };
-      recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
-      return { raw: parseModelJsonText(parsed.content?.find((c) => c.type === "text")?.text ?? body), model };
-    } catch (err: unknown) {
-      log.warn("finish judge error", { model, error: err instanceof Error ? err.message : String(err) });
+      try {
+        const parsed = JSON.parse(body) as { model?: string; content?: Array<{ type?: string; text?: string }> };
+        recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
+        return { raw: parseModelJsonText(parsed.content?.find((c) => c.type === "text")?.text ?? body), model };
+      } catch (err: unknown) {
+        log.warn("finish judge unreadable", { model, error: err instanceof Error ? err.message : String(err) });
+        continue;
+      }
     }
   }
   return null;

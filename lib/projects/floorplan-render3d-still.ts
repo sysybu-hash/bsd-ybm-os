@@ -9,7 +9,7 @@ import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
-import { flatPieces, inventoryByPlace, listedKind, openFloorCover, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
+import { flatPieces, inventoryByPlace, listedKind, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
 import type { FlatScene } from "@/lib/projects/scene3d/types";
 
@@ -49,8 +49,6 @@ export type MeasuredStill = FloorplanVizImage & {
   inventory?: string;
   /** Each of those pieces' box in the plain frame, pixels: where a design is checked for it. */
   pieceBoxes?: PieceBox[];
-  /** The open floor edge to edge in the plain frame, pixels: the map of where not to furnish. */
-  openCover?: Array<{ x: number; y: number; w: number; h: number }>;
 };
 
 export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group" | "facing sofa"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
@@ -240,11 +238,6 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       ...(walls ? { walls } : {}),
       inventory: [inventoryByPlace(flatPieces(scene), scene.extent), openFloorLine(scene)].filter(Boolean).join("\n"),
       pieceBoxes: boxesInFrame(scene, view, size, crop, { screens: options.styleKit.audience === "haredi" }),
-      openCover: openFloorCover(scene).map((sq) => {
-        const a = dollhousePixel(view, size, { x: sq.x - sq.half, y: 0, z: sq.z - sq.half });
-        const b = dollhousePixel(view, size, { x: sq.x + sq.half, y: 0, z: sq.z + sq.half });
-        return { x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.ceil(b.x - a.x) + 1, h: Math.ceil(b.y - a.y) + 1 };
-      }),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

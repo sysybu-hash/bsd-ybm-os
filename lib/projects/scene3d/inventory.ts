@@ -191,15 +191,6 @@ export function openFloorSquares(scene: FlatScene, max = 32, sizeM = 0.7, clearM
   return chosen.map((c) => ({ ...c, half, place: planPlace(c.x, c.z, scene.extent) }));
 }
 
-/**
- * The open floor laid edge to edge in small squares, to the walls: the map
- * the model is shown of where it may not furnish. Squares kept 10 cm off the
- * walls left the strip a sofa stands in, and the model stood one there.
- */
-export function openFloorCover(scene: FlatScene, sizeM = 0.25): Array<{ x: number; z: number; half: number }> {
-  return openFloorCandidates(scene, sizeM, 0.15, 0.02, sizeM).map((c) => ({ ...c, half: sizeM / 2 }));
-}
-
 function openFloorCandidates(scene: FlatScene, sizeM: number, clearM: number, wallClearM: number, stepM: number): Array<{ x: number; z: number }> {
   // Clear of furniture by clearM, and of walls by only 10 cm: the model's own
   // additions stand against the walls — a bookcase down 14's and 21's living
