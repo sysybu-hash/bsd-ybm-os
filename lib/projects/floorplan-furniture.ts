@@ -47,6 +47,8 @@ export type FurniturePiece = {
    * shape; a permit plan's knows a pan from a basin by how each is drawn.
    */
   fixture?: "bath" | "shower" | "toilet" | "basin";
+  /** A bed's head, page-north up, where the drawing shows it (see bedHeadsFromDrawing). */
+  head?: "north" | "south" | "east" | "west";
 };
 
 type Edge = { at: number; a: number; b: number };
@@ -1258,6 +1260,60 @@ export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number
       ? { ...piece, kind: "seat" as const }
       : piece,
   );
+}
+
+/**
+ * Which end of each bed its pillow is drawn at.
+ *
+ * The rules that turn a bed — its back to the nearest wall, else the short
+ * end nearer a wall — read the walls, and a bed's head is often at a window:
+ * 18's bed by the window came out end for end. The sheet draws the pillow, a
+ * small rectangle across one short end; that end has the line work. Each end
+ * a third of the bed long is measured for the length of line inside it, and
+ * the head is the end with clearly more.
+ */
+export function bedHeadsFromDrawing(pieces: FurniturePiece[], segments: VectorSegment[], unitsPerMetre: number): FurniturePiece[] {
+  const inset = unitsPerMetre * 0.03;
+  // The pillow itself first: a closed rectangle a pillow's size inside one
+  // end. Counting line alone took the room's name written across 21's bed
+  // for the pillow.
+  const pillows = findRectangles(segments, { unitsPerMetre, minSideM: 0.12, maxSideM: 0.8 });
+  return pieces.map((piece) => {
+    if (piece.kind !== "bed") return piece;
+    const down = piece.h >= piece.w;
+    const zone = (down ? piece.h : piece.w) / 3;
+    const inBed = pillows.filter(
+      (r) =>
+        r.x >= piece.x - inset &&
+        r.y >= piece.y - inset &&
+        r.x + r.w <= piece.x + piece.w + inset &&
+        r.y + r.h <= piece.y + piece.h + inset &&
+        // Across the bed, as a pillow lies, and not the whole bed.
+        (down ? r.w >= piece.w * 0.4 && r.h <= zone : r.h >= piece.h * 0.4 && r.w <= zone),
+    );
+    const near = (r: { x: number; y: number; w: number; h: number }) =>
+      down ? (r.y + r.h / 2 < piece.y + zone ? "north" : r.y + r.h / 2 > piece.y + piece.h - zone ? "south" : null) : r.x + r.w / 2 < piece.x + zone ? "west" : r.x + r.w / 2 > piece.x + piece.w - zone ? "east" : null;
+    const sides = new Set(inBed.map(near).filter((x): x is "north" | "south" | "east" | "west" => x != null));
+    if (sides.size === 1) return { ...piece, head: [...sides][0]! };
+    const ends = down
+      ? ([["north", { x0: piece.x, x1: piece.x + piece.w, y0: piece.y, y1: piece.y + zone }], ["south", { x0: piece.x, x1: piece.x + piece.w, y0: piece.y + piece.h - zone, y1: piece.y + piece.h }]] as const)
+      : ([["west", { x0: piece.x, x1: piece.x + zone, y0: piece.y, y1: piece.y + piece.h }], ["east", { x0: piece.x + piece.w - zone, x1: piece.x + piece.w, y0: piece.y, y1: piece.y + piece.h }]] as const);
+    const ink = ends.map(([, r]) => {
+      let total = 0;
+      for (const s of segments) {
+        const mx = (s.x1 + s.x2) / 2;
+        const my = (s.y1 + s.y2) / 2;
+        if (mx > r.x0 + inset && mx < r.x1 - inset && my > r.y0 + inset && my < r.y1 - inset) total += Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      }
+      return total;
+    });
+    const [a, b] = ink as [number, number];
+    // Clearly more: a pillow's outline is a metre or more of line.
+    const enough = unitsPerMetre * 0.4;
+    if (a > b * 1.5 && a - b >= enough) return { ...piece, head: ends[0][0] };
+    if (b > a * 1.5 && b - a >= enough) return { ...piece, head: ends[1][0] };
+    return piece;
+  });
 }
 
 /**

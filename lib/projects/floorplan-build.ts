@@ -12,6 +12,7 @@ import { atOtherLevel, inferRoomKind, type FloorplanLayout } from "@/lib/project
 export { atOtherLevel };
 import {
   bathroomSquaresAreNotSeats,
+  bedHeadsFromDrawing,
   findBaths,
   findFurniture,
   findKitchenFittings,
@@ -587,8 +588,12 @@ export async function buildFlatFromGeometry(
   );
   // The suite comes in after the furniture pass, so its pieces in a bathroom
   // are settled here too; see bathroomSquaresAreNotSeats.
-  const furniture = bathroomSquaresAreNotSeats(
-    [...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))), ...suite, ...chairs, ...stools],
+  const furniture = bedHeadsFromDrawing(
+    bathroomSquaresAreNotSeats(
+      [...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))), ...suite, ...chairs, ...stools],
+      unitsPerMetre,
+    ),
+    geometry.segments,
     unitsPerMetre,
   );
 

@@ -174,6 +174,33 @@ const OPEN_FLOOR_ROOMS = new Set(["living", "kitchen", "bedroom", "mmd"]);
  * `max`, spread over the flat (each the farthest from those already chosen).
  */
 export function openFloorSquares(scene: FlatScene, max = 32, sizeM = 0.7, clearM = 0.15): Array<{ x: number; z: number; half: number; place: string }> {
+  const candidates = openFloorCandidates(scene, sizeM, clearM, 0.1, sizeM / 4);
+  const half = sizeM / 2;
+  const chosen: Array<{ x: number; z: number }> = [];
+  while (chosen.length < max && candidates.length > 0) {
+    let best = 0;
+    let bestD = -1;
+    candidates.forEach((c, i) => {
+      const d = chosen.length === 0 ? -Math.hypot(c.x - scene.extent.x, c.z - scene.extent.z) : Math.min(...chosen.map((q) => Math.hypot(c.x - q.x, c.z - q.z)));
+      if (d > bestD) { bestD = d; best = i; }
+    });
+    const [pick] = candidates.splice(best, 1);
+    if (chosen.length > 0 && bestD < sizeM) break;
+    chosen.push(pick!);
+  }
+  return chosen.map((c) => ({ ...c, half, place: planPlace(c.x, c.z, scene.extent) }));
+}
+
+/**
+ * The open floor laid edge to edge in small squares, to the walls: the map
+ * the model is shown of where it may not furnish. Squares kept 10 cm off the
+ * walls left the strip a sofa stands in, and the model stood one there.
+ */
+export function openFloorCover(scene: FlatScene, sizeM = 0.25): Array<{ x: number; z: number; half: number }> {
+  return openFloorCandidates(scene, sizeM, 0.15, 0.02, sizeM).map((c) => ({ ...c, half: sizeM / 2 }));
+}
+
+function openFloorCandidates(scene: FlatScene, sizeM: number, clearM: number, wallClearM: number, stepM: number): Array<{ x: number; z: number }> {
   // Clear of furniture by clearM, and of walls by only 10 cm: the model's own
   // additions stand against the walls — a bookcase down 14's and 21's living
   // room wall in every design — where squares kept off the walls never look.
@@ -183,7 +210,7 @@ export function openFloorSquares(scene: FlatScene, max = 32, sizeM = 0.7, clearM
     z0: m.centre.z - m.size.z / 2 - pad,
     z1: m.centre.z + m.size.z / 2 + pad,
   });
-  const WALL_CLEAR = 0.1;
+  const WALL_CLEAR = wallClearM;
   const blockers = scene.meshes
     // Door leaves, frames and glazing too: 22's open door leaf, drawn in the
     // design as it is in the layout, was read as a shower on the open floor.
@@ -201,25 +228,13 @@ export function openFloorSquares(scene: FlatScene, max = 32, sizeM = 0.7, clearM
   for (const room of scene.rooms) {
     if (!OPEN_FLOOR_ROOMS.has(room.kind)) continue;
     const inside = (x: number, z: number) => room.rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d);
-    for (let x = room.bounds.x + half; x <= room.bounds.x + room.bounds.w - half; x += sizeM / 4) {
-      for (let z = room.bounds.z + half; z <= room.bounds.z + room.bounds.d - half; z += sizeM / 4) {
+    for (let x = room.bounds.x + half; x <= room.bounds.x + room.bounds.w - half; x += stepM) {
+      for (let z = room.bounds.z + half; z <= room.bounds.z + room.bounds.d - half; z += stepM) {
         if (![[-half, -half], [half, -half], [-half, half], [half, half], [0, 0]].every(([dx, dz]) => inside(x + dx!, z + dz!))) continue;
         if (blockers.some((b) => x + half > b.x0 && x - half < b.x1 && z + half > b.z0 && z - half < b.z1)) continue;
         candidates.push({ x, z });
       }
     }
   }
-  const chosen: Array<{ x: number; z: number }> = [];
-  while (chosen.length < max && candidates.length > 0) {
-    let best = 0;
-    let bestD = -1;
-    candidates.forEach((c, i) => {
-      const d = chosen.length === 0 ? -Math.hypot(c.x - scene.extent.x, c.z - scene.extent.z) : Math.min(...chosen.map((q) => Math.hypot(c.x - q.x, c.z - q.z)));
-      if (d > bestD) { bestD = d; best = i; }
-    });
-    const [pick] = candidates.splice(best, 1);
-    if (chosen.length > 0 && bestD < sizeM) break;
-    chosen.push(pick!);
-  }
-  return chosen.map((c) => ({ ...c, half, place: planPlace(c.x, c.z, scene.extent) }));
+  return candidates;
 }

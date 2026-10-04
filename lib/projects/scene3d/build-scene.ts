@@ -172,7 +172,7 @@ export type SceneInput = {
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
-  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"] }>;
+  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"]; head?: "north" | "south" | "east" | "west" }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
   /**
    * The rooms as the sheet labels them, in page units.
@@ -650,7 +650,8 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         : rectCentre(box),
       unitsPerMetre: upm,
     });
-    const facing = piece.kind === "bed" ? headFacing(box, decided, wallRectsAll) : decided;
+    // A bed's head where the sheet draws its pillow; else by the walls.
+    const facing = piece.kind === "bed" ? (piece.head ?? headFacing(box, decided, wallRectsAll)) : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
     for (const built of partsFor(kind, {
       wM: box.w / upm,
