@@ -1251,6 +1251,7 @@ export function wallBodiesFromHatch(
         // Hatch in the middle, not on average across the band.
         if (field.density(bodyRect(body)) < minDensity) continue;
         if (!hatchFillsMiddle(field, body, minDensity)) continue;
+        if (!hatchAlongBand(field, body, upm)) continue;
         bodies.push(body);
       }
     }
@@ -1274,7 +1275,46 @@ export function wallBodiesFromHatch(
   const deduped = shrinkToHatch(dedupe(bodies), segments);
   if (options.keepOpenings) return deduped.filter((b) => b.to - b.from >= minLength);
   const merged = bridgeOpenings(deduped, (options.mergeGapM ?? 1.2) * upm);
-  return merged.filter((b) => b.to - b.from >= minLength);
+  return trimThinToFaces(merged, segments, upm).filter((b) => b.to - b.from >= minLength);
+}
+
+/**
+ * A thin wall held to its drawn faces. Joined across what looked like a
+ * doorway, דירה 17's 8 cm partition ran on a metre and a half past its end,
+ * along the axis line and a dimension's ticks, into the bathroom. A
+ * partition's two face lines run the length of it, doorways aside: one whose
+ * faces cover under 60 % of it is cut back to the longest stretch they do.
+ */
+export function trimThinToFaces(bodies: WallBody[], segments: VectorSegment[], upm: number): WallBody[] {
+  const thin = 0.12 * upm;
+  return bodies.flatMap((body) => {
+    if (body.thickness > thin) return [body];
+    const faces = [body.centre - body.thickness / 2, body.centre + body.thickness / 2];
+    const spans: Array<[number, number]> = [];
+    for (const seg of segments) {
+      const vertical = Math.abs(seg.x1 - seg.x2) < 0.5;
+      const horizontal = Math.abs(seg.y1 - seg.y2) < 0.5;
+      if (body.orientation === "v" ? !vertical : !horizontal) continue;
+      // An axis line's dashes lie on a face too; a face is drawn in lengths.
+      if (Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1) < 0.2 * upm) continue;
+      const at = body.orientation === "v" ? seg.x1 : seg.y1;
+      if (!faces.some((f) => Math.abs(f - at) <= 1.5)) continue;
+      const a = Math.max(body.from, Math.min(body.orientation === "v" ? seg.y1 : seg.x1, body.orientation === "v" ? seg.y2 : seg.x2));
+      const b = Math.min(body.to, Math.max(body.orientation === "v" ? seg.y1 : seg.x1, body.orientation === "v" ? seg.y2 : seg.x2));
+      if (b > a) spans.push([a, b]);
+    }
+    spans.sort((p, q) => p[0] - q[0]);
+    const union: Array<[number, number]> = [];
+    for (const span of spans) {
+      const last = union[union.length - 1];
+      if (last && span[0] <= last[1] + 1) last[1] = Math.max(last[1], span[1]);
+      else union.push([span[0], span[1]]);
+    }
+    const covered = union.reduce((sum, [a, b]) => sum + (b - a), 0);
+    if (covered >= 0.6 * (body.to - body.from)) return [body];
+    const longest = union.sort((p, q) => q[1] - q[0] - (p[1] - p[0]))[0];
+    return longest ? [{ ...body, from: longest[0], to: longest[1] }] : [];
+  });
 }
 
 /**
@@ -1322,6 +1362,30 @@ export function stubsInsideCrossingWalls(bodies: WallBody[], tolerance = 1): Wal
  * Requiring every slice to carry hatch was tried and is wrong for the same
  * indexing reason — it rejects thin walls whose strokes all land centrally.
  */
+/**
+ * Hatch along the band, not in a few places of it. A thin band's area is
+ * small, so a handful of strokes makes it dense: a dimension line beside a
+ * bath, with its 45° end ticks and the "165" written along it, measured as an
+ * 8 cm wall 3 m long through דירה 17's bathroom. A wall is hatched the length
+ * of it; three slices in five will do.
+ */
+export function hatchAlongBand(field: HatchField, body: WallBody, upm: number): boolean {
+  const rect = bodyRect(body);
+  const length = body.to - body.from;
+  const step = 0.25 * upm;
+  if (length < step * 2) return true;
+  const slices = Math.floor(length / step);
+  let hatched = 0;
+  for (let i = 0; i < slices; i++) {
+    const slice =
+      body.orientation === "h"
+        ? { x: body.from + i * step, y: rect.y, w: step, h: rect.h }
+        : { x: rect.x, y: body.from + i * step, w: rect.w, h: step };
+    if (field.count(slice) > 0) hatched++;
+  }
+  return hatched >= 0.6 * slices;
+}
+
 function hatchFillsMiddle(field: HatchField, body: WallBody, minDensity: number): boolean {
   const rect = bodyRect(body);
   const across = body.orientation === "h" ? rect.h : rect.w;

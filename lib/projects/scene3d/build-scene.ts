@@ -662,6 +662,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   const extentCorner = project(p, spanned.x, spanned.y);
+  const standing = wallsBesideFloor(meshes);
+  meshes.length = 0;
+  meshes.push(...standing);
   const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
@@ -685,6 +688,79 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   if (rules.mezuzah) scene.meshes.push(...mezuzot(scene));
   scene.lights.push(...staged.lights);
   return scene;
+}
+
+// The windows and frames set in those walls go with them.
+const STANDING_KINDS = new Set(["wall", "wallHead", "wallSill", "wallCap", "glazing", "frame"]);
+
+/**
+ * Walls only where a wall can stand: with the flat's floor beside it, or a
+ * terrace's edge with nothing past it. The measurement also finds what is not
+ * a wall — the underline and hatched circle of a level mark across דירה 18's
+ * terrace, its outer walls run on into the terrace, a dimension chain — and a
+ * design given those either drew them or was refused for leaving them out.
+ * Each wall is cut to the stretches where it stands; a stretch with terrace
+ * on both sides, or nothing on either, goes.
+ */
+export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
+  const rectOf = (m: SceneBox) => ({ x0: m.centre.x - m.size.x / 2, x1: m.centre.x + m.size.x / 2, z0: m.centre.z - m.size.z / 2, z1: m.centre.z + m.size.z / 2 });
+  const floors = meshes.filter((m) => m.kind === "floor").map(rectOf);
+  const terraces = meshes.filter((m) => m.kind === "terrace").map(rectOf);
+  if (floors.length === 0) return meshes;
+  // 3 cm of slack: a slice's sample on the very edge of the floor is beside it.
+  const E = 0.03;
+  const inAny = (rects: ReturnType<typeof rectOf>[], x: number, z: number) =>
+    rects.some((r) => x >= r.x0 - E && x <= r.x1 + E && z >= r.z0 - E && z <= r.z1 + E);
+  // A side inside another wall is a corner, where the wall turns: it stands.
+  const walls = meshes.filter((m) => m.kind === "wall").map(rectOf);
+  const side = (x: number, z: number) =>
+    inAny(floors, x, z) ? "floor" : inAny(walls, x, z) ? "wall" : inAny(terraces, x, z) ? "terrace" : "none";
+  const STEP = 0.2;
+  const out: SceneBox[] = [];
+  for (const m of meshes) {
+    if (!STANDING_KINDS.has(m.kind)) {
+      out.push(m);
+      continue;
+    }
+    const alongX = m.size.x >= m.size.z;
+    const length = alongX ? m.size.x : m.size.z;
+    const off = (alongX ? m.size.z : m.size.x) / 2 + 0.2;
+    const slices = Math.max(1, Math.round(length / STEP));
+    const step = length / slices;
+    const start = (alongX ? m.centre.x : m.centre.z) - length / 2;
+    const stands = Array.from({ length: slices }, (_, i) => {
+      const t = start + step * (i + 0.5);
+      const [a, b] = alongX
+        ? [side(t, m.centre.z - off), side(t, m.centre.z + off)]
+        : [side(m.centre.x - off, t), side(m.centre.x + off, t)];
+      return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (a === "terrace") !== (b === "terrace");
+    });
+    if (stands.every(Boolean)) {
+      out.push(m);
+      continue;
+    }
+    // The stretches that stand, each its own box.
+    for (let i = 0; i < slices; ) {
+      if (!stands[i]) {
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < slices && stands[j]) j++;
+      const from = start + step * i;
+      const to = start + step * j;
+      if (to - from >= 0.15) {
+        const mid = (from + to) / 2;
+        out.push({
+          ...m,
+          centre: alongX ? { ...m.centre, x: mid } : { ...m.centre, z: mid },
+          size: alongX ? { ...m.size, x: to - from } : { ...m.size, z: to - from },
+        });
+      }
+      i = j;
+    }
+  }
+  return out;
 }
 
 /** Glazing sits in the middle of the wall, not across its whole thickness. */

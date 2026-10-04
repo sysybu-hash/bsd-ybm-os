@@ -42,6 +42,7 @@ import {
   findHatchGaps,
   findOpenings,
   stubsInsideCrossingWalls,
+  trimThinToFaces,
   floorWithoutLanding,
   spanArea,
   wallBodiesForSheet,
@@ -353,7 +354,8 @@ export async function buildFlatFromGeometry(
       }).length >= 2
     );
   };
-  const bodies = [...hatchKept, ...plotted].filter((body) => {
+  // A thin wall held to its own drawn faces; see trimThinToFaces.
+  const bodies = trimThinToFaces([...hatchKept, ...plotted], geometry.segments, unitsPerMetre).filter((body) => {
     if (throughChairs(body)) return false;
     if (hobs.some((hob) => centreInsideBody(hob, body))) return false;
     const r = bodyRect(body);

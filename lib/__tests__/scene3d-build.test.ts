@@ -272,3 +272,31 @@ describe("floor nobody claimed: inside the flat or outside it", () => {
     expect(runs[0]!.rect.x + runs[0]!.rect.w).toBeCloseTo(runs[1]!.rect.x);
   });
 });
+
+describe("walls stand only where a wall can", () => {
+  const box = (kind: SceneBox["kind"], x: number, z: number, w: number, d: number): SceneBox =>
+    ({ kind, sourceId: `${kind}:${x},${z}`, material: "m", centre: { x, y: 1, z }, size: { x: w, y: 2, z: d } }) as unknown as SceneBox;
+
+  it("cuts a wall running on into a terrace, drops one across a terrace, and keeps the corners", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const floor = box("floor", 2, 2, 4, 4); // 0–4 × 0–4
+    const terrace = box("terrace", 2, 5.5, 4, 3); // 0–4 × 4–7
+    // The flat's east wall, run on 3 m into the terrace; a "wall" across the terrace; the south wall.
+    const east = box("wall", 4.1, 3.5, 0.2, 7);
+    const across = box("wall", 2, 6, 3, 0.1);
+    const south = box("wall", 2, 4.05, 4.4, 0.1);
+    const out = wallsBesideFloor([floor, terrace, east, across, south]).filter((m) => m.kind === "wall");
+    const eastNow = out.find((m) => Math.abs(m.centre.x - 4.1) < 0.01)!;
+    // East wall: beside the floor (0–4), and on into the terrace with nothing past it — a parapet.
+    expect(eastNow.size.z).toBeCloseTo(7, 1);
+    expect(out.some((m) => Math.abs(m.centre.z - 6) < 0.01)).toBe(false);
+    // The south wall reaches the east wall at its corner; its west end, past the flat with no wall there, goes.
+    expect(out.some((m) => Math.abs(m.centre.z - 4.05) < 0.01 && m.size.x >= 4.1)).toBe(true);
+  });
+
+  it("drops a wall with nothing on either side", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const out = wallsBesideFloor([box("floor", 2, 2, 4, 4), box("wall", 8, 2, 0.2, 3)]);
+    expect(out.filter((m) => m.kind === "wall")).toHaveLength(0);
+  });
+});
