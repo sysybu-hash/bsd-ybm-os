@@ -165,27 +165,38 @@ const OPEN_FLOOR_ROOMS = new Set(["living", "kitchen", "bedroom", "mmd"]);
  * living room's open floor passed every judge shown the whole flat. At most
  * `max`, spread over the flat (each the farthest from those already chosen).
  */
-export function openFloorSquares(scene: FlatScene, max = 24, sizeM = 0.7, clearM = 0.15): Array<{ x: number; z: number; half: number; place: string }> {
+export function openFloorSquares(scene: FlatScene, max = 32, sizeM = 0.7, clearM = 0.15): Array<{ x: number; z: number; half: number; place: string }> {
+  // Clear of furniture by clearM, and of walls by only 10 cm: the model's own
+  // additions stand against the walls — a bookcase down 14's and 21's living
+  // room wall in every design — where squares kept off the walls never look.
+  const box = (m: (typeof scene.meshes)[number], pad: number) => ({
+    x0: m.centre.x - m.size.x / 2 - pad,
+    x1: m.centre.x + m.size.x / 2 + pad,
+    z0: m.centre.z - m.size.z / 2 - pad,
+    z1: m.centre.z + m.size.z / 2 + pad,
+  });
+  const WALL_CLEAR = 0.1;
   const blockers = scene.meshes
-    .filter((m) => m.kind === "furniture" || m.kind === "wall" || m.kind === "wallSill" || m.kind === "wallHead" || m.kind === "railing")
-    .map((m) => ({ x0: m.centre.x - m.size.x / 2, x1: m.centre.x + m.size.x / 2, z0: m.centre.z - m.size.z / 2, z1: m.centre.z + m.size.z / 2 }));
+    // Door leaves, frames and glazing too: 22's open door leaf, drawn in the
+    // design as it is in the layout, was read as a shower on the open floor.
+    .filter((m) => m.kind === "furniture" || m.kind === "prop" || ["wall", "wallSill", "wallHead", "railing", "frame", "glazing"].includes(m.kind))
+    .map((m) => box(m, m.kind === "furniture" || m.kind === "prop" ? clearM : WALL_CLEAR));
   // A square touching a bathroom, a hall or a terrace is not a room's open
   // floor: the measured rooms overlap, and a WC a design drew in a bathroom
   // the big region also covered is not an addition.
   for (const room of scene.rooms) {
     if (OPEN_FLOOR_ROOMS.has(room.kind)) continue;
-    for (const r of room.rects) blockers.push({ x0: r.x, x1: r.x + r.w, z0: r.z, z1: r.z + r.d });
+    for (const r of room.rects) blockers.push({ x0: r.x - clearM, x1: r.x + r.w + clearM, z0: r.z - clearM, z1: r.z + r.d + clearM });
   }
   const half = sizeM / 2;
-  const reach = half + clearM;
   const candidates: Array<{ x: number; z: number }> = [];
   for (const room of scene.rooms) {
     if (!OPEN_FLOOR_ROOMS.has(room.kind)) continue;
     const inside = (x: number, z: number) => room.rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d);
-    for (let x = room.bounds.x + half; x <= room.bounds.x + room.bounds.w - half; x += sizeM / 2) {
-      for (let z = room.bounds.z + half; z <= room.bounds.z + room.bounds.d - half; z += sizeM / 2) {
+    for (let x = room.bounds.x + half; x <= room.bounds.x + room.bounds.w - half; x += sizeM / 4) {
+      for (let z = room.bounds.z + half; z <= room.bounds.z + room.bounds.d - half; z += sizeM / 4) {
         if (![[-half, -half], [half, -half], [-half, half], [half, half], [0, 0]].every(([dx, dz]) => inside(x + dx!, z + dz!))) continue;
-        if (blockers.some((b) => x + reach > b.x0 && x - reach < b.x1 && z + reach > b.z0 && z - reach < b.z1)) continue;
+        if (blockers.some((b) => x + half > b.x0 && x - half < b.x1 && z + half > b.z0 && z - half < b.z1)) continue;
         candidates.push({ x, z });
       }
     }

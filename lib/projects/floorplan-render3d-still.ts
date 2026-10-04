@@ -51,7 +51,7 @@ export type MeasuredStill = FloorplanVizImage & {
   pieceBoxes?: PieceBox[];
 };
 
-export type PieceBox = { kind: ListedKind | "open floor" | "dining set"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
+export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
 
 /**
  * Where the flat's floor is open, for the design to leave open: told only
@@ -82,6 +82,32 @@ function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; h
     const b = dollhousePixel(view, size, { x: x1, y: t.top, z: z1 });
     out.push({ kind: "dining set", place: planPlace(table.x, table.z, scene.extent), x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y), chairs: chairs.length });
   }
+  // And each group of sofas and armchairs standing together, counted: two
+  // sofas side by side came back as one long one, and each sofa's own spot
+  // still found a sofa.
+  const seating = pieces.filter((p) => (p.what === "sofa" || p.what === "armchair") && p.box);
+  const grouped = new Set<number>();
+  seating.forEach((seed, i) => {
+    if (grouped.has(i)) return;
+    const group = [i];
+    grouped.add(i);
+    for (let k = 0; k < group.length; k++) {
+      const g = seating[group[k]!]!.box!;
+      seating.forEach((other, j) => {
+        if (grouped.has(j)) return;
+        const o = other.box!;
+        if (o.x0 <= g.x1 + 1 && o.x1 >= g.x0 - 1 && o.z0 <= g.z1 + 1 && o.z1 >= g.z0 - 1) {
+          grouped.add(j);
+          group.push(j);
+        }
+      });
+    }
+    if (group.length < 2) return;
+    const boxes = group.map((j) => seating[j]!.box!);
+    const a = dollhousePixel(view, size, { x: Math.min(...boxes.map((b) => b.x0)), y: Math.max(...boxes.map((b) => b.top)), z: Math.min(...boxes.map((b) => b.z0)) });
+    const b = dollhousePixel(view, size, { x: Math.max(...boxes.map((b) => b.x1)), y: Math.max(...boxes.map((b) => b.top)), z: Math.max(...boxes.map((b) => b.z1)) });
+    out.push({ kind: "seating group", place: planPlace(seed.x, seed.z, scene.extent), x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y), chairs: group.length });
+  });
   for (const p of pieces) {
     const kind = listedKind(p.what);
     if (!kind || !p.box) continue;

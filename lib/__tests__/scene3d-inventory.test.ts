@@ -42,10 +42,12 @@ describe("the open floor a design is checked on", () => {
     const squares = openFloorSquares(scene, 20);
     expect(squares.length).toBeGreaterThan(0);
     for (const s of squares) {
-      // 70 cm squares clear of the piece (0.2–1.8) and the wall at x 3.9–4.1, with 15 cm to spare.
+      // 70 cm squares 15 cm clear of the piece (0.2–1.8), and 10 cm of the wall at x 3.9–4.1.
       expect(s.x - 0.5 >= 1.8 || s.z - 0.5 >= 1.8).toBe(true);
-      expect(Math.abs(s.x - 4)).toBeGreaterThanOrEqual(0.6);
+      expect(Math.abs(s.x - 4)).toBeGreaterThanOrEqual(0.55);
       expect(s.x + 0.5 <= 6 || s.z - 0.5 >= 2).toBe(true);
     }
+    // And some stand against the wall, where a design's bookcase would.
+    expect(squares.some((s) => Math.abs(s.x - 4) < 0.75)).toBe(true);
   });
 });
