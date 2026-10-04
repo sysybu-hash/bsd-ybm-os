@@ -69,11 +69,12 @@ export async function finishMeasuredStill(
   // flat and the walls are checked against the map; otherwise repainted, and
   // the whole render's edges and masses checked.
   const design = still.walls != null;
+  const style = [options.styleKit.promptBlock, WARM_INVITING_LIGHT].join("\n\n");
   const prompt = design
     ? designPrompt(finishSubject(options.styleKit), {
         haredi: options.styleKit.audience === "haredi",
         inventory: still.inventory,
-        style: [options.styleKit.promptBlock, WARM_INVITING_LIGHT].join("\n\n"),
+        style,
       })
     : finishPrompt("apartment", finishSubject(options.styleKit));
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
@@ -84,7 +85,7 @@ export async function finishMeasuredStill(
     const correcting = design ? refusedDesigns.pop() : undefined;
     refusedDesigns.length = 0;
     const done = correcting
-      ? await finishPass(client, correctionPrompt(correcting.reason, { inventory: still.inventory }), [still.plain, correcting.image])
+      ? await finishPass(client, correctionPrompt(correcting.reason, { inventory: still.inventory, style }), [correcting.image, still.plain])
       : await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
@@ -168,8 +169,9 @@ export function finishJudge(
     if (!found || !missing) return "no judge";
     if (found.turnedOrMirrored) return "turned or mirrored";
     if (missing.length > 0) return `not as the layout: ${missing.join("; ")}`;
-    const reason = refusal(found, styleKit.audience === "haredi");
+    const reason = refusal(found, styleKit.audience === "haredi", spots != null);
     if (!reason) return null;
+    if (spots) return reason;
     // The pieces named, for the correction that follows (see correctionPrompt).
     const details = [
       found.missingPieces.length > 0 && !reason.startsWith("missing") ? `missing: ${found.missingPieces.join(", ")}` : "",
@@ -179,16 +181,26 @@ export function finishJudge(
   };
 }
 
-function refusal(found: FinishComparison, haredi: boolean): string | null {
-  if (found.bedAdded) return "bed added";
-  if (found.bedRemoved) return "bed removed";
-  if (found.bedsInRender >= 0 && found.bedsInPainting >= 0 && found.bedsInRender !== found.bedsInPainting) return "beds counted otherwise";
-  if (found.sofasInRender >= 0 && found.sofasInPainting > found.sofasInRender) return "sofa added";
-  if (found.furnitureAdded) return "furniture added";
-    if (haredi && (found.bedWidened || found.doubleBed)) return "bed widened";
-  if (found.extraPieces.length > 0) return `extra: ${found.extraPieces.join(", ")}`;
-  if (found.missingPieces.length > 0) return `missing: ${found.missingPieces.join(", ")}`;
-    if (haredi && found.screenAdded) return "screen";
+/**
+ * What the comparison shown the whole flat refuses a painting for. Where each
+ * piece is also looked for at its own spot, that check has the furniture: the
+ * whole-flat judge called דירה 22's measured kitchen island an addition, the
+ * correction took it out, and the design that came back passed.
+ */
+function refusal(found: FinishComparison, haredi: boolean, checkedBySpot: boolean): string | null {
+  if (!checkedBySpot) {
+    if (found.bedAdded) return "bed added";
+    if (found.bedRemoved) return "bed removed";
+    if (found.bedsInRender >= 0 && found.bedsInPainting >= 0 && found.bedsInRender !== found.bedsInPainting) return "beds counted otherwise";
+    if (found.sofasInRender >= 0 && found.sofasInPainting > found.sofasInRender) return "sofa added";
+    if (found.furnitureAdded) return "furniture added";
+  }
+  if (haredi && (found.bedWidened || found.doubleBed)) return "bed widened";
+  if (!checkedBySpot) {
+    if (found.extraPieces.length > 0) return `extra: ${found.extraPieces.join(", ")}`;
+    if (found.missingPieces.length > 0) return `missing: ${found.missingPieces.join(", ")}`;
+  }
+  if (haredi && found.screenAdded) return "screen";
   if (found.textAdded) return "lettering";
   if (found.spaceAdded) return "space added";
   return null;

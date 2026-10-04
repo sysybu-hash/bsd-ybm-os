@@ -100,14 +100,17 @@ function framePlace(fx: number, fy: number): string {
  * layout and its own design, and told exactly what the judge found wrong. A
  * fresh design keeps the look the model chose and loses a different bed.
  */
-export function correctionPrompt(reason: string, options: { inventory?: string }): string {
+export function correctionPrompt(reason: string, options: { inventory?: string; style?: string }): string {
   return [
-    "Image 1 is the exact top-down LAYOUT of an apartment, measured from the architect's drawing. Image 2 is your DESIGN of it.",
+    // The design first: the model edits the first image it is given, and
+    // with the layout first a correction came back as pale as the layout.
+    "Image 1 is your DESIGN of an apartment seen from above. Image 2 is the exact top-down LAYOUT it was designed on, measured from the architect's drawing.",
     `The design was refused against the layout: ${reason}.`,
-    "Edit image 2 so it matches image 1 piece for piece: put back every missing piece where image 1 has it, at its size and of its kind (each bed a single bed, one pillow), and remove every piece image 1 does not have — fill its place with the floor around it.",
+    "Edit image 1 so it matches image 2 where it was refused: put every wall, door and window and every piece of furniture back where image 2 has it, at its size and of its kind (each bed a single bed, one pillow), and take out what image 2 does not have, filling its place with the floor around it.",
     ...(options.inventory ? [`The furniture exactly as measured, with where each piece stands on the plan (north up):
 ${options.inventory}`] : []),
-    "Change nothing else: keep the design's style, materials, colours, golden-hour light and shadows, the camera, the framing, every wall, door and window. No text, no people.",
+    "Keep everything else of image 1 as it is: its style, materials, colours, warm golden-hour light, shadows and finish quality, the camera and the framing. It must stay a finished, photorealistic sales image, not a diagram. No text, no people.",
+    ...(options.style ? [options.style] : []),
   ].join("\n");
 }
 

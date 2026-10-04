@@ -171,6 +171,8 @@ const SEEN_AS: Record<string, string[]> = {
   armchairs: ["armchair", "sofa", "chair", "ottoman", "other"],
   "dining tables": ["dining table", "coffee table"],
   toilets: ["toilet"],
+  // A run against the wall, or the island the stools stand at.
+  "kitchen counters": ["kitchen counter", "kitchen island", "cabinet"],
 };
 
 /** What a design may put on the layout's open floor: decor, never furniture. */
