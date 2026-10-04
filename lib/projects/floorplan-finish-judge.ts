@@ -70,7 +70,7 @@ function imagePart(base64: string) {
  * on Haiku, which passed a painting with four sofas, a coffee table and an
  * island where the drawing has two sofas.
  */
-const JUDGE_MODELS = ["claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-4-7", "claude-sonnet-4-6"];
+const JUDGE_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"];
 
 export async function compareFinishWithClaude(render: Buffer, painting: Buffer, inventory?: string): Promise<FinishComparison | null> {
   if (!isAnthropicConfigured()) return null;
@@ -91,7 +91,8 @@ Count the PAINTING against this list, room by room. extraPieces: every piece the
         headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
         body: JSON.stringify({
           model,
-          max_tokens: 400,
+          // Room-by-room lists and a note: 400 tokens cut the JSON off mid-list.
+          max_tokens: 1500,
           temperature: 0,
           messages: [
             {
@@ -103,7 +104,10 @@ Count the PAINTING against this list, room by room. extraPieces: every piece the
       });
       const body = await res.text().catch(() => res.statusText);
       if (!res.ok) {
-        if (isAnthropicEligibleForModelFallback(res.status, body)) continue;
+        if (isAnthropicEligibleForModelFallback(res.status, body)) {
+          log.info("finish comparison model unavailable; next", { model, status: res.status });
+          continue;
+        }
         log.warn("finish comparison failed", { model, status: res.status });
         return null;
       }
