@@ -503,9 +503,25 @@ export async function buildFlatFromGeometry(
   const rounded = findRoundedFurniture(geometry.curves, unitsPerMetre, { segments: geometry.segments });
 
   const table = found.find((piece) => piece.kind === "table");
-  const chairs = table
-    ? (seatsDrawnAroundTable(table, geometry.curves, unitsPerMetre, geometry.segments) ?? seatsAroundTable(table, unitsPerMetre)).filter((piece) => clear(piece))
-    : [];
+  // The chairs drawn round the table replace the pieces of them found before:
+  // דירה 21's end chair came through as two fragments of seat, and the chair
+  // itself, overlapping them, was refused as standing on something. Any
+  // chair-sized piece within the chairs' reach of the table is one of them.
+  const chairsDrawn = table ? seatsDrawnAroundTable(table, geometry.curves, unitsPerMetre, geometry.segments) : null;
+  const byTable = (piece: FurniturePiece) => {
+    if (!table || Math.max(piece.widthCm, piece.depthCm) >= 105) return false;
+    const reach = unitsPerMetre * 0.7;
+    const cx = piece.x + piece.w / 2;
+    const cy = piece.y + piece.h / 2;
+    return cx >= table.x - reach && cx <= table.x + table.w + reach && cy >= table.y - reach && cy <= table.y + table.h + reach;
+  };
+  if (chairsDrawn) {
+    for (let i = found.length - 1; i >= 0; i--) {
+      const piece = found[i]!;
+      if (piece.kind === "seat" && byTable(piece)) found.splice(i, 1);
+    }
+  }
+  const chairs = table ? (chairsDrawn ?? seatsAroundTable(table, unitsPerMetre)).filter((piece) => clear(piece)) : [];
 
   // A free-standing run: deep enough to be a counter, long enough to seat at,
   // and with floor on both of its long sides — a run against a wall is a
@@ -560,7 +576,12 @@ export async function buildFlatFromGeometry(
   // A sofa is named and a rectangle inside it is not: דירה 21's second
   // two-seater carried one of its cushions as a 68 by 40 cm "unknown", and the
   // cushion, found first, kept the sofa out. The sofa stands; its parts go.
-  const suite = rounded.filter((piece) => clear(piece, { overUnknown: true }));
+  const suite = rounded.filter(
+    (piece) =>
+      clear(piece, { overUnknown: true }) &&
+      // A chair's corners found as a piece of their own, beside the chair.
+      !(chairsDrawn && byTable(piece)),
+  );
   const furniture = [
     ...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))),
     ...suite,

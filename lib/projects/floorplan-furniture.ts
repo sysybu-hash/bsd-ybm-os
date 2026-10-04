@@ -1011,9 +1011,17 @@ export function seatsDrawnAroundTable(
     for (const g of groups) {
       const width = g.b - g.a;
       const depth = g.hi - g.lo;
-      if (width < 0.3 * upm || width > 0.75 * upm || depth < 0.25 * upm || g.edge < 0.12 * upm) continue;
-      const mid = (g.a + g.b) / 2;
-      out.push(band.alongX ? make(mid, band.across) : make(band.across, mid));
+      if (width < 0.3 * upm || depth < 0.25 * upm || g.edge < 0.12 * upm) continue;
+      // Chairs side by side whose strokes the room's name runs between —
+      // "ח.מגורים" is written across דירה 21's two lower chairs, and the pair
+      // came out one 1.2 m piece and was dropped — are split at the pitch a
+      // row of chairs is set at.
+      const count = width <= 0.75 * upm ? 1 : Math.round(width / (0.6 * upm));
+      if (count > 4) continue;
+      for (let k = 0; k < count; k++) {
+        const mid = g.a + (width * (k + 0.5)) / count;
+        out.push(band.alongX ? make(mid, band.across) : make(band.across, mid));
+      }
     }
   }
   return out.length >= 2 ? out : null;
