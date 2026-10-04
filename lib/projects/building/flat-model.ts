@@ -23,8 +23,26 @@ export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number
   if (options.wallsOnly) {
     // The walls alone, cut: the map a painting's walls are checked against.
     const walls: Primitive[] = [];
+    // Only walls that bound a room: the neighbour's walls the sheet draws past
+    // the flat's edge, with floor on neither side, a design leaves out — and
+    // דירה 21's were scored as walls it had moved, try after try.
+    const rects = scene.rooms.flatMap((room) => room.rects);
+    const floorAt = (x: number, z: number) => rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d);
+    // Floor beside it along its length, on either side: a stub touching a
+    // room's wall at one end only is still the neighbour's.
+    const bounds = (m: (typeof scene.meshes)[number]) => {
+      const alongX = m.size.x >= m.size.z;
+      const off = (alongX ? m.size.z : m.size.x) / 2 + 0.25;
+      const beside = [0.25, 0.5, 0.75].filter((t) => {
+        const x = alongX ? m.centre.x - m.size.x / 2 + m.size.x * t : m.centre.x;
+        const z = alongX ? m.centre.z : m.centre.z - m.size.z / 2 + m.size.z * t;
+        return alongX ? floorAt(x, z - off) || floorAt(x, z + off) : floorAt(x - off, z) || floorAt(x + off, z);
+      });
+      return beside.length >= 2;
+    };
     for (const mesh of scene.meshes) {
       if (!WALL_KINDS.has(mesh.kind)) continue;
+      if (rects.length > 0 && !bounds(mesh)) continue;
       const kept = options.cutAboveM != null ? cutBox(mesh, options.cutAboveM) : mesh;
       if (kept) walls.push({ type: "box", centre: kept.centre, size: kept.size, material: "plaster", tag: `wall:${kept.sourceId}` });
     }

@@ -53,6 +53,16 @@ export type MeasuredStill = FloorplanVizImage & {
 
 export type PieceBox = { kind: ListedKind | "open floor" | "dining set"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
 
+/**
+ * Where the flat's floor is open, for the design to leave open: told only
+ * what to keep, the model furnished דירה 21's open hall with a third sofa in
+ * every try.
+ */
+function openFloorLine(scene: FlatScene): string {
+  const places = [...new Set(openFloorSquares(scene).map((sq) => sq.place))];
+  return places.length > 0 ? `Open floor that stays open, with nothing added on it but a rug or a plant: the ${places.join(", the ")}.` : "";
+}
+
 /** The listed pieces' boxes in the cropped frame. */
 function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; height: number }, crop: ContentFrame): PieceBox[] {
   const out: PieceBox[] = [];
@@ -161,7 +171,7 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       selected: options.selected ?? false,
       plain,
       ...(walls ? { walls } : {}),
-      inventory: inventoryByPlace(flatPieces(scene), scene.extent),
+      inventory: [inventoryByPlace(flatPieces(scene), scene.extent), openFloorLine(scene)].filter(Boolean).join("\n"),
       pieceBoxes: boxesInFrame(scene, view, size, crop),
     };
   } catch (err: unknown) {
