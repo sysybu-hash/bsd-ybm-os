@@ -68,7 +68,7 @@ export function finishPrompt(kind: FinishKind, subject: string, options?: { plai
  * it is. The checks that follow look at the walls and at the furniture's
  * count and kind, not at how the model styled them.
  */
-export function designPrompt(subject: string, options: { haredi: boolean; inventory?: string }): string {
+export function designPrompt(subject: string, options: { haredi: boolean; inventory?: string; style?: string }): string {
   return [
     "Image 1 is an exact top-down LAYOUT of an apartment, measured from the architect's drawing: its walls, doors, windows and every piece of furniture are where they really are.",
     "Design this apartment as a premium, photorealistic 3D floor plan for a real-estate sales brochure, by a top interior designer.",
@@ -81,9 +81,9 @@ ${options.inventory}`]
     "DESIGN FREELY: the style of each piece, upholstery and bedding, rugs, floor and wall finishes, kitchen fronts and worktops, lighting and soft shadows, plants and small decor on and beside the furniture.",
     "Do NOT add or remove a room, wall, door, window, bed, sofa, armchair, table, kitchen island or unit, or wardrobe — no coffee table, no extra seating group. Do NOT add a terrace, a garden or anything outside the walls; keep the plain light ground round the apartment. No people, no text, no logos" +
       (options.haredi ? ", no television or screen, no artwork with faces." : "."),
-    // The look the owner chose from the sheet-drawn stills: golden hour and
-    // warm tones. "Bright daylight" turned them cool and flat.
-    "Look: warm golden-hour sunlight streaming in low through the windows, long soft warm shadows across the floors, glowing warm lamps; a warm palette — honey oak, warm beige and cream, caramel leather and walnut, soft terracotta and olive accents; magazine-quality materials and crisp white bedding; rich, inviting, cinematic, tack-sharp.",
+    // The style the run asked for, and the light every style shares: the
+    // golden hour and warm palette the owner chose on the sheet-drawn stills.
+    ...(options.style ? [options.style] : []),
     `Subject: ${subject}.`,
   ].join("\n");
 }

@@ -7,7 +7,7 @@ import type { FinishComparison } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { recordFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
-import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
+import { WARM_INVITING_LIGHT, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 
 /**
@@ -66,7 +66,11 @@ export async function finishMeasuredStill(
   // the whole render's edges and masses checked.
   const design = still.walls != null;
   const prompt = design
-    ? designPrompt(finishSubject(options.styleKit), { haredi: options.styleKit.audience === "haredi", inventory: still.inventory })
+    ? designPrompt(finishSubject(options.styleKit), {
+        haredi: options.styleKit.audience === "haredi",
+        inventory: still.inventory,
+        style: [options.styleKit.promptBlock, WARM_INVITING_LIGHT].join("\n\n"),
+      })
     : finishPrompt("apartment", finishSubject(options.styleKit));
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
   for (let attempt = 1; attempt <= (options.tries ?? 2); attempt++) {
