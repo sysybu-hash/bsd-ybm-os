@@ -42,10 +42,10 @@ describe("the open floor a design is checked on", () => {
     const squares = openFloorSquares(scene, 20);
     expect(squares.length).toBeGreaterThan(0);
     for (const s of squares) {
-      // Clear of the sofa-sized piece (0.2–1.8) and the wall at x 3.9–4.1, with 15 cm to spare.
-      expect(s.x - 0.65 >= 1.8 || s.z - 0.65 >= 1.8).toBe(true);
-      expect(Math.abs(s.x - 4)).toBeGreaterThanOrEqual(0.75);
-      expect(s.x + 0.65 <= 6 || s.z - 0.65 >= 2).toBe(true);
+      // 70 cm squares clear of the piece (0.2–1.8) and the wall at x 3.9–4.1, with 15 cm to spare.
+      expect(s.x - 0.5 >= 1.8 || s.z - 0.5 >= 1.8).toBe(true);
+      expect(Math.abs(s.x - 4)).toBeGreaterThanOrEqual(0.6);
+      expect(s.x + 0.5 <= 6 || s.z - 0.5 >= 2).toBe(true);
     }
   });
 });

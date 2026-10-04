@@ -88,6 +88,13 @@ ${options.inventory}`]
   ].join("\n");
 }
 
+/** Where in a frame a point is, in thirds: "top left", "middle", "bottom right". */
+function framePlace(fx: number, fy: number): string {
+  const row = ["top", "middle", "bottom"][Math.min(2, Math.floor(fy * 3))]!;
+  const col = ["left", "centre", "right"][Math.min(2, Math.floor(fx * 3))]!;
+  return row === "middle" && col === "centre" ? "middle" : row === "middle" ? `middle ${col}` : col === "centre" ? `${row} centre` : `${row} ${col}`;
+}
+
 /**
  * A refused design, corrected rather than redrawn: the model is handed the
  * layout and its own design, and told exactly what the judge found wrong. A
@@ -218,6 +225,16 @@ export async function structuralMatch(render: Buffer, finish: Buffer): Promise<n
  * it.
  */
 export async function wallMatch(walls: Buffer, painting: Buffer): Promise<number> {
+  return (await wallMatchDetail(walls, painting)).all;
+}
+
+/**
+ * The walls kept, over the whole frame and in its worst part: the frame cut
+ * into a grid of about 1.5 m cells, each with enough wall in it scored on its
+ * own. A design that redrew one bathroom kept 95 % of the flat's walls; the
+ * bathroom's cell kept far fewer.
+ */
+export async function wallMatchDetail(walls: Buffer, painting: Buffer): Promise<{ all: number; worstCell: number; driftedAt: string[] }> {
   const meta = await sharp(walls).metadata();
   const w = 480;
   const h = Math.round((w * (meta.height ?? 300)) / (meta.width ?? 480));
@@ -242,23 +259,40 @@ export async function wallMatch(walls: Buffer, painting: Buffer): Promise<number
   const cut = sorted[Math.floor(sorted.length * 0.85)]!;
   let on = 0;
   let hit = 0;
+  const GRID = 8;
+  const cellW = w / GRID;
+  const rows = Math.max(1, Math.round(h / cellW));
+  const cellOn = new Uint32Array(GRID * rows);
+  const cellHit = new Uint32Array(GRID * rows);
   for (let k = 0; k < outline.length; k++) {
     if (!outline[k]) continue;
     on++;
     const x = k % w;
     const y = (k - x) / w;
+    const cell = Math.min(rows - 1, Math.floor(y / cellW)) * GRID + Math.min(GRID - 1, Math.floor(x / cellW));
+    cellOn[cell] = cellOn[cell]! + 1;
     search: for (let dy = -3; dy <= 3; dy++) {
       for (let dx = -3; dx <= 3; dx++) {
         const qx = x + dx;
         const qy = y + dy;
         if (qx >= 0 && qy >= 0 && qx < w && qy < h && mag[qy * w + qx]! > cut && cut > 0) {
           hit++;
+          cellHit[cell] = cellHit[cell]! + 1;
           break search;
         }
       }
     }
   }
-  return on ? hit / on : 0;
+  // A cell scored on its own once it holds a wall's run across it.
+  let worstCell = 1;
+  const drifted = new Set<string>();
+  for (let c = 0; c < cellOn.length; c++) {
+    if (cellOn[c]! < cellW * 1.5) continue;
+    const kept = cellHit[c]! / cellOn[c]!;
+    worstCell = Math.min(worstCell, kept);
+    if (kept < 0.75) drifted.add(framePlace((c % GRID) / GRID + 0.5 / GRID, Math.floor(c / GRID) / rows + 0.5 / rows));
+  }
+  return { all: on ? hit / on : 0, worstCell: on ? worstCell : 0, driftedAt: [...drifted] };
 }
 
 /**

@@ -10,7 +10,7 @@ jest.mock("@/lib/projects/building/finish", () => ({
   finishPass: (...args: unknown[]) => pass(...args),
   structuralMatch: (...args: unknown[]) => edges(...args),
   massMatch: (...args: unknown[]) => masses(...args),
-  wallMatch: (...args: unknown[]) => walls(...args),
+  wallMatchDetail: (...args: unknown[]) => walls(...args),
 }));
 jest.mock("@/lib/gemini-api-key", () => ({ hasGeminiApiKey: () => true, getGeminiApiKey: () => "k" }));
 jest.mock("@google/genai", () => ({ GoogleGenAI: jest.fn() }));
@@ -61,7 +61,7 @@ describe("a measured still, designed", () => {
 
   it("holds the design to the measured walls, not to the render's furniture", async () => {
     pass.mockResolvedValue({ image: Buffer.from("designed"), model: "m" });
-    walls.mockResolvedValue(0.9);
+    walls.mockResolvedValue({ all: 0.98, worstCell: 0.9, driftedAt: [] });
     edges.mockResolvedValue(0.1);
     const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() });
     expect(done?.origin).toBe("finish");
@@ -73,7 +73,7 @@ describe("a measured still, designed", () => {
 
   it("corrects a refused design with the layout beside it, instead of drawing a new one", async () => {
     pass.mockResolvedValueOnce({ image: Buffer.from("first"), model: "m" }).mockResolvedValueOnce({ image: Buffer.from("fixed"), model: "m" });
-    walls.mockResolvedValue(0.9);
+    walls.mockResolvedValue({ all: 0.98, worstCell: 0.9, driftedAt: [] });
     const judge = jest.fn().mockResolvedValueOnce("missing: bedroom 2: 1 single bed").mockResolvedValueOnce(null);
     const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend(), judge });
     expect(done?.base64).toBe(Buffer.from("fixed").toString("base64"));
@@ -82,9 +82,27 @@ describe("a measured still, designed", () => {
     expect(images).toEqual([Buffer.from("render"), Buffer.from("first")]);
   });
 
-  it("refuses a design whose walls moved", async () => {
+  it("corrects a design once, and draws afresh after a refused correction", async () => {
+    pass.mockResolvedValue({ image: Buffer.from("d"), model: "m" });
+    walls.mockResolvedValue({ all: 0.98, worstCell: 0.9, driftedAt: [] });
+    const judge = jest.fn().mockResolvedValue("not as the layout: bed at the top left");
+    await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend(), judge, tries: 3 });
+    expect(pass.mock.calls.map((c) => Array.isArray(c[2]))).toEqual([false, true, false]);
+  });
+
+  it("corrects a design whose walls drifted in one place, naming the place", async () => {
+    pass.mockResolvedValueOnce({ image: Buffer.from("drifted"), model: "m" }).mockResolvedValueOnce({ image: Buffer.from("fixed"), model: "m" });
+    walls.mockResolvedValueOnce({ all: 0.92, worstCell: 0.4, driftedAt: ["bottom left"] }).mockResolvedValueOnce({ all: 0.98, worstCell: 0.9, driftedAt: [] });
+    const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() });
+    expect(done?.base64).toBe(Buffer.from("fixed").toString("base64"));
+    const [, prompt, images] = pass.mock.calls[1]!;
+    expect(String(prompt)).toContain("at the bottom left");
+    expect(images).toEqual([Buffer.from("render"), Buffer.from("drifted")]);
+  });
+
+  it("refuses a design whose walls moved in one part of the flat, though it kept most of them", async () => {
     pass.mockResolvedValue({ image: Buffer.from("moved"), model: "m" });
-    walls.mockResolvedValue(0.5);
+    walls.mockResolvedValue({ all: 0.97, worstCell: 0.4, driftedAt: ["middle"] });
     expect(await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() })).toBeNull();
   });
 });

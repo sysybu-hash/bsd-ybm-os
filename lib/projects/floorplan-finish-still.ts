@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { hasGeminiApiKey, getGeminiApiKey } from "@/lib/gemini-api-key";
 import { createLogger } from "@/lib/logger";
-import { correctionPrompt, designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatch } from "@/lib/projects/building/finish";
+import { correctionPrompt, designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatchDetail } from "@/lib/projects/building/finish";
 import type { FinishComparison } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
@@ -29,10 +29,14 @@ export const FINISH_MIN_EDGES = 0.6;
 export const FINISH_MIN_MASSES = 0.5;
 /**
  * A designed flat's walls: the share of the measured walls' outline the
- * design keeps an edge on. Its own furniture is the model's to style; its
- * walls are not.
+ * design keeps an edge on, over the flat and in its worst 1.5 m cell. Its
+ * own furniture is the model's to style; its walls are not. Measured on
+ * דירה 14 and 21: designs that kept the walls scored 0.985–0.999 and ≥ 0.74
+ * in their worst cell; one that redrew the bathrooms 0.947 and 0.54, one
+ * that moved a bedroom's walls 0.908 and 0.24.
  */
-export const DESIGN_MIN_WALLS = 0.75;
+export const DESIGN_MIN_WALLS = 0.95;
+export const DESIGN_MIN_WALL_CELL = 0.65;
 /** A call can take a minute; none starts closer than this to the deadline. */
 const CALL_MS = 75_000;
 
@@ -88,9 +92,19 @@ export async function finishMeasuredStill(
     let masses: number;
     let held: boolean;
     if (design) {
-      edges = await wallMatch(still.walls!, done.image);
+      const kept = await wallMatchDetail(still.walls!, done.image);
+      edges = kept.all;
       masses = 1;
-      held = edges >= DESIGN_MIN_WALLS;
+      held = kept.all >= DESIGN_MIN_WALLS && kept.worstCell >= DESIGN_MIN_WALL_CELL;
+      log.info("design walls", { attempt, all: Number(kept.all.toFixed(3)), worstCell: Number(kept.worstCell.toFixed(3)), driftedAt: kept.driftedAt });
+      // Walls that drifted are corrected like a piece that did: the design
+      // kept, the walls named where they moved. Only a near miss — a design
+      // that redrew the plan is drawn again.
+      // One correction a design: an edit of an edit came back hazy and pale.
+      if (!held && kept.all >= 0.85 && !correcting) {
+        const at = kept.driftedAt.length > 0 ? ` at the ${kept.driftedAt.join(", the ")}` : "";
+        refusedDesigns.push({ image: done.image, reason: `its walls are not image 1's walls${at}: put every wall, door and window back exactly where image 1 has them, at their thickness` });
+      }
     } else {
       edges = await structuralMatch(still.plain, done.image);
       masses = await massMatch(still.plain, done.image);
@@ -103,11 +117,11 @@ export async function finishMeasuredStill(
     if (refused) {
       log.info("finish refused by the judge", { attempt, refused });
       // "no judge" has nothing to correct; a turned plan is redrawn.
-      if (refused !== "no judge" && refused !== "turned or mirrored") refusedDesigns.push({ image: done.image, reason: refused });
+      if (refused !== "no judge" && refused !== "turned or mirrored" && !correcting) refusedDesigns.push({ image: done.image, reason: refused });
       continue;
     }
     best = { image: done.image, edges, masses, score };
-    if (best.score >= (design ? 0.85 : 0.7)) break;
+    if (best.score >= (design ? DESIGN_MIN_WALLS : 0.7)) break;
   }
   if (!best) {
     log.info("no finish held the measured still; the render ships");

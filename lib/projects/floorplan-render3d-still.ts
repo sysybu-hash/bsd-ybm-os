@@ -72,8 +72,8 @@ function boxesInFrame(scene: FlatScene, view: FlatView, size: { width: number; h
   }
   // And the open floor, where a design may add decor and nothing else.
   for (const sq of openFloorSquares(scene)) {
-    const a = dollhousePixel(view, size, { x: sq.x - 0.5, y: 0, z: sq.z - 0.5 });
-    const b = dollhousePixel(view, size, { x: sq.x + 0.5, y: 0, z: sq.z + 0.5 });
+    const a = dollhousePixel(view, size, { x: sq.x - sq.half, y: 0, z: sq.z - sq.half });
+    const b = dollhousePixel(view, size, { x: sq.x + sq.half, y: 0, z: sq.z + sq.half });
     out.push({ kind: "open floor", place: sq.place, x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y) });
   }
   return out;
