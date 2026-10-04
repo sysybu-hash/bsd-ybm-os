@@ -11,6 +11,7 @@ import { atOtherLevel, inferRoomKind, type FloorplanLayout } from "@/lib/project
 
 export { atOtherLevel };
 import {
+  bathroomSquaresAreNotSeats,
   findBaths,
   findFurniture,
   findKitchenFittings,
@@ -582,12 +583,12 @@ export async function buildFlatFromGeometry(
       // A chair's corners found as a piece of their own, beside the chair.
       !(chairsDrawn && byTable(piece)),
   );
-  const furniture = [
-    ...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))),
-    ...suite,
-    ...chairs,
-    ...stools,
-  ];
+  // The suite comes in after the furniture pass, so its pieces in a bathroom
+  // are settled here too; see bathroomSquaresAreNotSeats.
+  const furniture = bathroomSquaresAreNotSeats(
+    [...found.filter((piece) => !suite.some((seat) => partOf(piece, seat))), ...suite, ...chairs, ...stools],
+    unitsPerMetre,
+  );
 
   // Terraces are read from the sheet the label sits on, and only kept where the
   // region grown from the label measures what the label says. A terrace that

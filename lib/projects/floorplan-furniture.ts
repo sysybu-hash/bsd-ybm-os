@@ -1223,12 +1223,12 @@ export function findFurniture(
         !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
     ),
   ];
-  return panPartsAreNotSeats(
+  return bathroomSquaresAreNotSeats(panPartsAreNotSeats(
     chairsAreNotPans(
       settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, roundedTable ?? ring ?? drawnInRing),
       unitsPerMetre,
     ),
-  );
+  ), unitsPerMetre);
 }
 
 /**
@@ -1258,6 +1258,28 @@ export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number
       ? { ...piece, kind: "seat" as const }
       : piece,
   );
+}
+
+/**
+ * A seat among the sanitary ware, away from any table, is sanitary ware or a
+ * washer, not a chair: דירה 21's 54 cm washing machine stood between its
+ * basin and its WC and was built as a dining chair, and the end of its bath,
+ * 90 by 55, as an armchair.
+ */
+export function bathroomSquaresAreNotSeats(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  const wet = pieces.filter((piece) => piece.kind === "fixture");
+  const tables = pieces.filter((piece) => piece.kind === "table");
+  const gap = (a: FurniturePiece, b: FurniturePiece) =>
+    Math.hypot(
+      Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0),
+      Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0),
+    );
+  return pieces.map((piece) => {
+    if (piece.kind !== "seat") return piece;
+    if (Math.max(piece.widthCm, piece.depthCm) > 100 || Math.min(piece.widthCm, piece.depthCm) < 45) return piece;
+    if (tables.some((table) => gap(piece, table) <= unitsPerMetre * 0.9)) return piece;
+    return wet.some((fixture) => gap(piece, fixture) <= unitsPerMetre * 0.8) ? { ...piece, kind: "fixture" as const } : piece;
+  });
 }
 
 /**

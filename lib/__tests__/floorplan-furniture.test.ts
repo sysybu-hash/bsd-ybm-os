@@ -531,3 +531,19 @@ describe("a dining table drawn with rounded corners, and the chairs drawn round 
     expect(seatsDrawnAroundTable(table, [], UPM, [])).toBeNull();
   });
 });
+
+describe("a seat among the sanitary ware", () => {
+  const upm = 63;
+  const piece = (kind: string, x: number, y: number, wCm: number, dCm: number) =>
+    ({ x, y, w: (wCm / 100) * upm, h: (dCm / 100) * upm, widthCm: wCm, depthCm: dCm, kind }) as never;
+
+  it("is a washer or sanitary ware beside a WC, and a chair beside a table", async () => {
+    const { bathroomSquaresAreNotSeats } = await import("@/lib/projects/floorplan-furniture");
+    const wc = piece("fixture", 0, 0, 40, 60);
+    const washer = piece("seat", 40, 0, 54, 54);
+    const table = piece("table", 500, 0, 90, 180);
+    const chair = piece("seat", 450, 20, 50, 50);
+    const out = bathroomSquaresAreNotSeats([wc, washer, table, chair], upm) as Array<{ kind: string }>;
+    expect(out.map((p) => p.kind)).toEqual(["fixture", "fixture", "table", "seat"]);
+  });
+});
