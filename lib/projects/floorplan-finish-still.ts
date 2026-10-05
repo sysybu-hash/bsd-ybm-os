@@ -7,7 +7,7 @@ import type { FinishComparison, SpotFinding } from "@/lib/projects/floorplan-fin
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import { recordFloorplanSpend, type FloorplanSpend } from "@/lib/projects/floorplan-spend";
-import { WARM_INVITING_LIGHT, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
+import { designStyleBlock, type FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 
 /**
@@ -94,7 +94,7 @@ export async function finishMeasuredStill(
   // flat and the walls are checked against the map; otherwise repainted, and
   // the whole render's edges and masses checked.
   const design = still.walls != null;
-  const style = [options.styleKit.promptBlock, WARM_INVITING_LIGHT].join("\n\n");
+  const style = designStyleBlock(options.styleKit);
   const prompt = design
     ? designPrompt(finishSubject(options.styleKit), {
         haredi: options.styleKit.audience === "haredi",

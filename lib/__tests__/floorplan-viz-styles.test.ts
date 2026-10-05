@@ -285,3 +285,27 @@ describe("floorplan viz style kits", () => {
     expect(prompt).not.toMatch(/Storage = shelves\. No kitchen, no bathroom fixtures, no beds\./);
   });
 });
+
+describe("the style as told to the model designing the measured layout", () => {
+  it("speaks of the layout, never the sheet, and asks for no piece the layout lacks", async () => {
+    const { designStyleBlock, FLOORPLAN_VIZ_PRESETS, FLOORPLAN_VIZ_PRESET_IDS } = await import(
+      "@/lib/projects/floorplan-viz-styles"
+    );
+    for (const id of FLOORPLAN_VIZ_PRESET_IDS) {
+      const block = designStyleBlock(FLOORPLAN_VIZ_PRESETS[id]);
+      expect(block).not.toMatch(/attached plan|the sheet|sales sheet|plan draws/i);
+      expect(block).not.toMatch(/almost empty rooms/i);
+      expect(block).not.toMatch(/Built-in flush sefarim cabinet in living/i);
+      expect(block).toMatch(/The layout comes first/);
+    }
+  });
+
+  it("keeps the haredi rules and the developer handover's cool light", async () => {
+    const { designStyleBlock, FLOORPLAN_VIZ_PRESETS } = await import("@/lib/projects/floorplan-viz-styles");
+    expect(designStyleBlock(FLOORPLAN_VIZ_PRESETS.haredi_classic)).toMatch(/NO SCREENS anywhere/);
+    expect(designStyleBlock(FLOORPLAN_VIZ_PRESETS.haredi_modern)).toMatch(/NO SCREENS anywhere/);
+    expect(designStyleBlock(FLOORPLAN_VIZ_PRESETS.contemporary)).not.toMatch(/NO SCREENS anywhere/);
+    expect(designStyleBlock(FLOORPLAN_VIZ_PRESETS.developer_white)).not.toMatch(/LIGHT AND WARMTH/);
+    expect(designStyleBlock(FLOORPLAN_VIZ_PRESETS.luxury)).toMatch(/LIGHT AND WARMTH/);
+  });
+});
