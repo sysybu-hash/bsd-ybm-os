@@ -3443,13 +3443,48 @@ export function terraceFromPaving(
   })) {
     return rows;
   }
+  // A short wall standing mostly inside the paving is the sheet's ink, not
+  // a wall: 22's level mark's leader and lettering, read as stubs into its
+  // terrace, cut it in two.
+  const standing = bodies.filter((body) => {
+    const r = bodyRect(body);
+    const ox = Math.min(r.x + r.w, x1) - Math.max(r.x, x0);
+    const oy = Math.min(r.y + r.h, y1) - Math.max(r.y, y0);
+    const inside = ox > 0 && oy > 0 ? (ox * oy) / (r.w * r.h) : 0;
+    if (inside >= 0.5 && body.to - body.from <= unitsPerMetre * 1.5) return false;
+    // Nor one that ends out on the paving, a stub into it: a divider runs
+    // the terrace's depth, and 22's bathroom wall, run on past the facade,
+    // cut its terrace in two.
+    const end = unitsPerMetre * 0.15;
+    const endsInside =
+      body.orientation === "v"
+        ? (body.to > y0 + end && body.to < y1 - end) || (body.from > y0 + end && body.from < y1 - end)
+        : (body.to > x0 + end && body.to < x1 - end) || (body.from > x0 + end && body.from < x1 - end);
+    const across = body.orientation === "v" ? r.x + r.w / 2 > x0 && r.x + r.w / 2 < x1 : r.y + r.h / 2 > y0 && r.y + r.h / 2 < y1;
+    if (endsInside && across) return false;
+    // Nor one the joints run straight across: a real wall stops the paving.
+    const crossed = joints.some((j) =>
+      body.orientation === "v"
+        ? Math.abs(j.y2 - j.y1) < 1 &&
+          Math.min(j.x1, j.x2) < r.x &&
+          Math.max(j.x1, j.x2) > r.x + r.w &&
+          j.y1 > r.y &&
+          j.y1 < r.y + r.h
+        : Math.abs(j.x2 - j.x1) < 1 &&
+          Math.min(j.y1, j.y2) < r.y &&
+          Math.max(j.y1, j.y2) > r.y + r.h &&
+          j.x1 > r.x &&
+          j.x1 < r.x + r.w,
+    );
+    return !crossed;
+  });
   const out: SpanRow[] = [];
   const step = pitch;
   for (let y = y0 + step / 2; y < y1; y += step) {
     const spans: Array<[number, number]> = [];
     let start: number | null = null;
     for (let x = x0; x <= x1 + step / 2; x += step) {
-      const on = x <= x1 && !pointHitsBody(x, y, bodies);
+      const on = x <= x1 && !pointHitsBody(x, y, standing);
       if (on && start == null) start = x;
       if (!on && start != null) {
         spans.push([start, x]);

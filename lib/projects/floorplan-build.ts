@@ -747,8 +747,12 @@ export async function buildFlatFromGeometry(
     const text = levelTextAt(mark, geometry.segments, geometry.curves);
     return text != null && sameLevelText(text, flatLevel);
   };
-  const ownSeeds = levelSeeds.filter(atFlatLevel);
-  const otherSeeds = levelSeeds.filter((mark) => !atFlatLevel(mark));
+  // A mark whose figure cannot be read — 14's "+9.64" is printed on end — is
+  // not at another level, only unread; it seeds as the flat's own would.
+  const unread = (mark: { x: number; y: number; r: number }) =>
+    flatLevel != null && levelTextAt(mark, geometry.segments, geometry.curves) == null;
+  const ownSeeds = levelSeeds.filter((mark) => atFlatLevel(mark) || unread(mark));
+  const otherSeeds = levelSeeds.filter((mark) => !atFlatLevel(mark) && !unread(mark));
   const unlabelledHits =
     otherSeeds.length > 0
       ? // At least 2.8 m²: unlabelled, the region has only its size to go on.
