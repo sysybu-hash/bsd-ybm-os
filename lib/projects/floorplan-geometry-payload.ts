@@ -114,7 +114,7 @@ export type GeometryPayloadExtras = {
 };
 
 /**
- * Whether sanitary ware stands in one of the flat's rooms, or right at one's
+ * Whether sanitary ware, or a piece not yet named, stands in one of the flat's rooms, or right at one's
  * edge — its own ink stops the room's flood, so a pan can sit just outside
  * the region. One in no room is lettering or a window's ink: on דירה 18 one
  * on the terrace of the storey above, one in the window onto the terrace, and
@@ -125,7 +125,7 @@ function standsInARoom(
   rooms: SegmentedRoom[],
   unitsPerMetre: number,
 ): boolean {
-  if (piece.kind !== "fixture") return true;
+  if (piece.kind !== "fixture" && piece.kind !== "unknown") return true;
   const cx = piece.x + piece.w / 2;
   const cy = piece.y + piece.h / 2;
   const rx = piece.w / 2 + 0.1 * unitsPerMetre;

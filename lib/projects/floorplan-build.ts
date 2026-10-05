@@ -1120,6 +1120,44 @@ export async function buildFlatFromGeometry(
     (piece.kind === "fixture" || piece.kind === "unknown") &&
     Math.max(piece.widthCm, piece.depthCm) <= 60 &&
     smallMarks.some((mark) => mark.x >= piece.x && mark.x <= piece.x + piece.w && mark.y >= piece.y && mark.y <= piece.y + piece.h);
+  // A chair at the head of the table, drawn into the table's bevelled
+  // corner, came out one 94 by 71 cm unknown with the table's end inside it
+  // (דירה 16). What stands past the table is the chair.
+  const tables = furnishings.filter((piece) => piece.kind === "table");
+  const chairAtTheTableEnd = (piece: FurniturePiece): FurniturePiece => {
+    if (piece.kind !== "unknown") return piece;
+    for (const t of tables) {
+      const ox = Math.min(piece.x + piece.w, t.x + t.w) - Math.max(piece.x, t.x);
+      const oy = Math.min(piece.y + piece.h, t.y + t.h) - Math.max(piece.y, t.y);
+      if (ox <= 0 || oy <= 0) continue;
+      // Cut along the side the piece stands out from.
+      const rest =
+        ox >= piece.w * 0.8
+          ? piece.y < t.y
+            ? { x: piece.x, y: piece.y, w: piece.w, h: t.y - piece.y }
+            : { x: piece.x, y: t.y + t.h, w: piece.w, h: piece.y + piece.h - (t.y + t.h) }
+          : oy >= piece.h * 0.8
+            ? piece.x < t.x
+              ? { x: piece.x, y: piece.y, w: t.x - piece.x, h: piece.h }
+              : { x: t.x + t.w, y: piece.y, w: piece.x + piece.w - (t.x + t.w), h: piece.h }
+            : null;
+      if (!rest || rest.w <= 0 || rest.h <= 0) continue;
+      // The bevel's corners widen it past the chair: kept to a chair's
+      // width, on the middle.
+      const chair = 0.55 * unitsPerMetre;
+      const seat =
+        rest.w > chair && rest.w >= rest.h
+          ? { ...rest, x: rest.x + (rest.w - chair) / 2, w: chair }
+          : rest.h > chair && rest.h > rest.w
+            ? { ...rest, y: rest.y + (rest.h - chair) / 2, h: chair }
+            : rest;
+      const wCm = (seat.w / unitsPerMetre) * 100;
+      const hCm = (seat.h / unitsPerMetre) * 100;
+      if (Math.min(wCm, hCm) < 30 || Math.max((rest.w / unitsPerMetre) * 100, (rest.h / unitsPerMetre) * 100) > 100) continue;
+      return { ...piece, ...seat, kind: "seat", widthCm: wCm, depthCm: hCm };
+    }
+    return piece;
+  };
   const furnitureOffTerrace = furnishings.filter((piece) => {
     if (inLegend(piece) || onBed(piece) || roundsAMark(piece)) return false;
     if (piece.kind !== "bed" && piece.kind !== "table" && piece.kind !== "fixture" && inWalls(piece)) return false;
@@ -1135,7 +1173,7 @@ export async function buildFlatFromGeometry(
     bodies,
     floor: flatFloor,
     // Settled again at the end: pieces join after the furniture pass.
-    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink), unitsPerMetre),
+    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), unitsPerMetre),
     openings,
     terraces,
     printedTerraceCount: printed.length,
