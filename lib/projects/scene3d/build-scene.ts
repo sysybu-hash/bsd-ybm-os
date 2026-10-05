@@ -367,8 +367,10 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const bodies = input.bodies.filter((body) => touchesGround(bandToRect(body), reach));
   // A piece of furniture standing on no floor we measured is the neighbour's
   // too, and it stretched the frame the same way.
+  // Sanitary ware within a hand of it: a pan's own ink stops the floor's
+  // flood, and 21's WC pan stood on no floor of its own and was dropped.
   const grounded = input.furniture.filter((piece) =>
-    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, 0),
+    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, piece.kind === "fixture" ? 0.3 * upm : 0),
   );
   // One drawn object is one piece. The detector can find a rectangle twice a
   // few millimetres apart, and דירה 15 got two beds in one place.
@@ -654,7 +656,13 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       unitsPerMetre: upm,
     });
     // A bed's head where the sheet draws its pillow; else by the walls.
-    const facing = piece.kind === "bed" ? (piece.head ?? headFacing(box, decided, wallRectsAll)) : decided;
+    // A pan's back where the sheet draws its cistern; see pansFromCisterns.
+    const facing =
+      piece.kind === "bed"
+        ? (piece.head ?? headFacing(box, decided, wallRectsAll))
+        : piece.kind === "fixture" && piece.fixture === "toilet" && piece.head
+          ? piece.head
+          : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
     for (const built of partsFor(kind, {
       wM: box.w / upm,

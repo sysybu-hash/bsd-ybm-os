@@ -1587,3 +1587,87 @@ export function findBaths(
     return inside >= 10;
   });
 }
+
+/**
+ * A pan known by its cistern. A sales sheet draws a WC's bowl closed and its
+ * cistern as loose lines behind it, square to the bowl's long axis; the bowl
+ * alone reads as a small oval like a basin's, and which it is was left to the
+ * wall it was nearest — 22's bowl, 22 cm off its wall with the cistern
+ * between, was built as a basin, and a closer side wall in 16's narrow WC did
+ * the same. Lines like that at one end only make it a pan, its back there.
+ */
+export function pansFromCisterns(
+  pieces: FurniturePiece[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+): FurniturePiece[] {
+  const cm = (v: number) => (v / unitsPerMetre) * 100;
+  return pieces.map((piece) => {
+    if (piece.kind !== "fixture" || piece.fixture) return piece;
+    const long = Math.max(piece.widthCm, piece.depthCm);
+    const short = Math.min(piece.widthCm, piece.depthCm);
+    if (long < 28 || long > 50 || short < 22 || short > 42) return piece;
+    const alongX = piece.w >= piece.h;
+    const ends: Array<{ side: NonNullable<FurniturePiece["head"]>; at: number; dir: number }> = alongX
+      ? [
+          { side: "west", at: piece.x, dir: -1 },
+          { side: "east", at: piece.x + piece.w, dir: 1 },
+        ]
+      : [
+          { side: "north", at: piece.y, dir: -1 },
+          { side: "south", at: piece.y + piece.h, dir: 1 },
+        ];
+    const [lo, hi] = alongX ? [piece.y, piece.y + piece.h] : [piece.x, piece.x + piece.w];
+    const shortSpan = hi - lo;
+    // Collinear pieces together: 22's cistern face is drawn in two halves.
+    const cisternAt = ends.filter((end) => {
+      const lines = new Map<number, Array<[number, number]>>();
+      for (const s of segments) {
+        if (!isAxisAligned(s)) continue;
+        // Square to the bowl's long axis: vertical when the bowl runs along x.
+        if (alongX ? Math.abs(s.x2 - s.x1) > 1 : Math.abs(s.y2 - s.y1) > 1) continue;
+        const pos = alongX ? (s.x1 + s.x2) / 2 : (s.y1 + s.y2) / 2;
+        const off = cm((pos - end.at) * end.dir);
+        if (off < 3 || off > 30) continue;
+        const a = alongX ? Math.min(s.y1, s.y2) : Math.min(s.x1, s.x2);
+        const b = alongX ? Math.max(s.y1, s.y2) : Math.max(s.x1, s.x2);
+        const key = Math.round(pos);
+        lines.set(key, [...(lines.get(key) ?? []), [a, b]]);
+      }
+      return [...lines.values()].some((spans) => {
+        const sorted = [...spans].sort((p, q) => p[0] - q[0]);
+        const runs: Array<[number, number]> = [];
+        for (const [a, b] of sorted) {
+          const last = runs[runs.length - 1];
+          if (last && a <= last[1] + 1) last[1] = Math.max(last[1], b);
+          else runs.push([a, b]);
+        }
+        return runs.some(([a, b]) => {
+          const length = cm(b - a);
+          const overlap = Math.min(b, hi) - Math.max(a, lo);
+          return length >= short * 0.6 && length <= 70 && overlap >= shortSpan * 0.6;
+        });
+      });
+    });
+    if (cisternAt.length !== 1) return piece;
+    // The pan's footprint is the bowl and its cistern: 60 cm deep, grown
+    // toward the cistern, and at least 38 cm wide, so the pan built in it
+    // is a pan's size and stays inside what was measured.
+    const side = cisternAt[0]!.side;
+    const deep = Math.max(alongX ? piece.w : piece.h, 0.6 * unitsPerMetre);
+    const wide = Math.max(alongX ? piece.h : piece.w, 0.38 * unitsPerMetre);
+    const grow = deep - (alongX ? piece.w : piece.h);
+    const spread = wide - (alongX ? piece.h : piece.w);
+    const box = alongX
+      ? { x: side === "west" ? piece.x - grow : piece.x, y: piece.y - spread / 2, w: deep, h: wide }
+      : { x: piece.x - spread / 2, y: side === "north" ? piece.y - grow : piece.y, w: wide, h: deep };
+    return {
+      ...piece,
+      ...box,
+      widthCm: cm(box.w),
+      depthCm: cm(box.h),
+      fixture: "toilet",
+      head: side,
+    };
+  });
+}

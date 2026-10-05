@@ -126,7 +126,7 @@ export async function finishMeasuredStill(
     let masses: number;
     let held: boolean;
     if (design) {
-      const kept = await wallMatchDetail(still.walls!, done.image);
+      const kept = await wallMatchDetail(still.walls!, done.image, still.plain);
       edges = kept.all;
       masses = 1;
       held = kept.all >= DESIGN_MIN_WALLS && kept.worstCell >= DESIGN_MIN_WALL_CELL;

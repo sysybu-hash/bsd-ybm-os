@@ -578,3 +578,27 @@ describe("what the sheet draws closed, and its legend", () => {
     expect(out[1]!.kind).toBe("storage");
   });
 });
+
+describe("a pan known by its cistern", () => {
+  // 100 units a metre: a bowl 37 by 29 cm along x, its cistern face 5 cm past
+  // its east end, drawn in two halves.
+  const bowl = { kind: "fixture" as const, x: 100, y: 100, w: 37, h: 29, widthCm: 37, depthCm: 29 };
+  const seg = (x1: number, y1: number, x2: number, y2: number) => ({ x1, y1, x2, y2, lineWidth: 2 });
+
+  it("names the bowl a pan, its back at the cistern, at a pan's size", async () => {
+    const { pansFromCisterns } = await import("@/lib/projects/floorplan-furniture");
+    const [pan] = pansFromCisterns([bowl as never], [seg(142, 98, 142, 114), seg(142, 114, 142, 131)], 100);
+    expect(pan!.fixture).toBe("toilet");
+    expect(pan!.head).toBe("east");
+    expect(pan!.w).toBeCloseTo(60, 5);
+    expect(pan!.x).toBe(100);
+    expect(pan!.h).toBeGreaterThanOrEqual(38);
+  });
+
+  it("leaves a bowl with no cistern, or one at both ends, unnamed", async () => {
+    const { pansFromCisterns } = await import("@/lib/projects/floorplan-furniture");
+    expect(pansFromCisterns([bowl as never], [], 100)[0]!.fixture).toBeUndefined();
+    const both = [seg(142, 98, 142, 131), seg(95, 98, 95, 131)];
+    expect(pansFromCisterns([bowl as never], both, 100)[0]!.fixture).toBeUndefined();
+  });
+});

@@ -527,15 +527,35 @@ const DESIGN_LOOK: Record<FloorplanVizPresetId, string> = {
 export const DESIGN_PRECEDENCE =
   "The layout comes first. Where this style would ask for a piece the layout does not have — a sofa, a television, a cabinet, a desk, shelving — leave it out and finish the pieces the layout has.";
 
+/**
+ * The modesty and light blocks as told to the design, without what they
+ * assume the flat has. Written for drawing from the sheet, they speak of "a
+ * desk" and "the living seating" and "bedside lamps" as given — and 14's
+ * design came back with a desk and its lamp in two bedrooms; 18 has no
+ * sofa to stand a floor lamp by.
+ */
+export const HAREDI_MODESTY_DESIGN = HAREDI_MODESTY_PROMPT.replace(
+  " A desk holds unmarked books, a lamp, or a clock, never a monitor.",
+  "",
+).replace(
+  /- A desk holds exactly this:[^\n]*/,
+  "- No desk, no laptop open or closed, no tablet, no keyboard, and no dark slab of any size resting on a shelf, a counter or a bedside table anywhere in this apartment.",
+);
+
+export const WARM_LIGHT_DESIGN = WARM_INVITING_LIGHT.replace(
+  "a pendant over the dining table, under-cabinet strips in the kitchen, bedside lamps, a floor lamp beside the living seating, warm cove light along millwork.",
+  "a pendant over the layout's dining table, under-cabinet strips along its kitchen run, a lamp beside each bed and each sofa the layout has, warm cove light along millwork — never a piece of furniture added to hold one.",
+);
+
 export function designStyleBlock(kit: FloorplanVizStyleKit): string {
   const look = isFloorplanVizPresetId(kit.id)
     ? DESIGN_LOOK[kit.id]
     : // A custom kit is the client's own words, kept as they wrote them.
       kit.promptBlock.replace(/\n\n(MODESTY \(global|AESTHETIC \(haredi)[\s\S]*$/, "").trim();
   const parts = [look, DESIGN_PRECEDENCE];
-  if (kit.audience === "haredi") parts.push(HAREDI_MODESTY_PROMPT);
+  if (kit.audience === "haredi") parts.push(HAREDI_MODESTY_DESIGN);
   // The developer handover stays cool, as it does on every other route.
-  if (kit.id !== "developer_white") parts.push(WARM_INVITING_LIGHT);
+  if (kit.id !== "developer_white") parts.push(WARM_LIGHT_DESIGN);
   return parts.join("\n\n");
 }
 

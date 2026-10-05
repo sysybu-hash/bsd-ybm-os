@@ -252,7 +252,18 @@ export async function wallMatch(walls: Buffer, painting: Buffer): Promise<number
  * own. A design that redrew one bathroom kept 95 % of the flat's walls; the
  * bathroom's cell kept far fewer.
  */
-export async function wallMatchDetail(walls: Buffer, painting: Buffer): Promise<{ all: number; worstCell: number; driftedAt: string[] }> {
+export async function wallMatchDetail(
+  walls: Buffer,
+  painting: Buffer,
+  /**
+   * The render the walls map was drawn with. Where given, only the stretches
+   * of wall face the render itself shows as an edge are scored: a wall's cut
+   * top is the colour of the paper round the flat, and on the side the sun
+   * casts no shadow its outer face shows no edge at all — the measured still
+   * scored 0.83 against its own walls on 18 and 22, and no design could pass.
+   */
+  reference?: Buffer,
+): Promise<{ all: number; worstCell: number; driftedAt: string[] }> {
   const meta = await sharp(walls).metadata();
   const w = 480;
   const h = Math.round((w * (meta.height ?? 300)) / (meta.width ?? 480));
@@ -265,16 +276,36 @@ export async function wallMatchDetail(walls: Buffer, painting: Buffer): Promise<
       if (ink(k) && (!ink(k - 1) || !ink(k + 1) || !ink(k - w) || !ink(k + w))) outline[k] = 1;
     }
   }
-  const { data } = await sharp(painting).resize(w, h, { fit: "fill" }).greyscale().blur(0.8).raw().toBuffer({ resolveWithObject: true });
-  const mag = new Float32Array(w * h);
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const k = y * w + x;
-      mag[k] = Math.hypot(data[k + 1]! - data[k - 1]!, data[k + w]! - data[k - w]!);
+  /** Each pixel's edge strength, and the strength the strongest 15 % pass. */
+  const edgesOf = async (img: Buffer) => {
+    const { data } = await sharp(img).resize(w, h, { fit: "fill" }).greyscale().blur(0.8).raw().toBuffer({ resolveWithObject: true });
+    const strength = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const k = y * w + x;
+        strength[k] = Math.hypot(data[k + 1]! - data[k - 1]!, data[k + w]! - data[k - w]!);
+      }
+    }
+    const sortedStrength = Float32Array.from(strength).sort();
+    return { strength, cut: sortedStrength[Math.floor(sortedStrength.length * 0.85)]! };
+  };
+  const edgeNear = (e: { strength: Float32Array; cut: number }, x: number, y: number) => {
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const qx = x + dx;
+        const qy = y + dy;
+        if (qx >= 0 && qy >= 0 && qx < w && qy < h && e.strength[qy * w + qx]! > e.cut && e.cut > 0) return true;
+      }
+    }
+    return false;
+  };
+  if (reference) {
+    const ref = await edgesOf(reference);
+    for (let k = 0; k < outline.length; k++) {
+      if (outline[k] && !edgeNear(ref, k % w, Math.floor(k / w))) outline[k] = 0;
     }
   }
-  const sorted = Float32Array.from(mag).sort();
-  const cut = sorted[Math.floor(sorted.length * 0.85)]!;
+  const { strength: mag, cut } = await edgesOf(painting);
   let on = 0;
   let hit = 0;
   const GRID = 8;

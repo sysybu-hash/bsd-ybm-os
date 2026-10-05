@@ -18,6 +18,7 @@ import {
   findBaths,
   findDiamonds,
   kitchenSquaresAreAppliances,
+  pansFromCisterns,
   findFurniture,
   findKitchenFittings,
   findRoundedFurniture,
@@ -1326,7 +1327,7 @@ export async function buildFlatFromGeometry(
     bodies,
     floor: flatFloor,
     // Settled again at the end: pieces join after the furniture pass.
-    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), unitsPerMetre),
+    furniture: kitchenSquaresAreAppliances(pansFromCisterns(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), geometry.segments, unitsPerMetre), unitsPerMetre),
     openings,
     terraces,
     // Never the flat's own terraces, whatever ran into them.

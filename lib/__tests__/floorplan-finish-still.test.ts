@@ -65,7 +65,8 @@ describe("a measured still, designed", () => {
     edges.mockResolvedValue(0.1);
     const done = await finishMeasuredStill(withWalls, { styleKit: kit, spend: emptyFloorplanSpend() });
     expect(done?.origin).toBe("finish");
-    expect(walls).toHaveBeenCalledWith(Buffer.from("walls"), Buffer.from("designed"));
+    // Scored on the wall faces the render itself shows; see wallMatchDetail.
+    expect(walls).toHaveBeenCalledWith(Buffer.from("walls"), Buffer.from("designed"), Buffer.from("render"));
     expect(edges).not.toHaveBeenCalled();
     // The prompt hands the model the layout to design on.
     expect(String(pass.mock.calls[0]![1])).toContain("LAYOUT");
