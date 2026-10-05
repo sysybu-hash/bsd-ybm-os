@@ -16,7 +16,15 @@ import { getFloorplanVizModelChain } from "@/lib/gemini-model";
  */
 export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo" | "apartment";
 
-export function finishPrompt(kind: FinishKind, subject: string, options?: { plainGround?: boolean }): string {
+export function finishPrompt(
+  kind: FinishKind,
+  subject: string,
+  options?: {
+    plainGround?: boolean;
+    /** The run's own style, in place of the built-in look: a flat is in the style its owner chose. */
+    look?: string;
+  },
+): string {
   const keep = [
     "This image is an exact architectural render. Repaint it as a professional architectural photograph.",
     "KEEP EXACTLY: the camera position, lens and framing; every wall, opening, window, mullion, column, slab and roof edge in the same place and size; every piece of furniture, its position, size and count; the stair; the trees and cars where they are. There are NO people: do not add any person or human figure anywhere.",
@@ -57,7 +65,7 @@ export function finishPrompt(kind: FinishKind, subject: string, options?: { plai
           : kind === "section"
             ? "Luxury architectural section visualization: the building cut exactly where it is cut, the cut faces of walls and slabs crisp and solid, the rooms behind furnished and softly lit, real materials — oak and stone floors, fabric seats, warm white walls — the ground cut as a clean earth section, a clean pale sky. Presentation-board quality."
             : "Luxury architectural cutaway model photograph: the same cut and view, exquisite real materials — oak and stone floors, fabric seats, warm white walls with a crisp section cut — soft daylight from above, gentle ambient occlusion, like a museum-grade presentation model photographed in a studio.";
-  return [...keep, look, `Subject: ${subject}.`].join("\n");
+  return [...keep, options?.look ?? look, `Subject: ${subject}.`].join("\n");
 }
 
 /**

@@ -101,7 +101,7 @@ export async function finishMeasuredStill(
         inventory: still.inventory,
         style,
       })
-    : finishPrompt("apartment", finishSubject(options.styleKit));
+    : finishPrompt("apartment", finishSubject(options.styleKit), { look: style });
   let best: { image: Buffer; edges: number; masses: number; score: number } | null = null;
   /** The last design the judge refused, and why: the next call corrects it. */
   const refusedDesigns: Array<{ image: Buffer; reason: string; marks?: SpotFinding[] }> = [];
