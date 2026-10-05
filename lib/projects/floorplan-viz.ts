@@ -468,7 +468,10 @@ async function visualizeWithSpend(
     // Interiors, measured rather than invented: the brief for each one is the
     // room the walls cut and the furniture already placed in it. A failure here
     // never sinks the run — the overview is what the client is buying.
-    if (scope === "full" || scope === "rooms") {
+    // Not in the measured modes: these views are drawn from the sheet, room
+    // by room, and nothing measures them; a measured interior is not yet
+    // composed well enough to ship (see interiorStand).
+    if ((scope === "full" || scope === "rooms") && renderMode !== "finish" && renderMode !== "render3d") {
       try {
         const companions = await runWithFloorplanSpend(cadResult.spend, () =>
           generateGeometryCompanions({
@@ -515,6 +518,18 @@ async function visualizeWithSpend(
   if (cadResult.outcome === "locked") {
     throw new Error(
       "לא ניתן לנעול את גיאומטריית התוכנית — לא הופקה הדמיה מומצאת",
+    );
+  }
+  // Measured or nothing: past here the image model draws the flat from the
+  // sheet, and nothing checks it against a measurement — how a sink and a hob
+  // swapped places and a roof terrace was furnished. The measured modes ship
+  // no such drawing; the sheet-drawn route is there only when asked for by
+  // name ("ai", "both").
+  const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
+  if (measuredOnly) {
+    const why = cadResult.outcome === "skip" && cadResult.reason ? ` (${cadResult.reason})` : "";
+    throw new Error(
+      `לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. העלו את קובץ ה-PDF המקורי של האדריכל, או DWG / DXF / DWF.`,
     );
   }
 
