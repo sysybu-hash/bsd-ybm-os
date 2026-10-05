@@ -2931,8 +2931,12 @@ function figureIn(inPen: VectorSegment[], r: number): LevelText | null {
     .sort((a, b) => b.hi - a.hi);
   const lineOf: typeof spans = [];
   let top = Infinity;
+  // A figure stands about its mark's radius tall; lettering just above it
+  // ("מ"ר" over 21's "+15.94") is not taken into the line.
+  const bottom = spans[0]?.hi ?? 0;
   for (const span of spans) {
     if (lineOf.length > 0 && span.hi < top - r * 0.25) break;
+    if (span.lo < bottom - r * 1.5) continue;
     lineOf.push(span);
     top = Math.min(top, span.lo);
   }

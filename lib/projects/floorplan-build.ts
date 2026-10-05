@@ -754,12 +754,12 @@ export async function buildFlatFromGeometry(
     const text = levelTextAt(mark, geometry.segments, geometry.curves);
     return text != null && sameLevelText(text, flatLevel);
   };
-  // A mark whose figure cannot be read — 14's "+9.64" is printed on end, a
-  // dimension line runs through 21's "+15.94" — is decided by access below.
+  // A mark whose figure cannot be read — 14's "+9.64" is printed on end — is
+  // not at another level, only unread; it seeds as the flat's own would. Not
+  // by access: most of these sheets draw a terrace with no way out to it.
   const unread = (mark: { x: number; y: number; r: number }) =>
     flatLevel != null && levelTextAt(mark, geometry.segments, geometry.curves) == null;
-  const unreadSeeds = levelSeeds.filter(unread);
-  const ownSeeds = levelSeeds.filter(atFlatLevel);
+  const ownSeeds = levelSeeds.filter((mark) => atFlatLevel(mark) || unread(mark));
   const otherSeeds = levelSeeds.filter((mark) => !atFlatLevel(mark) && !unread(mark));
   const unlabelledHits =
     otherSeeds.length > 0
@@ -851,7 +851,7 @@ export async function buildFlatFromGeometry(
   // roof of the flat below, the terrace of the one above — and no part of
   // this flat's floor either: 21's roof at +15.94, beside a flat at +12.79,
   // came out a bathroom for the lettering on it.
-  // Each mark not at the flat's level, read or not, gives a region: its
+  // Each mark at another level gives a region: its
   // flood, or, where the flood ran out of it through a doorway into the flat
   // (21's roof), its paving grown from round the mark. Lettering does not
   // count as furniture in it — and lettering reads as fixtures and unknowns
@@ -876,18 +876,15 @@ export async function buildFlatFromGeometry(
         return rows ? { rows } : null;
       })
       .filter((region): region is { rows: SpanRow[] } => region != null);
-  // Unread, a region with a door onto it is the flat's; otherwise, like one
-  // at another level, it is someone else's — the roof of the flat below, the
-  // terrace of the one above — and no part of this flat's floor: 21's roof,
-  // with no door to it, came out a bathroom for the lettering on it.
-  const unreadRegions = regionsAt(unreadSeeds);
-  const unreadOwn = unreadRegions.filter(doorOnto);
+  // At another level with no door onto it, it is someone else's — the roof
+  // of the flat below, the terrace of the one above — and no part of this
+  // flat's floor: 21's roof at +15.94 came out a bathroom for the lettering
+  // on it.
   const notTheFlats = [
     ...[...terraceHits, ...markedHits].filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
     ...regionsAt(otherSeeds).filter((region) => !doorOnto(region)),
-    ...unreadRegions.filter((region) => !doorOnto(region)),
   ].map((terrace) => terraceFromPaving(terrace.rows, geometry.segments, bodies, notLettering, unitsPerMetre));
-  const terraces = [...terraceHits, ...markedHits, ...unreadOwn]
+  const terraces = [...terraceHits, ...markedHits]
     .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
     .map((terrace) => {
       const paved = terraceFromPaving(
