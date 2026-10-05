@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import { spansContain } from "@/lib/projects/floorplan-solid";
 import { fillEnclosedHoles, mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
@@ -112,6 +113,35 @@ export type GeometryPayloadExtras = {
   page?: { width: number; height: number };
 };
 
+/**
+ * Whether sanitary ware stands in one of the flat's rooms, or right at one's
+ * edge — its own ink stops the room's flood, so a pan can sit just outside
+ * the region. One in no room is lettering or a window's ink: on דירה 18 one
+ * on the terrace of the storey above, one in the window onto the terrace, and
+ * "פתח מילוט" across the outer wall. A terrace is no room for it.
+ */
+function standsInARoom(
+  piece: BuiltFlat["furniture"][number],
+  rooms: SegmentedRoom[],
+  unitsPerMetre: number,
+): boolean {
+  if (piece.kind !== "fixture") return true;
+  const cx = piece.x + piece.w / 2;
+  const cy = piece.y + piece.h / 2;
+  const rx = piece.w / 2 + 0.1 * unitsPerMetre;
+  const ry = piece.h / 2 + 0.1 * unitsPerMetre;
+  const probes: Array<[number, number]> = [
+    [cx, cy],
+    [cx - rx, cy],
+    [cx + rx, cy],
+    [cx, cy - ry],
+    [cx, cy + ry],
+  ];
+  return rooms.some(
+    (room) => room.kind !== "balcony" && probes.some(([x, y]) => spansContain(room.rows, x, y)),
+  );
+}
+
 export function floorplanGeometryPayload(
   flat: BuiltFlat,
   rooms: SegmentedRoom[],
@@ -139,7 +169,7 @@ export function floorplanGeometryPayload(
       kind: opening.kind,
       ...(opening.leaf ? { leaf: opening.leaf } : {}),
     })),
-    furniture: flat.furniture.map((piece) => ({
+    furniture: flat.furniture.filter((piece) => standsInARoom(piece, rooms, flat.unitsPerMetre)).map((piece) => ({
       x: piece.x,
       y: piece.y,
       w: piece.w,

@@ -7,6 +7,7 @@ import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
 } from "@/lib/projects/floorplan-programme-furniture";
+import { cropToPaving, openRows } from "@/lib/projects/scene3d/floors";
 import { atOtherLevel, inferRoomKind, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
 
 export { atOtherLevel };
@@ -40,6 +41,7 @@ import {
   type LevelText,
   findTerraces,
   findTerracesOnFloor,
+  terraceFromPaving,
   spansContain,
   trimToHatchAlong,
   findHatchGaps,
@@ -725,7 +727,21 @@ export async function buildFlatFromGeometry(
   // is taken at any size a terrace can be; see levelTextAt. The paving's
   // joints eat into the flood, and דירה 18's 8 m² terrace, at the flat's
   // +11.42, measured 2.69 and fell under the floor below.
-  const flatLevel = flatLevelText(geometry, floor, terraceHits, unitsPerMetre);
+  const legendLevel = flatLevelText(geometry, floor, terraceHits, unitsPerMetre);
+  // A legend copied from the storey below keeps that storey's level: דירה
+  // 22's reads +11.42, 18's, while both its terraces are marked +14.36. When
+  // no mark on the sheet agrees with the legend and at least two agree with
+  // each other, the flat stands at theirs.
+  const markTexts = levelMarks
+    .map((mark) => levelTextAt(mark, geometry.segments, geometry.curves))
+    .filter((text): text is LevelText => text != null);
+  const sharedLevel = (() => {
+    if (!legendLevel || markTexts.some((text) => sameLevelText(text, legendLevel))) return null;
+    const groups = markTexts.map((text) => markTexts.filter((other) => sameLevelText(text, other)));
+    const best = groups.reduce<LevelText[]>((a, g) => (g.length > a.length ? g : a), []);
+    return best.length >= 2 ? best[0]! : null;
+  })();
+  const flatLevel = sharedLevel ?? legendLevel;
   const atFlatLevel = (mark: { x: number; y: number; r: number }) => {
     if (!flatLevel) return false;
     const text = levelTextAt(mark, geometry.segments, geometry.curves);
@@ -805,9 +821,53 @@ export async function buildFlatFromGeometry(
       .filter((text): text is LevelText => text != null);
     return texts.length > 0 && texts.every((text) => !sameLevelText(text, flatLevel));
   };
+  // A terrace is somewhere to stand: a strip a hand deep down an outer wall —
+  // the gap between 16's and 17's facade and their window sills, flooded from
+  // a seed — is not one. Its area over its length is its depth.
+  const deepEnough = (rows: SpanRow[]) => {
+    if (rows.length === 0) return false;
+    const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
+    const area = rows.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch;
+    const x0 = Math.min(...rows.flatMap((r) => r.spans.map(([a]) => a)));
+    const x1 = Math.max(...rows.flatMap((r) => r.spans.map(([, b]) => b)));
+    const y0 = Math.min(...rows.map((r) => r.y));
+    const y1 = Math.max(...rows.map((r) => r.y)) + pitch;
+    const length = Math.max(x1 - x0, y1 - y0);
+    return area / length >= unitsPerMetre * 0.7 && area >= unitsPerMetre * unitsPerMetre * 1.2;
+  };
   const terraces = [...terraceHits, ...markedHits]
     .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
-    .map((terrace) => terrace.rows);
+    .map((terrace) => {
+      const paved = terraceFromPaving(
+        terrace.rows,
+        geometry.segments,
+        bodies,
+        furniture.filter((piece) => piece.kind !== "fixture" && piece.kind !== "unknown"),
+        unitsPerMetre,
+        // Not past a mark at another level than the flood's own: on דירה 18
+        // the paving ran on along the sheet's edge line into the +12.79
+        // terrace of the storey above.
+        (region) => {
+          const levelsIn = (r: SpanRow[]) =>
+            levelMarks
+              .filter((mark) => spansContain(r, mark.x, mark.y))
+              .map((mark) => levelTextAt(mark, geometry.segments, geometry.curves))
+              .filter((text): text is LevelText => text != null);
+          const own = levelsIn(terrace.rows);
+          const reference = own.length > 0 ? own : flatLevel ? [flatLevel] : [];
+          return levelsIn(region).every((text) => reference.some((ref) => sameLevelText(text, ref)));
+        },
+      );
+      // Cut back only a flood the paving did not already give its shape.
+      return paved === terrace.rows ? cropToPaving(paved, geometry.segments, unitsPerMetre) : paved;
+    })
+    // Opened only where the terrace survives it: דירה 18's 8 m² terrace,
+    // flooded 75 cm deep against the sheet's edge, was opened away whole.
+    .map((rows) => {
+      const opened = openRows(rows, unitsPerMetre * 0.35, undefined, unitsPerMetre * 0.1);
+      return deepEnough(opened) ? opened : rows;
+    })
+    .filter(deepEnough);
 
   // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
   // rule alone returned six openings on דירה 14, most of them windows, and had
@@ -966,8 +1026,99 @@ export async function buildFlatFromGeometry(
   );
   const inLegend = (piece: FurniturePiece) =>
     legends.some((box) => piece.x >= box.x - 2 && piece.y >= box.y - 2 && piece.x + piece.w <= box.x + box.w + 2 && piece.y + piece.h <= box.y + box.h + 2);
+  // Mostly wall is no piece: a window's pocket drawn in the shelter's wall
+  // (14, 16), a sill's corner arcs read as a seat (16), lettering across a
+  // wall onto the terrace (18).
+  const inWalls = (piece: FurniturePiece) => {
+    const area = piece.w * piece.h;
+    let covered = 0;
+    for (const body of bodies) {
+      const r = bodyRect(body);
+      const ox = Math.min(piece.x + piece.w, r.x + r.w) - Math.max(piece.x, r.x);
+      const oy = Math.min(piece.y + piece.h, r.y + r.h) - Math.max(piece.y, r.y);
+      if (ox > 0 && oy > 0) covered += ox * oy;
+    }
+    return covered >= 0.45 * area;
+  };
+  // A bed's pillows are closed outlines a basin's size, and were read as
+  // pieces of their own lying on it: three on דירה 17, two on 18.
+  const beds = furnishings.filter((piece) => piece.kind === "bed");
+  const onBed = (piece: FurniturePiece) =>
+    (piece.kind === "unknown" || piece.kind === "fixture" || piece.kind === "seat") &&
+    beds.some((bed) => {
+      const ox = Math.min(piece.x + piece.w, bed.x + bed.w) - Math.max(piece.x, bed.x);
+      const oy = Math.min(piece.y + piece.h, bed.y + bed.h) - Math.max(piece.y, bed.y);
+      return ox > 0 && oy > 0 && ox * oy >= 0.6 * piece.w * piece.h;
+    });
+  // A bath is set against walls; a bath's size and shape with floor all
+  // round it is a kitchen island. דירה 18's, 60 by 142 with its stools drawn
+  // beside it, read as a bath in the kitchen.
+  const freeBathIsAnIsland = (piece: FurniturePiece): FurniturePiece => {
+    if (piece.kind !== "fixture" || piece.fixture || Math.max(piece.widthCm, piece.depthCm) < 120) return piece;
+    const reach = unitsPerMetre * 0.15;
+    const touches = bodies.some((body) => {
+      const r = bodyRect(body);
+      const gx = Math.max(r.x - (piece.x + piece.w), piece.x - (r.x + r.w), 0);
+      const gy = Math.max(r.y - (piece.y + piece.h), piece.y - (r.y + r.h), 0);
+      return Math.hypot(gx, gy) <= reach;
+    });
+    return touches ? piece : { ...piece, kind: "counter" };
+  };
+  // A vanity is a cabinet with a bowl in it: a rounded outline a basin's
+  // size, clear of the cabinet's edges. דירה 18's 93 by 51 basin, its oval
+  // drawn inside, read as storage.
+  const cabinetWithBowlIsASink = (piece: FurniturePiece): FurniturePiece => {
+    if (piece.kind !== "storage" && piece.kind !== "unknown") return piece;
+    // Not in a kitchen: a bowl beside the hob is the sink of the run.
+    const hobNear = furnishings.some(
+      (other) =>
+        other.kind === "hob" &&
+        Math.hypot(other.x + other.w / 2 - (piece.x + piece.w / 2), other.y + other.h / 2 - (piece.y + piece.h / 2)) <=
+          unitsPerMetre * 2,
+    );
+    if (hobNear) return piece;
+    if (Math.max(piece.widthCm, piece.depthCm) > 120 || Math.min(piece.widthCm, piece.depthCm) > 65) return piece;
+    const edge = unitsPerMetre * 0.03;
+    const inside = (x: number, y: number) =>
+      x >= piece.x + edge && x <= piece.x + piece.w - edge && y >= piece.y + edge && y <= piece.y + piece.h - edge;
+    const bowl = geometry.curves.filter((c) => inside(c.x1, c.y1) && inside(c.x2, c.y2));
+    if (bowl.length < 8) return piece;
+    const cm = (v: number) => (v / unitsPerMetre) * 100;
+    const w = cm(Math.max(...bowl.map((c) => Math.max(c.x1, c.x2))) - Math.min(...bowl.map((c) => Math.min(c.x1, c.x2))));
+    const h = cm(Math.max(...bowl.map((c) => Math.max(c.y1, c.y2))) - Math.min(...bowl.map((c) => Math.min(c.y1, c.y2))));
+    const long = Math.max(w, h);
+    const short = Math.min(w, h);
+    // A level mark's ⊕ is a circle too, hatched across: 22's legend became a
+    // basin. A bowl is not hatched.
+    const bx0 = Math.min(...bowl.map((c) => Math.min(c.x1, c.x2)));
+    const bx1 = Math.max(...bowl.map((c) => Math.max(c.x1, c.x2)));
+    const by0 = Math.min(...bowl.map((c) => Math.min(c.y1, c.y2)));
+    const by1 = Math.max(...bowl.map((c) => Math.max(c.y1, c.y2)));
+    const hatched = geometry.segments.filter((seg) => {
+      const mx = (seg.x1 + seg.x2) / 2;
+      const my = (seg.y1 + seg.y2) / 2;
+      if (mx < bx0 || mx > bx1 || my < by0 || my > by1) return false;
+      const deg = ((Math.atan2(seg.y2 - seg.y1, seg.x2 - seg.x1) * 180) / Math.PI + 180) % 90;
+      return Math.abs(deg - 45) < 10;
+    }).length;
+    if (hatched >= 2 || findDiamondsIn(piece).length > 0) return piece;
+    // A basin, not a sink: a sink makes its room a kitchen, and 18's bathroom
+    // came out one.
+    return long >= 25 && long <= 70 && short >= 18 && short <= 55 ? { ...piece, kind: "fixture", fixture: "basin" } : piece;
+  };
+  // The flat's own level mark, the small ⊕ in its legend: a box round it read
+  // as a 49 by 35 cm fixture on דירה 22. Only something that small — a wet
+  // room's lowered-floor mark can sit inside a shower tray.
+  const smallMarks = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre, { minRadiusM: 0.07, minHatch: 2 }).filter(
+    (mark) => mark.r < unitsPerMetre * 0.12,
+  );
+  const roundsAMark = (piece: FurniturePiece) =>
+    (piece.kind === "fixture" || piece.kind === "unknown") &&
+    Math.max(piece.widthCm, piece.depthCm) <= 60 &&
+    smallMarks.some((mark) => mark.x >= piece.x && mark.x <= piece.x + piece.w && mark.y >= piece.y && mark.y <= piece.y + piece.h);
   const furnitureOffTerrace = furnishings.filter((piece) => {
-    if (inLegend(piece)) return false;
+    if (inLegend(piece) || onBed(piece) || roundsAMark(piece)) return false;
+    if (piece.kind !== "bed" && piece.kind !== "table" && piece.kind !== "fixture" && inWalls(piece)) return false;
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
     // A level mark is a circle a basin's size and was read as one; on דירה 15
@@ -980,7 +1131,7 @@ export async function buildFlatFromGeometry(
     bodies,
     floor: flatFloor,
     // Settled again at the end: pieces join after the furniture pass.
-    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace, unitsPerMetre),
+    furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink), unitsPerMetre),
     openings,
     terraces,
     printedTerraceCount: printed.length,

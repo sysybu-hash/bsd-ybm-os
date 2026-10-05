@@ -1251,7 +1251,24 @@ export function wallBodiesFromHatch(
         // Hatch in the middle, not on average across the band.
         if (field.density(bodyRect(body)) < minDensity) continue;
         if (!hatchFillsMiddle(field, body, minDensity)) continue;
-        if (!hatchAlongBand(field, body, upm)) continue;
+        if (!hatchAlongBand(field, body, upm)) {
+          // Hatch to one side of the band: one face is the wall's, the other
+          // a line past it. The wall is the band from that face to the far
+          // side of its hatch's middle. Dropped instead, 22's entrance wall
+          // was left a 12 cm sliver with a gap by the door, and the living
+          // room flooded out of it.
+          const fitted = wallOnOneSide(field, body);
+          if (
+            fitted &&
+            fitted.thickness >= minThickness &&
+            field.density(bodyRect(fitted)) >= minDensity &&
+            hatchFillsMiddle(field, fitted, minDensity) &&
+            hatchAlongBand(field, fitted, upm, false)
+          ) {
+            bodies.push(fitted);
+          }
+          continue;
+        }
         bodies.push(body);
       }
     }
@@ -1369,7 +1386,7 @@ export function stubsInsideCrossingWalls(bodies: WallBody[], tolerance = 1): Wal
  * 8 cm wall 3 m long through דירה 17's bathroom. A wall is hatched the length
  * of it; three slices in five will do.
  */
-export function hatchAlongBand(field: HatchField, body: WallBody, upm: number): boolean {
+export function hatchAlongBand(field: HatchField, body: WallBody, upm: number, centred = true): boolean {
   const rect = bodyRect(body);
   const length = body.to - body.from;
   const step = 0.25 * upm;
@@ -1383,7 +1400,61 @@ export function hatchAlongBand(field: HatchField, body: WallBody, upm: number): 
         : { x: rect.x, y: body.from + i * step, w: rect.w, h: step };
     if (field.count(slice) > 0) hatched++;
   }
-  return hatched >= 0.6 * slices;
+  if (hatched < 0.6 * slices) return false;
+  // And centred across it. A stroke crosses its wall face to face, so its
+  // middle — what the field holds — lies on the wall's middle. A band
+  // bracketing a wall and the axis line beside it (22's bathroom: 47 cm where
+  // the wall is 10, the dimension's figures between) has its hatch to one
+  // side. Over 12 cm thick, the middle third holds most of it, or both outer
+  // thirds share it.
+  // Judged slice by slice: a band can run from a thin wall into a thick one
+  // hatched across, and the whole band's count then looks centred.
+  if (!centred || body.thickness <= 0.12 * upm) return true;
+  let judged = 0;
+  let oneSided = 0;
+  for (let i = 0; i < slices; i++) {
+    const lane = (k: number) =>
+      field.count(
+        body.orientation === "h"
+          ? { x: body.from + i * step, y: rect.y + (rect.h * k) / 3, w: step, h: rect.h / 3 }
+          : { x: rect.x + (rect.w * k) / 3, y: body.from + i * step, w: rect.w / 3, h: step },
+      );
+    const [c0, c1, c2] = [lane(0), lane(1), lane(2)];
+    if (c0 + c1 + c2 === 0) continue;
+    judged++;
+    const centred = c1 >= 0.4 * (c0 + c1 + c2) || (Math.min(c0, c2) > 0 && Math.min(c0, c2) >= 0.25 * Math.max(c0, c2));
+    if (!centred) oneSided++;
+  }
+  return judged > 0 && oneSided <= 0.4 * judged;
+}
+
+/**
+ * The wall inside a band whose hatch lies to one side of it: from the face
+ * the hatch is nearer to, out to the same distance past the hatch's middle —
+ * a stroke crosses its wall face to face, so its middle is the wall's.
+ */
+export function wallOnOneSide(field: HatchField, body: WallBody): WallBody | null {
+  const rect = bodyRect(body);
+  const LANES = 9;
+  let total = 0;
+  let moment = 0;
+  for (let k = 0; k < LANES; k++) {
+    const n = field.count(
+      body.orientation === "h"
+        ? { x: rect.x, y: rect.y + (rect.h * k) / LANES, w: rect.w, h: rect.h / LANES }
+        : { x: rect.x + (rect.w * k) / LANES, y: rect.y, w: rect.w / LANES, h: rect.h },
+    );
+    total += n;
+    moment += n * ((k + 0.5) / LANES);
+  }
+  if (total === 0) return null;
+  const middle = moment / total;
+  if (middle > 0.4 && middle < 0.6) return null;
+  const near = middle <= 0.5 ? 0 : 1;
+  const thickness = 2 * Math.abs(middle - near) * body.thickness;
+  const low = body.centre - body.thickness / 2;
+  const from = near === 0 ? low : low + body.thickness - thickness;
+  return { ...body, centre: from + thickness / 2, thickness };
 }
 
 function hatchFillsMiddle(field: HatchField, body: WallBody, minDensity: number): boolean {
@@ -3238,5 +3309,157 @@ export function smoothFootprint(
     }
     if (spans.length > 0) out.push({ y: originY + y * step, spans });
   }
+  return out;
+}
+
+/**
+ * A paved terrace taken from its paving. The flood runs on the flat's
+ * footprint and stops only at wall: it ran past a terrace's thin edge line
+ * (18's 4.6 m², down to the bedroom wall below it), was cut where the
+ * footprint ends (18's and 22's 8 m², at the sheet's flat extent) and was
+ * split by a level mark's leader (22's). The joints say where the terrace is:
+ * strokes of the joints' own weight, square to the sheet, touching one
+ * another, grown from the ones the flood holds. The region is their extent,
+ * less wall.
+ *
+ * Left as flooded where there is no paving, where the paving reaches a piece
+ * of furniture — then it is not a terrace's joints it found — or where it
+ * comes out more than three times the flood or past what a terrace measures.
+ */
+export function terraceFromPaving(
+  rows: SpanRow[],
+  segments: ReadonlyArray<VectorSegment>,
+  bodies: WallBody[],
+  furniture: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
+  unitsPerMetre: number,
+  /** Whether the region found may stand; see the caller's level check. */
+  accept: (region: SpanRow[]) => boolean = () => true,
+): SpanRow[] {
+  if (rows.length === 0) return rows;
+  const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
+  const area = (list: SpanRow[]) => list.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch;
+  const square = (s: VectorSegment) => {
+    const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    return (
+      // A joint runs a tile's side at least; the outlined letters of
+      // "שטח המרפסת", strokes of a hand's length, are not paving, and on
+      // דירה 22 they spilled the terrace past its edge.
+      length >= unitsPerMetre * 0.25 &&
+      length <= unitsPerMetre * 8 &&
+      Math.min(Math.abs(s.x2 - s.x1), Math.abs(s.y2 - s.y1)) <= length * 0.02
+    );
+  };
+  const held = segments.filter((s) => square(s) && spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
+  // Six will do: the cluster grows from them, and 22's 3.3 m² terrace
+  // flooded only the lower half of its paving, eleven joints of it.
+  if (held.length < 6) return rows;
+  // The joints' weights: those of the strokes the flood holds. One will not
+  // do — 22's 3.3 m² terrace is paved in 2 and 4 and edged in 5, and the
+  // edge is what joins its rows.
+  const weights = new Set(held.map((s) => s.lineWidth));
+  // A stroke along a wall is the wall's: 18's facade, drawn in the terrace
+  // edge's own pen, carried the joints past the wall into the terrace of the
+  // storey above. A joint that only ends on a wall is still a joint.
+  const margin = unitsPerMetre * 0.03;
+  const alongWall = (s: VectorSegment) => {
+    const n = Math.max(2, Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / (unitsPerMetre * 0.1)));
+    let on = 0;
+    for (let k = 0; k <= n; k++) {
+      const x = s.x1 + ((s.x2 - s.x1) * k) / n;
+      const y = s.y1 + ((s.y2 - s.y1) * k) / n;
+      if (
+        bodies.some((body) => {
+          const r = bodyRect(body);
+          return x >= r.x - margin && x <= r.x + r.w + margin && y >= r.y - margin && y <= r.y + r.h + margin;
+        })
+      ) {
+        on++;
+      }
+    }
+    return on >= 0.3 * (n + 1);
+  };
+  const ys = rows.map((r) => r.y);
+  const xs = rows.flatMap((r) => r.spans.flat());
+  const reach = unitsPerMetre * 3;
+  const box = {
+    x0: Math.min(...xs) - reach,
+    x1: Math.max(...xs) + reach,
+    y0: Math.min(...ys) - reach,
+    y1: Math.max(...ys) + reach,
+  };
+  const pool = segments.filter(
+    (s) =>
+      weights.has(s.lineWidth) &&
+      square(s) &&
+      Math.min(s.x1, s.x2) >= box.x0 &&
+      Math.max(s.x1, s.x2) <= box.x1 &&
+      Math.min(s.y1, s.y2) >= box.y0 &&
+      Math.max(s.y1, s.y2) <= box.y1 &&
+      !alongWall(s),
+  );
+  const touch = unitsPerMetre * 0.02;
+  const near = (p: { x: number; y: number }, s: VectorSegment) => {
+    const dx = s.x2 - s.x1;
+    const dy = s.y2 - s.y1;
+    const len2 = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2));
+    return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy)) <= touch;
+  };
+  const touches = (a: VectorSegment, b: VectorSegment) =>
+    near({ x: a.x1, y: a.y1 }, b) ||
+    near({ x: a.x2, y: a.y2 }, b) ||
+    near({ x: b.x1, y: b.y1 }, a) ||
+    near({ x: b.x2, y: b.y2 }, a);
+  const inCluster = new Set<number>();
+  const queue: number[] = [];
+  // Seeded from strokes of a grid: each touches another the flood holds. A
+  // stroke alone is not paving — 22's "191" dimension line, in a flood that
+  // had leaked past its terrace, carried the terrace down to it.
+  const inFlood = pool.filter((s) => spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
+  pool.forEach((s, i) => {
+    if (inFlood.includes(s) && pool.some((o) => o !== s && touches(s, o))) {
+      inCluster.add(i);
+      queue.push(i);
+    }
+  });
+  if (queue.length === 0) return rows;
+  while (queue.length > 0) {
+    const a = pool[queue.pop()!]!;
+    pool.forEach((b, j) => {
+      if (inCluster.has(j) || !touches(a, b)) return;
+      inCluster.add(j);
+      queue.push(j);
+    });
+  }
+  const joints = [...inCluster].map((i) => pool[i]!);
+  const x0 = Math.min(...joints.flatMap((s) => [s.x1, s.x2]));
+  const x1 = Math.max(...joints.flatMap((s) => [s.x1, s.x2]));
+  const y0 = Math.min(...joints.flatMap((s) => [s.y1, s.y2]));
+  const y1 = Math.max(...joints.flatMap((s) => [s.y1, s.y2]));
+  if (furniture.some((p) => {
+    const cx = p.x + p.w / 2;
+    const cy = p.y + p.h / 2;
+    return cx > x0 && cx < x1 && cy > y0 && cy < y1;
+  })) {
+    return rows;
+  }
+  const out: SpanRow[] = [];
+  const step = pitch;
+  for (let y = y0 + step / 2; y < y1; y += step) {
+    const spans: Array<[number, number]> = [];
+    let start: number | null = null;
+    for (let x = x0; x <= x1 + step / 2; x += step) {
+      const on = x <= x1 && !pointHitsBody(x, y, bodies);
+      if (on && start == null) start = x;
+      if (!on && start != null) {
+        spans.push([start, x]);
+        start = null;
+      }
+    }
+    if (start != null) spans.push([start, x1]);
+    if (spans.length > 0) out.push({ y, spans });
+  }
+  const grown = area(out);
+  if (grown > unitsPerMetre * unitsPerMetre * 20 || !accept(out)) return rows;
   return out;
 }

@@ -12,6 +12,7 @@ import {
   FURNITURE_HEIGHT_M,
   GLASS_T_M,
   RAILING_H_M,
+  RAIL_CAP_W_M,
   RAIL_CAP_M,
   SLIDER_MIN_CLEAR_M,
   TERRACE_DROP_M,
@@ -597,10 +598,12 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       // An edge the flat's own wall stands on, or runs along a hand's breadth
       // off (the facade's cladding), is a wall, not a drop.
       if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.35) continue;
+      const cap: Rect =
+        edge.orientation === "h"
+          ? { x: edge.from, y: edge.at - RAIL_CAP_W_M * upm * 0.5, w: edge.to - edge.from, h: RAIL_CAP_W_M * upm }
+          : { x: edge.at - RAIL_CAP_W_M * upm * 0.5, y: edge.from, w: RAIL_CAP_W_M * upm, h: edge.to - edge.from };
       meshes.push(boxFrom(p, rect, -TERRACE_DROP_M, RAILING_H_M - RAIL_CAP_M, "railing", "glass", id));
-      meshes.push(
-        boxFrom(p, rect, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`),
-      );
+      meshes.push(boxFrom(p, cap, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`));
     }
   });
 
@@ -753,8 +756,11 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
     rects.some((r) => x >= r.x0 - E && x <= r.x1 + E && z >= r.z0 - E && z <= r.z1 + E);
   // A side inside another wall is a corner, where the wall turns: it stands.
   const walls = meshes.filter((m) => m.kind === "wall").map(rectOf);
+  // Terrace first: the flat's floor runs on under its terraces, and a stub
+  // with terrace on both sides — 17's level mark's leader, read as a wall in
+  // the middle of its terrace — stood on that floor.
   const side = (x: number, z: number) =>
-    inAny(floors, x, z) ? "floor" : inAny(walls, x, z) ? "wall" : inAny(terraces, x, z) ? "terrace" : "none";
+    inAny(terraces, x, z) ? "terrace" : inAny(floors, x, z) ? "floor" : inAny(walls, x, z) ? "wall" : "none";
   const STEP = 0.2;
   const out: SceneBox[] = [];
   for (const m of meshes) {

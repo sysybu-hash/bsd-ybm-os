@@ -72,7 +72,7 @@ export function designPrompt(subject: string, options: { haredi: boolean; invent
   return [
     "Image 1 is an exact top-down LAYOUT of an apartment, measured from the architect's drawing: its walls, doors, windows and every piece of furniture are where they really are.",
     "Design this apartment as a premium, photorealistic 3D floor plan for a real-estate sales brochure, by a top interior designer.",
-    "KEEP EXACTLY: the camera — straight down, north up — the framing and the scale; every wall, its length and thickness, and its cut top as a flat band; every door and window opening; every room's shape.",
+    "KEEP EXACTLY: the camera — straight down, north up — the framing and the scale; every wall, its length and thickness, and its cut top as a flat band; every door and window opening; every room's shape; each terrace's railing — the glass balustrade with its metal handrail along every open edge of a terrace — exactly where it runs.",
     "KEEP every piece of furniture where it is, the same size and the same kind: each bed stays a bed in its place (single beds stay single), the dining table with its chairs, each sofa and armchair, each wardrobe, the kitchen run with the hob and the sink exactly where they are, each toilet, basin, shower and bath where it is.",
     ...(options.inventory
       ? [`The furniture exactly as measured, with where each piece stands on the plan (north up) — no more, no fewer, nothing else of these kinds (a bed is ONE person wide: one pillow, never two side by side):
