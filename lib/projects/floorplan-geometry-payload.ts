@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
-import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import { componentsOf, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import { spansContain, type SpanRow } from "@/lib/projects/floorplan-solid";
 import { fillEnclosedHoles, mergeSpanRows, withoutRows, type Rect } from "@/lib/projects/scene3d/floors";
 
@@ -142,6 +142,27 @@ function standsInARoom(
   );
 }
 
+/**
+ * The floor less what is not the flat's, and less the scraps that cut leaves
+ * standing on their own: on 18 slivers of the storey above's terrace kept its
+ * wall ends standing, floating off the flat.
+ */
+function withoutForeign(floor: SpanRow[], foreign: SpanRow[][], unitsPerMetre: number): SpanRow[] {
+  const cut = withoutRows(floor, foreign);
+  if (cut === floor) return floor;
+  const pitch = floor.length > 1 ? Math.abs(floor[1]!.y - floor[0]!.y) || 1 : 1;
+  const area = (rows: SpanRow[]) =>
+    (rows.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch) / unitsPerMetre ** 2;
+  const byY = new Map<number, Array<[number, number]>>();
+  for (const part of componentsOf(cut, pitch, 1)) {
+    if (area(part) < 0.5) continue;
+    for (const row of part) byY.set(row.y, [...(byY.get(row.y) ?? []), ...row.spans]);
+  }
+  return [...byY.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([y, spans]) => ({ y, spans: spans.sort((a, b) => a[0] - b[0]) }));
+}
+
 /** Whether most of a room lies in a region that is not the flat's. */
 function mostlyForeign(rows: SpanRow[], foreign: SpanRow[][]): boolean {
   if (foreign.length === 0) return false;
@@ -203,7 +224,7 @@ export function floorplanGeometryPayload(
           }))
         : undefined,
     // Less what is someone else's: 21's roof at +15.94, beside its bedroom.
-    floor: toRects(mergeSpanRows(withoutRows(flat.floor, flat.foreign ?? []))),
+    floor: toRects(mergeSpanRows(withoutForeign(flat.floor, flat.foreign ?? [], flat.unitsPerMetre))),
     // A terrace's printed "שטח המרפסת" left its letters as holes too.
     terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2)))),
     rooms: rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])).map((room) => ({

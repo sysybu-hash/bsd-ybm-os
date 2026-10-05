@@ -7,7 +7,7 @@ import {
   clearFurnitureFromEmptyRooms,
   deskFurnitureInOffices,
 } from "@/lib/projects/floorplan-programme-furniture";
-import { cropToPaving, openRows } from "@/lib/projects/scene3d/floors";
+import { cropToPaving, openRows, withoutRows } from "@/lib/projects/scene3d/floors";
 import { atOtherLevel, inferRoomKind, type FloorplanLayout } from "@/lib/projects/floorplan-layout";
 
 export { atOtherLevel };
@@ -858,11 +858,20 @@ export async function buildFlatFromGeometry(
   // of every shape (21's "מ"ר" as a 70 by 34 cm one) — so only furniture
   // proper stops the paving. A bathroom is kept by its door.
   const notLettering = furniture.filter((piece) => piece.kind !== "fixture" && piece.kind !== "unknown");
+  // Not over a mark at the flat's own level: on 18 the paving of the
+  // storey above ran on along the sheet's edge line into the flat's own
+  // 4.6 m² terrace, and took it out of the flat.
+  const notOverOwnMark = (region: SpanRow[]) =>
+    !levelMarks.some((mark) => {
+      if (!spansContain(region, mark.x, mark.y)) return false;
+      const text = levelTextAt(mark, geometry.segments, geometry.curves);
+      return text == null || (flatLevel != null && sameLevelText(text, flatLevel));
+    });
   const pavedAround = (mark: { x: number; y: number }): SpanRow[] | null => {
     const half = unitsPerMetre * 0.5;
     const square: SpanRow[] = [];
     for (let y = mark.y - half; y <= mark.y + half; y += 2) square.push({ y, spans: [[mark.x - half, mark.x + half]] });
-    const grown = terraceFromPaving(square, geometry.segments, bodies, notLettering, unitsPerMetre, () => true, true);
+    const grown = terraceFromPaving(square, geometry.segments, bodies, notLettering, unitsPerMetre, notOverOwnMark, true);
     return grown === square ? null : grown;
   };
   const regionsAt = (marks: typeof levelSeeds) =>
@@ -882,8 +891,23 @@ export async function buildFlatFromGeometry(
   // on it.
   const notTheFlats = [
     ...[...terraceHits, ...markedHits].filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
-    ...regionsAt(otherSeeds).filter((region) => !doorOnto(region)),
-  ].map((terrace) => terraceFromPaving(terrace.rows, geometry.segments, bodies, notLettering, unitsPerMetre));
+    // With the marks the programme already put at another level, which seed
+    // nothing above — their floor is still the flat's footprint: 18's +12.79
+    // terrace of the storey above was drawn with its paving and windows.
+    ...regionsAt([
+      ...otherSeeds,
+      ...levelMarks.filter(
+        (mark) =>
+          onOtherLevel(mark) &&
+          mark.x >= flatExtent.x &&
+          mark.x <= flatExtent.x + flatExtent.width &&
+          mark.y >= flatExtent.y &&
+          mark.y <= flatExtent.y + flatExtent.height,
+      ),
+    ]).filter((region) => !doorOnto(region)),
+  ].map((terrace) =>
+    terraceFromPaving(terrace.rows, geometry.segments, bodies, notLettering, unitsPerMetre, notOverOwnMark),
+  );
   const terraces = [...terraceHits, ...markedHits]
     .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
     .map((terrace) => {
@@ -1221,7 +1245,8 @@ export async function buildFlatFromGeometry(
     furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), unitsPerMetre),
     openings,
     terraces,
-    foreign: notTheFlats,
+    // Never the flat's own terraces, whatever ran into them.
+    foreign: notTheFlats.map((rows) => withoutRows(rows, terraces)),
     printedTerraceCount: printed.length,
     bounds,
     floorM2,
