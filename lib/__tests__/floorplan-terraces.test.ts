@@ -3,6 +3,7 @@ import {
   findLevelMarks,
   findTerracesOnFloor,
   terraceDiagonalSeeds,
+  terraceFromPaving,
   type SpanRow,
   type WallBody,
 } from "@/lib/projects/floorplan-solid";
@@ -285,5 +286,55 @@ describe("a terrace known by its level, filled back past its lettering", () => {
     const filled = findTerracesOnFloor(floor, [], seed, upm, { unlabelledM2: { min: 0.5, max: 16 }, growRim: true });
     expect(area(filled[0]!.rows)).toBeGreaterThan(area(plain[0]!.rows) + 1);
     expect(area(filled[0]!.rows)).toBeLessThanOrEqual((w * h) / (upm * upm) * 1.05);
+  });
+});
+
+describe("a paved terrace taken from its paving", () => {
+  // 100 units a metre. The facade along the top, y 0–20; the terrace below
+  // it, 3 m by 1.7 m, paved in 30 cm courses, edged at y 190 and at x 0 and
+  // 300; a dimension line under it at y 230, ticked across at both ends.
+  const U = 100;
+  const facade: WallBody = { orientation: "h", centre: 10, thickness: 20, from: -50, to: 350 };
+  const paving: VectorSegment[] = [];
+  for (let y = 20; y <= 170; y += 30) paving.push({ x1: 10, y1: y, x2: 290, y2: y, lineWidth: LIGHT });
+  for (let y = 20; y < 170; y += 30) {
+    for (let x = 40; x < 290; x += 60) paving.push({ x1: x, y1: y, x2: x, y2: y + 30, lineWidth: LIGHT });
+  }
+  const edge: VectorSegment[] = [
+    { x1: 0, y1: 190, x2: 300, y2: 190, lineWidth: 4 },
+    { x1: 0, y1: 20, x2: 0, y2: 190, lineWidth: 4 },
+    { x1: 300, y1: 20, x2: 300, y2: 190, lineWidth: 4 },
+  ];
+  const dimension: VectorSegment[] = [
+    { x1: 0, y1: 230, x2: 300, y2: 230, lineWidth: LIGHT },
+    { x1: 0, y1: 222, x2: 0, y2: 238, lineWidth: LIGHT },
+    { x1: 300, y1: 222, x2: 300, y2: 238, lineWidth: LIGHT },
+  ];
+  const segments = [...paving, ...edge, ...dimension];
+  // The flood held a corner of it only.
+  const flood: SpanRow[] = [];
+  for (let y = 30; y < 100; y += 2) flood.push({ y, spans: [[20, 150]] });
+  const extent = (rows: SpanRow[]) => ({
+    x0: Math.min(...rows.flatMap((r) => r.spans.map(([a]) => a))),
+    x1: Math.max(...rows.flatMap((r) => r.spans.map(([, b]) => b))),
+    y0: Math.min(...rows.map((r) => r.y)),
+    y1: Math.max(...rows.map((r) => r.y)),
+  });
+
+  it("covers the paving out to its edge, not to the dimension line past it", () => {
+    const out = extent(terraceFromPaving(flood, segments, [facade], [], U));
+    expect(out.x0).toBeLessThanOrEqual(2);
+    expect(out.x1).toBeGreaterThanOrEqual(298);
+    expect(out.y1).toBeGreaterThanOrEqual(185);
+    expect(out.y1).toBeLessThanOrEqual(192);
+  });
+
+  it("keeps the flood where the paving reaches furniture", () => {
+    const sofa = { x: 100, y: 120, w: 80, h: 40 };
+    expect(terraceFromPaving(flood, segments, [facade], [sofa], U)).toBe(flood);
+  });
+
+  it("keeps the flood where the caller refuses what the paving found", () => {
+    expect(terraceFromPaving(flood, segments, [facade], [], U, () => false)).toBe(flood);
   });
 });

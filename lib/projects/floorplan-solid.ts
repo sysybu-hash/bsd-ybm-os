@@ -3380,121 +3380,215 @@ export function terraceFromPaving(
   };
   const ys = rows.map((r) => r.y);
   const xs = rows.flatMap((r) => r.spans.flat());
-  const reach = unitsPerMetre * 3;
-  const box = {
-    x0: Math.min(...xs) - reach,
-    x1: Math.max(...xs) + reach,
-    y0: Math.min(...ys) - reach,
-    y1: Math.max(...ys) + reach,
-  };
-  const pool = segments.filter(
-    (s) =>
-      weights.has(s.lineWidth) &&
-      square(s) &&
-      Math.min(s.x1, s.x2) >= box.x0 &&
-      Math.max(s.x1, s.x2) <= box.x1 &&
-      Math.min(s.y1, s.y2) >= box.y0 &&
-      Math.max(s.y1, s.y2) <= box.y1 &&
-      !alongWall(s),
-  );
-  const touch = unitsPerMetre * 0.02;
-  const near = (p: { x: number; y: number }, s: VectorSegment) => {
-    const dx = s.x2 - s.x1;
-    const dy = s.y2 - s.y1;
-    const len2 = dx * dx + dy * dy || 1;
-    const t = Math.max(0, Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2));
-    return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy)) <= touch;
-  };
-  const touches = (a: VectorSegment, b: VectorSegment) =>
-    near({ x: a.x1, y: a.y1 }, b) ||
-    near({ x: a.x2, y: a.y2 }, b) ||
-    near({ x: b.x1, y: b.y1 }, a) ||
-    near({ x: b.x2, y: b.y2 }, a);
-  const inCluster = new Set<number>();
-  const queue: number[] = [];
-  // Seeded from strokes of a grid: each touches another the flood holds. A
-  // stroke alone is not paving — 22's "191" dimension line, in a flood that
-  // had leaked past its terrace, carried the terrace down to it.
-  const inFlood = pool.filter((s) => spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
-  pool.forEach((s, i) => {
-    if (inFlood.includes(s) && pool.some((o) => o !== s && touches(s, o))) {
-      inCluster.add(i);
-      queue.push(i);
-    }
-  });
-  if (queue.length === 0) return rows;
-  while (queue.length > 0) {
-    const a = pool[queue.pop()!]!;
-    pool.forEach((b, j) => {
-      if (inCluster.has(j) || !touches(a, b)) return;
-      inCluster.add(j);
-      queue.push(j);
-    });
-  }
-  const joints = [...inCluster].map((i) => pool[i]!);
-  const x0 = Math.min(...joints.flatMap((s) => [s.x1, s.x2]));
-  const x1 = Math.max(...joints.flatMap((s) => [s.x1, s.x2]));
-  const y0 = Math.min(...joints.flatMap((s) => [s.y1, s.y2]));
-  const y1 = Math.max(...joints.flatMap((s) => [s.y1, s.y2]));
-  if (furniture.some((p) => {
-    const cx = p.x + p.w / 2;
-    const cy = p.y + p.h / 2;
-    return cx > x0 && cx < x1 && cy > y0 && cy < y1;
-  })) {
-    return rows;
-  }
-  // A short wall standing mostly inside the paving is the sheet's ink, not
-  // a wall: 22's level mark's leader and lettering, read as stubs into its
-  // terrace, cut it in two.
-  const standing = bodies.filter((body) => {
-    const r = bodyRect(body);
-    const ox = Math.min(r.x + r.w, x1) - Math.max(r.x, x0);
-    const oy = Math.min(r.y + r.h, y1) - Math.max(r.y, y0);
-    const inside = ox > 0 && oy > 0 ? (ox * oy) / (r.w * r.h) : 0;
-    if (inside >= 0.5 && body.to - body.from <= unitsPerMetre * 1.5) return false;
-    // Nor one that ends out on the paving, a stub into it: a divider runs
-    // the terrace's depth, and 22's bathroom wall, run on past the facade,
-    // cut its terrace in two.
-    const end = unitsPerMetre * 0.15;
-    const endsInside =
-      body.orientation === "v"
-        ? (body.to > y0 + end && body.to < y1 - end) || (body.from > y0 + end && body.from < y1 - end)
-        : (body.to > x0 + end && body.to < x1 - end) || (body.from > x0 + end && body.from < x1 - end);
-    const across = body.orientation === "v" ? r.x + r.w / 2 > x0 && r.x + r.w / 2 < x1 : r.y + r.h / 2 > y0 && r.y + r.h / 2 < y1;
-    if (endsInside && across) return false;
-    // Nor one the joints run straight across: a real wall stops the paving.
-    const crossed = joints.some((j) =>
-      body.orientation === "v"
-        ? Math.abs(j.y2 - j.y1) < 1 &&
-          Math.min(j.x1, j.x2) < r.x &&
-          Math.max(j.x1, j.x2) > r.x + r.w &&
-          j.y1 > r.y &&
-          j.y1 < r.y + r.h
-        : Math.abs(j.x2 - j.x1) < 1 &&
-          Math.min(j.y1, j.y2) < r.y &&
-          Math.max(j.y1, j.y2) > r.y + r.h &&
-          j.x1 > r.x &&
-          j.x1 < r.x + r.w,
-    );
-    return !crossed;
-  });
-  const out: SpanRow[] = [];
-  const step = pitch;
-  for (let y = y0 + step / 2; y < y1; y += step) {
-    const spans: Array<[number, number]> = [];
-    let start: number | null = null;
-    for (let x = x0; x <= x1 + step / 2; x += step) {
-      const on = x <= x1 && !pointHitsBody(x, y, standing);
-      if (on && start == null) start = x;
-      if (!on && start != null) {
-        spans.push([start, x]);
-        start = null;
+  // First with a reach of three metres round the flood; where that runs on
+  // into what is not this terrace, again with half a metre: on דירה 18 the
+  // sheet's edge line, four metres long, joined its terrace's paving to the
+  // +12.79 terrace of the storey above.
+  const attempt = (reachM: number): SpanRow[] | null => {
+    const reach = unitsPerMetre * reachM;
+    const box = {
+      x0: Math.min(...xs) - reach,
+      x1: Math.max(...xs) + reach,
+      y0: Math.min(...ys) - reach,
+      y1: Math.max(...ys) + reach,
+    };
+    // Clipped to the reach, not dropped at it: a terrace's paving is joined
+    // by its edge lines, and those run on past it.
+    const clip = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    const pool = segments
+      .filter(
+        (s) =>
+          weights.has(s.lineWidth) &&
+          square(s) &&
+          Math.max(s.x1, s.x2) >= box.x0 &&
+          Math.min(s.x1, s.x2) <= box.x1 &&
+          Math.max(s.y1, s.y2) >= box.y0 &&
+          Math.min(s.y1, s.y2) <= box.y1 &&
+          !alongWall(s),
+      )
+      .map((s) => ({
+        ...s,
+        x1: clip(s.x1, box.x0, box.x1),
+        x2: clip(s.x2, box.x0, box.x1),
+        y1: clip(s.y1, box.y0, box.y1),
+        y2: clip(s.y2, box.y0, box.y1),
+      }));
+    const touch = unitsPerMetre * 0.02;
+    const near = (p: { x: number; y: number }, s: VectorSegment) => {
+      const dx = s.x2 - s.x1;
+      const dy = s.y2 - s.y1;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2));
+      return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy)) <= touch;
+    };
+    const touches = (a: VectorSegment, b: VectorSegment) =>
+      near({ x: a.x1, y: a.y1 }, b) ||
+      near({ x: a.x2, y: a.y2 }, b) ||
+      near({ x: b.x1, y: b.y1 }, a) ||
+      near({ x: b.x2, y: b.y2 }, a);
+    const inCluster = new Set<number>();
+    const queue: number[] = [];
+    // Seeded from strokes of a grid: each touches another the flood holds. A
+    // stroke alone is not paving — 22's "191" dimension line, in a flood that
+    // had leaked past its terrace, carried the terrace down to it.
+    const inFlood = pool.filter((s) => spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
+    pool.forEach((s, i) => {
+      if (inFlood.includes(s) && pool.some((o) => o !== s && touches(s, o))) {
+        inCluster.add(i);
+        queue.push(i);
       }
+    });
+    if (queue.length === 0) return null;
+    while (queue.length > 0) {
+      const a = pool[queue.pop()!]!;
+      pool.forEach((b, j) => {
+        if (inCluster.has(j) || !touches(a, b)) return;
+        inCluster.add(j);
+        queue.push(j);
+      });
     }
-    if (start != null) spans.push([start, x1]);
-    if (spans.length > 0) out.push({ y, spans });
-  }
-  const grown = area(out);
-  if (grown > unitsPerMetre * unitsPerMetre * 20 || !accept(out)) return rows;
-  return out;
+    const joints = [...inCluster].map((i) => pool[i]!);
+    let x0 = Math.min(...joints.flatMap((s) => [s.x1, s.x2]));
+    let x1 = Math.max(...joints.flatMap((s) => [s.x1, s.x2]));
+    let y0 = Math.min(...joints.flatMap((s) => [s.y1, s.y2]));
+    let y1 = Math.max(...joints.flatMap((s) => [s.y1, s.y2]));
+    // Out to the terrace's edge: the paving stops short of its railing, and
+    // the printed area is to the railing — 22's 8 m² measured 5.4 to the last
+    // joint. Each side moves out to the line along it within 45 cm that runs
+    // most of its length.
+    const out45 = unitsPerMetre * 0.45;
+    // A dimension line is no edge: it carries its ticks — at 45°, or square
+    // across it — where its extension lines meet it: 22's "191" under its
+    // terrace.
+    const ticks = segments.filter((t) => {
+      const len = Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
+      if (len > unitsPerMetre * 0.2 || len < unitsPerMetre * 0.02) return false;
+      const deg = ((Math.atan2(t.y2 - t.y1, t.x2 - t.x1) * 180) / Math.PI + 180) % 90;
+      return Math.abs(deg - 45) < 10;
+    });
+    const shortSquare = segments.filter((t) => {
+      const len = Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
+      return len <= unitsPerMetre * 0.2 && len >= unitsPerMetre * 0.04 && (Math.abs(t.x2 - t.x1) <= 1 || Math.abs(t.y2 - t.y1) <= 1);
+    });
+    const isDimensionLine = (s: VectorSegment) => {
+      const horizontal = Math.abs(s.y2 - s.y1) <= 1;
+      const pos = horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2;
+      const a = horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+      const b = horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+      // Where a short stroke crosses the line, end to end on both sides.
+      const crossAt = (t: VectorSegment): number | null => {
+        const [p, q] = horizontal ? [t.y1 - pos, t.y2 - pos] : [t.x1 - pos, t.x2 - pos];
+        if (!(p * q < 0)) return null;
+        const f = p / (p - q);
+        return horizontal ? t.x1 + (t.x2 - t.x1) * f : t.y1 + (t.y2 - t.y1) * f;
+      };
+      const marks = [...ticks, ...shortSquare].map(crossAt).filter((v): v is number => v != null);
+      // One at each end: the hatch of the wall a railing starts from crosses
+      // it at that end only.
+      const reachEnd = unitsPerMetre * 0.12;
+      return marks.some((m) => Math.abs(m - a) <= reachEnd) && marks.some((m) => Math.abs(m - b) <= reachEnd);
+    };
+    const edgeOut = (side: "x0" | "x1" | "y0" | "y1"): number => {
+      const horizontal = side === "y0" || side === "y1";
+      const at = side === "x0" ? x0 : side === "x1" ? x1 : side === "y0" ? y0 : y1;
+      const sign = side === "x0" || side === "y0" ? -1 : 1;
+      const [lo, hi] = horizontal ? [x0, x1] : [y0, y1];
+      // Collinear pieces together: an edge is often drawn in several, split
+      // where a diagonal or a railing post meets it.
+      const cover = new Map<number, Array<[number, number]>>();
+      for (const s of segments) {
+        if (horizontal ? Math.abs(s.y2 - s.y1) > 1 : Math.abs(s.x2 - s.x1) > 1) continue;
+        const d = Math.round(((horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2) - at) * sign);
+        if (d <= 0 || d > out45 || isDimensionLine(s)) continue;
+        const a = Math.max(lo, horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2));
+        const b = Math.min(hi, horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2));
+        if (b > a) cover.set(d, [...(cover.get(d) ?? []), [a, b]]);
+      }
+      const covered = (spans: Array<[number, number]>) => {
+        let total = 0;
+        let end = -Infinity;
+        for (const [a, b] of [...spans].sort((p, q) => p[0] - q[0])) {
+          if (b <= end) continue;
+          total += b - Math.max(a, end);
+          end = b;
+        }
+        return total;
+      };
+      const lines = [...cover.entries()]
+        .filter(([, spans]) => covered(spans) >= 0.6 * (hi - lo))
+        .map(([d]) => d)
+        .sort((p, q) => p - q);
+      // The nearest, and on only to a line hard by it — a railing drawn
+      // double. Past that is the next thing: 22's "191" dimension line.
+      let reached = 0;
+      for (const d of lines) {
+        if (reached > 0 && d - reached > unitsPerMetre * 0.12) break;
+        reached = d;
+      }
+      return at + reached * sign;
+    };
+    [x0, x1, y0, y1] = [edgeOut("x0"), edgeOut("x1"), edgeOut("y0"), edgeOut("y1")];
+    if (furniture.some((p) => {
+      const cx = p.x + p.w / 2;
+      const cy = p.y + p.h / 2;
+      return cx > x0 && cx < x1 && cy > y0 && cy < y1;
+    })) {
+      return null;
+    }
+    // A short wall standing mostly inside the paving is the sheet's ink, not
+    // a wall: 22's level mark's leader and lettering, read as stubs into its
+    // terrace, cut it in two.
+    const standing = bodies.filter((body) => {
+      const r = bodyRect(body);
+      const ox = Math.min(r.x + r.w, x1) - Math.max(r.x, x0);
+      const oy = Math.min(r.y + r.h, y1) - Math.max(r.y, y0);
+      const inside = ox > 0 && oy > 0 ? (ox * oy) / (r.w * r.h) : 0;
+      if (inside >= 0.5 && body.to - body.from <= unitsPerMetre * 1.5) return false;
+      // Nor one that ends out on the paving, a stub into it: a divider runs
+      // the terrace's depth, and 22's bathroom wall, run on past the facade,
+      // cut its terrace in two.
+      const end = unitsPerMetre * 0.15;
+      const endsInside =
+        body.orientation === "v"
+          ? (body.to > y0 + end && body.to < y1 - end) || (body.from > y0 + end && body.from < y1 - end)
+          : (body.to > x0 + end && body.to < x1 - end) || (body.from > x0 + end && body.from < x1 - end);
+      const across = body.orientation === "v" ? r.x + r.w / 2 > x0 && r.x + r.w / 2 < x1 : r.y + r.h / 2 > y0 && r.y + r.h / 2 < y1;
+      if (endsInside && across) return false;
+      // Nor one the joints run straight across: a real wall stops the paving.
+      const crossed = joints.some((j) =>
+        body.orientation === "v"
+          ? Math.abs(j.y2 - j.y1) < 1 &&
+            Math.min(j.x1, j.x2) < r.x &&
+            Math.max(j.x1, j.x2) > r.x + r.w &&
+            j.y1 > r.y &&
+            j.y1 < r.y + r.h
+          : Math.abs(j.x2 - j.x1) < 1 &&
+            Math.min(j.y1, j.y2) < r.y &&
+            Math.max(j.y1, j.y2) > r.y + r.h &&
+            j.x1 > r.x &&
+            j.x1 < r.x + r.w,
+      );
+      return !crossed;
+    });
+    const out: SpanRow[] = [];
+    const step = pitch;
+    for (let y = y0 + step / 2; y < y1; y += step) {
+      const spans: Array<[number, number]> = [];
+      let start: number | null = null;
+      for (let x = x0; x <= x1 + step / 2; x += step) {
+        const on = x <= x1 && !pointHitsBody(x, y, standing);
+        if (on && start == null) start = x;
+        if (!on && start != null) {
+          spans.push([start, x]);
+          start = null;
+        }
+      }
+      if (start != null) spans.push([start, x1]);
+      if (spans.length > 0) out.push({ y, spans });
+    }
+    const grown = area(out);
+    if (grown > unitsPerMetre * unitsPerMetre * 20 || !accept(out)) return null;
+    return out;
+  };
+  return attempt(3) ?? attempt(0.5) ?? rows;
 }
