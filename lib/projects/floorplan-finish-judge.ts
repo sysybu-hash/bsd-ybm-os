@@ -70,9 +70,12 @@ function imagePart(base64: string) {
 /**
  * The models that judge. A judge has to see a pillow: the fallback chain ends
  * on Haiku, which passed a painting with four sofas, a coffee table and an
- * island where the drawing has two sofas.
+ * island where the drawing has two sofas. Sonnet 5 first: Sonnet 4.6 said
+ * no bed in four of 14's five frames that each held one, and no armchair
+ * where one stood; Sonnet 5 saw them all, twice, and what the design really
+ * added — a desk in two bedrooms.
  */
-const JUDGE_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"];
+const JUDGE_MODELS = ["claude-sonnet-5", "claude-sonnet-4-6", "claude-opus-4-7"];
 
 async function askClaude(key: string, content: unknown[], maxTokens: number): Promise<{ raw: Record<string, unknown>; model: string } | null> {
   for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
@@ -86,7 +89,14 @@ async function askClaude(key: string, content: unknown[], maxTokens: number): Pr
         res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-          body: JSON.stringify({ model, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] }),
+          // Temperature only where the model takes it: the 5-series refuse
+          // the field ("deprecated for this model") with a 400.
+          body: JSON.stringify({
+            model,
+            max_tokens: maxTokens,
+            ...(/claude-[a-z]+-4/.test(model) ? { temperature: 0 } : {}),
+            messages: [{ role: "user", content }],
+          }),
         });
       } catch (err: unknown) {
         log.warn("finish judge error", { model, tryNo, error: err instanceof Error ? err.message : String(err) });
@@ -216,11 +226,18 @@ const PIECE_WORD: Record<string, string> = {
 
 /** What each kind looks like from above, and what else counts as it. */
 const PIECE_LOOK: Record<string, string> = {
-  beds: "a bed — seen from above a long mattress with a pillow at one end, often a blanket or throw over its foot",
+  // Not "a long mattress": a designed single with its throw read as no bed
+  // at all in four of 14's five frames.
+  beds: "a bed — seen from above a mattress, usually with a pillow at one end and bedding or a throw over it; a day bed counts",
   sofas: "a sofa — a seat for two or more with a back and arms",
   armchairs: "an armchair, or another upholstered seat for one such as a pouf",
   "dining tables": "a dining table",
 };
+
+/** The second look at a piece: the layout's spot and the design's, side by side. */
+function compareQuestion(kind: string): string {
+  return `Two crops of the same spot, framed by a thin red line: the first from a plain 3D layout of an apartment seen from above, the second from a designed, photorealistic version of it. The layout has ${PIECE_LOOK[kind] ?? kind} in its frame. Does the design also have one in its frame — restyled, recoloured or with different bedding, but the same piece in the same place? Return JSON only: {"answer": true} or {"answer": false}`;
+}
 
 /** One yes-or-no question per crop, in order: is the named piece in its frame? */
 function piecesQuestion(kinds: string[]): string {
@@ -232,6 +249,20 @@ Return JSON only, one answer per image in order: {"answers": [true, false]}`;
 
 
 
+
+/**
+ * A yes, however it comes back: true, "true", "yes", 1, or an object holding
+ * one. Read as strictly true, a "yes" was a piece missing.
+ */
+export function isYes(answer: unknown): boolean {
+  if (answer === true || answer === 1) return true;
+  if (typeof answer === "string") return /^\s*(true|yes|y|1)\b/i.test(answer);
+  if (answer && typeof answer === "object") {
+    const value = Object.values(answer as Record<string, unknown>)[0];
+    return value !== answer && isYes(value);
+  }
+  return false;
+}
 
 /** What a design may put on the layout's open floor: decor, never furniture. */
 const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wall", "other"]);
@@ -293,8 +324,20 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const BATCH = 8;
   const indexes = checked.map((_, i) => i);
   const openIdx = indexes.filter((i) => checked[i]!.kind === "open floor");
-  const pieceIdx = indexes.filter((i) => checked[i]!.kind !== "open floor");
-  const chunks = (list: number[]) => Array.from({ length: Math.ceil(list.length / BATCH) }, (_, k) => list.slice(k * BATCH, (k + 1) * BATCH));
+  // One kind a batch: asked about a table, five beds and a sofa together,
+  // the judge answered no bed in four frames that each held one.
+  const pieceIdx = indexes
+    .filter((i) => checked[i]!.kind !== "open floor")
+    .sort((a, b) => checked[a]!.kind.localeCompare(checked[b]!.kind) || a - b);
+  const chunks = (list: number[]) => {
+    const out: number[][] = [];
+    for (const i of list) {
+      const last = out[out.length - 1];
+      if (last && last.length < BATCH && checked[last[0]!]!.kind === checked[i]!.kind) last.push(i);
+      else out.push([i]);
+    }
+    return out;
+  };
   const askOpen = (group: number[]) => askClaude(key, [...group.map((i) => crops[i]!), { type: "text", text: SPOTS }], 900);
   const askPieces = (group: number[]) =>
     askClaude(key, [...group.map((i) => crops[i]!), { type: "text", text: piecesQuestion(group.map((i) => checked[i]!.kind)) }], 400);
@@ -306,7 +349,7 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   /** What was seen at each spot: a list for open floor, yes or no for a piece. */
   const seenAt = new Map<number, string[] | boolean>();
   chunks(openIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, listOf((openBatches[k]!.raw.answers as unknown[])[j] ?? []))));
-  chunks(pieceIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, (pieceBatches[k]!.raw.answers as unknown[])[j] === true)));
+  chunks(pieceIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, isYes((pieceBatches[k]!.raw.answers as unknown[])[j]))));
   // What each sofa faces, asked twice over: a screen there refuses a haredi
   // design only if both looks see one.
   const screens = await Promise.all(
@@ -337,8 +380,13 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
         const said = await askClaude(key, [crops[i]!, { type: "text", text: SPOTS }], 200);
         return Array.isArray(said?.raw.answers) ? listOf((said!.raw.answers as unknown[])[0] ?? []) : null;
       }
-      const said = await askClaude(key, [crops[i]!, { type: "text", text: piecesQuestion([spot.kind]) }], 100);
-      return Array.isArray(said?.raw.answers) ? (said!.raw.answers as unknown[])[0] === true : null;
+      // Beside the layout's own crop of the spot: a piece is easier to
+      // recognise restyled when the plain one is shown with it.
+      const plain = await cropSpot(layout, frame, spot, Math.max(40, Math.round(Math.max(spot.w, spot.h) * 0.35)), true);
+      const said = await askClaude(key, [plain, crops[i]!, { type: "text", text: compareQuestion(spot.kind) }], 100);
+      if (!said) return null;
+      const answer = said.raw.answer ?? (Array.isArray(said.raw.answers) ? (said.raw.answers as unknown[])[0] : undefined);
+      return answer === undefined ? null : isYes(answer);
     }),
   );
   const missing: SpotFinding[] = [];

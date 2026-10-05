@@ -86,6 +86,8 @@ export async function finishMeasuredStill(
      * refused, or null.
      */
     judge?: (image: Buffer) => Promise<Verdict>;
+    /** Every design as it comes back, before any check: kept for review. */
+    onDesign?: (image: Buffer, attempt: number) => void;
   },
 ): Promise<(FloorplanVizImage & { edges: number; masses: number }) | null> {
   if (!hasGeminiApiKey()) return null;
@@ -119,6 +121,7 @@ export async function finishMeasuredStill(
       : await finishPass(client, prompt, still.plain);
     if (!done) continue;
     recordFloorplanSpend(options.spend, "image", done.model);
+    options.onDesign?.(done.image, attempt);
     let edges: number;
     let masses: number;
     let held: boolean;

@@ -192,3 +192,11 @@ describe("a refused design's faults, framed for its correction", () => {
     expect(r2).toBeLessThan(120);
   });
 });
+
+describe("a judge's yes, however it comes back", () => {
+  it("reads true, \"yes\", 1 and an object holding one as yes", async () => {
+    const { isYes } = await import("@/lib/projects/floorplan-finish-judge");
+    for (const yes of [true, "true", "Yes", "yes, a bed", 1, { answer: true }]) expect(isYes(yes)).toBe(true);
+    for (const no of [false, "no", "false", 0, null, undefined, { answer: false }]) expect(isYes(no)).toBe(false);
+  });
+});
