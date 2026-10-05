@@ -3334,6 +3334,11 @@ export function terraceFromPaving(
   unitsPerMetre: number,
   /** Whether the region found may stand; see the caller's level check. */
   accept: (region: SpanRow[]) => boolean = () => true,
+  /**
+   * Seed from every stroke that crosses the rows, not only those whose middle
+   * lies in them: a small square round a level mark holds few joints' middles.
+   */
+  seedByCrossing = false,
 ): SpanRow[] {
   if (rows.length === 0) return rows;
   const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
@@ -3349,7 +3354,16 @@ export function terraceFromPaving(
       Math.min(Math.abs(s.x2 - s.x1), Math.abs(s.y2 - s.y1)) <= length * 0.02
     );
   };
-  const held = segments.filter((s) => square(s) && spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
+  const inRows = (s: VectorSegment) => {
+    if (spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2)) return true;
+    if (!seedByCrossing) return false;
+    const n = Math.max(2, Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / 2));
+    for (let k = 0; k <= n; k++) {
+      if (spansContain(rows, s.x1 + ((s.x2 - s.x1) * k) / n, s.y1 + ((s.y2 - s.y1) * k) / n)) return true;
+    }
+    return false;
+  };
+  const held = segments.filter((s) => square(s) && inRows(s));
   // Six will do: the cluster grows from them, and 22's 3.3 m² terrace
   // flooded only the lower half of its paving, eleven joints of it.
   if (held.length < 6) return rows;
@@ -3431,7 +3445,7 @@ export function terraceFromPaving(
     // Seeded from strokes of a grid: each touches another the flood holds. A
     // stroke alone is not paving — 22's "191" dimension line, in a flood that
     // had leaked past its terrace, carried the terrace down to it.
-    const inFlood = pool.filter((s) => spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2));
+    const inFlood = pool.filter(inRows);
     pool.forEach((s, i) => {
       if (inFlood.includes(s) && pool.some((o) => o !== s && touches(s, o))) {
         inCluster.add(i);

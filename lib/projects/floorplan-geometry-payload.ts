@@ -1,8 +1,8 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { spansContain } from "@/lib/projects/floorplan-solid";
-import { fillEnclosedHoles, mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
+import { spansContain, type SpanRow } from "@/lib/projects/floorplan-solid";
+import { fillEnclosedHoles, mergeSpanRows, withoutRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
  * The measured flat, in the smallest shape a viewer needs.
@@ -142,6 +142,14 @@ function standsInARoom(
   );
 }
 
+/** Whether most of a room lies in a region that is not the flat's. */
+function mostlyForeign(rows: SpanRow[], foreign: SpanRow[][]): boolean {
+  if (foreign.length === 0) return false;
+  const area = (list: SpanRow[]) => list.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0);
+  const whole = area(rows);
+  return whole > 0 && area(withoutRows(rows, foreign)) < whole * 0.5;
+}
+
 export function floorplanGeometryPayload(
   flat: BuiltFlat,
   rooms: SegmentedRoom[],
@@ -194,10 +202,11 @@ export function floorplanGeometryPayload(
             },
           }))
         : undefined,
-    floor: toRects(mergeSpanRows(flat.floor)),
+    // Less what is someone else's: 21's roof at +15.94, beside its bedroom.
+    floor: toRects(mergeSpanRows(withoutRows(flat.floor, flat.foreign ?? []))),
     // A terrace's printed "שטח המרפסת" left its letters as holes too.
     terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2)))),
-    rooms: rooms.map((room) => ({
+    rooms: rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])).map((room) => ({
       name: room.name,
       kind: room.kind,
       areaM2: room.areaM2,

@@ -89,6 +89,12 @@ export type BuiltFlat = {
   /** Paved outdoor areas, each verified against the area the sheet prints in it. */
   terraces: SpanRow[][];
   /**
+   * Regions on the flat's floor that are not the flat's: a terrace at
+   * another level with no door onto it. Kept in the floor, so the rooms beside
+   * them are not opened to the outside, and left out of what is drawn.
+   */
+  foreign?: SpanRow[][];
+  /**
    * How many terrace figures the sheet prints inside this flat.
    *
    * Not the same as terraces.length: finding four of eleven is the measured
@@ -155,6 +161,7 @@ export function programmeTerraceSeeds(
         ),
     );
 }
+
 
 /**
  * The level the flat itself stands at, as printed beside the small ⊕ in its
@@ -747,11 +754,12 @@ export async function buildFlatFromGeometry(
     const text = levelTextAt(mark, geometry.segments, geometry.curves);
     return text != null && sameLevelText(text, flatLevel);
   };
-  // A mark whose figure cannot be read — 14's "+9.64" is printed on end — is
-  // not at another level, only unread; it seeds as the flat's own would.
+  // A mark whose figure cannot be read — 14's "+9.64" is printed on end, a
+  // dimension line runs through 21's "+15.94" — is decided by access below.
   const unread = (mark: { x: number; y: number; r: number }) =>
     flatLevel != null && levelTextAt(mark, geometry.segments, geometry.curves) == null;
-  const ownSeeds = levelSeeds.filter((mark) => atFlatLevel(mark) || unread(mark));
+  const unreadSeeds = levelSeeds.filter(unread);
+  const ownSeeds = levelSeeds.filter(atFlatLevel);
   const otherSeeds = levelSeeds.filter((mark) => !atFlatLevel(mark) && !unread(mark));
   const unlabelledHits =
     otherSeeds.length > 0
@@ -839,7 +847,47 @@ export async function buildFlatFromGeometry(
     const length = Math.max(x1 - x0, y1 - y0);
     return area / length >= unitsPerMetre * 0.7 && area >= unitsPerMetre * unitsPerMetre * 1.2;
   };
-  const terraces = [...terraceHits, ...markedHits]
+  // A terrace at another level with no door onto it is someone else's — the
+  // roof of the flat below, the terrace of the one above — and no part of
+  // this flat's floor either: 21's roof at +15.94, beside a flat at +12.79,
+  // came out a bathroom for the lettering on it.
+  // Each mark not at the flat's level, read or not, gives a region: its
+  // flood, or, where the flood ran out of it through a doorway into the flat
+  // (21's roof), its paving grown from round the mark. Lettering does not
+  // count as furniture in it — and lettering reads as fixtures and unknowns
+  // of every shape (21's "מ"ר" as a 70 by 34 cm one) — so only furniture
+  // proper stops the paving. A bathroom is kept by its door.
+  const notLettering = furniture.filter((piece) => piece.kind !== "fixture" && piece.kind !== "unknown");
+  const pavedAround = (mark: { x: number; y: number }): SpanRow[] | null => {
+    const half = unitsPerMetre * 0.5;
+    const square: SpanRow[] = [];
+    for (let y = mark.y - half; y <= mark.y + half; y += 2) square.push({ y, spans: [[mark.x - half, mark.x + half]] });
+    const grown = terraceFromPaving(square, geometry.segments, bodies, notLettering, unitsPerMetre, () => true, true);
+    return grown === square ? null : grown;
+  };
+  const regionsAt = (marks: typeof levelSeeds) =>
+    marks
+      .map((mark) => {
+        const flooded = findTerracesOnFloor(floor, bodies, [mark], unitsPerMetre, {
+          unlabelledM2: { min: 0.5, max: 16 },
+          growRim: true,
+        })[0];
+        const rows = flooded && standsIn(flooded).every((piece) => !notLettering.includes(piece)) ? flooded.rows : pavedAround(mark);
+        return rows ? { rows } : null;
+      })
+      .filter((region): region is { rows: SpanRow[] } => region != null);
+  // Unread, a region with a door onto it is the flat's; otherwise, like one
+  // at another level, it is someone else's — the roof of the flat below, the
+  // terrace of the one above — and no part of this flat's floor: 21's roof,
+  // with no door to it, came out a bathroom for the lettering on it.
+  const unreadRegions = regionsAt(unreadSeeds);
+  const unreadOwn = unreadRegions.filter(doorOnto);
+  const notTheFlats = [
+    ...[...terraceHits, ...markedHits].filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
+    ...regionsAt(otherSeeds).filter((region) => !doorOnto(region)),
+    ...unreadRegions.filter((region) => !doorOnto(region)),
+  ].map((terrace) => terraceFromPaving(terrace.rows, geometry.segments, bodies, notLettering, unitsPerMetre));
+  const terraces = [...terraceHits, ...markedHits, ...unreadOwn]
     .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
     .map((terrace) => {
       const paved = terraceFromPaving(
@@ -1176,6 +1224,7 @@ export async function buildFlatFromGeometry(
     furniture: kitchenSquaresAreAppliances(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), unitsPerMetre),
     openings,
     terraces,
+    foreign: notTheFlats,
     printedTerraceCount: printed.length,
     bounds,
     floorM2,

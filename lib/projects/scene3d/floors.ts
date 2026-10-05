@@ -358,3 +358,35 @@ export function cropToPaving(
   const kept = area(cropped) / Math.max(1e-9, area(rows));
   return kept < 0.35 ? rows : cropped;
 }
+
+/**
+ * The rows less what the cuts cover, row by row; the rows themselves where
+ * nothing is cut.
+ */
+export function withoutRows(rows: SpanRow[], cuts: SpanRow[][]): SpanRow[] {
+  if (cuts.length === 0) return rows;
+  const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
+  let changed = false;
+  const out = rows
+    .map((row) => {
+      let spans = row.spans;
+      for (const cut of cuts) {
+        for (const other of cut) {
+          if (Math.abs(other.y - row.y) > pitch / 2) continue;
+          for (const [ca, cb] of other.spans) {
+            spans = spans.flatMap(([a, b]): Array<[number, number]> => {
+              if (cb <= a || ca >= b) return [[a, b]];
+              changed = true;
+              return [
+                ...(ca > a ? [[a, ca] as [number, number]] : []),
+                ...(cb < b ? [[cb, b] as [number, number]] : []),
+              ];
+            });
+          }
+        }
+      }
+      return { y: row.y, spans };
+    })
+    .filter((row) => row.spans.length > 0);
+  return changed ? out : rows;
+}
