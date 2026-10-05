@@ -1,3 +1,4 @@
+import { createLogger } from "@/lib/logger";
 import { readColouredDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { classifyOpenings, sameHole, type OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 import { findEntranceMarkers, placeEntranceDoor } from "@/lib/projects/floorplan-entrance";
@@ -203,6 +204,78 @@ function centreInsideBody(piece: FurniturePiece, body: WallBody): boolean {
   return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
 }
 
+const log = createLogger("floorplan-build");
+
+/**
+ * How much bigger the rooms are printed than measured, read where each room
+ * the programme sizes stands: from its middle out to the first wall face each
+ * way, against its printed width and length. The living spaces are left out
+ * — their figures are a part of an open plan — and a room is taken only when
+ * its spans and figures agree to within a fifth. The median over at least
+ * four, and only where they agree among themselves; null otherwise.
+ */
+export function roomDimensionScale(
+  bodies: WallBody[],
+  programme: FloorplanLayout,
+  page: { width: number; height: number },
+  unitsPerMetre: number,
+): number | null {
+  const rects = bodies.map(bodyRect);
+  const ray = (x: number, y: number, dx: number, dy: number): number | null => {
+    let best: number | null = null;
+    for (const r of rects) {
+      let dist: number;
+      if (dx !== 0) {
+        if (y < r.y || y > r.y + r.h) continue;
+        dist = ((dx > 0 ? r.x : r.x + r.w) - x) * dx;
+      } else {
+        if (x < r.x || x > r.x + r.w) continue;
+        dist = ((dy > 0 ? r.y : r.y + r.h) - y) * dy;
+      }
+      if (dist > 0 && (best == null || dist < best)) best = dist;
+    }
+    return best;
+  };
+  const ratios: number[] = [];
+  for (const room of programme.rooms ?? []) {
+    const kind = room.kind ?? inferRoomKind(room.name);
+    if (!room.bbox || kind === "living" || kind === "kitchen" || kind === "balcony" || kind === "circulation") continue;
+    const printed = [room.widthM, room.lengthM].filter((v): v is number => v != null && v > 0);
+    if (printed.length === 0) continue;
+    const x = (room.bbox.x + room.bbox.w / 2) * page.width;
+    const y = (room.bbox.y + room.bbox.h / 2) * page.height;
+    const across = [ray(x, y, 1, 0), ray(x, y, -1, 0)];
+    const down = [ray(x, y, 0, 1), ray(x, y, 0, -1)];
+    const spans = [across, down]
+      .filter((pair): pair is [number, number] => pair[0] != null && pair[1] != null)
+      .map(([a, b]) => (a + b) / unitsPerMetre);
+    if (spans.length === 0) continue;
+    for (const p of printed) {
+      const m = spans.reduce((best, span) => (Math.abs(span - p) < Math.abs(best - p) ? span : best));
+      const r = p / m;
+      if (r > 0.85 && r < 1.2) ratios.push(r);
+    }
+  }
+  if (ratios.length < 4) return null;
+  const sorted = [...ratios].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)]!;
+  const spread = [...ratios.map((r) => Math.abs(r - median))].sort((a, b) => a - b)[Math.floor(ratios.length / 2)]!;
+  return spread <= 0.035 ? median : null;
+}
+
+/**
+ * The nearest architect's scale in PDF points — 1:50 is 56.69 points a
+ * metre — where the figure is within 1.5 % of one; the figure otherwise.
+ */
+export function snapToDrawingScale(unitsPerMetre: number): number {
+  const POINTS_PER_METRE = 72 / 0.0254;
+  for (const scale of [20, 25, 40, 50, 75, 100, 200]) {
+    const upm = POINTS_PER_METRE / scale;
+    if (Math.abs(unitsPerMetre / upm - 1) <= 0.015) return upm;
+  }
+  return unitsPerMetre;
+}
+
 /**
  * The flat, built from geometry that is already in hand.
  *
@@ -242,6 +315,10 @@ export async function buildFlatFromGeometry(
      * around this figure; see lockScaleToHint.
      */
     unitsPerMetreHint?: number;
+    /** How far from the hint the sweep may look; see lockScaleToHint. */
+    unitsPerMetreHintSpread?: number;
+    /** Set on the build the room dimensions re-scaled: it is not checked again. */
+    scaledByRooms?: boolean;
   },
 ): Promise<BuiltFlat | null> {
   // A terrace's level mark hatches two quarters of its circle, and that hatch
@@ -262,7 +339,7 @@ export async function buildFlatFromGeometry(
     printedAreaM2 > 0
       ? lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search, geometry.curves)
       : hint
-        ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves)
+        ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves, options?.unitsPerMetreHintSpread)
         : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
@@ -827,7 +904,14 @@ export async function buildFlatFromGeometry(
     });
   const elsewhere = (terrace: { rows: SpanRow[] }) => {
     if (!flatLevel) return false;
-    const own = levelMarks.filter((mark) => spansContain(terrace.rows, mark.x, mark.y));
+    // In its box, not only on its rows: the mark's own hatch stops the flood,
+    // and 21's roof flooded round its +15.94 and was taken for the flat's.
+    const xs = terrace.rows.flatMap((row) => row.spans.flat());
+    const ys = terrace.rows.map((row) => row.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const own = levelMarks.filter(
+      (mark) => spansContain(terrace.rows, mark.x, mark.y) || (mark.x >= x0 && mark.x <= x1 && mark.y >= y0 && mark.y <= y1),
+    );
     const texts = own
       .map((mark) => levelTextAt(mark, geometry.segments, geometry.curves))
       .filter((text): text is LevelText => text != null);
@@ -1237,7 +1321,7 @@ export async function buildFlatFromGeometry(
     return !terraces.some((rows) => spansContain(rows, cx, cy)) && !onMark(piece);
   });
 
-  return {
+  const built: BuiltFlat = {
     unitsPerMetre,
     bodies,
     floor: flatFloor,
@@ -1260,6 +1344,29 @@ export async function buildFlatFromGeometry(
       width: options?.width,
     }),
   };
+
+  // The scale the area locked, checked against the rooms' printed sizes: the
+  // area is the footprint's, and a footprint that takes in more than the flat
+  // — 21's and 22's did — locks the flat small, every room 6 to 8 % short of
+  // its printed size. The sheets are drawn at 1:50; their rooms say so.
+  if (!options?.scaledByRooms && options?.programme) {
+    const ratio = roomDimensionScale(bodies, options.programme, { width: geometry.pageWidth, height: geometry.pageHeight }, unitsPerMetre);
+    if (ratio != null && Math.abs(ratio - 1) > 0.02) {
+      const corrected = snapToDrawingScale(unitsPerMetre / ratio);
+      log.info("scale corrected by the rooms' printed sizes", { from: unitsPerMetre, to: Number(corrected.toFixed(2)), ratio: Number(ratio.toFixed(3)) });
+      const rescaled = await buildFlatFromGeometry(geometry, 0, {
+        ...options,
+        unitsPerMetreHint: corrected,
+        unitsPerMetreHintSpread: 0.015,
+        scaledByRooms: true,
+      });
+      if (rescaled) {
+        const m2 = rescaled.floorM2;
+        return { ...rescaled, areaError: printedAreaM2 > 0 ? m2 / printedAreaM2 - 1 : rescaled.areaError };
+      }
+    }
+  }
+  return built;
 }
 
 /**
