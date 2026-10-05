@@ -677,8 +677,33 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
 
   const extentCorner = project(p, spanned.x, spanned.y);
   const standing = wallsBesideFloor(meshes);
+  // An opening needs a wall to be in: one whose wall, head and sill all went
+  // stands in nothing — 18's "door" on the line of the level figure at its
+  // terrace's edge kept its frame, its leaf and a mezuzah, floating.
+  const walled = standing.filter((m) => m.kind === "wall" || m.kind === "wallHead" || m.kind === "wallSill");
+  const orphaned = new Set(
+    openings
+      .filter((o) => {
+        const reach = 0.15;
+        return !walled.some(
+          (m) =>
+            Math.abs(m.centre.x - o.centre.x) <= (m.size.x + o.size.x) / 2 + reach &&
+            Math.abs(m.centre.z - o.centre.z) <= (m.size.z + o.size.z) / 2 + reach,
+        );
+      })
+      .map((o) => o.id),
+  );
+  // Nor a skirting whose wall went: 18's stub left its two white strips.
+  const wallsLeft = new Set(standing.filter((m) => m.kind === "wall").map((m) => m.sourceId));
   meshes.length = 0;
-  meshes.push(...standing);
+  meshes.push(
+    ...standing.filter(
+      (m) =>
+        !orphaned.has(m.sourceId.split("/")[0]!) &&
+        !(m.kind === "skirting" && m.sourceId.startsWith("wall:") && !wallsLeft.has(m.sourceId.split("/")[0]!)),
+    ),
+  );
+  if (orphaned.size > 0) openings.splice(0, openings.length, ...openings.filter((o) => !orphaned.has(o.id)));
   const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
@@ -781,6 +806,22 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
         : [side(m.centre.x - off, t), side(m.centre.x + off, t)];
       return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (a === "terrace") !== (b === "terrace");
     });
+    // A stub with no floor of the flat beside it is no parapet: a terrace's
+    // edge runs its length, and 18's 35 cm block at its level mark stood
+    // alone on its terrace.
+    if (m.kind === "wall" && length < 0.6) {
+      // A hand further out: 18's stub stood on the terrace's very edge, its
+      // far side a sliver of floor a centimetre past it.
+      const far = off + 0.15;
+      const floorBeside = Array.from({ length: slices }, (_, i) => {
+        const t = start + step * (i + 0.5);
+        const [a, b] = alongX
+          ? [side(t, m.centre.z - far), side(t, m.centre.z + far)]
+          : [side(m.centre.x - far, t), side(m.centre.x + far, t)];
+        return a === "floor" || b === "floor" || a === "wall" || b === "wall";
+      }).some(Boolean);
+      if (!floorBeside) continue;
+    }
     if (stands.every(Boolean)) {
       out.push(m);
       continue;
