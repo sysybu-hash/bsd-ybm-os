@@ -1745,6 +1745,8 @@ export type Opening = {
   thickness: number;
   from: number;
   to: number;
+  /** A door's leaf as the sheet draws it open, hinge to tip, page units. */
+  leaf?: { x: number; y: number; dx: number; dy: number };
 };
 
 /**
@@ -1949,7 +1951,7 @@ export function findDoorSwings(
         y <= rect.y + rect.h + 3,
     );
 
-  type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody };
+  type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody; side: number; tip: { x: number; y: number } };
   const swings: Swing[] = [];
   // Short strokes by grid cell, for the dashed swings below: scanned whole
   // for every leaf-length line, they made a sheet take minutes to measure.
@@ -1979,7 +1981,12 @@ export function findDoorSwings(
     // with neither is furniture standing in the room.
     if ((a && b) || (!a && !b)) continue;
     const hinge = a ? { x: s.x1, y: s.y1 } : { x: s.x2, y: s.y2 };
+    const tip = a ? { x: s.x2, y: s.y2 } : { x: s.x1, y: s.y1 };
     const body = (a ?? b)!.body;
+    // Which way along the wall the arc sweeps: the doorway runs from the
+    // hinge that way, a door's width.
+    let alongSum = 0;
+    const alongOf = (mx: number, my: number) => (body.orientation === "h" ? mx - hinge.x : my - hinge.y);
     /**
      * The arc is measured at the middle of each chord, and stays that way.
      *
@@ -2001,6 +2008,7 @@ export function findDoorSwings(
       const d = Math.hypot(mx - hinge.x, my - hinge.y);
       if (Math.abs(d - width) > width * 0.18) continue;
       angles.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+      alongSum += alongOf(mx, my);
     }
     // A swing drawn dashed is short segments, not curves: 21's bottom
     // bedroom and 14's corridor had their doors drawn so, and came out
@@ -2008,6 +2016,7 @@ export function findDoorSwings(
     // count as it — the wall's own hatch at the radius lies in the wall.
     if (angles.length < minArc) {
       const dashes: number[] = [];
+      let dashAlong = 0;
       for (const d of dashesNear(hinge.x, hinge.y)) {
         const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
         if (len > width * 0.22 || len < unitsPerMetre * 0.02) continue;
@@ -2019,8 +2028,12 @@ export function findDoorSwings(
         const radial = Math.abs(((mx - hinge.x) * (d.x2 - d.x1) + (my - hinge.y) * (d.y2 - d.y1)) / (dist * len));
         if (radial > 0.5) continue;
         dashes.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+        dashAlong += alongOf(mx, my);
       }
-      if (dashes.length >= 6) angles.push(...dashes);
+      if (dashes.length >= 6) {
+        angles.push(...dashes);
+        alongSum += dashAlong;
+      }
     }
     const arcs = angles.length;
     if (arcs < minArc) continue;
@@ -2039,7 +2052,7 @@ export function findDoorSwings(
     ) {
       continue;
     }
-    swings.push({ ...hinge, width, arcs, body });
+    swings.push({ ...hinge, width, arcs, body, side: Math.sign(alongSum), tip });
   }
 
   // One door is drawn with several strokes — the leaf, its frame, its stop — so
@@ -2066,11 +2079,13 @@ export function findDoorSwings(
 
   return kept.flatMap((swing) => {
     const at = along(swing);
-    // The leaf hinges at one edge of the doorway and the door fills its width,
-    // but which side is not known from the leaf alone. Centring on the hinge
-    // keeps the error to half a door either way and never lands off the wall.
-    const from = Math.max(swing.body.from, at - swing.width / 2);
-    const to = Math.min(swing.body.to, at + swing.width / 2);
+    // The leaf hinges at one edge of the doorway and the door fills its width
+    // toward where its arc meets the wall. Centred on the hinge, the doorway
+    // stood half a door off; where the arc does not say, it still is.
+    const near = swing.side === 0 ? at - swing.width / 2 : at;
+    const far = swing.side === 0 ? at + swing.width / 2 : at + swing.side * swing.width;
+    const from = Math.max(swing.body.from, Math.min(near, far));
+    const to = Math.min(swing.body.to, Math.max(near, far));
     // Clipped to nothing where the swing sits at the very end of its wall, which
     // is a door into the next room drawn against this one's corner.
     if (to - from < minWidth * 0.7) return [];
@@ -2081,6 +2096,8 @@ export function findDoorSwings(
         thickness: swing.body.thickness,
         from,
         to,
+        // The leaf as the sheet draws it open, hinge to tip.
+        leaf: { x: swing.x, y: swing.y, dx: swing.tip.x - swing.x, dy: swing.tip.y - swing.y },
       },
     ];
   });
@@ -3648,4 +3665,63 @@ export function terraceFromPaving(
     return out;
   };
   return attempt(3) ?? attempt(0.5) ?? rows;
+}
+
+/**
+ * Doors found from the doorways: an opening between two rooms whose swing is
+ * drawn round one of its ends. The leaf-first search (findDoorSwings) needs
+ * a leaf line with one end on a wall, and finds two to four of a sheet's
+ * eight doors; the rest were cut as openings with no door in them. Here each
+ * end of an opening a door's width wide is tried as the hinge, and the arc —
+ * curve chords, or the dashes a dashed swing is drawn in, off every wall — is
+ * looked for at the opening's width round it, on one side of the wall. Where
+ * it sweeps a quarter, the opening is a door, its leaf standing open on that
+ * side.
+ */
+export function doorsFromArcs<T extends Opening & { kind?: string }>(
+  openings: T[],
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  bodies: WallBody[],
+  unitsPerMetre: number,
+): T[] {
+  const strokes = [
+    ...curves,
+    ...segments.filter((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      return len <= unitsPerMetre * 0.25 && len >= unitsPerMetre * 0.02;
+    }),
+  ];
+  return openings.map((o) => {
+    if (o.leaf || o.kind === "window") return o;
+    const width = o.to - o.from;
+    if (width < unitsPerMetre * 0.6 || width > unitsPerMetre * 1.15) return o;
+    for (const end of [o.from, o.to]) {
+      const hinge = o.orientation === "h" ? { x: end, y: o.centre } : { x: o.centre, y: end };
+      const toward = end === o.from ? 1 : -1;
+      const points: Array<{ along: number; across: number; angle: number }> = [];
+      for (const s of strokes) {
+        const mx = (s.x1 + s.x2) / 2;
+        const my = (s.y1 + s.y2) / 2;
+        const d = Math.hypot(mx - hinge.x, my - hinge.y);
+        if (Math.abs(d - width) > width * 0.18) continue;
+        if (pointHitsBody(mx, my, bodies)) continue;
+        const along = (o.orientation === "h" ? mx - hinge.x : my - hinge.y) * toward;
+        const across = o.orientation === "h" ? my - hinge.y : mx - hinge.x;
+        // Over the doorway's side of the hinge, not behind it.
+        if (along < -width * 0.15) continue;
+        points.push({ along, across, angle: (Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI });
+      }
+      for (const side of [1, -1]) {
+        const mine = points.filter((p) => p.across * side > width * 0.05);
+        if (mine.length < 4) continue;
+        const sweep = angularSweep(mine.map((p) => p.angle));
+        if (sweep < 55 || sweep > 140) continue;
+        const tip =
+          o.orientation === "h" ? { dx: 0, dy: side * width } : { dx: side * width, dy: 0 };
+        return { ...o, kind: "door", leaf: { x: hinge.x, y: hinge.y, ...tip } };
+      }
+    }
+    return o;
+  });
 }

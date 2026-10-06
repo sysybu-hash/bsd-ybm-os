@@ -45,6 +45,7 @@ import {
   findTerraces,
   findTerracesOnFloor,
   terraceFromPaving,
+  doorsFromArcs,
   spansContain,
   trimToHatchAlong,
   findHatchGaps,
@@ -1154,7 +1155,14 @@ export async function buildFlatFromGeometry(
   // The front door is the one the sheet's entrance arrow points through. By
   // the floor test alone it is a window: the landing is not the flat's floor.
   const entranceMarkers = findEntranceMarkers([...geometry.segments, ...geometry.curves]);
-  const openings = placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre });
+  // A doorway with its swing drawn round one end is a door, with its leaf.
+  const openings = doorsFromArcs(
+    placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre }),
+    geometry.segments,
+    geometry.curves,
+    bodies,
+    unitsPerMetre,
+  );
   // The landing outside the front door is not the flat's; see floorWithoutLanding.
   const flatFloor = floorWithoutLanding(floor, [...bodies, ...openings], entranceMarkers, unitsPerMetre);
   if (flatFloor !== floor) {
