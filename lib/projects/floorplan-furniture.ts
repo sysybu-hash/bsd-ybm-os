@@ -46,7 +46,7 @@ export type FurniturePiece = {
    * sheet's reading does not, and the render tells a bath from a basin by
    * shape; a permit plan's knows a pan from a basin by how each is drawn.
    */
-  fixture?: "bath" | "shower" | "toilet" | "basin";
+  fixture?: "bath" | "shower" | "toilet" | "basin" | "washer";
   /** A bed's head, page-north up, where the drawing shows it (see bedHeadsFromDrawing). */
   head?: "north" | "south" | "east" | "west";
 };
@@ -116,15 +116,28 @@ export function dropNested(
   rects: Array<{ x: number; y: number; w: number; h: number }>,
   minStack = 3,
 ): Array<{ x: number; y: number; w: number; h: number }> {
-  const drop = new Set<number>();
-  for (let i = 0; i < rects.length; i++) {
+  // A stack is rectangles of one width piled edge to edge — tiles, shelves —
+  // not any that share a column: 21's bath runs wall to wall, and the
+  // rectangles further up its bathroom, the same width, made it a "stack".
+  const n = rects.length;
+  const parent = rects.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  for (let i = 0; i < n; i++) {
     const a = rects[i]!;
-    const sharing = rects.filter(
-      (b, k) => k !== i && Math.abs(b.x - a.x) < 4 && Math.abs(b.w - a.w) < 8,
-    );
-    if (sharing.length + 1 >= minStack) drop.add(i);
+    for (let k = i + 1; k < n; k++) {
+      const b = rects[k]!;
+      if (Math.abs(b.x - a.x) >= 4 || Math.abs(b.w - a.w) >= 8) continue;
+      // Edge to edge, or one inside the other as a stair's treads are.
+      const within = (p: typeof a, q: typeof a) => p.y >= q.y - 4 && p.y + p.h <= q.y + q.h + 4;
+      const touching =
+        Math.abs(b.y - (a.y + a.h)) < 4 || Math.abs(a.y - (b.y + b.h)) < 4 || within(a, b) || within(b, a);
+      // The same rectangle found twice is one, not two of a stack.
+      if (touching && Math.abs(b.y - a.y) >= 4) parent[find(i)] = find(k);
+    }
   }
-  return rects.filter((_, i) => !drop.has(i));
+  const size = new Map<number, number>();
+  for (let i = 0; i < n; i++) size.set(find(i), (size.get(find(i)) ?? 0) + 1);
+  return rects.filter((_, i) => (size.get(find(i)) ?? 1) < minStack);
 }
 
 /** Keeps the largest rectangle wherever several describe one object. */
@@ -1669,5 +1682,32 @@ export function pansFromCisterns(
       fixture: "toilet",
       head: side,
     };
+  });
+}
+
+/**
+ * A washing machine known by its drum: a square cabinet a machine's size with
+ * a round door drawn in it. Unnamed, 21's 60 cm machine was built as a basin
+ * and listed as one.
+ */
+export function washersFromDrums(pieces: FurniturePiece[], curves: VectorSegment[], unitsPerMetre: number): FurniturePiece[] {
+  return pieces.map((piece) => {
+    if (piece.kind !== "fixture" || piece.fixture) return piece;
+    const long = Math.max(piece.widthCm, piece.depthCm);
+    const short = Math.min(piece.widthCm, piece.depthCm);
+    if (short < 50 || long > 70 || long > short * 1.2) return piece;
+    const inside = curves.filter(
+      (c) =>
+        Math.min(c.x1, c.x2) >= piece.x &&
+        Math.max(c.x1, c.x2) <= piece.x + piece.w &&
+        Math.min(c.y1, c.y2) >= piece.y &&
+        Math.max(c.y1, c.y2) <= piece.y + piece.h,
+    );
+    if (inside.length < 3) return piece;
+    const cm = (v: number) => (v / unitsPerMetre) * 100;
+    const w = cm(Math.max(...inside.map((c) => Math.max(c.x1, c.x2))) - Math.min(...inside.map((c) => Math.min(c.x1, c.x2))));
+    const h = cm(Math.max(...inside.map((c) => Math.max(c.y1, c.y2))) - Math.min(...inside.map((c) => Math.min(c.y1, c.y2))));
+    const round = Math.min(w, h) >= 20 && Math.max(w, h) <= 45 && Math.max(w, h) <= Math.min(w, h) * 1.25;
+    return round ? { ...piece, fixture: "washer" } : piece;
   });
 }

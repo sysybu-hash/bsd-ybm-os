@@ -59,7 +59,7 @@ export const floorplanGeometrySchema = z.object({
         widthCm: z.number(),
         depthCm: z.number(),
         /** Which sanitary fixture, where the reading knew; see FurniturePiece. */
-        fixture: z.enum(["bath", "shower", "toilet", "basin"]).optional(),
+        fixture: z.enum(["bath", "shower", "toilet", "basin", "washer"]).optional(),
         /** A bed's head, where the drawing shows it; see bedHeadsFromDrawing. */
         head: z.enum(["north", "south", "east", "west"]).optional(),
       }),

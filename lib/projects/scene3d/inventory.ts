@@ -39,6 +39,7 @@ function pieceOf(tags: Set<string>, lengthM: number): string | null {
   if (tags.has("tub")) return "bath";
   if (tags.has("tray")) return "shower";
   if (tags.has("cabinet") && tags.has("bowl")) return "basin on a vanity";
+  if (tags.has("washer")) return "washing machine";
   if (tags.has("pedestal") || tags.has("bowl")) return "basin";
   return null;
 }

@@ -269,6 +269,15 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   if (spec.fixture === "toilet") return toilet(w, d);
   if (spec.fixture === "shower") return shower(w, d);
+  // A washing machine: a white box with its round door on top, as a sheet
+  // draws it — a square with a drum. 21's, unnamed, was built as a basin.
+  if (spec.fixture === "washer") {
+    const drum = Math.min(w, d) * 0.62;
+    return [
+      part("washer", "ceramic", { x: 0, y: 0.425, z: 0, w, h: 0.85, d }, 0.03),
+      part("drum", "metal", { x: 0, y: 0.855, z: 0, w: drum, h: 0.01, d: drum }),
+    ];
+  }
   if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
   // A bath is long as well as narrow: a pan with the room's dimension written
   // in it measured 60 by 100 and was built as a third bath in 17.

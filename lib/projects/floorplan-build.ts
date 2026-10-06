@@ -19,6 +19,7 @@ import {
   findDiamonds,
   kitchenSquaresAreAppliances,
   pansFromCisterns,
+  washersFromDrums,
   findFurniture,
   findKitchenFittings,
   findRoundedFurniture,
@@ -1312,8 +1313,33 @@ export async function buildFlatFromGeometry(
     }
     return piece;
   };
+  // A door leaf drawn as straight lines, no arc, beside its doorway: 17's two
+  // leaves at the corner by its dining table were read as a 141 by 79 cm
+  // sofa. A seat at a doorway with a long diagonal through it is the leaf.
+  const doorLeafSeat = (piece: FurniturePiece) => {
+    if (piece.kind !== "seat") return false;
+    const near = unitsPerMetre * 0.05;
+    const atDoor = openings.some((o) => {
+      const r = bodyRect(o);
+      return (
+        r.x - near < piece.x + piece.w && r.x + r.w + near > piece.x && r.y - near < piece.y + piece.h && r.y + r.h + near > piece.y
+      );
+    });
+    if (!atDoor) return false;
+    return geometry.segments.some((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      if (len < unitsPerMetre * 0.5) return false;
+      const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 180;
+      const slant = Math.min(Math.abs(deg - 0), Math.abs(deg - 90), Math.abs(deg - 180));
+      if (slant < 15) return false;
+      const mx = (s.x1 + s.x2) / 2;
+      const my = (s.y1 + s.y2) / 2;
+      return mx > piece.x && mx < piece.x + piece.w && my > piece.y && my < piece.y + piece.h;
+    });
+  };
   const furnitureOffTerrace = furnishings.filter((piece) => {
     if (inLegend(piece) || onBed(piece) || roundsAMark(piece)) return false;
+    if (doorLeafSeat(piece)) return false;
     if (piece.kind !== "bed" && piece.kind !== "table" && piece.kind !== "fixture" && inWalls(piece)) return false;
     const cx = piece.x + piece.w / 2;
     const cy = piece.y + piece.h / 2;
@@ -1327,7 +1353,7 @@ export async function buildFlatFromGeometry(
     bodies,
     floor: flatFloor,
     // Settled again at the end: pieces join after the furniture pass.
-    furniture: kitchenSquaresAreAppliances(pansFromCisterns(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), geometry.segments, unitsPerMetre), unitsPerMetre),
+    furniture: kitchenSquaresAreAppliances(washersFromDrums(pansFromCisterns(furnitureOffTerrace.map(freeBathIsAnIsland).map(cabinetWithBowlIsASink).map(chairAtTheTableEnd), geometry.segments, unitsPerMetre), geometry.curves, unitsPerMetre), unitsPerMetre),
     openings,
     terraces,
     // Never the flat's own terraces, whatever ran into them.
