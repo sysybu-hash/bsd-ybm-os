@@ -288,7 +288,9 @@ export function fixture(spec: PieceSpec): PiecePart[] {
     const rim = Math.min(0.08, Math.min(w, d) * 0.12);
     const inner = { w: Math.max(0.1, w - 2 * rim), d: Math.max(0.1, d - 2 * rim) };
     return [
-      part("tub", "ceramic", { x: 0, y: 0.04, z: 0, w, h: 0.08, d }, 0.03),
+      // Its basin a hand below the rim, not at the floor: sunk to the floor it
+      // lay in its own shadow, a dark slab the designs painted as a shower.
+      part("tub", "ceramic", { x: 0, y: (h - 0.12) / 2, z: 0, w, h: h - 0.12, d }, 0.03),
       part("rim", "ceramic", { x: 0, y: h / 2, z: -d / 2 + rim / 2, w, h, d: rim }, 0.02),
       part("rim", "ceramic", { x: 0, y: h / 2, z: d / 2 - rim / 2, w, h, d: rim }, 0.02),
       part("rim", "ceramic", { x: -w / 2 + rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),

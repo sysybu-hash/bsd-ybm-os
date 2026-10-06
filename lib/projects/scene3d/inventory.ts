@@ -146,7 +146,7 @@ export function inventoryByPlace(pieces: PlacedPiece[], extent: FlatScene["exten
 }
 
 /** The kinds a design is counted by, piece by piece: what designs lost or invented. */
-export const LISTED_PIECES = ["beds", "sofas", "armchairs", "dining tables", "wardrobes", "toilets", "screens", "kitchen counters"] as const;
+export const LISTED_PIECES = ["beds", "sofas", "armchairs", "dining tables", "wardrobes", "toilets", "baths", "screens", "kitchen counters"] as const;
 export type ListedKind = (typeof LISTED_PIECES)[number];
 
 const LISTED_AS: Record<string, ListedKind> = {
@@ -156,6 +156,7 @@ const LISTED_AS: Record<string, ListedKind> = {
   table: "dining tables",
   wardrobe: "wardrobes",
   toilet: "toilets",
+  bath: "baths",
   "kitchen counter run": "kitchen counters",
 };
 

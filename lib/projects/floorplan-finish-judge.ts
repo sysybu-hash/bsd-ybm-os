@@ -222,6 +222,10 @@ const PIECE_WORD: Record<string, string> = {
   sofas: "sofa",
   armchairs: "armchair",
   "dining tables": "dining table",
+  // A bath is large and plain from above, and a design swapped 22's for a
+  // shower; asked whether one is there, a judge can tell.
+  baths: "bath",
+  toilets: "toilet",
 };
 
 /** What each kind looks like from above, and what else counts as it. */
@@ -232,6 +236,8 @@ const PIECE_LOOK: Record<string, string> = {
   sofas: "a sofa — a seat for two or more with a back and arms",
   armchairs: "an armchair, or another upholstered seat for one such as a pouf",
   "dining tables": "a dining table",
+  baths: "a bathtub — a long tub with a rim, the length of a person, not a shower tray",
+  toilets: "a toilet — a WC pan with its cistern, seen from above",
 };
 
 /** The second look at a piece: the layout's spot and the design's, side by side. */
@@ -326,8 +332,13 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const openIdx = indexes.filter((i) => checked[i]!.kind === "open floor");
   // One kind a batch: asked about a table, five beds and a sofa together,
   // the judge answered no bed in four frames that each held one.
+  // Sanitary ware beside the layout's own crop of the spot, one at a time: a
+  // bath restyled, or a WC small in its wall's shadow, is told by comparing
+  // with the plain piece — asked alone, a shower passed for 22's bath.
+  const WET = new Set(["baths", "toilets"]);
+  const wetIdx = indexes.filter((i) => WET.has(checked[i]!.kind));
   const pieceIdx = indexes
-    .filter((i) => checked[i]!.kind !== "open floor")
+    .filter((i) => checked[i]!.kind !== "open floor" && !WET.has(checked[i]!.kind))
     .sort((a, b) => checked[a]!.kind.localeCompare(checked[b]!.kind) || a - b);
   const chunks = (list: number[]) => {
     const out: number[][] = [];
@@ -350,6 +361,17 @@ export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots
   const seenAt = new Map<number, string[] | boolean>();
   chunks(openIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, listOf((openBatches[k]!.raw.answers as unknown[])[j] ?? []))));
   chunks(pieceIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, isYes((pieceBatches[k]!.raw.answers as unknown[])[j]))));
+  const wetSeen = await Promise.all(
+    wetIdx.map(async (i) => {
+      const spot = checked[i]!;
+      const plain = await cropSpot(layout, frame, spot, Math.max(40, Math.round(Math.max(spot.w, spot.h) * 0.35)), true);
+      const said = await askClaude(key, [plain, crops[i]!, { type: "text", text: compareQuestion(spot.kind) }], 100);
+      const answer = said?.raw.answer ?? (Array.isArray(said?.raw.answers) ? (said!.raw.answers as unknown[])[0] : undefined);
+      return answer === undefined ? null : isYes(answer);
+    }),
+  );
+  if (wetSeen.some((seen) => seen == null)) return null;
+  wetIdx.forEach((i, k) => seenAt.set(i, wetSeen[k] === true));
   // What each sofa faces, asked twice over: a screen there refuses a haredi
   // design only if both looks see one.
   const screens = await Promise.all(

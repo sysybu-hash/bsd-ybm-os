@@ -120,7 +120,9 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
         fovDeg: fov,
         studio: true,
       },
-      sun: { azimuthDeg: 215, elevationDeg: 70 },
+      // High, so the narrow rooms are not left in the walls' shadow: at 70° a
+      // bath between two walls was a dark slab, painted as a shower.
+      sun: { azimuthDeg: 215, elevationDeg: 82 },
     },
   };
 }
