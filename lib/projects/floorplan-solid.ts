@@ -1951,6 +1951,25 @@ export function findDoorSwings(
 
   type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody };
   const swings: Swing[] = [];
+  // Short strokes by grid cell, for the dashed swings below: scanned whole
+  // for every leaf-length line, they made a sheet take minutes to measure.
+  const cell = maxWidth;
+  const dashCells = new Map<string, VectorSegment[]>();
+  for (const d of segments) {
+    const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+    if (len > maxWidth * 0.22 || len < unitsPerMetre * 0.02) continue;
+    const key = `${Math.floor((d.x1 + d.x2) / 2 / cell)}:${Math.floor((d.y1 + d.y2) / 2 / cell)}`;
+    const list = dashCells.get(key);
+    if (list) list.push(d);
+    else dashCells.set(key, [d]);
+  }
+  const dashesNear = (x: number, y: number): VectorSegment[] => {
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    const out: VectorSegment[] = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) out.push(...(dashCells.get(`${cx + i}:${cy + j}`) ?? []));
+    return out;
+  };
   for (const s of segments) {
     const width = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     if (width < minWidth || width > maxWidth) continue;
@@ -1989,7 +2008,7 @@ export function findDoorSwings(
     // count as it — the wall's own hatch at the radius lies in the wall.
     if (angles.length < minArc) {
       const dashes: number[] = [];
-      for (const d of segments) {
+      for (const d of dashesNear(hinge.x, hinge.y)) {
         const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
         if (len > width * 0.22 || len < unitsPerMetre * 0.02) continue;
         const mx = (d.x1 + d.x2) / 2;

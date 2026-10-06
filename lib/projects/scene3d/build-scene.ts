@@ -353,7 +353,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // The box is the flat's bounding rectangle, and a neighbour's wall running
   // along its edge sits inside it: on דירה 14 that is how a two-storey slab
   // belonging to the flat next door stayed in the frame.
-  const walked = [...floorRects, ...terraceRects.flat()];
+  // With the rooms' own regions: a WC's floor comes as strips too narrow to
+  // keep alone, and 21's pan stood on none of them.
+  const walked = [...floorRects, ...roomRectsAll, ...terraceRects.flat()];
   const ground = walked.length > 0 ? walked : [printed];
 
   /**
@@ -720,6 +722,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       })
       .map((o) => o.id),
   );
+  // Nor a wall that touches nothing — no floor, terrace or other wall within
+  // a hand of it: 21's 5 by 12 cm sliver stood on its own (see auditFlatScene).
+  {
+    const box = (m: SceneBox) => ({ x0: m.centre.x - m.size.x / 2 - 0.15, x1: m.centre.x + m.size.x / 2 + 0.15, z0: m.centre.z - m.size.z / 2 - 0.15, z1: m.centre.z + m.size.z / 2 + 0.15 });
+    const meets = (a: ReturnType<typeof box>, m: SceneBox) =>
+      a.x0 <= m.centre.x + m.size.x / 2 && a.x1 >= m.centre.x - m.size.x / 2 && a.z0 <= m.centre.z + m.size.z / 2 && a.z1 >= m.centre.z - m.size.z / 2;
+    const ground = standing.filter((m) => m.kind === "floor" || m.kind === "terrace");
+    const built = standing.filter((m) => m.kind === "wall" || m.kind === "wallSill" || m.kind === "wallHead" || m.kind === "wallCap");
+    for (let i = standing.length - 1; i >= 0; i--) {
+      const m = standing[i]!;
+      if (m.kind !== "wall") continue;
+      const b = box(m);
+      if (!ground.some((g) => meets(b, g)) && !built.some((w) => w !== m && meets(b, w))) standing.splice(i, 1);
+    }
+  }
   // Nor a skirting whose wall went: 18's stub left its two white strips.
   const wallsLeft = new Set(standing.filter((m) => m.kind === "wall").map((m) => m.sourceId));
   meshes.length = 0;

@@ -128,8 +128,10 @@ function standsInARoom(
   if (piece.kind !== "fixture" && piece.kind !== "unknown") return true;
   const cx = piece.x + piece.w / 2;
   const cy = piece.y + piece.h / 2;
-  const rx = piece.w / 2 + 0.1 * unitsPerMetre;
-  const ry = piece.h / 2 + 0.1 * unitsPerMetre;
+  // A quarter metre round it: a bath's rim stops the flood, and 21's bath
+  // stood outside its bathroom's region all along its length.
+  const rx = piece.w / 2 + 0.25 * unitsPerMetre;
+  const ry = piece.h / 2 + 0.25 * unitsPerMetre;
   const probes: Array<[number, number]> = [
     [cx, cy],
     [cx - rx, cy],
@@ -155,7 +157,12 @@ function withoutForeign(floor: SpanRow[], foreign: SpanRow[][], unitsPerMetre: n
     (rows.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch) / unitsPerMetre ** 2;
   const byY = new Map<number, Array<[number, number]>>();
   for (const part of componentsOf(cut, pitch, 1)) {
-    if (area(part) < 0.5) continue;
+    // A scrap the cut left: small, and beside what was cut away. Not every
+    // small part — 21's WC is 0.4 m² of its own, and went with its pan.
+    const beside = part.some((row) =>
+      row.spans.some(([a, b]) => foreign.some((f) => spansContain(f, a - 3, row.y) || spansContain(f, b + 3, row.y) || spansContain(f, (a + b) / 2, row.y - 3) || spansContain(f, (a + b) / 2, row.y + 3))),
+    );
+    if (area(part) < 0.5 && beside) continue;
     for (const row of part) byY.set(row.y, [...(byY.get(row.y) ?? []), ...row.spans]);
   }
   return [...byY.entries()]
@@ -198,7 +205,11 @@ export function floorplanGeometryPayload(
       kind: opening.kind,
       ...(opening.leaf ? { leaf: opening.leaf } : {}),
     })),
-    furniture: flat.furniture.filter((piece) => standsInARoom(piece, rooms, flat.unitsPerMetre)).map((piece) => ({
+    // Against the flat's own rooms: a region on someone else's roof is not one,
+    // and 21's roof lettering stood in it as two fixtures.
+    furniture: flat.furniture
+      .filter((piece) => standsInARoom(piece, rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])), flat.unitsPerMetre))
+      .map((piece) => ({
       x: piece.x,
       y: piece.y,
       w: piece.w,

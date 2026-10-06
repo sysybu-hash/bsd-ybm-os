@@ -89,7 +89,7 @@ ${options.inventory}`]
     "DESIGN FREELY: the style of each piece, upholstery and bedding, rugs, floor and wall finishes, kitchen fronts and worktops, lighting and soft shadows, plants and small decor on and beside the furniture.",
     // A desk and its chair were added to two of 14's bedrooms, and a pair of
     // beds to 17's living room: named, each is a piece the layout lacks.
-    "Do NOT add or remove a room, wall, door, window, bed, sofa, armchair, chair, table, desk, kitchen island or unit, wardrobe or cabinet — no coffee table, no desk with its chair, no extra seating group, no bed outside the bedrooms. Do NOT add a terrace, a garden or anything outside the walls; keep the plain light ground round the apartment. No people, no text, no logos" +
+    "Do NOT add or remove a room, wall, door, window, bed, sofa, armchair, chair, table, desk, kitchen island or unit, wardrobe or cabinet — no coffee table, no desk with its chair, no extra seating group, no bed outside the bedrooms, no shelving, bookcase or built-in unit along a wall the layout leaves bare. Do NOT add a terrace, a garden or anything outside the walls; keep the plain light ground round the apartment. No people, no text, no logos" +
       (options.haredi ? ", no television or screen, no artwork with faces." : "."),
     // The style the run asked for, and the light every style shares: the
     // golden hour and warm palette the owner chose on the sheet-drawn stills.

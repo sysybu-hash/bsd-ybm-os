@@ -1326,9 +1326,10 @@ export async function buildFlatFromGeometry(
       );
     });
     if (!atDoor) return false;
-    return geometry.segments.some((s) => {
+    // The swing is often drawn as curve chords — 17's, three of them.
+    return [...geometry.segments, ...geometry.curves].some((s) => {
       const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
-      if (len < unitsPerMetre * 0.5) return false;
+      if (len < unitsPerMetre * 0.4) return false;
       const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 180;
       const slant = Math.min(Math.abs(deg - 0), Math.abs(deg - 90), Math.abs(deg - 180));
       if (slant < 15) return false;
