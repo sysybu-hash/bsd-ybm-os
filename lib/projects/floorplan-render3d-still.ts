@@ -10,6 +10,7 @@ import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
 import { flatPieces, inventoryByPlace, listedKind, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
+import { auditFlatScene, type LayoutFault } from "@/lib/projects/scene3d/layout-audit";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
 import type { FlatScene } from "@/lib/projects/scene3d/types";
 
@@ -49,6 +50,8 @@ export type MeasuredStill = FloorplanVizImage & {
   inventory?: string;
   /** Each of those pieces' box in the plain frame, pixels: where a design is checked for it. */
   pieceBoxes?: PieceBox[];
+  /** What the measurement got wrong, found on the scene; a flat with any is not painted. */
+  faults?: LayoutFault[];
 };
 
 export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group" | "facing sofa"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
@@ -238,6 +241,17 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
       ...(walls ? { walls } : {}),
       inventory: [inventoryByPlace(flatPieces(scene), scene.extent), openFloorLine(scene)].filter(Boolean).join("\n"),
       pieceBoxes: boxesInFrame(scene, view, size, crop, { screens: options.styleKit.audience === "haredi" }),
+      faults: auditFlatScene(scene, {
+        labelled: (options.geometry.labelledRooms ?? []).map((label) => ({
+          name: label.name,
+          box: {
+            x: (label.box.x - (scene.pageCentre?.x ?? 0)) / scene.unitsPerMetre,
+            z: (label.box.y - (scene.pageCentre?.y ?? 0)) / scene.unitsPerMetre,
+            w: label.box.width / scene.unitsPerMetre,
+            d: label.box.height / scene.unitsPerMetre,
+          },
+        })),
+      }),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 
 import { hasGeminiApiKey, getGeminiApiKey } from "@/lib/gemini-api-key";
 import { createLogger } from "@/lib/logger";
+import { describeFaults } from "@/lib/projects/scene3d/layout-audit";
 import { correctionPrompt, designPrompt, finishPass, finishPrompt, massMatch, structuralMatch, wallMatchDetail } from "@/lib/projects/building/finish";
 import type { FinishComparison, SpotFinding } from "@/lib/projects/floorplan-finish-judge";
 import type { MeasuredStill } from "@/lib/projects/floorplan-render3d-still";
@@ -91,6 +92,13 @@ export async function finishMeasuredStill(
   },
 ): Promise<(FloorplanVizImage & { edges: number; masses: number }) | null> {
   if (!hasGeminiApiKey()) return null;
+  // A measurement with a fault in it is not painted: the model paints what
+  // the scene holds, and a room with no way in or a wall out on a terrace
+  // would be painted as faithfully as the rest. The render ships, unpaid.
+  if (still.faults && still.faults.length > 0) {
+    log.warn("measured flat has faults; not painted", { faults: describeFaults(still.faults) });
+    return null;
+  }
   const client = new GoogleGenAI({ apiKey: getGeminiApiKey() });
   // Designed where the measured walls' map is to hand — the model styles the
   // flat and the walls are checked against the map; otherwise repainted, and
