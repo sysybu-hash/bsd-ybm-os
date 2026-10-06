@@ -45,7 +45,14 @@ import {
   findTerraces,
   findTerracesOnFloor,
   terraceFromPaving,
-  doorsFromArcs,
+  doorsFromSwings,
+  findSwingArcs,
+  openingsInWalls,
+  hatchedWallsMissed,
+  narrowWallsAroundLeaves,
+  wallsBesideFlatFloor,
+  findCrossedBoxes,
+  openFloorLookup,
   spansContain,
   trimToHatchAlong,
   findHatchGaps,
@@ -270,11 +277,11 @@ export function roomDimensionScale(
  * The nearest architect's scale in PDF points — 1:50 is 56.69 points a
  * metre — where the figure is within 1.5 % of one; the figure otherwise.
  */
-export function snapToDrawingScale(unitsPerMetre: number): number {
+export function snapToDrawingScale(unitsPerMetre: number, tolerance = 0.015): number {
   const POINTS_PER_METRE = 72 / 0.0254;
   for (const scale of [20, 25, 40, 50, 75, 100, 200]) {
     const upm = POINTS_PER_METRE / scale;
-    if (Math.abs(unitsPerMetre / upm - 1) <= 0.015) return upm;
+    if (Math.abs(unitsPerMetre / upm - 1) <= tolerance) return upm;
   }
   return unitsPerMetre;
 }
@@ -447,8 +454,19 @@ export async function buildFlatFromGeometry(
     );
   };
   // A thin wall held to its own drawn faces; see trimThinToFaces.
-  const bodies = trimThinToFaces([...hatchKept, ...plotted], geometry.segments, unitsPerMetre).filter((body) => {
+  // Nor one in a level mark's symbol: its two quarters are hatched, and 22's
+  // "+11.42" in the flat's legend box stood as a 30 cm wall by the door.
+  const markSymbols = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre, { minRadiusM: 0.05, maxRadiusM: 0.3, minHatch: 2 });
+  const inMark = (body: WallBody) => {
+    if (body.to - body.from > unitsPerMetre * 0.6) return false;
+    const r = bodyRect(body);
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    return markSymbols.some((m) => Math.hypot(cx - m.x, cy - m.y) <= m.r + unitsPerMetre * 0.05);
+  };
+  const faced = trimThinToFaces([...hatchKept, ...plotted], geometry.segments, unitsPerMetre).filter((body) => {
     if (throughChairs(body)) return false;
+    if (inMark(body)) return false;
     if (hobs.some((hob) => centreInsideBody(hob, body))) return false;
     const r = bodyRect(body);
     // Mostly inside, not wholly: דירה 22's ran on past the bath's end into
@@ -459,6 +477,8 @@ export async function buildFlatFromGeometry(
       return ox > 0 && oy > 0 && ox * oy >= 0.3 * r.w * r.h;
     });
   });
+  // And the hatched pieces no pair of faces gave; see hatchedWallsMissed.
+  let bodies = [...faced, ...hatchedWallsMissed(faced, geometry.segments, unitsPerMetre, flatExtent)];
   if (bodies.length === 0) return null;
 
   let minX = Infinity;
@@ -1104,25 +1124,29 @@ export async function buildFlatFromGeometry(
     floor.some(
       (row) => y >= row.y - rowPitch && y <= row.y + rowPitch && row.spans.some(([a, b]) => x >= a && x <= b),
     ) && !terraces.some((rows) => spansContain(rows, x, y));
+  // Each side is floor if any of a few points off the gap is: one point
+  // landed in a bed's or a wardrobe's outline, which the floor's flood goes
+  // round, and 17's top bedroom door came out a window.
   const floorSides = (gap: Opening): number => {
-    const mid = (gap.from + gap.to) / 2;
-    const off = gap.thickness / 2 + unitsPerMetre * 0.25;
-    const probes =
-      gap.orientation === "h"
-        ? [
-            [mid, gap.centre - off],
-            [mid, gap.centre + off],
-          ]
-        : [
-            [gap.centre - off, mid],
-            [gap.centre + off, mid],
-          ];
-    return probes.filter(([x, y]) => floorAt(x!, y!)).length;
+    let n = 0;
+    for (const sign of [-1, 1]) {
+      let floorHere = false;
+      for (const f of [0.25, 0.5, 0.75]) {
+        for (const d of [0.25, 0.5]) {
+          const along = gap.from + (gap.to - gap.from) * f;
+          const across = gap.centre + sign * (gap.thickness / 2 + unitsPerMetre * d);
+          const [x, y] = gap.orientation === "h" ? [along, across] : [across, along];
+          if (floorAt(x, y)) floorHere = true;
+        }
+      }
+      if (floorHere) n++;
+    }
+    return n;
   };
-  const hatchGaps = findHatchGaps(bodies, geometry.segments, unitsPerMetre).filter((gap) => !covered(gap));
-  const hatchWindows = hatchGaps.filter((gap) => floorSides(gap) === 1);
+  const hatchGaps = findHatchGaps(bodies, geometry.segments, unitsPerMetre, { curves: geometry.curves }).filter((gap) => !covered(gap));
+  const hatchWindows = hatchGaps.filter((gap) => floorSides(gap) === 1 && !gap.swung);
   const hatchDoorways = hatchGaps.filter(
-    (gap) => floorSides(gap) === 2 && gap.to - gap.from <= unitsPerMetre * 1.3,
+    (gap) => (floorSides(gap) === 2 || gap.swung === true) && gap.to - gap.from <= unitsPerMetre * 1.3,
   );
   // Which of the two found a hole is the whole door/window distinction, and
   // merging them used to throw it away. Kept now, so a still can be asked for
@@ -1155,16 +1179,34 @@ export async function buildFlatFromGeometry(
   // The front door is the one the sheet's entrance arrow points through. By
   // the floor test alone it is a window: the landing is not the flat's floor.
   const entranceMarkers = findEntranceMarkers([...geometry.segments, ...geometry.curves]);
-  // A doorway with its swing drawn round one end is a door, with its leaf.
-  const openings = doorsFromArcs(
-    placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre }),
-    geometry.segments,
-    geometry.curves,
+  const entered = placeEntranceDoor(detected, entranceMarkers, { floor, bodies, unitsPerMetre });
+  // The doors are where the sheet draws their swings, and every opening
+  // stands in a wall; see doorsFromSwings and openingsInWalls.
+  const swung = doorsFromSwings(
+    entered,
+    findSwingArcs(geometry.segments, geometry.curves, unitsPerMetre, { extent: flatExtent }),
     bodies,
+    geometry.segments,
+    unitsPerMetre,
+    (o) => floorSides(o) >= 1,
+  );
+  // A leaf read into its wall's thickness is taken out; see narrowWallsAroundLeaves.
+  bodies = narrowWallsAroundLeaves(bodies, swung, geometry.segments, unitsPerMetre);
+  // The landing outside the front door is not the flat's; see floorWithoutLanding.
+  const flatFloor = floorWithoutLanding(floor, [...bodies, ...swung], entranceMarkers, unitsPerMetre);
+  // Walls with none of the flat's floor beside them are the stair hall's or a
+  // void's; see wallsBesideFlatFloor.
+  const openFloor = openFloorLookup(flatFloor, bodies, unitsPerMetre);
+  bodies = wallsBesideFlatFloor(
+    bodies,
+    (x, y) => openFloor(x, y) || terraces.some((rows) => spansContain(rows, x, y)),
+    findCrossedBoxes(geometry.segments, unitsPerMetre),
     unitsPerMetre,
   );
-  // The landing outside the front door is not the flat's; see floorWithoutLanding.
-  const flatFloor = floorWithoutLanding(floor, [...bodies, ...openings], entranceMarkers, unitsPerMetre);
+  const openings = openingsInWalls(swung, bodies, unitsPerMetre, {
+    segments: geometry.segments,
+    betweenRooms: (o) => floorSides(o) === 2,
+  });
   if (flatFloor !== floor) {
     floorM2 = spanArea(flatFloor) / (unitsPerMetre * unitsPerMetre);
     areaError = printedAreaM2 > 0 ? floorM2 / printedAreaM2 - 1 : areaError;
@@ -1387,9 +1429,17 @@ export async function buildFlatFromGeometry(
   // its printed size. The sheets are drawn at 1:50; their rooms say so.
   if (!options?.scaledByRooms && options?.programme) {
     const ratio = roomDimensionScale(bodies, options.programme, { width: geometry.pageWidth, height: geometry.pageHeight }, unitsPerMetre);
-    if (ratio != null && Math.abs(ratio - 1) > 0.02) {
-      const corrected = snapToDrawingScale(unitsPerMetre / ratio);
-      log.info("scale corrected by the rooms' printed sizes", { from: unitsPerMetre, to: Number(corrected.toFixed(2)), ratio: Number(ratio.toFixed(3)) });
+    // The area's lock lands a few per cent either side of the sheet's scale
+    // as the footprint changes — 17 and 18 moved between 55.5 and 58 as their
+    // walls were measured better — while the sheet is drawn at one. Within 4 %
+    // of an architect's scale, and with the rooms' sizes agreeing to 3 % there
+    // (or silent), the scale is that one.
+    const drawn = snapToDrawingScale(unitsPerMetre, 0.04);
+    const agrees = ratio == null || Math.abs((ratio * drawn) / unitsPerMetre - 1) <= 0.03;
+    const offScale = drawn !== unitsPerMetre && Math.abs(drawn / unitsPerMetre - 1) > 0.005 && agrees;
+    if ((ratio != null && Math.abs(ratio - 1) > 0.02) || offScale) {
+      const corrected = offScale ? drawn : snapToDrawingScale(unitsPerMetre / (ratio ?? 1));
+      log.info("scale corrected by the rooms' printed sizes", { from: unitsPerMetre, to: Number(corrected.toFixed(2)), ratio: ratio == null ? null : Number(ratio.toFixed(3)) });
       const rescaled = await buildFlatFromGeometry(geometry, 0, {
         ...options,
         unitsPerMetreHint: corrected,

@@ -1,5 +1,7 @@
 import { findFurniture } from "@/lib/projects/floorplan-furniture";
 import {
+  findSwingArcs,
+  type SwingArc,
   clipBodiesToBounds,
   findOpenings,
   findDoorSwings,
@@ -118,6 +120,12 @@ export function collectScaleLocks(
   const to = search?.to ?? 72;
   const step = search?.step ?? 1;
 
+  // The swings, read once for every scale tried: their radii in page units
+  // cover a door at any of them.
+  const arcs = findSwingArcs(segments, curves ?? [], (from + to) / 2, {
+    extent: bounds,
+    radius: { min: from * 0.55, max: to * 1.15 },
+  });
   const candidates: ScaleLock[] = [];
   for (let unitsPerMetre = from; unitsPerMetre <= to; unitsPerMetre += step) {
     // Truncated at the boundary, not dropped: the party wall straddles it and
@@ -153,6 +161,7 @@ export function collectScaleLocks(
     const enclosure = [
       ...bodies,
       ...lintelBands(segments, bodies, unitsPerMetre),
+      ...doorwayBands(arcs, unitsPerMetre),
     ];
     const floor = smoothFootprint(
       footprintByScanFill(enclosure, bounds),
@@ -303,4 +312,31 @@ export function pickScaleLock(
     if (!best || Math.abs(c.areaError) < Math.abs(best.areaError)) best = c;
   }
   return best;
+}
+
+/**
+ * A door's doorway, closed for the footprint: a thin band from each swing's
+ * hinge along both its ends. The scanline reads the flat's outline from the
+ * walls, and a front door whose swing is drawn dashed leaves its doorway open
+ * to it — 22's entrance hall came out as outside, and the fire-hose cabinet
+ * beyond the door as floor. One of the two bands lies in the doorway, the
+ * other along the leaf, inside a room, where the outline does not see it.
+ */
+function doorwayBands(arcs: SwingArc[], unitsPerMetre: number): WallBody[] {
+  const bands: WallBody[] = [];
+  const thickness = unitsPerMetre * 0.04;
+  for (const arc of arcs) {
+    if (arc.r < unitsPerMetre * 0.55 || arc.r > unitsPerMetre * 1.15) continue;
+    for (const deg of [arc.a0, arc.a1]) {
+      const ex = arc.cx + arc.r * Math.cos((deg * Math.PI) / 180);
+      const ey = arc.cy + arc.r * Math.sin((deg * Math.PI) / 180);
+      const h = Math.abs(ex - arc.cx) >= Math.abs(ey - arc.cy);
+      bands.push(
+        h
+          ? { orientation: "h", centre: arc.cy, thickness, from: Math.min(arc.cx, ex), to: Math.max(arc.cx, ex) }
+          : { orientation: "v", centre: arc.cx, thickness, from: Math.min(arc.cy, ey), to: Math.max(arc.cy, ey) },
+      );
+    }
+  }
+  return bands;
 }

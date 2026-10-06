@@ -1,6 +1,7 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { inferRoomKind, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
+  bodyRect,
   bridgeGlazedGaps,
   bridgeOpenings,
   interiorComponents,
@@ -265,10 +266,11 @@ function restitchFurnishedFragments(
     // A cell with a WC or a basin in it is a room of its own, not the end of
     // the next one: put back, דירה 16's WC went into the bathroom beside it and
     // the flat lost a bathroom.
-    if (
-      area(rows) >= WET_CELL_MIN_M2 &&
-      inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")
-    ) {
+    // Nor is a smaller piece holding one: a pan's own outline stops the
+    // flood, and 21's WC pan, cut off in a sliver of its cell, was put into
+    // the twin bedroom across the wall — and the bedroom was then cut in two
+    // as a bedroom and a bathroom in one.
+    if (inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")) {
       return;
     }
     const [lo, hi] = xRange(rows);
@@ -438,9 +440,39 @@ export function segmentRooms(input: {
   ];
   // The pen the walls are drawn with, read off this sheet rather than assumed.
   const inkCut = wallInkThreshold(input.segments ?? []);
-  const ink = (input.segments ?? []).filter(
-    (segment) => segment.lineWidth >= inkCut && isAxisAligned(segment),
-  );
+  // A room's name is lettered in strokes of the same pen, and its letters
+  // are short axis lines in the middle of the floor: 22's "ח.אמבטיה" sealed
+  // across its bathroom and cut it in two. A short stroke counts only where
+  // it meets a wall — a jamb's cap, a frame — and never standing clear.
+  const wallRects = bodies.map(bodyRect);
+  const nearWall = (x: number, y: number) => {
+    const e = unitsPerMetre * 0.05;
+    return wallRects.some((r) => x >= r.x - e && x <= r.x + r.w + e && y >= r.y - e && y <= r.y + r.h + e);
+  };
+  // Nor a dimension chain: it runs straight through the walls it measures,
+  // and 21's "381" across the twin bedroom cut the room's lower metre off
+  // as a corridor. A wall's face stops at the walls it meets; a line through
+  // the middle of two of them is not a face.
+  const crossesWalls = (segment: VectorSegment) => {
+    const h = Math.abs(segment.y2 - segment.y1) < Math.abs(segment.x2 - segment.x1);
+    const a = h ? Math.min(segment.x1, segment.x2) : Math.min(segment.y1, segment.y2);
+    const b = h ? Math.max(segment.x1, segment.x2) : Math.max(segment.y1, segment.y2);
+    const at = h ? (segment.y1 + segment.y2) / 2 : (segment.x1 + segment.x2) / 2;
+    const m = unitsPerMetre * 0.02;
+    let n = 0;
+    for (const r of wallRects) {
+      const [lo, hi, across0, across1] = h ? [r.x, r.x + r.w, r.y, r.y + r.h] : [r.y, r.y + r.h, r.x, r.x + r.w];
+      if (lo > a + m && hi < b - m && at > across0 + m && at < across1 - m) n++;
+      if (n >= 2) return true;
+    }
+    return false;
+  };
+  const ink = (input.segments ?? []).filter((segment) => {
+    if (segment.lineWidth < inkCut || !isAxisAligned(segment)) return false;
+    if (crossesWalls(segment)) return false;
+    if (Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) >= unitsPerMetre * 0.25) return true;
+    return nearWall(segment.x1, segment.y1) || nearWall(segment.x2, segment.y2);
+  });
   // The border flood decides inside from outside by trying to reach in, and on
   // a sheet whose envelope is drawn in one pen throughout that works. A plotted
   // sheet draws part of its outer wall in the same thin pen as its dimension
@@ -480,8 +512,13 @@ export function segmentRooms(input: {
     // that makes an empty region a room. Dropped, the flat lost a bathroom:
     // four reference sheets did, once rooms stopped being joined across walls.
     if (areaM2 < minRoomM2 && !(named.length > 0 && areaM2 >= WET_CELL_MIN_M2)) {
+      // The cell's size with its pan and basin in it: their outlines are
+      // flooded round, and 21's WC measured a fraction of its 90 by 120.
+      const fixtureM2 = standing
+        .filter((piece) => piece.kind === "fixture" || piece.kind === "sink")
+        .reduce((t, piece) => t + (piece.w * piece.h) / (unitsPerMetre * unitsPerMetre), 0);
       const hasFixture =
-        areaM2 >= WET_CELL_MIN_M2 &&
+        areaM2 + fixtureM2 >= WET_CELL_MIN_M2 &&
         // Standing in it, not an island beside it: a balcony's drain symbol
         // is drawn closed too, and pulled in it kept a balcony as a bathroom.
         standing.some(
@@ -626,6 +663,28 @@ function splitLooselyJoined(rooms: SegmentedRoom[], unitsPerMetre: number, minRo
     const pitch = rowPitch(room.rows);
     const parts = componentsOf(room.rows, pitch, sliver);
     if (parts.length < 2) {
+      out.push(room);
+      continue;
+    }
+    // Joined once its furniture stands on it again: the floor is flooded
+    // round the pieces, so beds side by side leave only a sliver between the
+    // room and the strip at their feet — 21's twin bedroom lost its lower
+    // metre as a "corridor" that way. A neck made by furniture is not one.
+    const furnished = room.rows.map((row) => {
+      const spans: Array<[number, number]> = row.spans.map(([a, b]) => [a, b]);
+      for (const piece of room.contents) {
+        if (row.y >= piece.y && row.y <= piece.y + piece.h) spans.push([piece.x, piece.x + piece.w]);
+      }
+      spans.sort((p, q) => p[0] - q[0]);
+      const merged: Array<[number, number]> = [];
+      for (const span of spans) {
+        const last = merged[merged.length - 1];
+        if (last && span[0] <= last[1] + pitch) last[1] = Math.max(last[1], span[1]);
+        else merged.push([span[0], span[1]]);
+      }
+      return { y: row.y, spans: merged };
+    });
+    if (componentsOf(furnished, pitch, sliver).length < 2) {
       out.push(room);
       continue;
     }
