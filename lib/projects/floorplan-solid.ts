@@ -1983,6 +1983,26 @@ export function findDoorSwings(
       if (Math.abs(d - width) > width * 0.18) continue;
       angles.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
     }
+    // A swing drawn dashed is short segments, not curves: 21's bottom
+    // bedroom and 14's corridor had their doors drawn so, and came out
+    // sealed. Dashes on the radius, off every wall, running along the arc,
+    // count as it — the wall's own hatch at the radius lies in the wall.
+    if (angles.length < minArc) {
+      const dashes: number[] = [];
+      for (const d of segments) {
+        const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+        if (len > width * 0.22 || len < unitsPerMetre * 0.02) continue;
+        const mx = (d.x1 + d.x2) / 2;
+        const my = (d.y1 + d.y2) / 2;
+        const dist = Math.hypot(mx - hinge.x, my - hinge.y);
+        if (Math.abs(dist - width) > width * 0.12) continue;
+        if (pointHitsBody(mx, my, bodies)) continue;
+        const radial = Math.abs(((mx - hinge.x) * (d.x2 - d.x1) + (my - hinge.y) * (d.y2 - d.y1)) / (dist * len));
+        if (radial > 0.5) continue;
+        dashes.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+      }
+      if (dashes.length >= 6) angles.push(...dashes);
+    }
     const arcs = angles.length;
     if (arcs < minArc) continue;
     // A door sweeps a quarter circle. Distance alone let a bath through: its rim

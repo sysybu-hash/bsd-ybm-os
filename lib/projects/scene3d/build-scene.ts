@@ -189,51 +189,62 @@ export type SceneInput = {
 };
 
 /**
- * Which rooms the scene draws: the segmenter's, or the sheet's own labels.
+ * Which rooms the scene draws: the segmenter's, each split by the sheet's own
+ * labels only where two or more of them name it.
  *
- * The labels win when the sheet names more rooms than the flood found, which
- * is what happens whenever a doorway was missed. Each labelled room takes the
- * measured floor rectangles whose centres fall inside the box its name was
- * read at; a rectangle no label claims stays with the segmenter's answer, so
- * nothing measured is ever dropped and nothing unmeasured is ever added.
+ * A missed doorway lets the flood run from one room into the next, and the
+ * two come back as one: such a room carries two names, and its rectangles go
+ * each to the name whose box holds its middle, or else to the nearest name.
+ * A room with one name, or none, is the segmenter's as measured. The labels
+ * used to re-cut the whole floor whenever the sheet named more rooms than the
+ * flood found — and a label's box is a model's reading of where a word is
+ * printed, not a room: on 18 a "bathroom" claimed 22.7 m² of strips running
+ * across the flat, on 16 one claimed 13.6, and every flat was drawn with two
+ * sets of rooms, one over the other. Nothing measured is dropped, and nothing
+ * unmeasured is added.
  */
 export function roomsForScene(input: SceneInput): SceneInput["rooms"] {
   const labelled = input.labelledRooms ?? [];
-  if (labelled.length <= input.rooms.length) return input.rooms;
-
-  // Claimed by value, not by reference: the segmenter's rectangles and the
-  // floor's are equal numbers in different objects.
-  const keyOf = (rect: Rect) => `${rect.x}:${rect.y}:${rect.w}:${rect.h}`;
-  const claimed = new Set<string>();
+  if (labelled.length === 0) return input.rooms;
+  const centre = (box: Rect) => ({ x: box.x + box.w / 2, y: box.y + box.h / 2 });
+  const holds = (rects: Rect[], x: number, y: number) =>
+    rects.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   const out: SceneInput["rooms"] = [];
-  for (const label of labelled) {
-    const mine = input.floorRects.filter((rect) => {
-      if (claimed.has(keyOf(rect))) return false;
-      const cx = rect.x + rect.w / 2;
-      const cy = rect.y + rect.h / 2;
-      return (
-        cx >= label.box.x &&
-        cx <= label.box.x + label.box.w &&
-        cy >= label.box.y &&
-        cy <= label.box.y + label.box.h
-      );
-    });
-    if (mine.length === 0) continue;
-    for (const rect of mine) claimed.add(keyOf(rect));
-    const areaUnits = mine.reduce((sum, r) => sum + r.w * r.h, 0);
-    out.push({
-      name: label.name,
-      kind: label.kind,
-      areaM2: areaUnits / (input.unitsPerMetre * input.unitsPerMetre),
-      rects: mine,
-    });
-  }
-  // Floor no label claimed keeps the room the flood gave it.
   for (const room of input.rooms) {
-    const left = room.rects.filter((rect) => !claimed.has(keyOf(rect)));
-    if (left.length > 0) out.push({ ...room, rects: left });
+    const names = labelled.filter((label) => {
+      const c = centre(label.box);
+      return holds(room.rects, c.x, c.y);
+    });
+    if (names.length < 2 || room.kind === "balcony") {
+      out.push(room);
+      continue;
+    }
+    const parts = new Map<number, Rect[]>();
+    for (const rect of room.rects) {
+      const c = centre(rect);
+      const inBox = names.findIndex(
+        (label) => c.x >= label.box.x && c.x <= label.box.x + label.box.w && c.y >= label.box.y && c.y <= label.box.y + label.box.h,
+      );
+      const nearest =
+        inBox >= 0
+          ? inBox
+          : names.reduce((best, label, k) => {
+              const d = (l: typeof label) => Math.hypot(centre(l.box).x - c.x, centre(l.box).y - c.y);
+              return d(label) < d(names[best]!) ? k : best;
+            }, 0);
+      parts.set(nearest, [...(parts.get(nearest) ?? []), rect]);
+    }
+    for (const [k, rects] of parts) {
+      const label = names[k]!;
+      out.push({
+        name: label.name,
+        kind: label.kind,
+        areaM2: rects.reduce((sum, r) => sum + r.w * r.h, 0) / (input.unitsPerMetre * input.unitsPerMetre),
+        rects,
+      });
+    }
   }
-  return out.length > 0 ? out : input.rooms;
+  return out;
 }
 
 /**
@@ -578,10 +589,18 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // One scan rect can run from a roof, under an outer wall, into the flat —
   // דירה 22's strip along its north side crosses both roofs — so it is judged
   // in slices along its length, and each run of slices gets its own floor.
-  for (const rect of floorRects) {
-    if (pointInRects(rectCentre(rect), claimed)) continue;
+  // Less what the rooms claim, not dropped whole where its middle is in one:
+  // 21's scan rect ran from its bathroom on down the corridor to the bottom
+  // bedroom's door, and the corridor came out with no floor and the bedroom
+  // with no way in.
+  const unclaimed = subtractRects(floorRects, claimed).filter((r) => Math.min(r.w, r.h) >= minWalkable * 0.5);
+  for (const rect of unclaimed) {
     for (const run of slicesByEnclosure(rect, blockers, upm * 0.25)) {
-      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", run.inside ? "floorWood" : "floorStone", "floor:unclaimed"));
+      // Inside the flat only. Outside it is the landing or the stair beside
+      // the flat (21's came out tiled past its east wall), and a roof that is
+      // not the flat's is no longer in its floor (see foreign).
+      if (!run.inside) continue;
+      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", "floorWood", "floor:unclaimed"));
     }
   }
 
