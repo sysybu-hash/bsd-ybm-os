@@ -4182,7 +4182,6 @@ export function doorsFromSwings<T extends Opening & { kind?: string }>(
     const pick =
       tries.find((t) => t.index >= 0) ??
       [...tries].filter((t) => t.wallBehind).sort((p, q) => q.ends - p.ends)[0];
-    if (process.env.DBG_DOORS) console.warn("swing", JSON.stringify({ c: [Math.round(arc.cx), Math.round(arc.cy)], tries: tries.map((t) => ({ o: t.orientation, line: Math.round(t.line), from: Math.round(t.from), to: Math.round(t.to), index: t.index, wall: !!t.wallBehind, ends: t.ends })) }));
     if (!pick) continue;
     const leaf = { x: arc.cx, y: arc.cy, dx: pick.tip.x - arc.cx, dy: pick.tip.y - arc.cy };
     if (pick.index >= 0) {
@@ -4619,23 +4618,61 @@ export function findCrossedBoxes(
  */
 export function wallsBesideFlatFloor(
   bodies: WallBody[],
-  onFloor: (x: number, y: number) => boolean,
+  floor: { room: (x: number, y: number) => boolean; terrace: (x: number, y: number) => boolean },
   voids: Array<{ x: number; y: number; w: number; h: number }>,
+  segments: VectorSegment[],
   unitsPerMetre: number,
 ): WallBody[] {
   const inVoid = (x: number, y: number) => voids.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
-  const free = (x: number, y: number) =>
-    onFloor(x, y) && !inVoid(x, y) && !bodies.some((b) => {
+  const clear = (x: number, y: number) =>
+    !inVoid(x, y) && !bodies.some((b) => {
       const r = bodyRect(b);
       return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
     });
+  // Beside a terrace only, a wall must be hatched there: a terrace's paving
+  // pairs into bands like a wall's faces, and 18's two terraces got two walls
+  // across them where the sheet draws a strip of paving between them.
+  const diagonals = segments.filter((sg) => {
+    const deg = Math.abs((Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) * 180) / Math.PI) % 90;
+    return deg >= 30 && deg <= 60 && Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1) <= unitsPerMetre * 0.8;
+  });
+  const hatchedAt = (b: WallBody, t: number) => {
+    const r = bodyRect(b);
+    const half = unitsPerMetre * 0.15;
+    // Three strokes one way, each across most of the band: a level figure's
+    // "4" and "2" have a diagonal each, and stood a wall on 18's terrace.
+    const ways = [0, 0];
+    for (const sg of diagonals) {
+      const mx = (sg.x1 + sg.x2) / 2;
+      const my = (sg.y1 + sg.y2) / 2;
+      const along = b.orientation === "h" ? mx : my;
+      if (Math.abs(along - t) > half) continue;
+      if (mx < r.x - 1 || mx > r.x + r.w + 1 || my < r.y - 1 || my > r.y + r.h + 1) continue;
+      const across = b.orientation === "h" ? Math.abs(sg.y2 - sg.y1) : Math.abs(sg.x2 - sg.x1);
+      if (across < b.thickness * 0.6) continue;
+      const k = (sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1;
+      if (++ways[k]! >= 3) return true;
+    }
+    return false;
+  };
+  const free = (b: WallBody, t: number, x: number, y: number) =>
+    clear(x, y) && (floor.room(x, y) || (floor.terrace(x, y) && hatchedAt(b, t)));
+  // Off its long faces; off its ends too only for a stub, which is all ends
+  // — a band over 18's terrace had the living room past its end, through
+  // the wall it ran out of.
   const kept = bodies.filter((b) => {
     const r = bodyRect(b);
-    for (const d of [0.1, 0.25].map((m) => m * unitsPerMetre)) {
+    const stub = b.to - b.from < b.thickness * 2;
+    // Out to 40 cm: a window's frame lines can stand between an outer wall
+    // and the floor (21's twin bedroom), and the opened floor stops short.
+    for (const d of [0.1, 0.25, 0.4].map((m) => m * unitsPerMetre)) {
       for (const f of [0.15, 0.5, 0.85]) {
         const px = r.x + r.w * f;
         const py = r.y + r.h * f;
-        if (free(px, r.y - d) || free(px, r.y + r.h + d) || free(r.x - d, py) || free(r.x + r.w + d, py)) return true;
+        const t = b.orientation === "h" ? px : py;
+        const faces = b.orientation === "h" ? free(b, t, px, r.y - d) || free(b, t, px, r.y + r.h + d) : free(b, t, r.x - d, py) || free(b, t, r.x + r.w + d, py);
+        const ends = b.orientation === "h" ? free(b, t, r.x - d, py) || free(b, t, r.x + r.w + d, py) : free(b, t, px, r.y - d) || free(b, t, px, r.y + r.h + d);
+        if (faces || (stub && ends)) return true;
       }
     }
     return false;
@@ -4649,8 +4686,8 @@ export function wallsBesideFlatFloor(
     const h = b.orientation === "h";
     const reachSide = b.thickness / 2 + unitsPerMetre * 0.1;
     const beside = (t: number) =>
-      [reachSide, reachSide + unitsPerMetre * 0.15].some((d) =>
-        h ? free(t, b.centre - d) || free(t, b.centre + d) : free(b.centre - d, t) || free(b.centre + d, t),
+      [reachSide, reachSide + unitsPerMetre * 0.15, reachSide + unitsPerMetre * 0.3].some((d) =>
+        h ? free(b, t, t, b.centre - d) || free(b, t, t, b.centre + d) : free(b, t, b.centre - d, t) || free(b, t, b.centre + d, t),
       );
     let tA: number | null = null;
     let tB: number | null = null;
@@ -4680,7 +4717,40 @@ export function wallsBesideFlatFloor(
     if (to - from < unitsPerMetre * 0.1) continue;
     out.push(from === b.from && to === b.to ? b : { ...b, from, to });
   }
-  return out;
+  // A band lying half in a wall found beside it, its other half unhatched:
+  // 18's bathroom window, sill and rescue hatch read as a 50 cm wall reaching
+  // out onto the terrace from inside the outer wall.
+  const strokesIn = (r: { x: number; y: number; w: number; h: number }, thickness: number) => {
+    const ways = [0, 0];
+    for (const sg of diagonals) {
+      const mx = (sg.x1 + sg.x2) / 2;
+      const my = (sg.y1 + sg.y2) / 2;
+      if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) continue;
+      if (Math.max(Math.abs(sg.x2 - sg.x1), Math.abs(sg.y2 - sg.y1)) < thickness * 0.6) continue;
+      ways[(sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1]!++;
+    }
+    return Math.max(ways[0]!, ways[1]!);
+  };
+  return out.filter((b) => {
+    const r = bodyRect(b);
+    const h = b.orientation === "h";
+    return !out.some((o) => {
+      if (o === b || o.orientation !== b.orientation) return false;
+      const along = Math.min(b.to, o.to) - Math.max(b.from, o.from);
+      if (along < (b.to - b.from) * 0.8) return false;
+      const lo = Math.max(b.centre - b.thickness / 2, o.centre - o.thickness / 2);
+      const hi = Math.min(b.centre + b.thickness / 2, o.centre + o.thickness / 2);
+      if (hi - lo < b.thickness * 0.3 || o.thickness < b.thickness * 0.5) return false;
+      // The part of b beyond o, on whichever side it lies.
+      const below = o.centre - o.thickness / 2 - (b.centre - b.thickness / 2);
+      const above = b.centre + b.thickness / 2 - (o.centre + o.thickness / 2);
+      const strip = above >= below ? { a: o.centre + o.thickness / 2, d: above } : { a: b.centre - b.thickness / 2, d: below };
+      if (strip.d < unitsPerMetre * 0.05) return false;
+      const rect = h ? { x: r.x, y: strip.a, w: r.w, h: strip.d } : { x: strip.a, y: r.y, w: strip.d, h: r.h };
+      const metres = (b.to - b.from) / unitsPerMetre;
+      return strokesIn(rect, strip.d) < Math.max(3, metres * 4);
+    });
+  });
 }
 
 /**
@@ -4696,6 +4766,8 @@ export function openFloorLookup(
   bodies: WallBody[],
   unitsPerMetre: number,
   radiusM = 0.15,
+  /** Floor that is not the rooms' — the terraces, another flat's — taken off before opening. */
+  exclude?: (x: number, y: number) => boolean,
 ): (x: number, y: number) => boolean {
   if (floor.length === 0) return () => false;
   const g = unitsPerMetre * 0.05;
@@ -4717,6 +4789,7 @@ export function openFloorLookup(
     for (let i = 0; i < W; i++) {
       const p = at(i, j);
       if (!spansContain(floor, p.x, p.y)) continue;
+      if (exclude?.(p.x, p.y)) continue;
       if (rects.some((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)) continue;
       m[j * W + i] = 1;
     }

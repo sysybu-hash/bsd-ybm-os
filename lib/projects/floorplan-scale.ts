@@ -322,7 +322,7 @@ export function pickScaleLock(
  * beyond the door as floor. One of the two bands lies in the doorway, the
  * other along the leaf, inside a room, where the outline does not see it.
  */
-function doorwayBands(arcs: SwingArc[], unitsPerMetre: number): WallBody[] {
+export function doorwayBands(arcs: SwingArc[], unitsPerMetre: number): WallBody[] {
   const bands: WallBody[] = [];
   const thickness = unitsPerMetre * 0.04;
   for (const arc of arcs) {
@@ -331,10 +331,13 @@ function doorwayBands(arcs: SwingArc[], unitsPerMetre: number): WallBody[] {
       const ex = arc.cx + arc.r * Math.cos((deg * Math.PI) / 180);
       const ey = arc.cy + arc.r * Math.sin((deg * Math.PI) / 180);
       const h = Math.abs(ex - arc.cx) >= Math.abs(ey - arc.cy);
+      // Past both ends a little: the hinge stands a hair off the wall's
+      // face, and a flood walks through the hair (14's roof terrace did).
+      const over = unitsPerMetre * 0.06;
       bands.push(
         h
-          ? { orientation: "h", centre: arc.cy, thickness, from: Math.min(arc.cx, ex), to: Math.max(arc.cx, ex) }
-          : { orientation: "v", centre: arc.cx, thickness, from: Math.min(arc.cy, ey), to: Math.max(arc.cy, ey) },
+          ? { orientation: "h", centre: arc.cy, thickness, from: Math.min(arc.cx, ex) - over, to: Math.max(arc.cx, ex) + over }
+          : { orientation: "v", centre: arc.cx, thickness, from: Math.min(arc.cy, ey) - over, to: Math.max(arc.cy, ey) + over },
       );
     }
   }

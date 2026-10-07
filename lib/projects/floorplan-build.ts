@@ -30,7 +30,7 @@ import {
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
-import { lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
+import { doorwayBands, lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
   sameWall,
@@ -436,9 +436,19 @@ export async function buildFlatFromGeometry(
   // table: the seats' front and back edges, a chair's width apart and in a
   // row, pair up like a partition's faces, and דירה 23's three chairs below
   // the table came out as a wall across the living room.
-  const earlyTable = findFurniture(geometry.segments, unitsPerMetre, { curves: geometry.curves }).find(
-    (piece) => piece.kind === "table",
-  );
+  const earlyPieces = findFurniture(geometry.segments, unitsPerMetre, { curves: geometry.curves });
+  const earlyTable = earlyPieces.find((piece) => piece.kind === "table");
+  // Nor one lying in a bed: a bed's foot and its pillow's corner pair like a
+  // partition's faces, and 18's right bedroom had a wall up its bed.
+  const earlyBeds = earlyPieces.filter((piece) => piece.kind === "bed");
+  const inBed = (body: WallBody) => {
+    const r = bodyRect(body);
+    return earlyBeds.some((bed) => {
+      const ox = Math.min(r.x + r.w, bed.x + bed.w) - Math.max(r.x, bed.x);
+      const oy = Math.min(r.y + r.h, bed.y + bed.h) - Math.max(r.y, bed.y);
+      return ox > 0 && oy > 0 && ox * oy >= 0.4 * r.w * r.h;
+    });
+  };
   const drawnChairs = earlyTable
     ? (seatsDrawnAroundTable(earlyTable, geometry.curves, unitsPerMetre, geometry.segments) ?? [])
     : [];
@@ -458,15 +468,43 @@ export async function buildFlatFromGeometry(
   // "+11.42" in the flat's legend box stood as a 30 cm wall by the door.
   const markSymbols = findLevelMarks(geometry.curves, geometry.segments, unitsPerMetre, { minRadiusM: 0.05, maxRadiusM: 0.3, minHatch: 2 });
   const inMark = (body: WallBody) => {
-    if (body.to - body.from > unitsPerMetre * 0.6) return false;
     const r = bodyRect(body);
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
-    return markSymbols.some((m) => Math.hypot(cx - m.x, cy - m.y) <= m.r + unitsPerMetre * 0.05);
+    const short = body.to - body.from <= unitsPerMetre * 0.6;
+    if (short && markSymbols.some((m) => Math.hypot(cx - m.x, cy - m.y) <= m.r + unitsPerMetre * 0.05)) return true;
+    // Or in its figure, beside it on the same line, unhatched: the top and
+    // foot of 21's "+15.94" paired into a 40 cm wall across its roof terrace.
+    if (body.to - body.from > unitsPerMetre * 2.5) return false;
+    const besideFigure = markSymbols.some(
+      (m) => Math.abs(cy - m.y) <= unitsPerMetre * 0.25 && Math.abs(cx - m.x) <= unitsPerMetre * 1.6,
+    );
+    if (!besideFigure) return false;
+    // Hatched along most of it, slice by slice: where it runs into a hatched
+    // wall it borrows that wall's strokes.
+    const diagonalsIn = geometry.segments.filter((sg) => {
+      const deg = Math.abs((Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) * 180) / Math.PI) % 90;
+      const mx = (sg.x1 + sg.x2) / 2;
+      const my = (sg.y1 + sg.y2) / 2;
+      return deg >= 30 && deg <= 60 && Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1) >= body.thickness * 0.6 && mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
+    });
+    const step = unitsPerMetre * 0.25;
+    let slices = 0;
+    let hatchedSlices = 0;
+    for (let t = body.from; t < body.to; t += step) {
+      slices++;
+      const n = diagonalsIn.filter((sg) => {
+        const along = body.orientation === "h" ? (sg.x1 + sg.x2) / 2 : (sg.y1 + sg.y2) / 2;
+        return along >= t && along < t + step;
+      }).length;
+      if (n >= 2) hatchedSlices++;
+    }
+    return hatchedSlices < slices * 0.5;
   };
   const faced = trimThinToFaces([...hatchKept, ...plotted], geometry.segments, unitsPerMetre).filter((body) => {
     if (throughChairs(body)) return false;
     if (inMark(body)) return false;
+    if (inBed(body)) return false;
     if (hobs.some((hob) => centreInsideBody(hob, body))) return false;
     const r = bodyRect(body);
     // Mostly inside, not wholly: דירה 22's ran on past the bath's end into
@@ -478,7 +516,7 @@ export async function buildFlatFromGeometry(
     });
   });
   // And the hatched pieces no pair of faces gave; see hatchedWallsMissed.
-  let bodies = [...faced, ...hatchedWallsMissed(faced, geometry.segments, unitsPerMetre, flatExtent)];
+  let bodies = [...faced, ...hatchedWallsMissed(faced, geometry.segments, unitsPerMetre, flatExtent).filter((body) => !inMark(body))];
   if (bodies.length === 0) return null;
 
   let minX = Infinity;
@@ -734,6 +772,11 @@ export async function buildFlatFromGeometry(
     unitsPerMetre,
   );
 
+  // The doors are the swings the sheet draws (findSwingArcs), and a terrace
+  // is flooded with its doorways closed: 14's little roof terrace ran in
+  // through its door into the bedroom and was refused as too big.
+  const swingArcs = findSwingArcs(geometry.segments, geometry.curves, unitsPerMetre, { extent: flatExtent });
+  const closed = [...bodies, ...doorwayBands(swingArcs, unitsPerMetre)];
   const fromInk = findTerraces(
     geometry.segments,
     [...printed, ...programmeTerraces],
@@ -773,7 +816,7 @@ export async function buildFlatFromGeometry(
           ...fromInk,
           ...findTerracesOnFloor(
             floor,
-            bodies,
+            closed,
             [...missing, ...missingProgrammeTerraces],
             unitsPerMetre,
           ),
@@ -866,11 +909,11 @@ export async function buildFlatFromGeometry(
       ? // At least 2.8 m²: unlabelled, the region has only its size to go on.
         // The two real ones measured 3.04 and 3.19; the roof beside דירה 22,
         // 2.53.
-        findTerracesOnFloor(floor, bodies, otherSeeds, unitsPerMetre, { unlabelledM2: { min: 2.8, max: 16 } })
+        findTerracesOnFloor(floor, closed, otherSeeds, unitsPerMetre, { unlabelledM2: { min: 2.8, max: 16 } })
       : [];
   const ownHits =
     ownSeeds.length > 0
-      ? findTerracesOnFloor(floor, bodies, ownSeeds, unitsPerMetre, { unlabelledM2: { min: 1.2, max: 16 }, growRim: true })
+      ? findTerracesOnFloor(floor, closed, ownSeeds, unitsPerMetre, { unlabelledM2: { min: 1.2, max: 16 }, growRim: true })
       : [];
   const standsIn = (terrace: { rows: SpanRow[] }) =>
     furniture.filter(
@@ -908,23 +951,22 @@ export async function buildFlatFromGeometry(
   // +11.42 with only windows onto it. Access decides, not level alone — דירה
   // 20's middle bedroom opens onto its terrace three metres up the sheet's
   // section — so a door onto it keeps it.
-  const earlySwings = findDoorSwings(geometry.segments, geometry.curves, bodies, unitsPerMetre, { extent: flatExtent });
+  // A door onto it, by the swings: the leaf-first search missed 21's
+  // twin-bedroom door onto its roof, and the roof was taken for the storey
+  // below's.
   const reach = unitsPerMetre * 0.35;
   const doorOnto = (terrace: { rows: SpanRow[] }) =>
-    earlySwings.some((door) => {
-      const mid = (door.from + door.to) / 2;
-      const probes =
-        door.orientation === "h"
-          ? [
-              [mid, door.centre - reach],
-              [mid, door.centre + reach],
-            ]
-          : [
-              [door.centre - reach, mid],
-              [door.centre + reach, mid],
-            ];
-      return probes.some(([x, y]) => spansContain(terrace.rows, x!, y!));
-    });
+    swingArcs.some((arc) =>
+      [arc.a0, arc.a1].some((deg) => {
+        // Either end may be the jamb: the doorway runs from the hinge to it,
+        // and a door onto the terrace has the terrace off one side of it.
+        const ex = Math.cos((deg * Math.PI) / 180);
+        const ey = Math.sin((deg * Math.PI) / 180);
+        const mx = arc.cx + (ex * arc.r) / 2;
+        const my = arc.cy + (ey * arc.r) / 2;
+        return [1, -1].some((side) => spansContain(terrace.rows, mx - ey * reach * side, my + ex * reach * side));
+      }),
+    );
   const elsewhere = (terrace: { rows: SpanRow[] }) => {
     if (!flatLevel) return false;
     // In its box, not only on its rows: the mark's own hatch stops the flood,
@@ -984,7 +1026,7 @@ export async function buildFlatFromGeometry(
   const regionsAt = (marks: typeof levelSeeds) =>
     marks
       .map((mark) => {
-        const flooded = findTerracesOnFloor(floor, bodies, [mark], unitsPerMetre, {
+        const flooded = findTerracesOnFloor(floor, closed, [mark], unitsPerMetre, {
           unlabelledM2: { min: 0.5, max: 16 },
           growRim: true,
         })[0];
@@ -996,8 +1038,53 @@ export async function buildFlatFromGeometry(
   // of the flat below, the terrace of the one above — and no part of this
   // flat's floor: 21's roof at +15.94 came out a bathroom for the lettering
   // on it.
+  // One region holding marks at two levels is two terraces the flood ran
+  // together: 18's +12.79 and +11.42 are a strip of paving apart, and with
+  // no wall between them came back as one terrace, the flat's. Cut half-way
+  // between the marks, across the line that joins them; one region each.
+  const markInBox = (region: { rows: SpanRow[] }, mark: { x: number; y: number }) => {
+    const xs = region.rows.flatMap((row) => row.spans.flat());
+    const ys = region.rows.map((row) => row.y);
+    return mark.x >= Math.min(...xs) && mark.x <= Math.max(...xs) && mark.y >= Math.min(...ys) && mark.y <= Math.max(...ys);
+  };
+  const splitByLevel = (regions: Array<{ rows: SpanRow[] }>): Array<{ rows: SpanRow[] }> => {
+    const out: Array<{ rows: SpanRow[] }> = [];
+    for (const region of regions) {
+      const marks = levelMarks
+        .filter((mark) => spansContain(region.rows, mark.x, mark.y) || markInBox(region, mark))
+        .map((mark) => ({ mark, text: levelTextAt(mark, geometry.segments, geometry.curves) }))
+        .filter((m) => m.text != null);
+      const a = marks[0];
+      const b = marks.find((m) => a && !sameLevelText(m.text!, a.text!));
+      if (!a || !b) {
+        out.push(region);
+        continue;
+      }
+      const vertical = Math.abs(b.mark.y - a.mark.y) >= Math.abs(b.mark.x - a.mark.x);
+      const cut = vertical ? (a.mark.y + b.mark.y) / 2 : (a.mark.x + b.mark.x) / 2;
+      if (vertical) {
+        out.push({ rows: region.rows.filter((row) => row.y < cut) }, { rows: region.rows.filter((row) => row.y >= cut) });
+      } else {
+        const side = (lo: boolean) =>
+          region.rows
+            .map((row) => ({
+              y: row.y,
+              spans: row.spans
+                .map(([x0, x1]) => (lo ? [x0, Math.min(x1, cut)] : [Math.max(x0, cut), x1]) as [number, number])
+                .filter(([x0, x1]) => x1 > x0),
+            }))
+            .filter((row) => row.spans.length > 0);
+        out.push({ rows: side(true) }, { rows: side(false) });
+      }
+    }
+    // Once each: the two marks seeded the same region twice.
+    const key = (r: { rows: SpanRow[] }) => r.rows.length + ":" + Math.round(r.rows[0]?.y ?? 0) + ":" + Math.round(spanArea(r.rows));
+    const seen = new Set<string>();
+    return out.filter((r) => r.rows.length > 1 && !seen.has(key(r)) && seen.add(key(r)));
+  };
+  const allTerraces = splitByLevel([...terraceHits, ...markedHits]);
   const notTheFlats = [
-    ...[...terraceHits, ...markedHits].filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
+    ...allTerraces.filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
     // With the marks the programme already put at another level, which seed
     // nothing above — their floor is still the flat's footprint: 18's +12.79
     // terrace of the storey above was drawn with its paving and windows.
@@ -1015,7 +1102,7 @@ export async function buildFlatFromGeometry(
   ].map((terrace) =>
     terraceFromPaving(terrace.rows, geometry.segments, bodies, notLettering, unitsPerMetre, notOverOwnMark),
   );
-  const terraces = [...terraceHits, ...markedHits]
+  const terraces = allTerraces
     .filter((terrace) => !elsewhere(terrace) || doorOnto(terrace))
     .map((terrace) => {
       const paved = terraceFromPaving(
@@ -1038,8 +1125,11 @@ export async function buildFlatFromGeometry(
           return levelsIn(region).every((text) => reference.some((ref) => sameLevelText(text, ref)));
         },
       );
-      // Cut back only a flood the paving did not already give its shape.
-      return paved === terrace.rows ? cropToPaving(paved, geometry.segments, unitsPerMetre) : paved;
+      // Cut back only a flood the paving did not already give its shape —
+      // and never into another flat's terrace beside it: past the paving
+      // strip between them, 18's terrace grew 60 cm into the +12.79 above.
+      const shaped = paved === terrace.rows ? cropToPaving(paved, geometry.segments, unitsPerMetre) : paved;
+      return notTheFlats.length > 0 ? withoutRows(shaped, notTheFlats) : shaped;
     })
     // Opened only where the terrace survives it: דירה 18's 8 m² terrace,
     // flooded 75 cm deep against the sheet's edge, was opened away whole.
@@ -1047,7 +1137,12 @@ export async function buildFlatFromGeometry(
       const opened = openRows(rows, unitsPerMetre * 0.35, undefined, unitsPerMetre * 0.1);
       return deepEnough(opened) ? opened : rows;
     })
-    .filter(deepEnough);
+    .filter(deepEnough)
+    // Once each: two marks on one terrace flood it twice.
+    .filter((rows, i, all) => {
+      const area = spanArea(rows);
+      return !all.slice(0, i).some((other) => spanArea(withoutRows(rows, [other])) < area * 0.2);
+    });
 
   // Gaps between wall pieces, plus the doors the sheet actually marks. The gap
   // rule alone returned six openings on דירה 14, most of them windows, and had
@@ -1184,7 +1279,7 @@ export async function buildFlatFromGeometry(
   // stands in a wall; see doorsFromSwings and openingsInWalls.
   const swung = doorsFromSwings(
     entered,
-    findSwingArcs(geometry.segments, geometry.curves, unitsPerMetre, { extent: flatExtent }),
+    swingArcs,
     bodies,
     geometry.segments,
     unitsPerMetre,
@@ -1196,13 +1291,23 @@ export async function buildFlatFromGeometry(
   const flatFloor = floorWithoutLanding(floor, [...bodies, ...swung], entranceMarkers, unitsPerMetre);
   // Walls with none of the flat's floor beside them are the stair hall's or a
   // void's; see wallsBesideFlatFloor.
-  const openFloor = openFloorLookup(flatFloor, bodies, unitsPerMetre);
+  const openFloor = openFloorLookup(flatFloor, bodies, unitsPerMetre, 0.2, (x, y) =>
+    [...terraces, ...notTheFlats].some((rows) => spansContain(rows, x, y)),
+  );
   bodies = wallsBesideFlatFloor(
     bodies,
-    (x, y) => openFloor(x, y) || terraces.some((rows) => spansContain(rows, x, y)),
+    {
+      room: (x, y) => openFloor(x, y) && ![...terraces, ...notTheFlats].some((rows) => spansContain(rows, x, y)),
+      // Another flat's terrace is no reason for a wall to be this flat's.
+      terrace: (x, y) => terraces.some((rows) => spansContain(rows, x, y)) && !notTheFlats.some((rows) => spansContain(rows, x, y)),
+    },
     findCrossedBoxes(geometry.segments, unitsPerMetre),
+    geometry.segments,
     unitsPerMetre,
   );
+  // And asked again of the walls as cut back: a figure's band ran on into
+  // the walls beside it before.
+  bodies = bodies.filter((body) => !inMark(body));
   const openings = openingsInWalls(swung, bodies, unitsPerMetre, {
     segments: geometry.segments,
     betweenRooms: (o) => floorSides(o) === 2,
