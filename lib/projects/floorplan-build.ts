@@ -1304,6 +1304,7 @@ export async function buildFlatFromGeometry(
     findCrossedBoxes(geometry.segments, unitsPerMetre),
     geometry.segments,
     unitsPerMetre,
+    markSymbols,
   );
   // And asked again of the walls as cut back: a figure's band ran on into
   // the walls beside it before.

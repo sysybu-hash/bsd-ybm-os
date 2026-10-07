@@ -4382,7 +4382,9 @@ export function hatchedWallsMissed(
   const seen = new Uint8Array(W * H);
   const out: WallBody[] = [];
   const minThin = Math.max(3 * g, unitsPerMetre * 0.06);
-  const minLong = unitsPerMetre * 0.25;
+  // A door's jamb is a hatched post 20 cm square: 21's front door stood in
+  // nothing without it.
+  const minLong = unitsPerMetre * 0.2;
   for (let start = 0; start < W * H; start++) {
     if (!solid[start] || covered[start] || seen[start]) continue;
     const cells: number[] = [];
@@ -4622,6 +4624,8 @@ export function wallsBesideFlatFloor(
   voids: Array<{ x: number; y: number; w: number; h: number }>,
   segments: VectorSegment[],
   unitsPerMetre: number,
+  /** Level marks: their hatched quarters are not a wall's hatch. */
+  marks: Array<{ x: number; y: number; r: number }> = [],
 ): WallBody[] {
   const inVoid = (x: number, y: number) => voids.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   const clear = (x: number, y: number) =>
@@ -4634,7 +4638,10 @@ export function wallsBesideFlatFloor(
   // across them where the sheet draws a strip of paving between them.
   const diagonals = segments.filter((sg) => {
     const deg = Math.abs((Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) * 180) / Math.PI) % 90;
-    return deg >= 30 && deg <= 60 && Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1) <= unitsPerMetre * 0.8;
+    if (!(deg >= 30 && deg <= 60 && Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1) <= unitsPerMetre * 0.8)) return false;
+    const mx = (sg.x1 + sg.x2) / 2;
+    const my = (sg.y1 + sg.y2) / 2;
+    return !marks.some((m) => Math.hypot(mx - m.x, my - m.y) <= m.r * 1.3);
   });
   const hatchedAt = (b: WallBody, t: number) => {
     const r = bodyRect(b);
@@ -4649,7 +4656,9 @@ export function wallsBesideFlatFloor(
       if (Math.abs(along - t) > half) continue;
       if (mx < r.x - 1 || mx > r.x + r.w + 1 || my < r.y - 1 || my > r.y + r.h + 1) continue;
       const across = b.orientation === "h" ? Math.abs(sg.y2 - sg.y1) : Math.abs(sg.x2 - sg.x1);
-      if (across < b.thickness * 0.6) continue;
+      // Across a real wall's depth, not the band's: a band read wider than
+      // its wall (a leaf, a frame beside it) holds strokes shorter than itself.
+      if (across < Math.min(b.thickness * 0.6, unitsPerMetre * 0.05)) continue;
       const k = (sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1;
       if (++ways[k]! >= 3) return true;
     }
@@ -4714,6 +4723,27 @@ export function wallsBesideFlatFloor(
     // Within a step of the end, the end as drawn.
     if (from - b.from <= step * 1.5) from = b.from;
     if (b.to - to <= step * 1.5) to = b.to;
+    // And a hatched wall's unhatched end that stands in the open — room
+    // floor off both faces — is not wall: 21's WC wall ran on 1.5 m across
+    // the hall into the flat's legend box, with two "openings" in it.
+    const sliceStep = unitsPerMetre * 0.1;
+    const hatchedSlice = (t: number) => hatchedAt(b, t);
+    const openBoth = (t: number) => {
+      const d = b.thickness / 2 + unitsPerMetre * 0.15;
+      return h
+        ? clear(t, b.centre - d) && floor.room(t, b.centre - d) && clear(t, b.centre + d) && floor.room(t, b.centre + d)
+        : clear(b.centre - d, t) && floor.room(b.centre - d, t) && clear(b.centre + d, t) && floor.room(b.centre + d, t);
+    };
+    let hatchedCount = 0;
+    let total = 0;
+    for (let t = from; t < to; t += sliceStep) {
+      total++;
+      if (hatchedSlice(t)) hatchedCount++;
+    }
+    if (total > 0 && hatchedCount >= total * 0.4) {
+      while (to - from > unitsPerMetre * 0.3 && !hatchedSlice(to - sliceStep / 2) && openBoth(to - sliceStep / 2)) to -= sliceStep;
+      while (to - from > unitsPerMetre * 0.3 && !hatchedSlice(from + sliceStep / 2) && openBoth(from + sliceStep / 2)) from += sliceStep;
+    }
     if (to - from < unitsPerMetre * 0.1) continue;
     out.push(from === b.from && to === b.to ? b : { ...b, from, to });
   }
@@ -4726,7 +4756,7 @@ export function wallsBesideFlatFloor(
       const mx = (sg.x1 + sg.x2) / 2;
       const my = (sg.y1 + sg.y2) / 2;
       if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) continue;
-      if (Math.max(Math.abs(sg.x2 - sg.x1), Math.abs(sg.y2 - sg.y1)) < thickness * 0.6) continue;
+      if (Math.max(Math.abs(sg.x2 - sg.x1), Math.abs(sg.y2 - sg.y1)) < Math.min(thickness * 0.6, unitsPerMetre * 0.05)) continue;
       ways[(sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1]!++;
     }
     return Math.max(ways[0]!, ways[1]!);
