@@ -387,9 +387,11 @@ export type DoorRect = { orientation: "h" | "v"; x: number; y: number; w: number
  * wall, so the opening is hinge to that end — a double door's two leaves
  * make one opening — and the wall's thickness across.
  */
-export function exteriorDoorRects(doors: DxfSymbol[], outline: Array<[number, number]>): DoorRect[] {
+export function exteriorDoorRects(doors: DxfSymbol[], outline: Array<[number, number]>, windows: DxfSymbol[] = []): DoorRect[] {
   const out: DoorRect[] = [];
   for (const d of doors) {
+    // A door symbol lying within a window's span is a room's door swinging beside the glass, not a way out: both the plan and the elevation draw a window there.
+    if (windows.some((w) => Math.min(d.x1, w.x1) - Math.max(d.x0, w.x0) >= 0.5 * (d.x1 - d.x0) && d.z0 >= w.z0 - 0.6 && d.z0 <= w.z1 + 0.6)) continue;
     const hinge0 = d.arcs[0]!.hinge;
     const edge = nearestOutlineEdge(outline, hinge0[0], hinge0[1]);
     if (edge.d > 0.6) continue;

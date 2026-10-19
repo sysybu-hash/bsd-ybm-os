@@ -1,3 +1,5 @@
+import { dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
+import { dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
 import { readPdfPage, transformPage, type PdfPage } from "@/lib/projects/building/pdf-paths";
@@ -328,7 +330,7 @@ export function readPisgaDxfFloor(dxf: DxfDrawing, id: "floor-2" | "floor-1", by
   const region = { x: ORIGIN.x, y: ORIGIN.y, width: 7000, height: 2600 };
   const symbols = dxfSymbols(dxf, id);
   const windows = symbols.windows;
-  const doors = exteriorDoorRects(symbols.doors, outline);
+  const doors = exteriorDoorRects(symbols.doors, outline, symbols.windows);
   const walls = cutDxfWindows(readPlanWalls(page, region, { unitsPerMetre: 100, pens: { colours: [0xff0000] }, closePx: 8 }), windows, doors);
   const openings = openingsByDxfWindows(findOpenings(walls, footprintOf(walls)), windows, outline, doors);
   const labels = mergeLabels(dxfRoomLabels(dxf, id), byHand);
@@ -577,10 +579,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   }
 
   // The site: the sunken courtyard, the plazas either side, the street.
-  prims.push(slab(rect(-10.5, 13.2, 32.4, 20.9), LEVEL.courtyard, 0.4, "paving", "site:courtyard"));
+  // On the DXF route the courtyard and colonnade paving are the sheets' own hatches (see `surfacePrims` below).
+  if (!dxf) prims.push(slab(rect(-10.5, 13.2, 32.4, 20.9), LEVEL.courtyard, 0.4, "paving", "site:courtyard"));
   // Under the overhang the paving runs the building's length, and east of
   // the stair on to the covered ramp.
-  prims.push(slab(rect(32.4, 13.2, 53.92, 19.0), LEVEL.courtyard, 0.4, "paving", "site:colonnade"));
+  if (!dxf) prims.push(slab(rect(32.4, 13.2, 53.92, 19.0), LEVEL.courtyard, 0.4, "paving", "site:colonnade"));
   // The wall holds the street's level back along the building's south side, but for the drive in (x 35.3–41.3).
   for (const [x0, x1] of [[32.3, 35.3], [41.3, 53.9]] as const) {
     prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: x1 - x0, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
@@ -588,8 +591,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   prims.push(...ramp());
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   // East of the building (sheet 5): a grated deck at +5.73 and the
-  // emergency exit's landing at +7.80.
-  prims.push(slab(rect(53.92, 3.8, 60.4, 7.4), 5.73, 0.3, "metal", "site:east"));
+  // emergency exit's landing at +7.80. The DXF's spot heights +928.93 and +931.00 (5.73 and 7.80 over 923.2) stand at these two decks.
+  if (!dxf) prims.push(slab(rect(53.92, 3.8, 60.4, 7.4), 5.73, 0.3, "metal", "site:east"));
   prims.push(slab(rect(53.92, 7.4, 60.4, 12.0), 7.8, 0.4, "paving", "site:east"));
   prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
   // Trees where the site plan draws them: along the courtyard's retaining
@@ -654,6 +657,53 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     }
   }
   prims.push({ type: "terrain", x0: far.x0, z0: far.z0, dx: far.dx, nx: far.nx, nz: far.nz, heights: farHeights, material: "soil", tag: "site:ground-far" });
+
+  // Every surface the plan sheets hatch (paving, concrete, grated decks), as the drawing's own polygons laid on the ground; the same hatch drawn on two sheets is one.
+  if (dxf) {
+    const seen = new Set<string>();
+    const surfaces = (["floor-2", "floor-1", "roof"] as const)
+      .flatMap((sheet) => dxfSurfaces(dxf, sheet))
+      .filter((sf) => {
+        const k = `${sf.kind}|${Math.round(Math.min(...sf.ring.map((q) => q[0])) / 2)}|${Math.round(Math.min(...sf.ring.map((q) => q[1])) / 2)}|${Math.round(sf.areaM2 / 3)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+    // A grated deck stands at the level of the nearest spot height the sheet marks, within 6 m of its middle.
+    const allSpots = (["floor-2", "floor-1", "roof"] as const).flatMap((sheet) => dxfSpotHeights(dxf, sheet));
+    const deckLevel = (sf: { ring: Array<[number, number]> }) => {
+      const cx = sf.ring.reduce((t, q) => t + q[0], 0) / sf.ring.length;
+      const cz = sf.ring.reduce((t, q) => t + q[1], 0) / sf.ring.length;
+      return allSpots.filter((q) => Math.hypot(q.x - cx, q.z - cz) < 6 && q.level < 12).sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz))[0]?.level;
+    };
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel));
+    // Every run of treads the sheets draw, but the two stairs built above from their own reading (the lobby's and the west exit's): the same run drawn on two sheets is one.
+    const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 17.2);
+    const runs = new Set<string>();
+    for (const sheet of ["floor-2", "floor-1", "roof"] as const) {
+      const spots = dxfSpotHeights(dxf, sheet);
+      for (const set of dxfTreadSets(dxf, sheet)) {
+        const mx = (set.first[0] + set.last[0]) / 2;
+        const mz = (set.first[1] + set.last[1]) / 2;
+        const key = `${Math.round(mx / 3)}|${Math.round(mz / 3)}`;
+        if (builtElsewhere(mx, mz) || runs.has(key)) continue;
+        runs.add(key);
+        const near = (p: [number, number]) => spots.filter((q) => Math.hypot(q.x - p[0], q.z - p[1]) < 5).sort((a, b) => Math.hypot(a.x - p[0], a.z - p[1]) - Math.hypot(b.x - p[0], b.z - p[1]))[0];
+        const a = near(set.first);
+        const b = near(set.last);
+        let top = a?.level ?? groundAt(set.first[0], set.first[1], true);
+        let bottom = b?.level ?? groundAt(set.last[0], set.last[1], true);
+        if (Math.abs(top - bottom) < 0.3) bottom = top - set.n * 0.17;
+        let use = set;
+        if (top < bottom) {
+          [top, bottom] = [bottom, top];
+          use = { ...set, first: set.last, last: set.first, dir: [-set.dir[0], -set.dir[1]] };
+        }
+        console.warn(`stairs ${sheet}: ${set.n} treads at ${mx.toFixed(1)},${mz.toFixed(1)} ${bottom.toFixed(2)}..${top.toFixed(2)} (${set.layer})`);
+        prims.push(...stairPrims(use, top, bottom, "site:stair-dxf"));
+      }
+    }
+  }
 
   // Life round the building (DXF route): trees along the street's far side and the slopes, shrubs by the colonnade, and people for scale
   // where the sheets show people go — the entrance, the courtyard, the lobby, the hall.

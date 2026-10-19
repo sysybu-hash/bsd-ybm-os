@@ -124,7 +124,12 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
     const outline = rectRing(x0, z0, x1, z1);
     const spec: FloorSpec = { id: "kindergarten", level, height, outline, window: { sill: 1.0, head: 2.6, surround: 0.1 }, facade: "existing", interior: "plaster" };
     // The rooms: the plan's walls on this floor's part of the box; the shell: its four walls, a window band on each.
-    const rooms = { ...walls, bands: walls.bands.filter((b) => b.y + b.h > z0 + 0.3 && b.y < z1 - 0.3 && b.x > x0 + 0.3 && b.x + b.w < x1 - 0.3) };
+    // A wall that runs on past this floor's outline (the upper floor stands on the south part only) stops at it: the rest would stand out on the terrace as a stone stub.
+    const clipped = walls.bands
+      .filter((b) => b.y + b.h > z0 + 0.3 && b.y < z1 - 0.3 && b.x > x0 + 0.3 && b.x + b.w < x1 - 0.3)
+      .map((b) => ({ ...b, y: Math.max(b.y, z0), h: Math.min(b.y + b.h, z1) - Math.max(b.y, z0) }))
+      .filter((b) => b.h >= 0.1);
+    const rooms = { ...walls, bands: clipped };
     out.push(...floorPrimitives(rooms, [], spec));
     const t = 0.3;
     const wall = (cx: number, cz: number, sx: number, sz: number, y0: number, y1: number) =>
@@ -133,6 +138,14 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
       // Solid below the sill and above the head; between them piers 1.6 m wide every 3.2 m, glazing in between.
       wall(along === "x" ? (a + b) / 2 : z, along === "x" ? z : (a + b) / 2, along === "x" ? b - a : t, along === "x" ? t : b - a, level, level + 1.0);
       wall(along === "x" ? (a + b) / 2 : z, along === "x" ? z : (a + b) / 2, along === "x" ? b - a : t, along === "x" ? t : b - a, level + 2.6, level + height);
+      // The bays leave a bare gap at each end of the run, through which the plan's plaster walls showed from outside: close both with stone.
+      let end = a + 0.4;
+      while (end + 3.2 <= b) end += 3.2;
+      for (const [g0, g1] of [[a, a + 0.4], [end, b]] as const) {
+        if (g1 - g0 < 0.02) continue;
+        const gc = (g0 + g1) / 2;
+        wall(along === "x" ? gc : z, along === "x" ? z : gc, along === "x" ? g1 - g0 : t, along === "x" ? t : g1 - g0, level + 1.0, level + 2.6);
+      }
       for (let s = a + 0.4; s + 3.2 <= b; s += 3.2) {
         const cs = s + 0.8;
         wall(along === "x" ? cs : z, along === "x" ? z : cs, along === "x" ? 1.6 : t, along === "x" ? t : 1.6, level + 1.0, level + 2.6);
