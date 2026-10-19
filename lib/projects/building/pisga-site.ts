@@ -139,6 +139,16 @@ function band(line: Array<[number, number]>, a: number, b: number, x0: number, x
   return pts;
 }
 
+/** The plot's south line at x (z, metres): the street's band lies from here out to 13.5 m. */
+export function pisgaPlotSouthZ(x: number): number {
+  for (let i = 1; i < PLOT_SOUTH.length; i++) {
+    const [ax, az] = PLOT_SOUTH[i - 1]!;
+    const [bx, bz] = PLOT_SOUTH[i]!;
+    if (x >= ax && x <= bx) return az + ((x - ax) / (bx - ax)) * (bz - az);
+  }
+  return PLOT_SOUTH[PLOT_SOUTH.length - 1]![1];
+}
+
 export function pisgaStreet(L: Levels): Primitive[] {
   const out: Primitive[] = [];
   const s = L.street;

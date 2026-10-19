@@ -83,7 +83,7 @@ export function dxfSurfaces(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.s
   return out;
 }
 
-const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", concrete: "concrete", grate: "metal", earth: "soil", fill: "concrete" };
+const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", concrete: "concrete", grate: "frame", earth: "soil", fill: "concrete" };
 
 /**
  * A surface as a patch of ground laid on the ground itself (`groundAt`): a fine grid over the
@@ -97,7 +97,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
     // A grated deck is a deck, level, on its own supports: a slab at the level its spot height gives, not a skin on the slope.
     const level = s.kind === "grate" ? deckLevel?.(s) : undefined;
     if (level !== undefined) {
-      out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: level - 0.22, y1: level, material: "metal", tag: `${tag}:grate` });
+      out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: level - 0.22, y1: level, material: "frame", tag: `${tag}:grate` });
       // Posts under it, at the corners and the middles of the sides of its box, down to the ground: it does not hang in the air.
       const bx = s.ring.map((q) => q[0]);
       const bz = s.ring.map((q) => q[1]);

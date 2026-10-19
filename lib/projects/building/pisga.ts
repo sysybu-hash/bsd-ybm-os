@@ -6,7 +6,7 @@ import { readPdfPage, transformPage, type PdfPage } from "@/lib/projects/buildin
 import { findOpenings, footprintOf } from "@/lib/projects/building/plan-openings";
 import { readPlanWalls } from "@/lib/projects/building/plan-walls";
 import { furnishFloor } from "@/lib/projects/building/furnish";
-import { pisgaStairs, pisgaStreet, pisgaStreetBays } from "@/lib/projects/building/pisga-site";
+import { pisgaStairs, pisgaStreet, pisgaPlotSouthZ, pisgaStreetBays } from "@/lib/projects/building/pisga-site";
 import { drawLine } from "@/lib/projects/building/raster";
 import { buildKindergarten, kindergartenOutline, KINDERGARTEN } from "@/lib/projects/building/pisga-kindergarten";
 import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
@@ -641,6 +641,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // plaza — the accessible ramp's slope.
     if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
     if (z > 21 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    // Under the street's own band (plot line out to 13.5 m) the ground is the road's bed, not a mound the spot heights lift into it.
+    { const pz = pisgaPlotSouthZ(x); if (z > pz - 0.1 && z < pz + 13.6) h = LEVEL.street - 0.6; }
     return h;
   };
   // The site itself, a metre a cell; and the hills round it to the horizon, six metres a cell, 0.6 m under the first so the two never meet in a seam.
@@ -684,9 +686,9 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     {
       const [nx0, nx1, nz0, nzm, nz1] = [21.75, 33.3, -8.45, -3.6, 0.95];
       const t = 0.3, top = LEVEL.floorMinus2 + 1.1;
-      const slabAt = (z0: number, z1: number, level: number, mat: "paving" | "concrete", tag: string) => prims.push({ type: "prism", ring: [[nx0, z0], [nx1, z0], [nx1, z1], [nx0, z1]], y0: level - 0.3, y1: level, material: mat, tag });
+      const slabAt = (z0: number, z1: number, level: number, mat: "paving" | "concrete" | "asphalt", tag: string) => prims.push({ type: "prism", ring: [[nx0, z0], [nx1, z0], [nx1, z1], [nx0, z1]], y0: level - 0.3, y1: level, material: mat, tag });
       slabAt(nzm, nz1, 8.27, "paving", "site:north-terrace");
-      slabAt(nz0, nzm, 8.08, "concrete", "site:north-tech-roof");
+      slabAt(nz0, nzm, 8.08, "asphalt", "site:north-tech-roof");
       for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx0, nx0 + t, nz0, nz1], [nx1 - t, nx1, nz0, nz1], [nx0, nx1, nzm - 0.04, nzm + 0.04]] as const) {
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + (z0 === nzm - 0.04 ? 8.08 + 0.2 : top)) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: (z0 === nzm - 0.04 ? 8.08 + 0.2 : top) - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
       }
