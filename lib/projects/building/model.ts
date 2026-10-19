@@ -121,8 +121,11 @@ export type Primitive =
       heights: number[];
       material: BuildingMaterial;
       tag?: string;
-      /** A photograph laid on this ground: its data URL and the plan-frame rectangle (metres) it covers, north (−z) up. */
-      photo?: { src: string; x0: number; z0: number; x1: number; z1: number };
+      /**
+       * A photograph laid on this ground: its data URL and pixel size, `s` metres a pixel, the plan point (cx, cz) at its pixel (cu, cv), and `rot`
+       * radians of turn (plan x = cx + ((u − cu)·cos − (v − cv)·sin)·s …, north up when rot is 0).
+       */
+      photo?: { src: string; pw: number; ph: number; s: number; cu: number; cv: number; cx: number; cz: number; rot: number };
     }
   | { type: "tree"; at: Vec3; height: number; crown: number; tag?: string }
   /** A plant in a pot: staging beside a sofa, in a terrace's corner. */

@@ -892,7 +892,11 @@ async function main() {
         const k = (j - ja) * cols + (i - ia);
         const x = p.x0 + i * p.dx, z = p.z0 + j * p.dx;
         pos.setXYZ(k, x, p.heights[j * p.nx + i], z);
-        if (p.photo) uv.setXY(k, (x - p.photo.x0) / (p.photo.x1 - p.photo.x0), 1 - (z - p.photo.z0) / (p.photo.z1 - p.photo.z0));
+        if (p.photo) {
+          // The fit's own mapping: pixel = ((dx·cos + dz·sin) / s + cu, (−dx·sin + dz·cos) / s + cv), the image's v counted down.
+          const ph = p.photo, c = Math.cos(ph.rot), sn = Math.sin(ph.rot), dx = x - ph.cx, dz = z - ph.cz;
+          uv.setXY(k, ((dx * c + dz * sn) / ph.s + ph.cu) / ph.pw, 1 - ((-dx * sn + dz * c) / ph.s + ph.cv) / ph.ph);
+        }
         else uv.setXY(k, x / r, z / r);
       }
       geo.computeVertexNormals();
