@@ -648,10 +648,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   const heights: number[] = [];
   for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true));
   prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground" });
-  // The aerial photograph of the plot, laid on the ground as a DRAFT. Nothing in the DXF places it: the fit (scripts/fit-pisga-photo.py) maximises the asphalt of the photo under the street's band beside the DXF's plot south line
-  // (G110-10), and keeps the building's footprint off the photo's roofs: 0.283 m a pixel, turned −1.2°, pixel (894, 409) on the plan point (27, 29.4). An estimate, to be corrected when real anchor points exist.
+  // The aerial photograph of the plot, laid on the ground. Nothing in the DXF places it; the user drew the plot's outline on the photo (their marking of 2026-10-19: west edge at pixel column ~768,
+  // south edge from (768, 387) to (980, 410), east edge at ~1004, top at row ~318) and the fit is a similarity through four plan/photo pairs: the plot's SW corner (−11, 21.3), SE (62, 29.3),
+  // NW (−12, −1.3) and NE (67, 7.8) — the DXF's boundary lines (M2602, G110-10) — onto those pixels: 0.3346 m a pixel, turned 2.96°, residual up to 15 px (5 m) at the east corners, which were read by eye.
   if (options?.groundPhoto) {
-    const ph = { src: options.groundPhoto, pw: 1812, ph: 747, s: 0.283, cu: 894, cv: 409, cx: 27, cz: 29.4, rot: (-1.2 * Math.PI) / 180 };
+    const ph = { src: options.groundPhoto, pw: 1812, ph: 747, s: 0.3346, cu: 884, cv: 403, cx: 27, cz: 29.4, rot: (2.956 * Math.PI) / 180 };
     prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights: heights.map((h) => h + 0.03), material: "soil", tag: "site:ground-photo", photo: ph });
   }
   const far = { x0: -700, z0: -700, dx: 10, nx: 150, nz: 150 };
