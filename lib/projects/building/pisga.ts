@@ -616,11 +616,13 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   // Far from the survey's spot heights the ground follows the site's overall
   // fall, a plane fitted to all of them — not their average, which raised a
   // plateau to the street's height north of the building.
-  const plane = fitPlane(SPOTS.map(([sx, sz, abs]) => [sx, sz, abs - 923.2] as [number, number, number]));
+  // The survey layers' vertices (dxfSurveyPoints) were tried as spot heights too: they are kerb and boundary lines at the street's +17.9 a metre from the courtyard's +8.2, and the ground rose in a ridge between. The booklet's spots stay the ground's.
+  const spots = SPOTS;
+  const plane = fitPlane(spots.map(([sx, sz, abs]) => [sx, sz, abs - 923.2] as [number, number, number]));
   const groundAt = (x: number, z: number, built: boolean) => {
     let wsum = 0;
     let hsum = 0;
-    for (const [sx, sz, abs] of SPOTS) {
+    for (const [sx, sz, abs] of spots) {
       const d2 = (x - sx) ** 2 + (z - sz) ** 2 + 4;
       const w = 1 / (d2 * d2);
       wsum += w;
@@ -676,6 +678,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       const cz = sf.ring.reduce((t, q) => t + q[1], 0) / sf.ring.length;
       return allSpots.filter((q) => Math.hypot(q.x - cx, q.z - cz) < 6 && q.level < 12).sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz))[0]?.level;
     };
+    // (A plane through the sheet's level marks was tried for the ramps and sent a patch up the wall behind it: the marks name levels of things beside the paving too. Paving lies on the ground until a mark is tied to its own polygon.)
     prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel));
     // Every run of treads the sheets draw, but the two stairs built above from their own reading (the lobby's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 17.2);
