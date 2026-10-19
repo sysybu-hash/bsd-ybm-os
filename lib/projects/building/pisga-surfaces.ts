@@ -1,4 +1,5 @@
 import { insidePolygon } from "@/lib/projects/building/assemble";
+import { railingPrims } from "@/lib/projects/building/pisga-stairs";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
 import { PISGA_DXF } from "@/lib/projects/building/pisga-dxf";
 import { entitiesWithin, flattenDxf, type DxfDrawing, type Pt } from "@/lib/projects/dxf-drawing";
@@ -83,6 +84,20 @@ export function dxfSurfaces(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.s
   return out;
 }
 
+
+/** The railing round a deck or platform: along each edge of its ring that is not against the building (a drop of 0.5 m or more beyond it is assumed on the free sides). */
+function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[]): void {
+  for (let i = 0; i < ring.length; i++) {
+    const a = ring[i]!;
+    const b = ring[(i + 1) % ring.length]!;
+    const mx = (a[0] + b[0]) / 2;
+    const mz = (b[1] + a[1]) / 2;
+    // Against the building's footprint (x 0.88..53.92, z 1.02..16.58, 0.8 m) there is a wall, not a drop.
+    if (mx > 0.1 && mx < 54.7 && mz > 0.2 && mz < 17.4) continue;
+    out.push(...railingPrims(a, b, level, `${tag}-rail`));
+  }
+}
+
 const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", concrete: "concrete", grate: "frame", earth: "soil", fill: "concrete" };
 
 /**
@@ -109,6 +124,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
           if (level - 0.22 - g > 0.1) out.push({ type: "box", centre: { x: px, y: (level - 0.22 + g) / 2, z: pz }, size: { x: 0.2, y: level - 0.22 - g, z: 0.2 }, material: "metal", tag: `${tag}:grate-post` });
         }
       }
+      ringRailing(s.ring, level, tag, out);
       continue;
     }
     const xs = s.ring.map((q) => q[0]);
@@ -126,6 +142,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
         const sorted = [...gs].sort((a, b) => a - b);
         const top = sorted[Math.floor(sorted.length * 0.8)]! + lift;
         out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
+        ringRailing(s.ring, top, tag, out);
         continue;
       }
     }

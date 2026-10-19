@@ -129,6 +129,32 @@ export function stairPrims(set: TreadSet, top: number, bottom: number, tag: stri
     const h = top - k * rise;
     const base = bottom - 0.4;
     out.push({ type: "box", centre: { x: cx, y: (h + base) / 2, z: cz }, size: { x: set.pitch, y: h - base, z: set.width }, rotY: -ang, material: "concrete", tag });
+    // A handrail up each side ("מאחז יד" on the sheets): a rail a metre over the tread, in steps a tread long, a post every third tread.
+    const perp: [number, number] = [-set.dir[1], set.dir[0]];
+    for (const side of [-1, 1]) {
+      const rx = cx + perp[0] * side * (set.width / 2 - 0.04);
+      const rz = cz + perp[1] * side * (set.width / 2 - 0.04);
+      out.push({ type: "box", centre: { x: rx, y: h + 0.95, z: rz }, size: { x: set.pitch + 0.01, y: 0.05, z: 0.05 }, rotY: -ang, material: "frame", tag: `${tag}-rail` });
+      if (k % 3 === 0) out.push({ type: "box", centre: { x: rx, y: h + 0.47, z: rz }, size: { x: 0.045, y: 0.95, z: 0.045 }, material: "frame", tag: `${tag}-rail` });
+    }
+  }
+  return out;
+}
+
+
+/** A railing along a line at `level`: 1.1 m, a top rail, a post every 1.6 m, bars every 12 cm. */
+export function railingPrims(a: [number, number], b: [number, number], level: number, tag: string, height = 1.1): Primitive[] {
+  const out: Primitive[] = [];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 0.3) return out;
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const mid = { x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2 };
+  out.push({ type: "box", centre: { x: mid.x, y: level + height, z: mid.z }, size: { x: len, y: 0.05, z: 0.06 }, rotY: -ang, material: "frame", tag });
+  const n = Math.max(1, Math.round(len / 0.12));
+  for (let k = 0; k <= n; k++) {
+    const t = k / n;
+    const post = k % 13 === 0 || k === n;
+    out.push({ type: "box", centre: { x: a[0] + (b[0] - a[0]) * t, y: level + height / 2, z: a[1] + (b[1] - a[1]) * t }, size: { x: post ? 0.07 : 0.018, y: height, z: post ? 0.07 : 0.018 }, material: "frame", tag });
   }
   return out;
 }
