@@ -671,6 +671,18 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         seen.add(k);
         return true;
       });
+    // North of the lobby, over the kindergarten's roof: the sheet's terrace at +8.27 (+931.47) and the technical roof beyond it at +8.08 (+931.28), both inside one wall rectangle (the "מבט דק" lines
+    // x 21.75..33.3, z −8.45..0.95, the wall 0.3 thick, the division at z −3.6). The drawing names the levels, not the parapet's height: 1.1 m, a railing's.
+    {
+      const [nx0, nx1, nz0, nzm, nz1] = [21.75, 33.3, -8.45, -3.6, 0.95];
+      const t = 0.3, top = LEVEL.floorMinus2 + 1.1;
+      const slabAt = (z0: number, z1: number, level: number, mat: "paving" | "concrete", tag: string) => prims.push({ type: "prism", ring: [[nx0, z0], [nx1, z0], [nx1, z1], [nx0, z1]], y0: level - 0.3, y1: level, material: mat, tag });
+      slabAt(nzm, nz1, 8.27, "paving", "site:north-terrace");
+      slabAt(nz0, nzm, 8.08, "concrete", "site:north-tech-roof");
+      for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx0, nx0 + t, nz0, nz1], [nx1 - t, nx1, nz0, nz1], [nx0, nx1, nzm - 0.04, nzm + 0.04]] as const) {
+        prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + (z0 === nzm - 0.04 ? 8.08 + 0.2 : top)) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: (z0 === nzm - 0.04 ? 8.08 + 0.2 : top) - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
+      }
+    }
     // A grated deck stands at the level of the nearest spot height the sheet marks, within 6 m of its middle.
     const allSpots = (["floor-2", "floor-1", "roof"] as const).flatMap((sheet) => dxfSpotHeights(dxf, sheet));
     const deckLevel = (sf: { ring: Array<[number, number]> }) => {

@@ -30,9 +30,9 @@ export type DxfSurface = {
 const SECTION_MARKS = /^ANSI3\d$/;
 
 const kindOf = (pattern: string): SurfaceKind =>
-  /GRATE|STEEL|ANGLE/.test(pattern)
+  /GRATE|STEEL/.test(pattern)
     ? "grate"
-    : /HBONE|^AR-B8|^AR-B1|BRICK|paving|ANSI37/i.test(pattern)
+    : /HBONE|^AR-B8|^AR-B1|BRICK|paving|ANSI37|ANGLE/i.test(pattern)
       ? "paving"
       : /CONC|DOTS/.test(pattern)
         ? "concrete"
