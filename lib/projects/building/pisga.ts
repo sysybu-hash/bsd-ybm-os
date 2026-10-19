@@ -5,8 +5,12 @@ import { findOpenings, footprintOf } from "@/lib/projects/building/plan-openings
 import { readPlanWalls } from "@/lib/projects/building/plan-walls";
 import { furnishFloor } from "@/lib/projects/building/furnish";
 import { pisgaStairs, pisgaStreet, pisgaStreetBays } from "@/lib/projects/building/pisga-site";
+import { drawLine } from "@/lib/projects/building/raster";
+import { buildKindergarten, kindergartenOutline, KINDERGARTEN } from "@/lib/projects/building/pisga-kindergarten";
 import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
 import { readPlanRooms, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
+import { cutDxfWindows, dxfColumns, dxfFurnitureShapes, dxfFixtures, dxfHallSeats, furnitureFromShapes, dxfDividers, dxfEmergencyStair, exteriorDoorRects, glazedPartitions, dxfPartitions, dxfPlanPage, dxfRoof, dxfRoomLabels, dxfSymbols, openingsByDxfWindows, PISGA_DXF } from "@/lib/projects/building/pisga-dxf";
+import type { DxfDrawing } from "@/lib/projects/dxf-drawing";
 
 /**
  * מרכז פסג"ה למורים, קריית ארבע — גוטליב אדריכלים, 09.09.25.
@@ -32,7 +36,7 @@ const SHEETS = {
   floorMinus2: { page: 6, s: 1.00565, tx: 22.86, ty: 33.98 },
 } as const;
 
-const LEVEL = {
+export const LEVEL = {
   floorMinus2: 8.29,
   floorMinus1: 12.77,
   roof: 17.25,
@@ -51,7 +55,7 @@ const rect = (x0: number, y0: number, x1: number, y1: number): Outline => [
 ];
 
 /** Floor −1 overhangs the courtyard on columns; floor −2 stops 3.4 m short of it. */
-const OUTLINE_MINUS1: Outline = [
+export const OUTLINE_MINUS1: Outline = [
   [0.88, 1.02],
   [53.92, 1.02],
   [53.92, 16.58],
@@ -61,7 +65,7 @@ const OUTLINE_MINUS1: Outline = [
   [30.44, 16.58],
   [0.88, 16.58],
 ];
-const OUTLINE_MINUS2: Outline = [
+export const OUTLINE_MINUS2: Outline = [
   [0.88, 1.02],
   [53.92, 1.02],
   [53.92, 13.2],
@@ -165,6 +169,13 @@ const VOID: Outline = [
  * (+12.77 at 660 pt, +8.29 at 790 pt, 29 pt a metre on its sheet).
  */
 const WINDOW = { sill: 0.69, head: 3.27, surround: 0.22 };
+/**
+ * The north elevation of the architect's DXF draws each window as a stone
+ * surround 2.60 × 2.86 m from 0.85 to 3.71 above the floor, the frame inside
+ * it from 1.10 to 3.41 (the surround 30 cm at the sides and the head, 25 cm
+ * under the sill): the same on both floors.
+ */
+export const WINDOW_DXF = { sill: 1.1, head: 3.41, surround: 0.28 };
 
 /** Spot heights along the plot, absolute metres, in plan metres. ±0.00 = 923.20. */
 const SPOTS: Array<[number, number, number]> = [
@@ -182,7 +193,7 @@ const SPOTS: Array<[number, number, number]> = [
  * speakers' table on a low stage at the north wall, nine rows of thirteen
  * seats facing it, 95 cm apart.
  */
-function auditorium(level: number): Primitive[] {
+function auditorium(level: number, seats = true, steps = { rows: 9, pitch: 0.95, z0: 3.72 }): Primitive[] {
   const out: Primitive[] = [];
   const tag = "floor-1:inside:furniture";
   // The floor: the stage's level at the front, a step a row, the door's
@@ -190,9 +201,9 @@ function auditorium(level: number): Primitive[] {
   const rowY = (r: number) => HALL_FRONT + (r + 1) * HALL_RISE;
   const floorBox = (z0: number, z1: number, y: number) =>
     out.push({ type: "box", centre: { x: 49.05, y: (HALL_FRONT - 0.3 + y) / 2, z: (z0 + z1) / 2 }, size: { x: 8.86, y: y - (HALL_FRONT - 0.3), z: z1 - z0 }, material: "floorWood", tag: "floor-1:slab" });
-  floorBox(1.36, 3.72, HALL_FRONT);
-  for (let r = 0; r < 9; r++) floorBox(3.72 + r * 0.95, 3.72 + (r + 1) * 0.95, rowY(r));
-  floorBox(3.72 + 9 * 0.95, 16.2, level);
+  floorBox(1.36, steps.z0, HALL_FRONT);
+  for (let r = 0; r < steps.rows; r++) floorBox(steps.z0 + r * steps.pitch, steps.z0 + (r + 1) * steps.pitch, rowY(r));
+  floorBox(steps.z0 + steps.rows * steps.pitch, 16.2, level);
   void level;
   out.push({ type: "box", centre: { x: 49.0, y: HALL_FRONT + 0.12, z: 2.4 }, size: { x: 8.6, y: 0.24, z: 2.1 }, material: "floorWood", tag });
   out.push({ type: "box", centre: { x: 48.0, y: HALL_FRONT + 0.24 + 0.375, z: 2.2 }, size: { x: 2.4, y: 0.75, z: 0.7 }, material: "timber", tag });
@@ -204,7 +215,7 @@ function auditorium(level: number): Primitive[] {
       out.push({ type: "box", centre: { x, y: level + 1.6, z }, size: { x: 0.04, y: 2.8, z: 0.06 }, material: "timber", tag });
     }
   }
-  for (let r = 0; r < 9; r++) {
+  for (let r = 0; seats && r < 9; r++) {
     const z = 4.2 + r * 0.95;
     for (let i = 0; i < 13; i++) {
       const x = 45.5 + i * 0.58;
@@ -297,40 +308,132 @@ export const LABELS_FUTURE: RoomLabel[] = [
   ...LABELS_MINUS1.filter((l) => l.x > WEST_OF_LOBBY || l.kind === "void"),
 ];
 
-export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }): Promise<BuildingModel> {
-  const future = options?.future === true;
-  const sheet = async (spec: { page: number; s: number; tx: number; ty: number }): Promise<PdfPage> =>
-    transformPage(await readPdfPage(pdf, spec.page), spec.s, spec.tx, spec.ty);
-  const region = { x: ORIGIN.x, y: ORIGIN.y, width: 1760, height: 680 };
-  const pens = { colours: [0xff0000, 0x0000ff] };
+/**
+ * The hand-set labels (read off the permit booklet) kept only where the DXF
+ * names no room of that kind within 3 m: the DXF's own text wins.
+ */
+export function mergeLabels(fromDxf: RoomLabel[], byHand: RoomLabel[]): RoomLabel[] {
+  const kept = byHand.filter((h) => !fromDxf.some((d) => d.kind === h.kind && Math.hypot(d.x - h.x, d.y - h.y) < 3));
+  return [...fromDxf, ...kept];
+}
+
+/**
+ * One floor read from the DXF: walls (a window the sheet draws in a solid wall
+ * cut out of it), the openings (an outside gap is a window only where the
+ * sheet draws one), the rooms named by the sheet's own text and the furniture
+ * its fine pen draws. The same reading the verification script checks.
+ */
+export function readPisgaDxfFloor(dxf: DxfDrawing, id: "floor-2" | "floor-1", byHand: RoomLabel[], outline: Outline) {
+  const page = dxfPlanPage(dxf, PISGA_DXF.sheets[id]);
+  const region = { x: ORIGIN.x, y: ORIGIN.y, width: 7000, height: 2600 };
+  const symbols = dxfSymbols(dxf, id);
+  const windows = symbols.windows;
+  const doors = exteriorDoorRects(symbols.doors, outline);
+  const walls = cutDxfWindows(readPlanWalls(page, region, { unitsPerMetre: 100, pens: { colours: [0xff0000] }, closePx: 8 }), windows, doors);
+  const openings = openingsByDxfWindows(findOpenings(walls, footprintOf(walls)), windows, outline, doors);
+  const labels = mergeLabels(dxfRoomLabels(dxf, id), byHand);
+  // The movable partitions split an open plan into the rooms the sheet prints; they are not walls.
+  const roomMask = { ...walls.mask, data: new Uint8Array(walls.mask.data) };
+  const cm = walls.cm / 100;
+  for (const [ax, az, bx, bz] of dxfDividers(dxf, id, outline)) drawLine(roomMask, ax / cm, az / cm, bx / cm, bz / cm, 3);
+  const rooms = readPlanRooms({ ...walls, mask: roomMask }, openings, outline, labels);
+  const items = readPlanFurniture(page, walls, { pens: [{ colour: 0x000000, widths: [0.24] }] });
+  return { page, walls, openings, rooms, items, windows, doors, labels };
+}
+
+/**
+ * The building, from the permit booklet's PDF (`pdf`) or, where the
+ * architect's DXF is given, from its drawing: the same readers either way —
+ * the DXF's floor sheets are handed over as painted pages (pisga-dxf.ts).
+ */
+export async function buildPisga(pdf: Uint8Array | null, options?: { future?: boolean; dxf?: DxfDrawing }): Promise<BuildingModel> {
+  const dxf = options?.dxf;
+  // The DXF has no future plan: floor −1 stays as drawn.
+  const future = dxf ? false : options?.future === true;
+  const sheet = async (spec: { page: number; s: number; tx: number; ty: number }, id: "floor-2" | "floor-1"): Promise<PdfPage> =>
+    dxf ? dxfPlanPage(dxf, PISGA_DXF.sheets[id]) : transformPage(await readPdfPage(pdf!, spec.page), spec.s, spec.tx, spec.ty);
+  // A DXF sheet is in centimetres a point, its walls in the one red pen.
+  const upm = dxf ? 100 : UPM;
+  const region = dxf ? { x: ORIGIN.x, y: ORIGIN.y, width: 7000, height: 2600 } : { x: ORIGIN.x, y: ORIGIN.y, width: 1760, height: 680 };
+  const pens = { colours: dxf ? [0xff0000] : [0xff0000, 0x0000ff] };
+  const furniturePens = dxf ? [{ colour: 0x000000, widths: [0.24] }] : [0x000000, 0xff0000, 0x0000ff, 0x474842].map((colour) => ({ colour, widths: [0.24, 0.48, 0.72] }));
+  const labelsOf = (id: "floor-2" | "floor-1", byHand: RoomLabel[]) => (dxf ? mergeLabels(dxfRoomLabels(dxf, id), byHand) : byHand);
 
   const floors: Array<{ spec: FloorSpec; page: PdfPage; labels: RoomLabel[] }> = [
     {
-      labels: LABELS_MINUS2,
-      page: await sheet(SHEETS.floorMinus2),
-      spec: { id: "floor-2", level: LEVEL.floorMinus2, height: LEVEL.floorMinus1 - LEVEL.floorMinus2, outline: OUTLINE_MINUS2, window: WINDOW, facade: "stone", interior: "plaster" },
+      labels: labelsOf("floor-2", LABELS_MINUS2),
+      page: await sheet(SHEETS.floorMinus2, "floor-2"),
+      spec: { id: "floor-2", level: LEVEL.floorMinus2, height: LEVEL.floorMinus1 - LEVEL.floorMinus2, outline: OUTLINE_MINUS2, window: dxf ? WINDOW_DXF : WINDOW, facade: "stone", interior: "plaster" },
     },
     {
-      labels: future ? LABELS_FUTURE : LABELS_MINUS1,
-      page: await sheet(future ? SHEETS.futureMinus1 : SHEETS.floorMinus1),
+      labels: future ? LABELS_FUTURE : labelsOf("floor-1", LABELS_MINUS1),
+      page: await sheet(future ? SHEETS.futureMinus1 : SHEETS.floorMinus1, "floor-1"),
       // The curtain wall stops at +16.05, the head of the windows either side.
-      spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: WINDOW, curtainHead: 3.28, facade: "stone", interior: "plaster" },
+      spec: { id: "floor-1", level: LEVEL.floorMinus1, height: LEVEL.roof - LEVEL.floorMinus1, outline: OUTLINE_MINUS1, window: dxf ? WINDOW_DXF : WINDOW, curtainHead: 3.28, facade: "stone", interior: "plaster" },
     },
   ];
 
   const prims: Primitive[] = [];
   for (const { spec, page, labels } of floors) {
-    const walls = readPlanWalls(page, region, { unitsPerMetre: UPM, pens });
-    const openings = findOpenings(walls, footprintOf(walls));
+    const read = dxf ? readPisgaDxfFloor(dxf, spec.id as "floor-2" | "floor-1", labels, spec.outline) : null;
+    const walls = read?.walls ?? readPlanWalls(page, region, { unitsPerMetre: upm, pens });
+    const openings = read?.openings ?? findOpenings(walls, footprintOf(walls));
     prims.push(...floorPrimitives(walls, openings, spec));
-    const rooms = readPlanRooms(walls, openings, spec.outline, labels);
-    const items = readPlanFurniture(page, walls, {
-      pens: [0x000000, 0xff0000, 0x0000ff, 0x474842].map((colour) => ({ colour, widths: [0.24, 0.48, 0.72] })),
-    });
+    const rooms = read?.rooms ?? readPlanRooms(walls, openings, spec.outline, labels);
+    const items = read?.items ?? readPlanFurniture(page, walls, { pens: furniturePens });
     // Under floor −1's double-height void (and its stair) floor −2 has no ceiling.
     const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
-    prims.push(...furnishFloor(rooms, items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
-    if (spec.id === "floor-1") prims.push(...auditorium(spec.level), ...reception());
+    // From the DXF the furniture is the sheet's own outlines, each extruded to what it is; the finishes, ceilings and lights stay the rooms'.
+    prims.push(...furnishFloor(rooms, dxf ? [] : items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
+    if (dxf) {
+      // The fixtures the sheet draws in the WCs: a pan with its cistern, a basin on its stand, a counter's basins.
+      for (const f of dxfFixtures(dxf, spec.id as "floor-2" | "floor-1")) {
+        const c = Math.cos(f.angle);
+        const sn = Math.sin(f.angle);
+        const put = (u: number, v: number, sx: number, sy: number, sz: number, y0: number, material: "ceramic" | "cabinet" | "worktop" | "metal") =>
+          prims.push({ type: "box", centre: { x: f.x + u * c - v * sn, y: spec.level + y0 + sy / 2, z: f.z + u * sn + v * c }, size: { x: sx, y: sy, z: sz }, rotY: -f.angle, material, tag: `${spec.id}:inside:fixture` });
+        if (f.kind === "pan") {
+          put(0.05, 0, f.length * 0.8, 0.4, f.width * 0.9, 0, "ceramic");
+          put(-f.length / 2 + 0.1, 0, 0.18, 0.4, f.width * 0.8, 0.4, "ceramic");
+        } else if (f.kind === "basin") {
+          put(0, 0, f.length * 0.9, 0.12, f.width * 0.9, 0.8, "ceramic");
+          put(0, 0, 0.1, 0.8, 0.1, 0, "metal");
+        } else if (f.kind === "counter") {
+          put(0, 0, f.length, 0.8, f.width, 0, "cabinet");
+          put(0, 0, f.length + 0.02, 0.04, f.width + 0.02, 0.8, "worktop");
+          const n = Math.max(1, Math.round(f.length / 0.6));
+          for (let i = 0; i < n; i++) put(-f.length / 2 + ((i + 0.5) * f.length) / n, 0, 0.4, 0.06, Math.min(0.34, f.width - 0.1), 0.84, "ceramic");
+        } else put(0, 0, f.length, 0.45, f.width, 0, "ceramic");
+      }
+      for (const b of furnitureFromShapes(dxfFurnitureShapes(dxf, spec.id as "floor-2" | "floor-1"), spec.level, spec.id)) {
+        prims.push({ type: "box", centre: { x: b.cx, y: b.cy, z: b.cz }, size: { x: b.sx, y: b.sy, z: b.sz }, rotY: b.rotY, material: b.material, tag: `${spec.id}:inside:furniture` });
+      }
+    }
+    if (spec.id === "floor-1") {
+      prims.push(...auditorium(spec.level, !dxf, dxf ? { rows: 8, pitch: 1.0, z0: 4.1 } : undefined), ...(dxf ? [] : reception()));
+      // The seats the sheet draws: each at its own place, on the raked floor's step under it.
+      if (dxf) {
+        const tag = "floor-1:inside:furniture";
+        for (const st of dxfHallSeats(dxf)) {
+          const row = Math.max(0, Math.min(7, Math.round((st.z - 4.6) / 1.0)));
+          const f = HALL_FRONT + (row + 1) * HALL_RISE;
+          prims.push({ type: "box", centre: { x: st.x, y: f + 0.44, z: st.z - 0.05 }, size: { x: 0.5, y: 0.1, z: 0.46 }, material: "seatFabric", tag });
+          prims.push({ type: "box", centre: { x: st.x, y: f + 0.78, z: st.z + 0.18 }, size: { x: 0.5, y: 0.62, z: 0.08 }, material: "seatFabric", tag });
+          prims.push({ type: "box", centre: { x: st.x - 0.28, y: f + 0.34, z: st.z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+        }
+      }
+    }
+    // The WC stalls' partitions, 2.1 m of laminate panel a hand off the floor, from the DXF; and the glazed partitions its window symbols draw inside.
+    if (dxf) {
+      for (const w of glazedPartitions(read!.windows, spec.outline)) {
+        const along = w.x1 - w.x0 >= w.z1 - w.z0;
+        prims.push({ type: "box", centre: { x: (w.x0 + w.x1) / 2, y: spec.level + 1.3, z: (w.z0 + w.z1) / 2 }, size: { x: along ? w.x1 - w.x0 : 0.04, y: 2.4, z: along ? 0.04 : w.z1 - w.z0 }, material: "glass", tag: `${spec.id}:inside:glazing` });
+      }
+      for (const [x1, z1, x2, z2] of dxfPartitions(dxf, spec.id as "floor-2" | "floor-1")) {
+        const len = Math.hypot(x2 - x1, z2 - z1);
+        prims.push({ type: "box", centre: { x: (x1 + x2) / 2, y: spec.level + 0.15 + 1.05, z: (z1 + z2) / 2 }, size: { x: len, y: 2.1, z: 0.04 }, rotY: -Math.atan2(z2 - z1, x2 - x1), material: "plaster", tag: `${spec.id}:inside:partition` });
+      }
+    }
 
     // Planters in the lobby: tall green by the curtain wall, low by the stair.
     const planters: Array<[number, number, number]> = spec.id === "floor-2" ? [[31.6, 2.2, 1.8], [27.2, 2.2, 1.4], [20.9, 2.2, 1.6]] : [[33.6, 8.8, 1.5], [26.6, 9.4, 1.2]];
@@ -351,37 +454,92 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   // The roof. East of the lift the car park deck runs on past the building
   // line to z 19.4, over the covered accessible ramp — the site plan's bays
   // 8–12 stand there, z 13.2 to 18.0.
-  prims.push(slab(inset(ROOF, 0.06), LEVEL.roof, 0.35, "slab", "roof:slab"));
-  prims.push(slab(rect(0.88, 1.02, 32.4, 16.58), LEVEL.roof + 0.03, 0.03, "paving", "roof:plaza"));
-  prims.push(slab(rect(33.9, 2.4, 53.62, 19.1), LEVEL.roof + 0.03, 0.03, "asphalt", "roof:parking"));
+  // From the DXF the roof is the sheet's own: the slab's edge (it overhangs the
+  // north wall by 1.24 m), the car park's fill, its bays' lines, the lift's shaft.
+  const dxfRf = dxf ? dxfRoof(dxf) : null;
+  const roof: Outline = dxfRf?.outline ?? ROOF;
+  const roofX0 = Math.min(...roof.map((q) => q[0]));
+  const roofX1 = Math.max(...roof.map((q) => q[0]));
+  const roofN = Math.min(...roof.map((q) => q[1]));
+  const roofS = Math.max(...roof.map((q) => q[1]));
+  prims.push(slab(inset(roof, 0.06), LEVEL.roof, 0.35, "slab", "roof:slab"));
+  prims.push(slab(rect(0.88, dxfRf ? roofN + 0.1 : 1.02, dxfRf?.lift ? dxfRf.lift.x0 - 0.1 : 32.4, 16.58), LEVEL.roof + 0.03, 0.03, "paving", "roof:plaza"));
+  prims.push(slab(dxfRf?.deck ?? rect(33.9, 2.4, 53.62, 19.1), LEVEL.roof + 0.03, 0.03, "asphalt", "roof:parking"));
   const line = (x0: number, z0: number, x1: number, z1: number) =>
     prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: LEVEL.roof + 0.04, z: (z0 + z1) / 2 }, size: { x: Math.max(0.1, x1 - x0), y: 0.01, z: Math.max(0.1, z1 - z0) }, material: "parkingLine", tag: "roof:lines" });
-  for (let i = 0; i <= 7; i++) line(36.7 + i * 2.43, 2.6, 36.7 + i * 2.43, 7.6);
-  line(33.0, 2.6, 33.0, 7.6);
-  line(33.0, 7.6, 53.7, 7.6);
-  for (let i = 0; i <= 5; i++) line(41.6 + i * 2.42, 13.2, 41.6 + i * 2.42, 18.0);
-  line(41.6, 13.2, 53.7, 13.2);
-  // The two-way drive's centre line, from the entrance north to the aisle.
-  for (let z = 11.2; z < 19.2; z += 1.6) line(38.2, z, 38.2, z + 0.8);
+  if (dxfRf) {
+    for (const [ax, az, bx, bz] of dxfRf.bayLines) line(Math.min(ax, bx), Math.min(az, bz), Math.max(ax, bx), Math.max(az, bz));
+  } else {
+    for (let i = 0; i <= 7; i++) line(36.7 + i * 2.43, 2.6, 36.7 + i * 2.43, 7.6);
+    line(33.0, 2.6, 33.0, 7.6);
+    line(33.0, 7.6, 53.7, 7.6);
+    for (let i = 0; i <= 5; i++) line(41.6 + i * 2.42, 13.2, 41.6 + i * 2.42, 18.0);
+    line(41.6, 13.2, 53.7, 13.2);
+    // The two-way drive's centre line, from the entrance north to the aisle.
+    for (let z = 11.2; z < 19.2; z += 1.6) line(38.2, z, 38.2, z + 0.8);
+  }
   // The parapet all round, but for the car park's way in: the site plan's
   // "כניסה מקורה לחניה", x 35.1 to 41.4 on the south edge.
   prims.push(
-    ...parapet(ROOF, LEVEL.roof, LEVEL.parapet, 0.3, "stone", "roof:parapet").filter(
-      (p) => !(p.type === "box" && Math.abs(p.centre.z - (19.4 - 0.15)) < 0.05 && p.size.x > 10),
+    ...parapet(roof, LEVEL.roof, LEVEL.parapet, 0.3, "stone", "roof:parapet").filter(
+      (p) => !(p.type === "box" && Math.abs(p.centre.z - (roofS - 0.15)) < 0.05 && p.size.x > 10),
     ),
   );
-  for (const [x0, x1] of [[33.82, 35.1], [41.4, 53.92]] as const) {
-    prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.roof + LEVEL.parapet) / 2, z: 19.25 }, size: { x: x1 - x0, y: LEVEL.parapet - LEVEL.roof, z: 0.3 }, material: "stone", tag: "roof:parapet" });
+  for (const [x0, x1] of [[Math.min(...roof.filter((q) => q[1] === roofS).map((q) => q[0])), 35.1], [41.4, roofX1]] as const) {
+    prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.roof + LEVEL.parapet) / 2, z: roofS - 0.15 }, size: { x: x1 - x0, y: LEVEL.parapet - LEVEL.roof, z: 0.3 }, material: "stone", tag: "roof:parapet" });
   }
-  // The north band the sign is on: dark stone from 16.75 to the parapet's top.
-  prims.push({ type: "box", centre: { x: 27.4, y: (16.75 + LEVEL.parapet) / 2, z: 1.02 - 0.03 }, size: { x: 53.04 + 0.1, y: LEVEL.parapet - 16.75, z: 0.06 }, material: "stoneDark", tag: "facade:band" });
-  prims.push({ type: "text", text: "מרכז פסגה קרית ארבע", at: { x: 27.4, y: 17.58, z: 1.02 - 0.07 }, facing: { x: 0, z: -1 }, heightM: 1.0, material: "signage", tag: "facade:sign" });
+  // The north band the sign is on: dark stone from 16.75 to the parapet's top, at the roof's edge.
+  const bandZ = dxfRf ? roofN : 1.02;
+  prims.push({ type: "box", centre: { x: (roofX0 + roofX1) / 2, y: (16.75 + LEVEL.parapet) / 2, z: bandZ - 0.03 }, size: { x: roofX1 - roofX0 + 0.1, y: LEVEL.parapet - 16.75, z: 0.06 }, material: "stoneDark", tag: "facade:band" });
+  prims.push({ type: "text", text: "מרכז פסגה קרית ארבע", at: { x: (roofX0 + roofX1) / 2, y: 17.58, z: bandZ - 0.07 }, facing: { x: 0, z: -1 }, heightM: 1.0, material: "signage", tag: "facade:sign" });
   // The lift's bulkhead, to +20.32.
-  prims.push({ type: "box", centre: { x: 32.15, y: (LEVEL.roof + LEVEL.bulkhead) / 2, z: 13.85 }, size: { x: 3.3, y: LEVEL.bulkhead - LEVEL.roof, z: 2.3 }, material: "stone", tag: "roof:bulkhead" });
+  const lift = dxfRf?.lift;
+  prims.push({
+    type: "box",
+    centre: { x: lift ? (lift.x0 + lift.x1) / 2 : 32.15, y: (LEVEL.roof + LEVEL.bulkhead) / 2, z: lift ? (lift.z0 + lift.z1) / 2 : 13.85 },
+    size: { x: lift ? lift.x1 - lift.x0 : 3.3, y: LEVEL.bulkhead - LEVEL.roof, z: lift ? lift.z1 - lift.z0 : 2.3 },
+    material: "stone",
+    tag: "roof:bulkhead",
+  });
+
+  // The emergency stair on the west face, from floor −1's door down to the courtyard: two flights, the one against the building first,
+  // each tread as the sheet draws it, the rise shared evenly from +12.77 to +8.29.
+  if (dxf) {
+    const flights = dxfEmergencyStair(dxf);
+    const steps = flights.reduce((n, f) => n + f.treads.length, 0);
+    const riser = (LEVEL.floorMinus1 - LEVEL.courtyard - 0.09) / Math.max(1, steps);
+    let level = LEVEL.floorMinus1;
+    flights.forEach((f, i) => {
+      // The first flight runs south from the door's landing, the next back north.
+      const order = i % 2 === 0 ? f.treads : [...f.treads].reverse();
+      const depth = 0.26;
+      order.forEach((z, k) => {
+        level -= riser;
+        const zc = z + (i % 2 === 0 ? depth / 2 : -depth / 2);
+        prims.push({ type: "box", centre: { x: (f.x0 + f.x1) / 2, y: level, z: zc }, size: { x: f.x1 - f.x0, y: 0.05, z: depth }, material: "metal", tag: "site:emergency-stair" });
+        prims.push({ type: "box", centre: { x: (f.x0 + f.x1) / 2, y: level - riser / 2, z }, size: { x: f.x1 - f.x0, y: riser, z: 0.02 }, material: "metal", tag: "site:emergency-stair" });
+        // The rail on the open side of each flight (the outer edge): a glass pane a step long, its handrail, a post every other step.
+        const edge = i % 2 === 0 ? f.x0 : f.x0;
+        prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc }, size: { x: 0.012, y: 0.9, z: depth }, material: "glass", tag: "site:emergency-stair" });
+        prims.push({ type: "box", centre: { x: edge, y: level + 0.97, z: zc }, size: { x: 0.04, y: 0.04, z: depth }, material: "metal", tag: "site:emergency-stair" });
+        if (k % 2 === 0) prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc }, size: { x: 0.04, y: 1.0, z: 0.04 }, material: "metal", tag: "site:emergency-stair" });
+      });
+    });
+    if (flights.length >= 2) {
+      const a = flights[0]!;
+      const b = flights[1]!;
+      const z = Math.max(...a.treads) + 0.26;
+      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: LEVEL.floorMinus1 - riser * a.treads.length - 0.04, z: z + 0.3 }, size: { x: a.x1 - b.x0, y: 0.08, z: 0.6 }, material: "concrete", tag: "site:emergency-stair" });
+      const north = Math.min(...a.treads);
+      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: LEVEL.floorMinus1 - 0.04, z: north - 0.6 }, size: { x: a.x1 - b.x0, y: 0.08, z: 1.2 }, material: "concrete", tag: "site:emergency-stair" });
+    }
+  }
 
   // The columns under floor −1's overhang, as floor −2's sheet draws them.
-  for (const x of [7.5, 10.5, 13.7, 16.5, 21.5, 24.0, 30.8, 34.9, 38.1, 43.4, 48.4, 50.8]) {
-    prims.push({ type: "cylinder", centre: { x, y: (LEVEL.courtyard + LEVEL.floorMinus1) / 2, z: 16.2 }, radius: 0.2, height: LEVEL.floorMinus1 - 0.3 - LEVEL.courtyard, material: "concrete", tag: "colonnade" });
+  // From the DXF they are its circles: where it draws them, as wide as it draws them.
+  const columns = dxf ? dxfColumns(dxf, "floor-2").filter((c) => c.z > 14) : [7.5, 10.5, 13.7, 16.5, 21.5, 24.0, 30.8, 34.9, 38.1, 43.4, 48.4, 50.8].map((x) => ({ x, z: 16.2, r: 0.2 }));
+  for (const c of columns) {
+    prims.push({ type: "cylinder", centre: { x: c.x, y: (LEVEL.courtyard + LEVEL.floorMinus1) / 2, z: c.z }, radius: c.r, height: LEVEL.floorMinus1 - 0.3 - LEVEL.courtyard, material: "concrete", tag: "colonnade" });
   }
 
   // The kindergarten the centre is built on: existing stone, to its roofs.
@@ -393,16 +551,23 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
     [rect(33.0, -4.3, 56.7, 1.02), 4.42],
     [rect(53.92, 1.02, 56.7, 8.0), 4.42],
   ];
-  for (const [ring, top] of kindergarten) prims.push({ type: "prism", ring, y0: -1, y1: top, material: "existing", tag: "kindergarten" });
+  // From the DXF it is a shell on the extents its plan and section blocks agree on, with the plan's walls inside as rooms; the ground
+  // is dug to its box. Without it, the solid mass the permit booklet draws.
+  const fromDxf = dxf != null;
+  if (fromDxf) {
+    prims.push(...buildKindergarten(dxf!));
+    kindergarten.length = 0;
+    kindergarten.push([kindergartenOutline(), KINDERGARTEN.roof]);
+  } else for (const [ring, top] of kindergarten) prims.push({ type: "prism", ring, y0: -1, y1: top, material: "existing", tag: "kindergarten" });
   // Its windows, a band on each north face.
-  for (const [x0, x1, z, sill] of [[6, 21.4, -7.5, 1.2], [22.4, 32.5, -8.4, 1.2], [22.4, 32.5, -8.4, 5.2], [33.5, 56.2, -4.3, 1.2], [1.2, 21.6, 1.02, 5.4], [33.3, 53.6, 1.02, 5.4]] as const) {
+  if (!fromDxf) for (const [x0, x1, z, sill] of [[6, 21.4, -7.5, 1.2], [22.4, 32.5, -8.4, 1.2], [22.4, 32.5, -8.4, 5.2], [33.5, 56.2, -4.3, 1.2], [1.2, 21.6, 1.02, 5.4], [33.3, 53.6, 1.02, 5.4]] as const) {
     for (let x = x0 + 0.6; x + 1.6 <= x1; x += 3.2) {
       prims.push({ type: "box", centre: { x: x + 0.8, y: sill + 0.7, z: z - 0.02 }, size: { x: 1.6, y: 1.4, z: 0.06 }, material: "frame", tag: "kindergarten:window" });
       prims.push({ type: "box", centre: { x: x + 0.8, y: sill + 0.7, z: z - 0.05 }, size: { x: 1.48, y: 1.28, z: 0.02 }, material: "glass", tag: "kindergarten:window" });
     }
   }
   // And on its east and west ends, as sheet 9 draws them: a row on each storey.
-  for (const [x, z0, z1, out] of [[56.7, -4.3, 8.0, 1], [5.5, -7.5, 1.02, -1], [0.88, 1.02, 13.2, -1]] as const) {
+  if (!fromDxf) for (const [x, z0, z1, out] of [[56.7, -4.3, 8.0, 1], [5.5, -7.5, 1.02, -1], [0.88, 1.02, 13.2, -1]] as const) {
     for (const sill of [1.2, 5.2]) {
       for (let z = z0 + 0.8; z + 1.6 <= z1 - 0.4; z += 3.4) {
         prims.push({ type: "box", centre: { x: x + out * 0.02, y: sill + 0.7, z: z + 0.8 }, size: { x: 0.06, y: 1.4, z: 1.6 }, material: "frame", tag: "kindergarten:window" });
@@ -416,7 +581,10 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   // Under the overhang the paving runs the building's length, and east of
   // the stair on to the covered ramp.
   prims.push(slab(rect(32.4, 13.2, 53.92, 19.0), LEVEL.courtyard, 0.4, "paving", "site:colonnade"));
-  prims.push({ type: "box", centre: { x: 43.1, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: 21.6, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
+  // The wall holds the street's level back along the building's south side, but for the drive in (x 35.3–41.3).
+  for (const [x0, x1] of [[32.3, 35.3], [41.3, 53.9]] as const) {
+    prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: x1 - x0, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
+  }
   prims.push(...ramp());
   prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   // East of the building (sheet 5): a grated deck at +5.73 and the
@@ -435,49 +603,70 @@ export async function buildPisga(pdf: Uint8Array, options?: { future?: boolean }
   upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]!, tag: "car" }));
   [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]!, tag: "car" }));
   pisgaStreetBays().forEach((b, i) => prims.push({ type: "car", at: { x: b.x, y: LEVEL.street, z: b.z }, rotY: b.rotY, colour: paint[(i + 2) % paint.length]!, tag: "car" }));
-  prims.push(...pisgaStreet(LEVEL), ...pisgaStairs(LEVEL));
+  // The hand-set west stair (from the permit booklet) gives way to the one the DXF's tread lines build above.
+  prims.push(...pisgaStreet(LEVEL), ...pisgaStairs(LEVEL).filter((p) => !(dxf && p.tag === "site:west-stair")));
 
   // People, for scale: in the courtyard, on the roof plaza, at the entrance.
 
 
   // Ground: the spot heights, and the site's own levels where it is built.
-  const x0 = -90;
-  const z0 = -80;
-  const dx = 1;
-  const nx = 240;
-  const nz = 170;
   // Far from the survey's spot heights the ground follows the site's overall
   // fall, a plane fitted to all of them — not their average, which raised a
   // plateau to the street's height north of the building.
   const plane = fitPlane(SPOTS.map(([sx, sz, abs]) => [sx, sz, abs - 923.2] as [number, number, number]));
+  const groundAt = (x: number, z: number, built: boolean) => {
+    let wsum = 0;
+    let hsum = 0;
+    for (const [sx, sz, abs] of SPOTS) {
+      const d2 = (x - sx) ** 2 + (z - sz) ** 2 + 4;
+      const w = 1 / (d2 * d2);
+      wsum += w;
+      hsum += w * (abs - 923.2);
+    }
+    const w0 = 1 / 20 ** 4;
+    let h = (hsum + w0 * (plane[0] + plane[1] * x + plane[2] * z)) / (wsum + w0);
+    if (!built) return h;
+    if (insidePolygon(rect(-10.5, -10, 64, 36), x, z)) h = Math.min(h, 8.1);
+    // The kindergarten stands on its ±0.00: sheet 9 draws its ground at
+    // +0.70 to the north and east, and it is dug into the slope beneath the
+    // courtyard.
+    if (kindergarten.some(([ring]) => insidePolygon(ring, x, z))) h = Math.min(h, -0.2);
+    // East of the entrance the plot falls from the street to the east
+    // plaza — the accessible ramp's slope.
+    if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
+    if (z > 21 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    return h;
+  };
+  // The site itself, a metre a cell; and the hills round it to the horizon, six metres a cell, 0.6 m under the first so the two never meet in a seam.
+  const fine = { x0: -90, z0: -80, dx: 1, nx: 240, nz: 170 };
   const heights: number[] = [];
-  for (let j = 0; j < nz; j++) {
-    for (let i = 0; i < nx; i++) {
-      const x = x0 + i * dx;
-      const z = z0 + j * dx;
-      let wsum = 0;
-      let hsum = 0;
-      for (const [sx, sz, abs] of SPOTS) {
-        const d2 = (x - sx) ** 2 + (z - sz) ** 2 + 4;
-        const w = 1 / (d2 * d2);
-        wsum += w;
-        hsum += w * (abs - 923.2);
-      }
-      const w0 = 1 / 20 ** 4;
-      let h = (hsum + w0 * (plane[0] + plane[1] * x + plane[2] * z)) / (wsum + w0);
-      if (insidePolygon(rect(-10.5, -10, 64, 36), x, z)) h = Math.min(h, 8.1);
-      // The kindergarten stands on its ±0.00: sheet 9 draws its ground at
-      // +0.70 to the north and east, and it is dug into the slope beneath the
-      // courtyard.
-      if (kindergarten.some(([ring]) => insidePolygon(ring, x, z))) h = Math.min(h, -0.2);
-      // East of the entrance the plot falls from the street to the east
-      // plaza — the accessible ramp's slope.
-      if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
-      if (z > 21 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
-      heights.push(h);
+  for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true));
+  prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground" });
+  const far = { x0: -700, z0: -700, dx: 10, nx: 150, nz: 150 };
+  const farHeights: number[] = [];
+  for (let j = 0; j < far.nz; j++) {
+    for (let i = 0; i < far.nx; i++) {
+      const x = far.x0 + i * far.dx;
+      const z = far.z0 + j * far.dx;
+      // Where the fine grid stands the far one sinks out of sight.
+      const under = x > fine.x0 - 12 && x < fine.x0 + fine.nx * fine.dx + 12 && z > fine.z0 - 12 && z < fine.z0 + fine.nz * fine.dx + 12;
+      farHeights.push(groundAt(x, z, false) - (under ? 8 : 0.6));
     }
   }
-  prims.push({ type: "terrain", x0, z0, dx, nx, nz, heights, material: "soil", tag: "site:ground" });
+  prims.push({ type: "terrain", x0: far.x0, z0: far.z0, dx: far.dx, nx: far.nx, nz: far.nz, heights: farHeights, material: "soil", tag: "site:ground-far" });
+
+  // Life round the building (DXF route): trees along the street's far side and the slopes, shrubs by the colonnade, and people for scale
+  // where the sheets show people go — the entrance, the courtyard, the lobby, the hall.
+  if (dxf) {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let x = -60; x < 130; x += 7 + rnd() * 4) { const z = 38 + (x > 20 ? (x - 20) * 0.28 : 0) + rnd() * 3; if (z < 30) continue; prims.push({ type: "tree", at: { x, y: groundAt(x, z, true), z }, height: 5 + rnd() * 2.5, crown: 1.8 + rnd(), tag: "tree" }); }
+    // Only on the flanks: in front of the north face a tree hides the building, and one in a window ruins the lobby.
+    for (let k = 0; k < 40; k++) { const east = rnd() < 0.5; const x = east ? 78 + rnd() * 45 : -75 + rnd() * 52; const z = -45 + rnd() * 60; prims.push({ type: "tree", at: { x, y: groundAt(x, z, false), z }, height: 4 + rnd() * 2, crown: 1.6 + rnd() * 0.8, tag: "tree" }); }
+    const people: Array<[number, number, number, number]> = [[27.4, 18.5, LEVEL.courtyard, 1.72], [29.5, 17.6, LEVEL.courtyard, 1.66], [14, 15.4, LEVEL.courtyard, 1.75], [36, 22.3, LEVEL.street, 1.7], [38.2, 21.8, LEVEL.street, 1.62], [30, 8.2, LEVEL.floorMinus1, 1.7], [33, 6.9, LEVEL.floorMinus1, 1.64], [48, 12, LEVEL.floorMinus1, 1.7], [46.5, 12.4, LEVEL.floorMinus1, 1.6], [24, 9.5, LEVEL.floorMinus2, 1.7], [38, 9, LEVEL.floorMinus2, 1.68]];
+    const shirts = [0x3d5a80, 0xb5543c, 0x5b7f5f, 0xd8c9a0, 0x6d4c7d, 0x2f2f33];
+    people.forEach(([x, z, y, h], i) => prims.push({ type: "person", at: { x, y, z }, rotY: rnd() * 6.28, colour: shirts[i % shirts.length]!, height: h, tag: "person" }));
+  }
 
   return {
     name: 'מרכז פסג"ה למורים — קריית ארבע',

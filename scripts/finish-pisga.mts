@@ -13,6 +13,11 @@ import path from "node:path";
 import { config } from "dotenv";
 config({ path: ".env.local" });
 
+const { paidAiAllowed } = await import("@/lib/projects/building/house-cost");
+if (!paidAiAllowed()) {
+  console.error("finish-pisga makes paid image calls: run it with ALLOW_PAID_AI=1");
+  process.exit(1);
+}
 const { GoogleGenAI } = await import("@google/genai");
 const { getGeminiApiKey } = await import("@/lib/gemini-api-key");
 const { finishPass, finishPrompt, structuralMatch } = await import("@/lib/projects/building/finish");

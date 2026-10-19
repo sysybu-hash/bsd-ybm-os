@@ -14,12 +14,16 @@ const { renderBuildingFrames } = await import("@/lib/projects/building/renderer"
 type Payload = import("@/lib/projects/building/render-page").BuildingRenderPayload;
 
 const [file, outDir, ...only] = process.argv.slice(2);
-if (!file || !outDir) throw new Error("usage: <booklet.pdf> <out dir> [view…]");
+if ((!file && !process.env.DXF) || !outDir) throw new Error("usage: <booklet.pdf> <out dir> [view…]  (or DXF=<file> with any first argument)");
 fs.mkdirSync(outDir, { recursive: true });
 const t = Date.now();
 // FUTURE=1: sheet 7's future plan for floor −1, written as pisga-future-*.
 const future = process.env.FUTURE === "1";
-const model = await buildPisga(new Uint8Array(fs.readFileSync(file)), { future });
+// DXF=<file>: the architect's DXF in place of the permit booklet's PDF (no future plan there).
+const dxfFile = process.env.DXF;
+const dxf = dxfFile ? (await import("@/lib/projects/dxf-drawing")).readDxfDrawing(fs.readFileSync(dxfFile)) : null;
+if (dxfFile && !dxf) throw new Error(`unreadable DXF: ${dxfFile}`);
+const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined });
 console.log(`model: ${model.primitives.length} primitives in ${Date.now() - t}ms`);
 
 const W = 2400, H = 1500;
