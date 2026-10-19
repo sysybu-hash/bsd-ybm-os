@@ -590,11 +590,12 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (LEVEL.courtyard + LEVEL.street) / 2, z: 19.2 }, size: { x: x1 - x0, y: LEVEL.street - LEVEL.courtyard, z: 0.4 }, material: "stone", tag: "site:retaining" });
   }
   prims.push(...ramp());
-  prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
+  // The booklet's west terrace and east landing: on the DXF route the sheets' own hatches (the paving and grated decks of pisga-surfaces) stand there instead.
+  if (!dxf) prims.push(slab(rect(-10.5, -1, 0.88, 13.2), 8.6, 0.4, "paving", "site:west"));
   // East of the building (sheet 5): a grated deck at +5.73 and the
   // emergency exit's landing at +7.80. The DXF's spot heights +928.93 and +931.00 (5.73 and 7.80 over 923.2) stand at these two decks.
   if (!dxf) prims.push(slab(rect(53.92, 3.8, 60.4, 7.4), 5.73, 0.3, "metal", "site:east"));
-  prims.push(slab(rect(53.92, 7.4, 60.4, 12.0), 7.8, 0.4, "paving", "site:east"));
+  if (!dxf) prims.push(slab(rect(53.92, 7.4, 60.4, 12.0), 7.8, 0.4, "paving", "site:east"));
   prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
   // Trees where the site plan draws them: along the courtyard's retaining
   // wall, and on the plaza by the car park's entrance.
@@ -688,7 +689,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       const t = 0.3, top = LEVEL.floorMinus2 + 1.1;
       const slabAt = (z0: number, z1: number, level: number, mat: "paving" | "concrete" | "asphalt", tag: string) => prims.push({ type: "prism", ring: [[nx0, z0], [nx1, z0], [nx1, z1], [nx0, z1]], y0: level - 0.3, y1: level, material: mat, tag });
       slabAt(nzm, nz1, 8.27, "paving", "site:north-terrace");
-      slabAt(nz0, nzm, 8.08, "asphalt", "site:north-tech-roof");
+      slabAt(nz0, nzm, 8.08, "concrete", "site:north-tech-roof");
       for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx0, nx0 + t, nz0, nz1], [nx1 - t, nx1, nz0, nz1], [nx0, nx1, nzm - 0.04, nzm + 0.04]] as const) {
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + (z0 === nzm - 0.04 ? 8.08 + 0.2 : top)) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: (z0 === nzm - 0.04 ? 8.08 + 0.2 : top) - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
       }

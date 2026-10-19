@@ -27,6 +27,8 @@ if (dxfFile && !dxf) throw new Error(`unreadable DXF: ${dxfFile}`);
 // PHOTO=<png/jpg path>: the plot's aerial photograph on the ground, a draft fit.
 const groundPhoto = process.env.PHOTO ? `data:image/jpeg;base64,${(await sharp(fs.readFileSync(process.env.PHOTO)).jpeg({ quality: 88 }).toBuffer()).toString("base64")}` : undefined;
 const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined, groundPhoto });
+// No figures in any frame (the user's rule, 2026-10-20): the model's people for scale are left out unless PEOPLE=1.
+if (process.env.PEOPLE !== "1") model.primitives = model.primitives.filter((p) => p.type !== "person");
 console.log(`model: ${model.primitives.length} primitives in ${Date.now() - t}ms`);
 
 // Traced by default, at the most the GPU holds without spoiling the frame (measured 2026-10-19 on aerial-ne: 1024 samples at 2400 px is clean in ~2 min;
@@ -59,6 +61,9 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "section-dd": { camera: { position: { x: 140, y: 12, z: 8 }, target: { x: 0, y: 12, z: 8 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 28.4, keep: -1 }, interior: true, hideTags: ["tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "event-hall": { camera: { position: { x: 21.5, y: 12.77 + 1.7, z: 10.2 }, target: { x: 6, y: 12.77 + 0.9, z: 3.5 }, fovDeg: 66, interior: true }, sun: { azimuthDeg: 290, elevationDeg: 25 }, exposure: 0.62, ao: true },
   "north-high": { camera: { position: { x: 27, y: 30, z: -34 }, target: { x: 27, y: 8, z: -2 }, fovDeg: 40 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "west-stair": { camera: { position: { x: -13, y: 15, z: 24 }, target: { x: -1, y: 9.5, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
+  "ne-corner": { camera: { position: { x: 76, y: 18, z: -15 }, target: { x: 55, y: 8.5, z: 3 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "north-terrace": { camera: { position: { x: 27, y: 17, z: -22 }, target: { x: 27, y: 8, z: -3 }, fovDeg: 45 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "east-side": { camera: { position: { x: 84, y: 20, z: -6 }, target: { x: 60, y: 6.5, z: 9 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "west-side": { camera: { position: { x: -32, y: 20, z: 28 }, target: { x: -1, y: 9, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
   courtyard: { camera: { position: { x: 2.2, y: 9.9, z: 19.2 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },

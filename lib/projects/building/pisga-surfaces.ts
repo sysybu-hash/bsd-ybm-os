@@ -118,6 +118,17 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
     const z0 = Math.floor(Math.min(...zs) / dx) * dx - dx;
     const nx = Math.ceil((Math.max(...xs) - x0) / dx) + 2;
     const nz = Math.ceil((Math.max(...zs) - z0) / dx) + 2;
+    // A surface laid over ground that falls more than 2 m under it (an exit ramp's paving, a landing on a cut bank) is a platform, not a skin: it stands level at the high side, filled solid down to the low.
+    {
+      const gs: number[] = [];
+      for (let j = 0; j < nz; j += 2) for (let i = 0; i < nx; i += 2) { const x = x0 + i * dx, z = z0 + j * dx; if (insidePolygon(s.ring, x, z) && !s.holes.some((h) => insidePolygon(h, x, z))) gs.push(groundAt(x, z)); }
+      if (gs.length > 4 && s.kind !== "grate" && Math.max(...gs) - Math.min(...gs) > 2) {
+        const sorted = [...gs].sort((a, b) => a - b);
+        const top = sorted[Math.floor(sorted.length * 0.8)]! + lift;
+        out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
+        continue;
+      }
+    }
     const heights: number[] = [];
     for (let j = 0; j < nz; j++) {
       for (let i = 0; i < nx; i++) {
