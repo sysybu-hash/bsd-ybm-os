@@ -640,9 +640,9 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // East of the entrance the plot falls from the street to the east
     // plaza — the accessible ramp's slope.
     if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + ((z - 12) / (24.2 - 12)) * (LEVEL.street - 8.27);
-    if (z > 21 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    if (z > 21.45 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
     // Under the street's own band (plot line out to 13.5 m) the ground is the road's bed, not a mound the spot heights lift into it.
-    { const pz = pisgaPlotSouthZ(x); if (z > pz - 0.1 && z < pz + 13.6) h = LEVEL.street - 0.6; }
+    { const pz = pisgaPlotSouthZ(x); if (z > pz + 0.45 && z < pz + 13.6) h = LEVEL.street - 0.6; }
     return h;
   };
   // The site itself, a metre a cell; and the hills round it to the horizon, six metres a cell, 0.6 m under the first so the two never meet in a seam.

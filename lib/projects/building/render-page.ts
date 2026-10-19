@@ -892,6 +892,10 @@ async function main() {
         const k = (j - ja) * cols + (i - ia);
         const x = p.x0 + i * p.dx, z = p.z0 + j * p.dx;
         pos.setXYZ(k, x, p.heights[j * p.nx + i], z);
+        // A slope near vertical (a cut bank, a wall of earth) stretched a flat top-down mapping into streaks: there the texture runs along the slope instead (height and the way across it).
+        const hL = p.heights[j * p.nx + Math.max(0, i - 1)], hR = p.heights[j * p.nx + Math.min(p.nx - 1, i + 1)], hU = p.heights[Math.max(0, j - 1) * p.nx + i], hD = p.heights[Math.min(p.nz - 1, j + 1) * p.nx + i];
+        const grad = Math.hypot((hR - hL) / (2 * p.dx), (hD - hU) / (2 * p.dx));
+        if (!p.photo && grad > 1.1) { uv.setXY(k, (x * 0.7 + z * 0.7) / r, p.heights[j * p.nx + i] / r); continue; }
         if (p.photo) {
           // The fit's own mapping: pixel = ((dx·cos + dz·sin) / s + cu, (−dx·sin + dz·cos) / s + cv), the image's v counted down.
           const ph = p.photo, c = Math.cos(ph.rot), sn = Math.sin(ph.rot), dx = x - ph.cx, dz = z - ph.cz;
