@@ -5,6 +5,7 @@
  *   npx tsx --conditions=react-server scripts/render-pisga.mts "<booklet.pdf>" <out dir> [view…]
  */
 import fs from "node:fs";
+import sharp from "sharp";
 import path from "node:path";
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -26,7 +27,13 @@ if (dxfFile && !dxf) throw new Error(`unreadable DXF: ${dxfFile}`);
 const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined });
 console.log(`model: ${model.primitives.length} primitives in ${Date.now() - t}ms`);
 
-const W = 2400, H = 1500;
+// Traced by default, at the most the GPU holds without spoiling the frame (measured 2026-10-19 on aerial-ne: 1024 samples at 2400 px is clean in ~2 min;
+// 2048 samples comes back white, 1024 at 3600 px loses walls and scrambles the ground). PT=0 rasterises instead; SIZE=<width> scales the frame
+// (a traced frame is held to 2400 px); PT is held to 1024.
+const PT_MAX = 1024, TRACED_MAX_PX = 2400;
+const PT = Math.min(PT_MAX, Number(process.env.PT ?? PT_MAX));
+const W = Math.min(Number(process.env.SIZE ?? 2400), PT ? TRACED_MAX_PX : Infinity), H = Math.round((W * 1500) / 2400);
+if (Number(process.env.PT ?? 0) > PT_MAX || Number(process.env.SIZE ?? 0) > W) console.warn(`held to PT=${PT}, SIZE=${W}: past that the traced frame is spoiled`);
 const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "aerial-ne": { camera: { position: { x: 88, y: 46, z: -48 }, target: { x: 27, y: 7, z: 8 }, fovDeg: 32 }, sun: { azimuthDeg: 250, elevationDeg: 38 }, exposure: 0.62, ao: true },
   "north-facade": { camera: { position: { x: 27.4, y: 6, z: -48 }, target: { x: 27.4, y: 10.5, z: 6 }, fovDeg: 38 }, sun: { azimuthDeg: 292, elevationDeg: 22 }, exposure: 0.66, ao: true },
@@ -55,12 +62,24 @@ const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.
 // NOSIGN=1: the same frames with the lettering left off, for the photographic
 // finish — the system draws the lettering back, never the model.
 const nosign = process.env.NOSIGN === "1";
-const frames = await renderBuildingFrames(
-  chosen.map(([, v]) => ({ ...v, camera: nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera, model, width: W, height: H })),
-  { outputWidthPx: 1600 },
-);
-chosen.forEach(([id], i) => {
-  const out = path.join(outDir, `pisga-${future ? "future-" : ""}${id}${nosign ? "-nosign" : ""}.jpg`);
-  fs.writeFileSync(out, frames[i]!);
+// Each frame goes down a ladder of sample counts until it comes back neither blank nor too dark to be a frame (an interior needs the longest to settle and
+// the GPU gives up first): the most the GPU holds without spoiling it is what is kept. A cut or a section is rasterised by the page whatever PT says.
+const ladder = [PT, 512, 256, 128, 0].filter((n, k, all) => n <= PT && all.indexOf(n) === k);
+for (const [id, v] of chosen) {
+  const camera = nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera;
+  let done: { buf: Buffer; pt: number } | null = null;
+  for (const pt of ladder) {
+    const [buf] = await renderBuildingFrames([{ ...v, camera, model, width: W, height: H, ...(pt ? { pathTrace: { samples: pt } } : {}) }], { outputWidthPx: Number(process.env.OUT ?? 1600), timeoutMs: pt ? 1_800_000 : undefined });
+    const st = await sharp(buf!).stats();
+    if (st.channels[0]!.stdev < 2) {
+      console.warn(`${id}: blank at PT=${pt}, trying fewer samples`);
+      continue;
+    }
+    done = { buf: buf!, pt };
+    break;
+  }
+  if (!done) throw new Error(`frame ${id}: blank at every sample count`);
+  const out = path.join(outDir, `pisga-${future ? "future-" : ""}${done.pt ? `pt${done.pt}-` : ""}${id}${nosign ? "-nosign" : ""}.jpg`);
+  fs.writeFileSync(out, done.buf);
   console.log(out);
-});
+}
