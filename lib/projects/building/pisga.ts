@@ -349,7 +349,7 @@ export function readPisgaDxfFloor(dxf: DxfDrawing, id: "floor-2" | "floor-1", by
  * architect's DXF is given, from its drawing: the same readers either way —
  * the DXF's floor sheets are handed over as painted pages (pisga-dxf.ts).
  */
-export async function buildPisga(pdf: Uint8Array | null, options?: { future?: boolean; dxf?: DxfDrawing }): Promise<BuildingModel> {
+export async function buildPisga(pdf: Uint8Array | null, options?: { future?: boolean; dxf?: DxfDrawing; /** The plot's aerial photograph as a data URL, laid on the ground by a rough fit (a draft). */ groundPhoto?: string }): Promise<BuildingModel> {
   const dxf = options?.dxf;
   // The DXF has no future plan: floor −1 stays as drawn.
   const future = dxf ? false : options?.future === true;
@@ -648,6 +648,13 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   const heights: number[] = [];
   for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true));
   prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground" });
+  // The aerial photograph of the plot, laid on the ground as a DRAFT: 0.30 m a pixel, fitted by eye so the plot south line (DXF G110-10, x −11..61) lies along the photo road's north edge: column 887 on x 27 and row 420 on z 29.4
+  // centre at that column (z 29.4); north up, no rotation. Nothing in the DXF places it, so every number here is an estimate to be corrected.
+  if (options?.groundPhoto) {
+    const S = 0.3, PW = 1812, PH = 747, CU = 887, CV = 420, CXM = 27, CZM = 29.4;
+    const ph = { src: options.groundPhoto, x0: CXM - CU * S, x1: CXM + (PW - CU) * S, z0: CZM - CV * S, z1: CZM + (PH - CV) * S };
+    prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights: heights.map((h) => h + 0.03), material: "soil", tag: "site:ground-photo", photo: ph });
+  }
   const far = { x0: -700, z0: -700, dx: 10, nx: 150, nz: 150 };
   const farHeights: number[] = [];
   for (let j = 0; j < far.nz; j++) {

@@ -24,7 +24,9 @@ const future = process.env.FUTURE === "1";
 const dxfFile = process.env.DXF;
 const dxf = dxfFile ? (await import("@/lib/projects/dxf-drawing")).readDxfDrawing(fs.readFileSync(dxfFile)) : null;
 if (dxfFile && !dxf) throw new Error(`unreadable DXF: ${dxfFile}`);
-const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined });
+// PHOTO=<png/jpg path>: the plot's aerial photograph on the ground, a draft fit.
+const groundPhoto = process.env.PHOTO ? `data:image/jpeg;base64,${(await sharp(fs.readFileSync(process.env.PHOTO)).jpeg({ quality: 88 }).toBuffer()).toString("base64")}` : undefined;
+const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined, groundPhoto });
 console.log(`model: ${model.primitives.length} primitives in ${Date.now() - t}ms`);
 
 // Traced by default, at the most the GPU holds without spoiling the frame (measured 2026-10-19 on aerial-ne: 1024 samples at 2400 px is clean in ~2 min;

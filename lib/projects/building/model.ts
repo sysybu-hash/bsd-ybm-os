@@ -15,6 +15,12 @@ export type BuildingMaterial =
   | "stoneDeep"
   /** Exterior render ("טיח"), as an elevation calls for it. */
   | "render"
+  /** Coloured plaster, light greige: a private house's body. */
+  | "renderGray"
+  /** Coloured plaster, deep greige: a private house's side wings. */
+  | "renderBrown"
+  /** Jerusalem stone: the frame around a private house's window. */
+  | "jerusalemStone"
   /** Aluminium slats: a laundry screen ("מסתור כביסה"). */
   | "louvre"
   | "stoneDark"
@@ -40,6 +46,7 @@ export type BuildingMaterial =
   | "upholsteryAccent"
   | "whiteboard"
   | "screen"
+  | "darkSteel"
   | "worktop"
   | "ceramic"
   | "signage"
@@ -54,10 +61,23 @@ export type BuildingMaterial =
   | "cushion"
   | "rug"
   | "floorOak"
+  /** A stair tread's oak in four tones, the lowest step the darkest (stairs only: house-features treadPrims), and the soft shade a step casts on the one below. */
+  | "stairOak0"
+  | "stairOak1"
+  | "stairOak2"
+  | "stairOak3"
+  | "stairShade"
+  /** An outside flight's stone in four tones, the lowest step the darkest (house-features flightPrimitives). */
+  | "stairStone0"
+  | "stairStone1"
+  | "stairStone2"
+  | "stairStone3"
   | "floorPorcelain"
   | "floorWet"
   /** A terrace's outdoor tile, a shade deeper than the rooms' porcelain. */
   | "terraceTile"
+  /** A private house's balcony deck: grey 60 cm tiles, as the sheet hatches it apart from the paving below. */
+  | "balconyTile"
   | "cabinet"
   /** A kitchen's worktop: dark quartz over white cabinets. */
   | "quartz"
@@ -101,6 +121,8 @@ export type Primitive =
       heights: number[];
       material: BuildingMaterial;
       tag?: string;
+      /** A photograph laid on this ground: its data URL and the plan-frame rectangle (metres) it covers, north (−z) up. */
+      photo?: { src: string; x0: number; z0: number; x1: number; z1: number };
     }
   | { type: "tree"; at: Vec3; height: number; crown: number; tag?: string }
   /** A plant in a pot: staging beside a sofa, in a terrace's corner. */
@@ -125,4 +147,8 @@ export type BuildingModel = {
   extent: { x: number; z: number; width: number; depth: number; yMin: number; yMax: number };
   /** Which way is north, as a unit vector in plan (x, z). */
   north: { x: number; z: number };
+  /** A house's street front, the plan's side its plot meets the street on (house-additions streetSide), where it was found. */
+  street?: "north" | "south" | "east" | "west";
+  /** A house's plot, its boundary's box: where its elevations cut the ground. */
+  plot?: { x0: number; z0: number; x1: number; z1: number };
 };
