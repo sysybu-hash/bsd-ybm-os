@@ -725,7 +725,7 @@ export function dxfFixtures(drawing: DxfDrawing, floor: PisgaDxfFloor): FixtureS
   for (const g of groupsOf(drawing, floor, /^כלים סניטריים/)) {
     const [L, W] = g.len >= g.wid ? [g.len, g.wid] : [g.wid, g.len];
     const ang = g.len >= g.wid ? g.ang : g.ang + Math.PI / 2;
-    if (L > 2.4 || L < 0.2) continue;
+    if (L > 3.2 || L < 0.2) continue;
     let kind: FixtureShape["kind"];
     if (L >= 1.0 && W <= 0.7) kind = "counter";
     else if (L >= 0.55 && L <= 0.85 && W >= 0.3 && W <= 0.55) kind = "pan";

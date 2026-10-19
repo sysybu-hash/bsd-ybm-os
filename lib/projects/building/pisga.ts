@@ -329,7 +329,8 @@ export function readPisgaDxfFloor(dxf: DxfDrawing, id: "floor-2" | "floor-1", by
   const page = dxfPlanPage(dxf, PISGA_DXF.sheets[id]);
   const region = { x: ORIGIN.x, y: ORIGIN.y, width: 7000, height: 2600 };
   const symbols = dxfSymbols(dxf, id);
-  const windows = symbols.windows;
+  // The west elevation draws a window the floor −1 plan has no symbol for, beside the emergency stair's landing (z 13.69..15.09, 1.40 m wide): the plan frame's west wall.
+  const windows = id === "floor-1" ? [...symbols.windows, { x0: 0.85, x1: 1.17, z0: 13.69, z1: 15.09, arcs: [] }] : symbols.windows;
   const doors = exteriorDoorRects(symbols.doors, outline, symbols.windows);
   const walls = cutDxfWindows(readPlanWalls(page, region, { unitsPerMetre: 100, pens: { colours: [0xff0000] }, closePx: 8 }), windows, doors);
   const openings = openingsByDxfWindows(findOpenings(walls, footprintOf(walls)), windows, outline, doors);
