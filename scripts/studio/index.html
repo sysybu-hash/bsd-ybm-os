@@ -41,7 +41,7 @@
 </style>
 </head>
 <body>
-<header><h1>סטודיו הדמיות</h1><span>רנדר חינמי + FLUX מקומי · הכול רץ על המחשב הזה</span></header>
+<header><h1>סטודיו הדמיות</h1><span>רנדר חינמי + מנוע FLUX המקומי · הכול רץ על המחשב הזה, בלי שליחה לאינטרנט</span></header>
 <main>
   <section>
     <div class="card">
@@ -54,30 +54,30 @@
       <label>מבט</label><div class="views" id="views"></div>
       <label>איכות</label><select id="quality"></select>
       <div class="row"><button id="renderBtn">צור רנדר</button></div>
-      <div class="hint">רנדר רגיל לוקח כ-5–15 שניות. מעקב קרניים: 2 דקות ויותר.</div>
+      <div class="hint">רנדר רגיל לוקח כ-5 עד 15 שניות. מעקב קרניים: כ-2 דקות ויותר.</div>
     </div>
     <div class="card" style="margin-top:14px">
-      <h2>2 · FLUX על הרנדר שנבחר</h2>
+      <h2>2 · FLUX: הפיכת הרנדר לצילום</h2>
       <label>סגנון הנחיה</label><select id="preset"></select>
-      <label>הנחיה (אפשר לערוך, באנגלית)</label><textarea id="prompt"></textarea>
+      <label>ההנחיה שנשלחת ל-FLUX (באנגלית: המנוע מבין אנגלית. אפשר לערוך)</label><textarea id="prompt"></textarea>
       <div class="row">
-        <div><label>צעדים</label><select id="steps"><option value="2" selected>2 (מהיר)</option><option value="4">4 (איכותי)</option></select></div>
-        <div><label>רוחב</label><select id="width"><option value="768">768</option><option value="1024" selected>1024</option><option value="1280">1280</option></select></div>
+        <div><label>צעדי עיבוד</label><select id="steps"><option value="2" selected>2 צעדים (מהיר)</option><option value="4">4 צעדים (איכותי יותר)</option></select></div>
+        <div><label>רוחב (פיקסלים)</label><select id="width"><option value="768">768</option><option value="1024" selected>1024</option><option value="1280">1280</option></select></div>
       </div>
-      <div class="row"><button id="fluxBtn" class="sec">הרץ FLUX</button></div>
-      <div class="hint">1024 עם 2 צעדים ≈ 1–2 דקות. FLUX משנה חומרים ופרטים: בדקו תמיד מול הרנדר.</div>
+      <div class="row"><button id="fluxBtn" class="sec">הרץ FLUX על התמונה הנבחרת</button></div>
+      <div class="hint">1024 עם 2 צעדים: כדקה וחצי. FLUX יכול לשנות חומרים ולהוסיף פרטים שאינם בתוכנית: בדקו תמיד מול הרנדר.</div>
     </div>
   </section>
   <section>
     <div class="card">
-      <h2 id="title">בחרו תמונה</h2>
+      <h2 id="title">עדיין לא נבחרה תמונה</h2>
       <div id="stage"><img id="base" alt=""><img id="top" alt=""><div id="bar"></div></div>
-      <div class="hint">גררו את הפס: שמאל = רנדר חינמי, ימין = FLUX (כשיש). לחצו על תמונה בהיסטוריה כדי להשוות.</div>
+      <div class="hint">גררו את הפס כדי להשוות: צד שמאל הוא הרנדר החינמי וצד ימין הוא תוצאת FLUX (כשיש). לחצו על תמונה בהיסטוריה כדי לראות אותה.</div>
     </div>
     <div id="gallery" class="card"></div>
   </section>
   <section>
-    <div class="card"><h2>תור עבודות</h2><div id="jobs"></div></div>
+    <div class="card"><h2>תור העבודות</h2><div id="jobs"></div></div>
   </section>
 </main>
 <script>
@@ -88,7 +88,7 @@ const api = (p, o) => fetch(p, o).then((r) => r.json());
 async function init() {
   cfg = await api("/api/config");
   $("project").innerHTML = Object.entries(cfg.projects).map(([k, v]) => `<option value="${k}">${v.title}</option>`).join("");
-  $("preset").innerHTML = cfg.presets.map((p) => `<option>${p}</option>`).join("");
+  $("preset").innerHTML = cfg.presets.map((p) => `<option value="${p}">${cfg.presetLabels[p] ?? p}</option>`).join("");
   $("project").onchange = pickProject; $("preset").onchange = () => { $("prompt").value = cfg.presetText[$("preset").value]; };
   $("renderBtn").onclick = render; $("fluxBtn").onclick = flux;
   pickProject(); $("preset").value = "restyle"; $("prompt").value = cfg.presetText.restyle;
@@ -96,7 +96,7 @@ async function init() {
 }
 function pickProject() {
   const p = cfg.projects[$("project").value];
-  $("views").innerHTML = p.views.map((v) => `<span class="chip" data-v="${v}">${v}</span>`).join("");
+  $("views").innerHTML = p.views.map((v) => `<span class="chip" data-v="${v}">${cfg.viewLabels[v] ?? v}</span>`).join("");
   document.querySelectorAll(".chip").forEach((c) => (c.onclick = () => { view = c.dataset.v; document.querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === c)); }));
   view = p.views[0]; document.querySelector(".chip").classList.add("on");
   $("quality").innerHTML = Object.entries(p.qualities).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
@@ -108,9 +108,9 @@ async function render() {
   refresh();
 }
 async function flux() {
-  if (!sel) return alert("בחרו קודם רנדר חינמי מההיסטוריה");
+  if (!sel) return alert("בחרו קודם רנדר חינמי מההיסטוריה (לחיצה על תמונה בצד)");
   const src = sel.replace(/-flux-[^/]*$/, "") === sel ? sel : null;
-  if (!src) return alert("בחרו את הרנדר החינמי (לא תוצאת FLUX) כמקור");
+  if (!src) return alert("בחרו כמקור את הרנדר החינמי ולא תוצאת FLUX");
   await api("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type: "flux", src: sel, preset: $("preset").value, prompt: $("prompt").value, steps: Number($("steps").value), width: Number($("width").value) }) });
   refresh();
 }
@@ -130,13 +130,13 @@ function show(p) {
   renderGallery();
 }
 function renderGallery() {
-  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
+  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות: צרו רנדר ראשון</span>';
   document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = () => show(i.dataset.p)));
 }
 let lastCount = -1;
 async function refresh() {
   const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results")]);
-  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין", running: "רץ…", done: "הסתיים", error: "נכשל" }[j.status]}</span>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות</span>';
+  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל" }[j.status]}</span>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
   if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; if (!sel || !first) show(rs[0]?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
 }
 function setupSlider() {

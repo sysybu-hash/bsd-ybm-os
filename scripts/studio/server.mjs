@@ -29,8 +29,16 @@ fs.mkdirSync(OUT, { recursive: true });
 const PISGA_VIEWS = ["aerial-ne", "aerial-sw", "north-facade", "courtyard", "site", "east-side", "west-side", "roof-top", "end-e", "end-w", "north-terrace", "lobby", "hall", "design", "event-hall", "classroom", "workshop", "computers"];
 const APT20_VIEWS = ["overview", "salon", "salon-wide", "kitchen", "bedroom-1", "bedroom-2", "bedroom-3", "entrance", "bathroom"];
 
+/** Hebrew names for the views and the prompt styles: the page shows these, the scripts get the ids. */
+const VIEW_LABELS = {
+  "aerial-ne": "מבט-על צפון-מזרח", "aerial-sw": "מבט-על דרום-מערב", "north-facade": "חזית צפונית", courtyard: "חצר", site: "האתר והרחוב", "east-side": "צד מזרח", "west-side": "צד מערב", "roof-top": "הגג מלמעלה",
+  "end-e": "קצה מזרחי", "end-w": "קצה מערבי", "north-terrace": "מרפסת צפונית", lobby: "לובי", hall: "אולם", design: "מרחב למידה", "event-hall": "אולם אירועים", classroom: "כיתה", workshop: "סדנה", computers: "חדר מחשבים",
+  overview: "מבט כללי", salon: "סלון", "salon-wide": "סלון רחב", kitchen: "מטבח", "bedroom-1": "חדר שינה 1", "bedroom-2": "חדר שינה 2", "bedroom-3": "חדר שינה 3", entrance: "כניסה", bathroom: "אמבטיה",
+};
+const PRESET_LABELS = { restyle: "כללי: להפוך לצילום", exterior: "חוץ: אבן, זכוכית, שמש", interior: "פנים: טיח, פרקט, אריחים" };
+
 const PROJECTS = {
-  pisga: { title: "מרכז פסגה (DXF)", views: PISGA_VIEWS, qualities: { fast: "מהיר (רסטר)", traced: "מעקב קרניים 512", best: "מעקב קרניים 1024 (איטי)" } },
+  pisga: { title: "מרכז פסגה (DXF)", views: PISGA_VIEWS, qualities: { fast: "מהיר (רסטר)", traced: "מעקב קרניים 512 (כ-2 דקות)", best: "מעקב קרניים 1024 (איטי)" } },
   apt20: { title: "דירה 20 (מדידה ידנית)", views: APT20_VIEWS, qualities: { fast: "רגיל" } },
   pdf: { title: "דירה מ-PDF של תוכנית", views: ["overview"], qualities: { fast: "רגיל" }, needs: ["pdf", "area"] },
 };
@@ -83,7 +91,7 @@ async function doRender(job) {
   job.log += `$ npx ${args.join(" ")}\n`;
   const code = await run(NPX, args, { env, shell: process.platform === "win32" }, job);
   const made = fs.readdirSync(tmp).filter((f) => /\.(jpe?g|png)$/i.test(f));
-  if (code !== 0 || made.length === 0) throw new Error(`render failed (exit ${code})`);
+  if (code !== 0 || made.length === 0) throw new Error(`הרנדר נכשל (קוד ${code}). הפרטים בלוג למעלה.`);
   const name = `${safe(view)}-free-${stamp()}.${made[0].split(".").pop()}`;
   fs.mkdirSync(dir, { recursive: true });
   fs.renameSync(path.join(tmp, made[0]), path.join(dir, name));
@@ -94,7 +102,7 @@ async function doRender(job) {
 async function doFlux(job) {
   const { src, preset, prompt, steps, width } = job.params;
   const source = path.join(OUT, src);
-  if (!source.startsWith(OUT) || !fs.existsSync(source)) throw new Error("source not found");
+  if (!source.startsWith(OUT) || !fs.existsSync(source)) throw new Error("קובץ המקור לא נמצא");
   const base = path.basename(source).replace(/\.(jpe?g|png)$/i, "").replace(/-free-.*/, "");
   const out = path.join(path.dirname(source), `${base}-flux-${stamp()}.jpg`);
   const promptFile = path.join(OUT, "_prompt.txt");
@@ -102,7 +110,7 @@ async function doFlux(job) {
   const args = [path.join(HERE, "flux_job.py"), source, out, promptFile, String(steps ?? 2), String(width ?? 1024)];
   job.log += `$ python flux_job.py ${path.basename(source)} steps=${steps ?? 2} width=${width ?? 1024}\n`;
   const code = await run(PY, args, { env: { ...process.env, FASTSD_DIR: FASTSD } }, job);
-  if (code !== 0 || !fs.existsSync(out)) throw new Error(`FLUX failed (exit ${code})`);
+  if (code !== 0 || !fs.existsSync(out)) throw new Error(`FLUX נכשל (קוד ${code}). הפרטים בלוג למעלה.`);
   return out;
 }
 
@@ -149,13 +157,13 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   try {
     if (url.pathname === "/") return send(res, 200, fs.readFileSync(path.join(HERE, "index.html")), MIME[".html"]);
-    if (url.pathname === "/api/config") return send(res, 200, { projects: PROJECTS, presets: Object.keys(FLUX_PRESETS), presetText: FLUX_PRESETS });
+    if (url.pathname === "/api/config") return send(res, 200, { projects: PROJECTS, presets: Object.keys(FLUX_PRESETS), presetText: FLUX_PRESETS, viewLabels: VIEW_LABELS, presetLabels: PRESET_LABELS });
     if (url.pathname === "/api/results") return send(res, 200, listResults());
     if (url.pathname === "/api/jobs" && req.method === "GET") return send(res, 200, jobs.slice(-40).map((j) => ({ ...j, log: j.log.slice(-1500) })));
     if (url.pathname === "/api/jobs" && req.method === "POST") {
       const b = await readBody(req);
-      if (!["render", "flux"].includes(b.type)) return send(res, 400, { error: "type" });
-      const job = { id: stamp() + Math.random().toString(36).slice(2, 6), type: b.type, title: b.type === "render" ? `${b.project} · ${b.view}` : `FLUX · ${path.basename(b.src ?? "")}`, status: "queued", log: "", created: Date.now(), params: b };
+      if (!["render", "flux"].includes(b.type)) return send(res, 400, { error: "סוג עבודה לא מוכר" });
+      const job = { id: stamp() + Math.random().toString(36).slice(2, 6), type: b.type, title: b.type === "render" ? `רנדר · ${PROJECTS[b.project]?.title ?? b.project} · ${VIEW_LABELS[b.view] ?? b.view}` : `FLUX · ${path.basename(b.src ?? "")}`, status: "queued", log: "", created: Date.now(), params: b };
       jobs.push(job);
       queue.push(job);
       pump();
@@ -163,10 +171,10 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith("/files/")) {
       const f = path.join(OUT, decodeURIComponent(url.pathname.slice(7)));
-      if (!f.startsWith(OUT) || !fs.existsSync(f)) return send(res, 404, "not found", "text/plain");
+      if (!f.startsWith(OUT) || !fs.existsSync(f)) return send(res, 404, "לא נמצא", "text/plain");
       return send(res, 200, fs.readFileSync(f), MIME[path.extname(f).toLowerCase()] ?? "application/octet-stream");
     }
-    send(res, 404, "not found", "text/plain");
+    send(res, 404, "לא נמצא", "text/plain");
   } catch (e) {
     send(res, 500, { error: e instanceof Error ? e.message : String(e) });
   }
