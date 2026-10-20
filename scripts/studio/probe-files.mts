@@ -12,7 +12,8 @@ const { houseProjectFromFiles } = await import("@/lib/projects/building/house-pr
 const paths = process.argv.slice(2);
 const files = new Map<string, Buffer>();
 for (const p of paths) files.set(path.basename(p), fs.readFileSync(p));
-const { project, problems } = houseProjectFromFiles(files);
+const whole = (name: string) => /^[^-]+-(ground|floor\d+|facades)\.dxf$/i.test(name);
+const { project, problems } = houseProjectFromFiles(files, { whole });
 const label = (r: { file: string; sheet?: string }) => (r.sheet ? `${r.file} › ${r.sheet}` : r.file);
 console.log(
   "PROBE " +

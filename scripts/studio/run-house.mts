@@ -25,10 +25,28 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const files = new Map<string, Buffer>();
 for (const p of paths) files.set(path.basename(p), fs.readFileSync(p));
-const { project, problems } = houseProjectFromFiles(files);
+// A file given a floor role is one floor in model space: read whole, not by layout tab (the studio names such copies "<model>-<role>.dxf").
+const whole = (name: string) => /^[^-]+-(ground|floor\d+|facades)\.dxf$/i.test(name);
+const { project, problems } = houseProjectFromFiles(files, { whole });
 for (const p of problems) console.log(`note: ${p}`);
 if (!project) throw new Error(`אי אפשר לבנות בית מהקבצים האלה: ${problems.join(" · ")}`);
 
+// A house's cars are a gate (a missed parking reading); a building whose DXF floors draw no parking at all (a school) is not held to it.
+const { houseSheetReader } = await import("@/lib/projects/building/house-project");
+const reader = houseSheetReader(async (name) => files.get(name)!);
+let parkingDrawn = 0;
+let allDxf = true;
+for (const m of project.models) {
+  for (const ref of m.floors) {
+    if (!/\.dxf$/i.test(ref.file)) { allDxf = false; continue; }
+    parkingDrawn += (await reader.inventory(ref))?.counts.parking ?? 0;
+  }
+}
+const requireCars = !(allDxf && parkingDrawn === 0);
+console.log(`parking drawn: ${parkingDrawn}${requireCars ? "" : " — none, so the cars gate is not applied"}`);
+
+// What the model is checked against: the drawing's own counts (doors, windows, rooms). A mismatch is told to the architect, not buried in the log.
+const quality: string[] = [];
 const t0 = Date.now();
 const { html } = await runPrivateHouseBooklet({
   load: async (name) => {
@@ -40,7 +58,11 @@ const { html } = await runPrivateHouseBooklet({
   ai: false,
   photoreal: false,
   project,
-  say: (s) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s] ${s}`),
+  requireCars,
+  say: (s) => {
+    console.log(`[${((Date.now() - t0) / 1000).toFixed(0)}s] ${s}`);
+    if (/ truth, /.test(s)) quality.push(s.replace(/^.* truth, /, ""));
+  },
   measured: async (m) => {
     const refs = m.state.artefacts ?? {};
     for (const [name, id] of Object.entries(refs)) {
@@ -50,6 +72,7 @@ const { html } = await runPrivateHouseBooklet({
   },
 });
 fs.writeFileSync(path.join(outDir, "booklet.html"), html);
+fs.writeFileSync(path.join(outDir, "quality.json"), JSON.stringify(quality));
 const pdf = await renderHtmlSectionsPdf(html, { sheet: BUILDING_BOOKLET_PAGE, jpegQuality: 80, timeoutMs: 300_000 });
 let file = path.join(outDir, "booklet.pdf");
 try {
