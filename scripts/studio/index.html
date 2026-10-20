@@ -39,7 +39,7 @@
   .hint { color:var(--mut); font-size:13px; margin-top:8px; }
   .job { border-top:1px solid var(--line); padding:8px 0; font-size:13px; }
   .job:first-child { border-top:0; } .job b { display:block; }
-  .st-done { color:var(--ok); } .st-error { color:var(--bad); } .st-running { color:var(--acc); }
+  .st-cancelled { color:var(--mut); } .st-done { color:var(--ok); } .st-error { color:var(--bad); } .st-running { color:var(--acc); }
   pre { margin:6px 0 0; max-height:90px; overflow:auto; background:var(--bg); padding:6px; border-radius:6px; font-size:11px; direction:ltr; white-space:pre-wrap; }
   #gallery { display:grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap:6px; max-height:260px; overflow:auto; }
   #gallery img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; }
@@ -111,7 +111,7 @@
       <div class="hint">סימון תמונה למחיקה: Ctrl + לחיצה (אפשר כמה). הקבצים נמחקים מהדיסק.</div></div>
   </section>
   <section>
-    <div class="card"><h2>תור העבודות</h2><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
+    <div class="card"><h2>תור העבודות</h2><div class="row" style="margin:0 0 8px"><button class="sec" id="clearDone">נקה רשימה שהסתיימה</button></div><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
   </section>
 </main>
 <script>
@@ -133,6 +133,7 @@ async function init() {
   $("delMarked").onclick = async () => { const ps = [...marked]; if (!ps.length) return alert("לא סומנו תמונות (Ctrl + לחיצה)"); if (!confirm(`למחוק ${ps.length} תמונות מהדיסק?`)) return; await post("/api/delete", { paths: ps }); marked.clear(); sel = null; lastCount = -1; refresh(); };
   $("delAll").onclick = async () => { if (!confirm("למחוק את כל תמונות הניסיונות שבתיקיית התוצאות, כולל הדמיות מהפעלות קודמות?")) return; await post("/api/delete", { all: true }); marked.clear(); sel = null; lastCount = -1; refresh(); };
   $("showOld").onchange = () => { lastCount = -1; refresh(); };
+  $("clearDone").onclick = async () => { await post("/api/job-remove", {}); refresh(); };
   $("selAll").onclick = () => { proj().views.forEach((v) => chosen.add(v)); drawViews(); };
   $("selNone").onclick = () => { chosen.clear(); drawViews(); };
   $("full").onclick = () => run(proj().views);
@@ -227,7 +228,8 @@ async function refresh() {
   $("prog").style.width = js.length ? (done / js.length) * 100 + "%" : "0";
   const left = js.filter((j) => j.status === "queued" || j.status === "running").length;
   $("eta").textContent = left ? `נותרו ${left} עבודות בתור. אפשר להשאיר את התוכנה פתוחה ולהמשיך לעבוד במקום אחר.` : "";
-  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל" }[j.status]}</span>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
+  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל", cancelled: "בוטל" }[j.status]}</span> <a data-j="${j.id}" data-a="${j.status === "queued" || j.status === "running" ? "cancel" : "remove"}" style="color:var(--bad);cursor:pointer;float:left">${j.status === "queued" ? "הסר מהתור" : j.status === "running" ? "בטל עבודה" : "הסר מהרשימה"}</a>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
+  document.querySelectorAll("#jobs a").forEach((a) => (a.onclick = async () => { await post(a.dataset.a === "cancel" ? "/api/cancel" : "/api/job-remove", { id: a.dataset.j }); refresh(); }));
   if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; if (!sel || !first) show(rs[0]?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
 }
 function setupSlider() {

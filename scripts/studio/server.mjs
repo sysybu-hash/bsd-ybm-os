@@ -157,7 +157,7 @@ async function pump() {
   running = true;
   while (queue.length) {
     const job = queue.shift();
-    if (job.cancelled) { job.status = "error"; job.log += "בוטל"; continue; }
+    if (job.cancelled) { job.status = "cancelled"; continue; }
     current = job;
     job.status = "running";
     job.started = Date.now();
@@ -173,7 +173,7 @@ async function pump() {
         queue.unshift(next);
       }
     } catch (e) {
-      job.status = "error";
+      job.status = job.cancelled ? "cancelled" : "error";
       job.log += `\n${e instanceof Error ? e.message : String(e)}`;
     }
     job.finished = Date.now();
@@ -303,11 +303,27 @@ http.createServer(async (req, res) => {
       return send(res, 200, { ids: made, batch });
     }
     if (url.pathname === "/api/cancel" && req.method === "POST") {
-      // Stop what is running and drop everything waiting.
-      for (const j of queue) j.cancelled = true;
-      if (current) current.cancelled = true;
-      if (child) { try { execFile("taskkill", ["/F", "/T", "/PID", String(child.pid)], () => {}); } catch { /* gone */ } }
-      queue.length = 0;
+      // With an id: that one job (waiting: out of the queue; running: stopped, the next one starts). Without: everything.
+      const b = await readBody(req);
+      const killRunning = () => { if (child) { try { execFile("taskkill", ["/F", "/T", "/PID", String(child.pid)], () => {}); } catch { /* gone */ } } };
+      const stop = (j) => { j.cancelled = true; if (j.status === "queued") { j.status = "cancelled"; j.finished = Date.now(); const i = queue.indexOf(j); if (i >= 0) queue.splice(i, 1); } };
+      if (b.id) {
+        const j = jobs.find((x) => x.id === b.id);
+        if (!j) return send(res, 404, { error: "העבודה לא נמצאה" });
+        stop(j);
+        if (j === current) killRunning();
+      } else {
+        for (const j of [...queue]) stop(j);
+        if (current) { current.cancelled = true; killRunning(); }
+      }
+      save();
+      return send(res, 200, { ok: true });
+    }
+    if (url.pathname === "/api/job-remove" && req.method === "POST") {
+      // Takes finished, failed and cancelled jobs off the list (a running or waiting one must be cancelled first).
+      const b = await readBody(req);
+      for (let i = jobs.length - 1; i >= 0; i--) if ((b.id ? jobs[i].id === b.id : true) && !["queued", "running"].includes(jobs[i].status)) jobs.splice(i, 1);
+      save();
       return send(res, 200, { ok: true });
     }
     if (url.pathname === "/api/open" && req.method === "POST") {
