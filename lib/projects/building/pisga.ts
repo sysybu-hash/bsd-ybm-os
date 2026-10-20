@@ -445,6 +445,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     if (dxf) {
       for (const d of dxfSymbols(dxf, spec.id as "floor-2" | "floor-1").doors) {
         if (d.x1 < 0 || d.x0 > 54.5) continue;
+        // An exterior door (on the facade, in glass or a stone surround) is built by its opening; only the doors inside swing as leaves here.
+        if (d.z1 > 16.0 || d.z0 < 1.45 || d.x0 < 1.3 || d.x1 > 53.4) continue;
         for (const a of d.arcs) {
           if (a.r < 0.5) continue;
           const [e0, e1] = a.ends;
@@ -719,9 +721,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       const gy = groundAt((ax + bx) / 2, (az + bz) / 2, true);
       prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: gy + 0.1, z: (az + bz) / 2 }, size: { x: len, y: 0.5, z: 0.1 }, rotY: -Math.atan2(bz - az, bx - ax), material: "concrete", tag: "site:kerb-dxf" });
     }
-    // The east exit's short flight (layer מדרגוט, x 52–53.5, z 13.5–14.2): two treads of 0.3 and 0.4 m down from floor −1's door to the landing at +11.87.
-    prims.push({ type: "box", centre: { x: 52.75, y: (12.47 + 11.5) / 2, z: 13.65 }, size: { x: 1.5, y: 12.47 - 11.5, z: 0.3 }, material: "concrete", tag: "site:stair-dxf" });
-    prims.push({ type: "box", centre: { x: 52.75, y: (12.17 + 11.5) / 2, z: 14.0 }, size: { x: 1.5, y: 12.17 - 11.5, z: 0.4 }, material: "concrete", tag: "site:stair-dxf" });
+    // (The sheet's 3-tread flight at x 52–53.5, z 13.5–14.2 is inside the building beside the east exit, within floor −1's wall; it is not built as a site stair.)
     // A grated deck stands at the level of the nearest spot height the sheet marks, within 6 m of its middle.
     const allSpots = (["floor-2", "floor-1", "roof"] as const).flatMap((sheet) => dxfSpotHeights(dxf, sheet));
     const deckLevel = (sf: { ring: Array<[number, number]> }) => {
