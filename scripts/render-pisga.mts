@@ -64,6 +64,8 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "west-stair": { camera: { position: { x: -13, y: 15, z: 24 }, target: { x: -1, y: 9.5, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "ne-corner": { camera: { position: { x: 76, y: 18, z: -15 }, target: { x: 55, y: 8.5, z: 3 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "north-terrace": { camera: { position: { x: 27, y: 17, z: -22 }, target: { x: 27, y: 8, z: -3 }, fovDeg: 45 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "end-e": { camera: { position: { x: 70, y: 22, z: -14 }, target: { x: 55, y: 5, z: 1 }, fovDeg: 40 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "end-w": { camera: { position: { x: -22, y: 22, z: -14 }, target: { x: -2, y: 5, z: 1 }, fovDeg: 40 }, sun: { azimuthDeg: 120, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "east-side": { camera: { position: { x: 84, y: 20, z: -6 }, target: { x: 60, y: 6.5, z: 9 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "west-side": { camera: { position: { x: -32, y: 20, z: 28 }, target: { x: -1, y: 9, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
   courtyard: { camera: { position: { x: 2.2, y: 9.9, z: 19.2 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },

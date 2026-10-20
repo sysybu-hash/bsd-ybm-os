@@ -682,16 +682,14 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         seen.add(k);
         return true;
       });
-    // North of the lobby, over the kindergarten's roof: the sheet's terrace at +8.27 (+931.47) and the technical roof beyond it at +8.08 (+931.28), both inside one wall rectangle (the "מבט דק" lines
-    // x 21.75..33.3, z −8.45..0.95, the wall 0.3 thick, the division at z −3.6). The drawing names the levels, not the parapet's height: 1.1 m, a railing's.
+    // North of the lobby: the terrace the sheets draw at +8.27 (+931.47), its wall rectangle measured off the DXF's block-wall lines (layer קיר בלוק): the long faces at z −3.64/−3.59 and 0.95
+    // (the building's north wall), the west faces at x 22.04/22.09 (to z −2.25 only: the wall is cut, which the model keeps open), the east end at x 32.94. So 10.84 m along the facade and 4.55 m out.
+    // The wall is a 0.2 m parapet 1.1 m over the floor. (An earlier reading took the lines at z −8.45 for the same terrace and made it twice as deep.)
     {
-      const [nx0, nx1, nz0, , nz1] = [21.75, 33.3, -8.45, -3.6, 0.95];
-      const t = 0.3, top = LEVEL.floorMinus2 + 1.1;
-      const slabAt = (z0: number, z1: number, level: number, mat: "paving" | "concrete" | "asphalt", tag: string) => prims.push({ type: "prism", ring: [[nx0, z0], [nx1, z0], [nx1, z1], [nx0, z1]], y0: level - 0.3, y1: level, material: mat, tag });
-      // One terrace, not two: the drawing's +931.47 terrace and +931.28 technical roof differ by 19 cm inside one wall rectangle, so it is laid as a single paved floor at the terrace level
-      // (the user: the front terrace read as too long and cut in the middle), with its parapet round it.
-      slabAt(nz0, nz1, 8.27, "paving", "site:north-terrace");
-      for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx0, nx0 + t, nz0, nz1], [nx1 - t, nx1, nz0, nz1]] as const) {
+      const [nx0, nx1, nz0, nz1] = [22.04, 32.94, -3.64, 0.95];
+      const t = 0.2, top = 8.27 + 1.1;
+      prims.push({ type: "prism", ring: [[nx0, nz0], [nx1, nz0], [nx1, nz1], [nx0, nz1]], y0: 7.97, y1: 8.27, material: "paving", tag: "site:north-terrace" });
+      for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx1 - t, nx1, nz0, nz1], [nx0, nx0 + t, nz0, -2.25]] as const) {
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + top) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: top - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
       }
     }
