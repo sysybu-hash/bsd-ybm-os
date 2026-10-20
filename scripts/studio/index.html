@@ -164,7 +164,7 @@ async function pickFile() {
 ${info.error}`); continue; }
     files.push({ path, project: info.project, label: info.label, area: "" });
   }
-  if (files.length) { $("project").value = files[0].project; pickProject(); }
+  if (files.length) { $("project").value = (files.find((f) => f.project === "pisga") ?? files.find((f) => f.project === "pdf") ?? files[0]).project; pickProject(); }
   drawFiles();
 }
 const base = (p) => p.split(/[\/]/).pop();
@@ -195,10 +195,18 @@ async function run(views) {
   const common = { quality: $("quality").value, width: Number($("size").value), people: $("people").checked, groundPhoto: $("photo").checked, style: $("style").value };
   // With files chosen, each is built by its own pipeline (a PDF is one flat, a DXF has the chosen views, an image goes straight to FLUX); with none, the built-in project is used.
   const plan = files.length ? files.map((f) => ({ project: f.project, file: f.path, area: f.area })) : [{ project: $("project").value, file: undefined, area: $("area").value }];
-  let sent = 0;
+  let sent = 0, asked = false;
   for (const it of plan) {
     const p = cfg.projects[it.project];
-    const vs = it.project === "pdf" || it.project === "image" ? p.views : views.filter((v) => p.views.includes(v));
+    let vs = it.project === "pdf" || it.project === "image" ? p.views : views.filter((v) => p.views.includes(v));
+    if (!vs.length && it.project === "pisga" && files.length && !asked) {
+      // No chosen view fits a drawing: offer every view rather than do nothing.
+      asked = true;
+      if (!confirm(`לא סומנו מבטים שמתאימים לקובצי ה-DXF. להריץ את כל ${p.views.length} המבטים לכל קובץ DXF?
+
+שימו לב: מסלול ה-DXF הנוכחי בנוי למרכז פסגה. שרטוט של בניין אחר לא ייבנה נכון בו.`)) return;
+    }
+    if (!vs.length && it.project === "pisga" && files.length) vs = p.views;
     if (!vs.length) { if (!files.length) return alert("לא סומן אף מבט"); continue; }
     if (it.project === "pdf" && !it.area) { alert(`חסר שטח ברוטו (מ"ר) לקובץ ${base(it.file)}`); return; }
     if ((p.needs || []).includes("file") && !it.file) return alert("יש לבחור קובץ");
