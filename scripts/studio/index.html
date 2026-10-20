@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>סטודיו הדמיות</title>
+<style>
+  :root { --bg:#14161a; --panel:#1d2026; --line:#2c313a; --text:#e8e6e1; --mut:#9aa0aa; --acc:#d4a24c; --ok:#5fb37a; --bad:#e0604f; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f3f1ec; --panel:#fff; --line:#ddd8ce; --text:#23211c; --mut:#6c675c; --acc:#a9761a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, "Segoe UI", Arial, sans-serif; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
+  header h1 { margin:0; font-size:18px; } header span { color:var(--mut); font-size:13px; }
+  main { display:grid; grid-template-columns: 340px 1fr 300px; gap:16px; padding:16px 20px; align-items:start; }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card h2 { margin:0 0 10px; font-size:14px; color:var(--mut); font-weight:600; }
+  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
+  select, input, textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font:inherit; }
+  textarea { min-height:120px; resize:vertical; direction:ltr; font-size:13px; }
+  button { background:var(--acc); color:#1b1500; border:0; border-radius:8px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
+  button.sec { background:transparent; color:var(--text); border:1px solid var(--line); }
+  button:disabled { opacity:.45; cursor:default; }
+  .row { display:flex; gap:8px; margin-top:12px; } .row > * { flex:1; }
+  .views { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .chip { padding:4px 10px; border:1px solid var(--line); border-radius:999px; font-size:13px; cursor:pointer; background:var(--bg); }
+  .chip.on { background:var(--acc); color:#1b1500; border-color:var(--acc); }
+  #stage { position:relative; width:100%; aspect-ratio:3/2; background:#000; border-radius:10px; overflow:hidden; user-select:none; }
+  #stage img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  #top { clip-path: inset(0 0 0 50%); }
+  #bar { position:absolute; top:0; bottom:0; left:50%; width:2px; background:var(--acc); cursor:ew-resize; }
+  #bar::after { content:"◀ ▶"; position:absolute; top:50%; left:-22px; width:46px; text-align:center; background:var(--acc); color:#1b1500; border-radius:6px; font-size:11px; padding:2px 0; transform:translateY(-50%); }
+  .hint { color:var(--mut); font-size:13px; margin-top:8px; }
+  .job { border-top:1px solid var(--line); padding:8px 0; font-size:13px; }
+  .job:first-child { border-top:0; } .job b { display:block; }
+  .st-done { color:var(--ok); } .st-error { color:var(--bad); } .st-running { color:var(--acc); }
+  pre { margin:6px 0 0; max-height:90px; overflow:auto; background:var(--bg); padding:6px; border-radius:6px; font-size:11px; direction:ltr; white-space:pre-wrap; }
+  #gallery { display:grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap:6px; margin-top:12px; max-height:240px; overflow:auto; }
+  #gallery img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; }
+  #gallery img.on { border-color:var(--acc); } #gallery img.flux { outline:2px solid var(--ok); outline-offset:-2px; }
+</style>
+</head>
+<body>
+<header><h1>סטודיו הדמיות</h1><span>רנדר חינמי + FLUX מקומי · הכול רץ על המחשב הזה</span></header>
+<main>
+  <section>
+    <div class="card">
+      <h2>1 · רנדר חינמי</h2>
+      <label>פרויקט</label><select id="project"></select>
+      <div id="pdfBox" hidden>
+        <label>נתיב לקובץ PDF</label><input id="pdf" placeholder="C:\...\דירה 20.pdf">
+        <label>שטח ברוטו מודפס (מ"ר)</label><input id="area" type="number" step="0.01" placeholder="90.86">
+      </div>
+      <label>מבט</label><div class="views" id="views"></div>
+      <label>איכות</label><select id="quality"></select>
+      <div class="row"><button id="renderBtn">צור רנדר</button></div>
+      <div class="hint">רנדר רגיל לוקח כ-5–15 שניות. מעקב קרניים: 2 דקות ויותר.</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h2>2 · FLUX על הרנדר שנבחר</h2>
+      <label>סגנון הנחיה</label><select id="preset"></select>
+      <label>הנחיה (אפשר לערוך, באנגלית)</label><textarea id="prompt"></textarea>
+      <div class="row">
+        <div><label>צעדים</label><select id="steps"><option value="2" selected>2 (מהיר)</option><option value="4">4 (איכותי)</option></select></div>
+        <div><label>רוחב</label><select id="width"><option value="768">768</option><option value="1024" selected>1024</option><option value="1280">1280</option></select></div>
+      </div>
+      <div class="row"><button id="fluxBtn" class="sec">הרץ FLUX</button></div>
+      <div class="hint">1024 עם 2 צעדים ≈ 1–2 דקות. FLUX משנה חומרים ופרטים: בדקו תמיד מול הרנדר.</div>
+    </div>
+  </section>
+  <section>
+    <div class="card">
+      <h2 id="title">בחרו תמונה</h2>
+      <div id="stage"><img id="base" alt=""><img id="top" alt=""><div id="bar"></div></div>
+      <div class="hint">גררו את הפס: שמאל = רנדר חינמי, ימין = FLUX (כשיש). לחצו על תמונה בהיסטוריה כדי להשוות.</div>
+    </div>
+    <div id="gallery" class="card"></div>
+  </section>
+  <section>
+    <div class="card"><h2>תור עבודות</h2><div id="jobs"></div></div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let cfg, results = [], sel = null, view = null;
+const api = (p, o) => fetch(p, o).then((r) => r.json());
+
+async function init() {
+  cfg = await api("/api/config");
+  $("project").innerHTML = Object.entries(cfg.projects).map(([k, v]) => `<option value="${k}">${v.title}</option>`).join("");
+  $("preset").innerHTML = cfg.presets.map((p) => `<option>${p}</option>`).join("");
+  $("project").onchange = pickProject; $("preset").onchange = () => { $("prompt").value = cfg.presetText[$("preset").value]; };
+  $("renderBtn").onclick = render; $("fluxBtn").onclick = flux;
+  pickProject(); $("preset").value = "restyle"; $("prompt").value = cfg.presetText.restyle;
+  setupSlider(); refresh(); setInterval(refresh, 2500);
+}
+function pickProject() {
+  const p = cfg.projects[$("project").value];
+  $("views").innerHTML = p.views.map((v) => `<span class="chip" data-v="${v}">${v}</span>`).join("");
+  document.querySelectorAll(".chip").forEach((c) => (c.onclick = () => { view = c.dataset.v; document.querySelectorAll(".chip").forEach((x) => x.classList.toggle("on", x === c)); }));
+  view = p.views[0]; document.querySelector(".chip").classList.add("on");
+  $("quality").innerHTML = Object.entries(p.qualities).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  $("pdfBox").hidden = !(p.needs || []).includes("pdf");
+}
+async function render() {
+  const project = $("project").value;
+  await api("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type: "render", project, view, quality: $("quality").value, pdf: $("pdf").value, area: $("area").value }) });
+  refresh();
+}
+async function flux() {
+  if (!sel) return alert("בחרו קודם רנדר חינמי מההיסטוריה");
+  const src = sel.replace(/-flux-[^/]*$/, "") === sel ? sel : null;
+  if (!src) return alert("בחרו את הרנדר החינמי (לא תוצאת FLUX) כמקור");
+  await api("/api/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ type: "flux", src: sel, preset: $("preset").value, prompt: $("prompt").value, steps: Number($("steps").value), width: Number($("width").value) }) });
+  refresh();
+}
+const isFlux = (p) => /-flux-/.test(p);
+function pairOf(p) {
+  // The free render a FLUX result came from, or the newest FLUX result made from a free render.
+  const dir = p.slice(0, p.lastIndexOf("/") + 1), base = p.slice(dir.length).replace(/-(free|flux)-.*/, "");
+  if (isFlux(p)) return results.find((r) => !isFlux(r.path) && r.path.startsWith(dir + base + "-free-"))?.path ?? null;
+  return results.find((r) => isFlux(r.path) && r.path.startsWith(dir + base + "-flux-"))?.path ?? null;
+}
+function show(p) {
+  sel = p; $("title").textContent = p;
+  const other = pairOf(p), free = isFlux(p) ? other : p, fx = isFlux(p) ? p : other;
+  $("base").src = "/files/" + encodeURI(free || p);
+  $("top").src = fx ? "/files/" + encodeURI(fx) : "";
+  $("top").style.display = fx ? "block" : "none"; $("bar").style.display = fx ? "block" : "none";
+  renderGallery();
+}
+function renderGallery() {
+  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
+  document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = () => show(i.dataset.p)));
+}
+let lastCount = -1;
+async function refresh() {
+  const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results")]);
+  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין", running: "רץ…", done: "הסתיים", error: "נכשל" }[j.status]}</span>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות</span>';
+  if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; if (!sel || !first) show(rs[0]?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
+}
+function setupSlider() {
+  const stage = $("stage"), bar = $("bar"), top = $("top");
+  let drag = false;
+  const move = (x) => { const r = stage.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (x - r.left) / r.width)); bar.style.left = f * 100 + "%"; top.style.clipPath = `inset(0 0 0 ${f * 100}%)`; };
+  bar.onmousedown = () => (drag = true); window.onmouseup = () => (drag = false); window.onmousemove = (e) => drag && move(e.clientX);
+  stage.onclick = (e) => move(e.clientX);
+}
+init();
+</script>
+</body>
+</html>
