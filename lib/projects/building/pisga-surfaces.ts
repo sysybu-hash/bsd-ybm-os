@@ -85,6 +85,27 @@ export function dxfSurfaces(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.s
 }
 
 
+/** The railing edges already laid in one `surfacePrims` call, by its output array: two hatches that share an edge stand one railing there, not two. */
+const LAID = new WeakMap<Primitive[], Array<[[number, number], [number, number]]>>();
+function alreadyLaid(out: Primitive[], a: [number, number], b: [number, number]): boolean {
+  const laid = LAID.get(out) ?? LAID.set(out, []).get(out)!;
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const ux = (b[0] - a[0]) / len;
+  const uz = (b[1] - a[1]) / len;
+  for (const [p, q] of laid) {
+    const pl = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+    if (Math.abs(((q[0] - p[0]) / pl) * uz - ((q[1] - p[1]) / pl) * ux) > 0.05) continue;
+    const off = Math.abs((p[0] - a[0]) * -uz + (p[1] - a[1]) * ux);
+    if (off > 0.5) continue;
+    const t1 = (p[0] - a[0]) * ux + (p[1] - a[1]) * uz;
+    const t2 = (q[0] - a[0]) * ux + (q[1] - a[1]) * uz;
+    const overlap = Math.min(len, Math.max(t1, t2)) - Math.max(0, Math.min(t1, t2));
+    if (overlap > 0.5 * Math.min(len, pl)) return true;
+  }
+  laid.push([a, b]);
+  return false;
+}
+
 /** The railing round a deck or platform: along each edge of its ring that is not against the building (a drop of 0.5 m or more beyond it is assumed on the free sides). */
 function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[], groundAt: (x: number, z: number) => number, avoid?: (x: number, z: number) => boolean): void {
   for (let i = 0; i < ring.length; i++) {
@@ -103,6 +124,7 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     const outx = mx + (dze / le) * 0.8, outz = mz - (dxe / le) * 0.8, inx = mx - (dze / le) * 0.8, inz = mz + (dxe / le) * 0.8;
     const far = insidePolygon(ring, outx, outz) ? [inx, inz] : [outx, outz];
     if (level - groundAt(far[0]!, far[1]!) < 0.8) continue;
+    if (alreadyLaid(out, a, b)) continue;
     out.push(...railingPrims(a, b, level, `${tag}-rail`));
   }
 }

@@ -166,11 +166,11 @@ for (let i = 0; i < rails.length; i++) {
     const bz = (b.z2 - b.z1) / b.len;
     if (Math.abs(ax * bx + az * bz) < 0.97) continue;
     const off = Math.abs((b.x1 - a.x1) * -az + (b.z1 - a.z1) * ax);
-    if (off > 0.12) continue;
+    if (off > 0.5) continue;
     const t1 = (b.x1 - a.x1) * ax + (b.z1 - a.z1) * az;
     const t2 = (b.x2 - a.x1) * ax + (b.z2 - a.z1) * az;
     const overlap = Math.min(a.len, Math.max(t1, t2)) - Math.max(0, Math.min(t1, t2));
-    if (overlap > 0.5 * Math.min(a.len, b.len) && a.tag !== b.tag) findings.push({ kind: "doubled", where: `${a.tag} ${seg(a)} ↔ ${b.tag} ${seg(b)}`, detail: `חפיפה ${overlap.toFixed(1)} מ' בשני מעקות שונים` });
+    if (overlap > 0.5 * Math.min(a.len, b.len)) findings.push({ kind: "doubled", where: `${a.tag} ${seg(a)} ↔ ${b.tag} ${seg(b)}`, detail: `חפיפה ${overlap.toFixed(1)} מ', מרחק ${off.toFixed(2)} מ' בין הקווים` });
   }
 }
 const label = { unneeded: "מעקה שאינו נחוץ (אין נפילה לידו)", floating: "מעקה תלוי באוויר", doubled: "מעקה כפול" } as const;

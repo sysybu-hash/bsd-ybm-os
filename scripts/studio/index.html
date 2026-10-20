@@ -81,6 +81,8 @@
       <select id="quality"><option value="fast">רגיל (מהיר)</option><option value="traced">מעקב קרניים (איטי יותר, איכותי יותר, למערכת היתר)</option></select>
       <label>סגנון עיצוב (לדירות)</label><select id="style"></select>
       <label>מבט (לדירה ממערכת היתר)</label><select id="view"></select>
+      <div class="row"><button class="sec" id="resetSettings">אפס הגדרות לברירת המחדל</button></div>
+      <div class="hint">ההגדרות נשמרות במחשב הזה ונטענות בהפעלה הבאה.</div>
     </div>
     <div class="card">
       <h2>3 · FLUX: הפיכת הרנדר לצילום</h2>
@@ -176,6 +178,7 @@ async function init() {
   };
   $("clearDone").onclick = async () => { await post("/api/job-remove", {}); refresh(); };
   $("preset").value = "auto";
+  loadSettings();
   drawFiles(); setupSlider(); setupChat(); refresh(); setInterval(refresh, 2500);
 }
 
@@ -291,6 +294,30 @@ function setupSlider() {
   const move = (x) => { const r = stage.getBoundingClientRect(); const f = Math.min(1, Math.max(0, (x - r.left) / r.width)); bar.style.left = f * 100 + "%"; top.style.clipPath = `inset(0 0 0 ${f * 100}%)`; };
   bar.onmousedown = () => (drag = true); window.onmouseup = () => (drag = false); window.onmousemove = (e) => drag && move(e.clientX);
   stage.onclick = (e) => move(e.clientX);
+}
+// ---- settings that stay between sessions (this browser's storage; the page works without it) ----
+const SETTING_IDS = ["quality", "style", "view", "thenFlux", "preset", "prompt", "steps", "width", "cap", "sigma", "seed", "showOld"];
+const DEFAULTS = {};
+function loadSettings() {
+  SETTING_IDS.forEach((id) => { DEFAULTS[id] = $(id).type === "checkbox" ? $(id).checked : $(id).value; });
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("studio.settings") || "{}"); } catch { /* none */ }
+  for (const id of SETTING_IDS) {
+    if (!(id in saved)) continue;
+    const el = $(id);
+    if (el.type === "checkbox") el.checked = !!saved[id];
+    else if (el.tagName !== "SELECT" || [...el.options].some((o) => o.value === String(saved[id]))) el.value = saved[id];
+  }
+  const keep = () => {
+    const out = {};
+    SETTING_IDS.forEach((id) => { out[id] = $(id).type === "checkbox" ? $(id).checked : $(id).value; });
+    try { localStorage.setItem("studio.settings", JSON.stringify(out)); } catch { /* storage off */ }
+  };
+  SETTING_IDS.forEach((id) => $(id).addEventListener("change", keep));
+  $("resetSettings").onclick = () => {
+    SETTING_IDS.forEach((id) => { const el = $(id); if (el.type === "checkbox") el.checked = DEFAULTS[id]; else el.value = DEFAULTS[id]; });
+    try { localStorage.removeItem("studio.settings"); } catch { /* storage off */ }
+  };
 }
 // ---- chat -------------------------------------------------------------------
 let chatLog = [];
