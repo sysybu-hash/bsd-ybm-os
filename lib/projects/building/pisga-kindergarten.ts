@@ -182,5 +182,8 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
   railing(rx1, rz0, rx1, rzu, t0);
   railing(rx0, rzu, rx0, rz1, KINDERGARTEN.roof);
   railing(rx1, rzu, rx1, rz1, KINDERGARTEN.roof);
+  // The upper roof's north edge is a 3.5 m drop onto the terrace wherever the new building does not stand against it: the two ends west and east of the building (x 0.88 and 53.92).
+  railing(rx0, rzu, 0.88 + SHIFT, rzu, KINDERGARTEN.roof);
+  railing(53.92 + SHIFT, rzu, rx1, rzu, KINDERGARTEN.roof);
   return shifted(out, -SHIFT, -SHIFT);
 }

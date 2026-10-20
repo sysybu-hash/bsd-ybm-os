@@ -115,8 +115,7 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     const mz = (b[1] + a[1]) / 2;
     // Against the building's footprint (x 0.88..53.92, z 1.02..16.58, 0.8 m) there is a wall, not a drop.
     if (mx > 0.1 && mx < 54.7 && mz > 0.2 && mz < 17.4) continue;
-    // Not where a stair's own handrail already stands.
-    if (avoid?.(mx, mz)) continue;
+
     // Railings are on the sheets only at the kindergarten's roof and the side exits (the "מעקה" marks at x 5.2, 56.1, 57.6 and the stairs' "מאחז יד"): not along the street-front paving south of z 15, which the drawing leaves open.
     if (mz > 15) continue;
     // Only where it drops: the ground 0.8 m out from the edge is at least 0.8 m under the deck.
@@ -124,8 +123,24 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     const outx = mx + (dze / le) * 0.8, outz = mz - (dxe / le) * 0.8, inx = mx - (dze / le) * 0.8, inz = mz + (dxe / le) * 0.8;
     const far = insidePolygon(ring, outx, outz) ? [inx, inz] : [outx, outz];
     if (level - groundAt(far[0]!, far[1]!) < 0.8) continue;
-    if (alreadyLaid(out, a, b)) continue;
-    out.push(...railingPrims(a, b, level, `${tag}-rail`));
+    // The edge's own railing, but for where a stair's handrail already stands: its runs either side are laid, not the whole edge dropped for the stair's width.
+    const step = 0.25;
+    const n = Math.max(1, Math.ceil(le / step));
+    let from: number | null = null;
+    const lay = (t0: number, t1: number) => {
+      if (t1 - t0 < 0.4 / le) return;
+      const p: [number, number] = [a[0] + dxe * t0, a[1] + dze * t0];
+      const q: [number, number] = [a[0] + dxe * t1, a[1] + dze * t1];
+      if (alreadyLaid(out, p, q)) return;
+      out.push(...railingPrims(p, q, level, `${tag}-rail`));
+    };
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      const blocked = avoid?.(a[0] + dxe * t, a[1] + dze * t) ?? false;
+      if (!blocked && from === null) from = t;
+      if (blocked && from !== null) { lay(from, t); from = null; }
+    }
+    if (from !== null) lay(from, 1);
   }
 }
 
