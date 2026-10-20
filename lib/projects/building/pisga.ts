@@ -1,5 +1,5 @@
 import { dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
-import { dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
+import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
 import { readPdfPage, transformPage, type PdfPage } from "@/lib/projects/building/pdf-paths";
@@ -441,6 +441,23 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       }
     }
 
+    // The doors the sheet swings: each leaf stands open at the arc's far end (the end off the wall's line), a 4 cm timber leaf from its hinge, as the plan draws it.
+    if (dxf) {
+      for (const d of dxfSymbols(dxf, spec.id as "floor-2" | "floor-1").doors) {
+        if (d.x1 < 0 || d.x0 > 54.5) continue;
+        for (const a of d.arcs) {
+          if (a.r < 0.5) continue;
+          const [e0, e1] = a.ends;
+          // The closed leaf lies along the wall: the end whose offset across the wall from the hinge is the smaller. The other end is the open leaf.
+          const across = (e: [number, number]) => Math.min(Math.abs(e[0] - a.hinge[0]), Math.abs(e[1] - a.hinge[1]));
+          const open = across(e0) > across(e1) ? e0 : e1;
+          const len = Math.hypot(open[0] - a.hinge[0], open[1] - a.hinge[1]);
+          if (len < 0.4) continue;
+          prims.push({ type: "box", centre: { x: (open[0] + a.hinge[0]) / 2, y: spec.level + 1.05, z: (open[1] + a.hinge[1]) / 2 }, size: { x: len, y: 2.05, z: 0.04 }, rotY: -Math.atan2(open[1] - a.hinge[1], open[0] - a.hinge[0]), material: "timber", tag: `${spec.id}:door-leaf` });
+        }
+      }
+    }
+
     // Planters in the lobby: tall green by the curtain wall, low by the stair.
     const planters: Array<[number, number, number]> = spec.id === "floor-2" ? [[31.6, 2.2, 1.8], [27.2, 2.2, 1.4], [20.9, 2.2, 1.6]] : [[33.6, 8.8, 1.5], [26.6, 9.4, 1.2]];
     for (const [x, z, h] of planters) {
@@ -696,6 +713,15 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + top) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: top - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
       }
     }
+    // The kerbs and low walls the A4-10 layer draws apart from any hatch: 0.1 m wide, 0.3 m over the ground.
+    for (const [ax, az, bx, bz] of dxfKerbLines(dxf, "floor-1", surfaces)) {
+      const len = Math.hypot(bx - ax, bz - az);
+      const gy = groundAt((ax + bx) / 2, (az + bz) / 2, true);
+      prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: gy + 0.1, z: (az + bz) / 2 }, size: { x: len, y: 0.5, z: 0.1 }, rotY: -Math.atan2(bz - az, bx - ax), material: "concrete", tag: "site:kerb-dxf" });
+    }
+    // The east exit's short flight (layer מדרגוט, x 52–53.5, z 13.5–14.2): two treads of 0.3 and 0.4 m down from floor −1's door to the landing at +11.87.
+    prims.push({ type: "box", centre: { x: 52.75, y: (12.47 + 11.5) / 2, z: 13.65 }, size: { x: 1.5, y: 12.47 - 11.5, z: 0.3 }, material: "concrete", tag: "site:stair-dxf" });
+    prims.push({ type: "box", centre: { x: 52.75, y: (12.17 + 11.5) / 2, z: 14.0 }, size: { x: 1.5, y: 12.17 - 11.5, z: 0.4 }, material: "concrete", tag: "site:stair-dxf" });
     // A grated deck stands at the level of the nearest spot height the sheet marks, within 6 m of its middle.
     const allSpots = (["floor-2", "floor-1", "roof"] as const).flatMap((sheet) => dxfSpotHeights(dxf, sheet));
     const deckLevel = (sf: { ring: Array<[number, number]> }) => {

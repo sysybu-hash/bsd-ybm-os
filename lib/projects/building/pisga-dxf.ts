@@ -788,8 +788,15 @@ export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag
         if (L > 1.5) for (const e of [-1, 1]) put(e * (L / 2 - 0.1), 0, 0.2, 0.25, W, 0.4, "sofaFabric");
         break;
       case "cabinet":
-        put(0, 0, L, 0.9, W, 0, "cabinet");
-        put(0, 0, L + 0.02, 0.03, W + 0.02, 0.9, "worktop");
+        if (L > 1.5 && W >= 0.5) {
+          // A long desk (computer rooms, classrooms): a 74 cm top on end panels and a back panel, open in front, so a chair slides under it.
+          put(0, 0, L, 0.04, W, 0.72, "worktop");
+          for (const e of [-1, 1]) put(e * (L / 2 - 0.02), 0, 0.04, 0.72, W, 0, "cabinet");
+          put(0, -W / 2 + 0.02, L, 0.5, 0.03, 0.2, "cabinet");
+        } else {
+          put(0, 0, L, 0.9, W, 0, "cabinet");
+          put(0, 0, L + 0.02, 0.03, W + 0.02, 0.9, "worktop");
+        }
         break;
       case "round-table":
       case "table":

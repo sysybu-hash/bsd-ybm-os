@@ -169,3 +169,33 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
   return out;
 }
 
+
+
+/**
+ * The lines of the A4-10 layer (the kindergarten's imported plan) that bound no hatch: kerbs and low walls the sheet draws. Each segment of 0.8 m or more whose
+ * middle is not inside a surface (grown by 0.3 m) comes back as [ax, az, bx, bz] in the plan frame.
+ */
+export function dxfKerbLines(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.sheets, surfaces: DxfSurface[]): Array<[number, number, number, number]> {
+  const left = PISGA_DXF.sheets[sheet];
+  const { frameY, width, height, corner } = PISGA_DXF;
+  const shift = sheet === "roof" ? -152 : 0;
+  const at = (q: Pt): [number, number] => [(q.x - left - corner.x - shift) / 100 + 0.88, (frameY + corner.y - q.y) / 100 + 1.02];
+  const out: Array<[number, number, number, number]> = [];
+  const seen = new Set<string>();
+  for (const p of flattenDxf(drawing, entitiesWithin(drawing, { centre: { x: left + width / 2, y: frameY + height / 2 }, width, height }))) {
+    if (!/^A4-10$/.test(p.layer) || !p.pts || p.pts.length < 2 || p.rings) continue;
+    for (let i = 1; i < p.pts.length; i++) {
+      const a = at(p.pts[i - 1]!);
+      const b = at(p.pts[i]!);
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 0.8) continue;
+      const mx = (a[0] + b[0]) / 2;
+      const mz = (a[1] + b[1]) / 2;
+      if (surfaces.some((s) => insidePolygon(s.ring, mx, mz) || s.ring.some((q) => Math.hypot(q[0] - mx, q[1] - mz) < 0.3))) continue;
+      const k = `${mx.toFixed(1)}|${mz.toFixed(1)}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push([a[0], a[1], b[0], b[1]]);
+    }
+  }
+  return out;
+}

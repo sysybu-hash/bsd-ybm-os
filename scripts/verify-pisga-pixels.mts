@@ -31,13 +31,13 @@ const W = (X1 - X0) * PPM, H = (Z1 - Z0) * PPM;
 
 type Cls = { id: string; layers: RegExp; tags: RegExp; band: [number, number]; tol: number; note?: string };
 const CLASSES: Cls[] = [
-  { id: "walls", layers: /^(קיר בטון|קיר בלוק)/, tags: /^floor-[12](:fin)?$/, band: [0.5, 2.5], tol: 0.12 },
+  { id: "walls", layers: /^(קיר בטון|קיר בלוק)/, tags: /^floor-[12](:fin)?$|^site:north-parapet$/, band: [0.5, 2.5], tol: 0.12 },
   { id: "windows", layers: /^חלון גוטליב/, tags: /:(window|curtain|sill|surround|glazing)$/, band: [0.3, 3.4], tol: 0.3, note: "opening position within a wall's thickness" },
-  { id: "doors", layers: /^דלטוט גוטליב/, tags: /:door$/, band: [0.1, 2.6], tol: 0.25, note: "the drawing's swing arcs, not the leaf" },
+  { id: "doors", layers: /^דלטוט גוטליב/, tags: /:(door|door-leaf)$/, band: [0.1, 2.6], tol: 0.25, note: "the drawing's swing arcs, not the leaf" },
   { id: "furniture", layers: /^(רהיטים|furniture|ARREDI)/, tags: /:inside:(furniture)$/, band: [0.05, 2.2], tol: 0.2 },
   { id: "fixtures", layers: /^כלים סניטריים/, tags: /:inside:(fixture|partition)$/, band: [0.05, 2.2], tol: 0.2 },
   { id: "stairs", layers: /^מדרגוט/, tags: /stair/, band: [-1, 4], tol: 0.25 },
-  { id: "surfaces", layers: /^(מילוי גוטליב|A4-10)/, tags: /^site:surface|^site:(courtyard|colonnade|north-terrace)|^roof:(plaza|parking)|:grate|-platform/, band: [-3, 25], tol: 0.4 },
+  { id: "surfaces", layers: /^(מילוי גוטליב|A4-10)/, tags: /^site:surface|^site:kerb-dxf|^site:(courtyard|colonnade|north-terrace)|^roof:(plaza|parking)|:grate|-platform/, band: [-3, 25], tol: 0.4 },
 ];
 
 const idx = (x: number, z: number): [number, number] => [Math.round((x - X0) * PPM), Math.round((z - Z0) * PPM)];
