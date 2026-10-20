@@ -43,6 +43,7 @@
   pre { margin:6px 0 0; max-height:90px; overflow:auto; background:var(--bg); padding:6px; border-radius:6px; font-size:11px; direction:ltr; white-space:pre-wrap; }
   #gallery { display:grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap:6px; max-height:260px; overflow:auto; }
   #gallery img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; }
+  #gallery img.mk { opacity:.4; outline:3px solid var(--bad); }
   #gallery img.on { border-color:var(--acc); } #gallery img.flux { outline:2px solid var(--ok); outline-offset:-2px; }
   details summary { cursor:pointer; color:var(--mut); font-size:13px; margin-top:10px; }
   .bar2 { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:6px; } .bar2 > i { display:block; height:100%; background:var(--acc); width:0; transition:width .4s; }
@@ -103,7 +104,10 @@
       <div class="hint">גררו את הפס להשוואה: צד שמאל הוא הרנדר החינמי וצד ימין תוצאת FLUX (כשיש). לחצו על תמונה בהיסטוריה לצפייה.</div>
       <div class="row"><button class="sec" id="showFile">הצג בתיקייה</button></div>
     </div>
-    <div class="card"><div id="gallery"></div></div>
+    <div class="card"><div id="gallery"></div>
+      <div class="row"><button class="sec" id="delMarked">מחק את המסומנות</button><button class="bad" id="delAll">מחק את כל הניסיונות</button></div>
+      <label class="chk"><input type="checkbox" id="showOld"> הצג גם הדמיות מהפעלות קודמות</label>
+      <div class="hint">סימון תמונה למחיקה: Ctrl + לחיצה (אפשר כמה). הקבצים נמחקים מהדיסק.</div></div>
   </section>
   <section>
     <div class="card"><h2>תור העבודות</h2><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
@@ -111,7 +115,7 @@
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-let cfg, results = [], sel = null, picked = "", chosen = new Set();
+let marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
 const api = (p, o) => fetch(p, o).then((r) => r.json());
 const post = (p, b) => api(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b ?? {}) });
 const proj = () => cfg.projects[$("project").value];
@@ -125,6 +129,9 @@ async function init() {
   $("project").onchange = () => { picked = picked && !proj().accepts.length ? "" : picked; pickProject(); };
   $("preset").onchange = () => { $("prompt").value = cfg.presetText[$("preset").value] ?? ""; };
   $("pick").onclick = pickFile; $("openOut").onclick = () => post("/api/open", {}); $("showFile").onclick = () => sel && post("/api/open", { path: sel });
+  $("delMarked").onclick = async () => { const ps = [...marked]; if (!ps.length) return alert("לא סומנו תמונות (Ctrl + לחיצה)"); if (!confirm(`למחוק ${ps.length} תמונות מהדיסק?`)) return; await post("/api/delete", { paths: ps }); marked.clear(); sel = null; lastCount = -1; refresh(); };
+  $("delAll").onclick = async () => { if (!confirm("למחוק את כל תמונות הניסיונות שבתיקיית התוצאות, כולל הדמיות מהפעלות קודמות?")) return; await post("/api/delete", { all: true }); marked.clear(); sel = null; lastCount = -1; refresh(); };
+  $("showOld").onchange = () => { lastCount = -1; refresh(); };
   $("selAll").onclick = () => { proj().views.forEach((v) => chosen.add(v)); drawViews(); };
   $("selNone").onclick = () => { chosen.clear(); drawViews(); };
   $("full").onclick = () => run(proj().views);
@@ -190,12 +197,12 @@ function show(p) {
   renderGallery();
 }
 function renderGallery() {
-  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
-  document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = () => show(i.dataset.p)));
+  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on " : ""}${marked.has(r.path) ? "mk" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
+  document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = (e) => { if (e.ctrlKey) { marked.has(i.dataset.p) ? marked.delete(i.dataset.p) : marked.add(i.dataset.p); renderGallery(); } else show(i.dataset.p); }));
 }
 let lastCount = -1;
 async function refresh() {
-  const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results")]);
+  const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results" + ($("showOld").checked ? "?all=1" : ""))]);
   const done = js.filter((j) => j.status === "done" || j.status === "error").length;
   $("prog").style.width = js.length ? (done / js.length) * 100 + "%" : "0";
   const left = js.filter((j) => j.status === "queued" || j.status === "running").length;

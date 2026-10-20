@@ -58,6 +58,8 @@ const FLUX_PRESETS = {
 };
 const INTERIOR_VIEWS = new Set(["lobby", "hall", "design", "event-hall", "classroom", "workshop", "computers", "salon", "salon-wide", "kitchen", "bedroom-1", "bedroom-2", "bedroom-3", "entrance", "bathroom"]);
 
+// A clean start: results older than this run are hidden unless asked for ("show previous"), and finished jobs are not carried over.
+const SINCE = Date.now();
 const STATE = path.join(OUT, "_state.json");
 const LOG = path.join(OUT, "_server.log");
 const note = (m) => { try { fs.appendFileSync(LOG, `${new Date().toISOString()} ${m}\n`); } catch { /* disk */ } };
@@ -204,7 +206,7 @@ function resume() {
   let list = [];
   try { list = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch { return; }
   for (const j of list) {
-    jobs.push(j);
+    if (j.status === "running" || j.status === "queued") jobs.push(j);
     if (j.status === "running" || j.status === "queued") { j.status = "queued"; j.log = (j.log ?? "") + "\n[התוכנה הופעלה מחדש: העבודה חוזרת לתור]\n"; queue.push(j); }
     else if (j.status === "done" && j.type === "render" && j.params?.thenFlux && !j.fluxQueued && j.result) {
       j.fluxQueued = true;
@@ -214,14 +216,14 @@ function resume() {
   if (queue.length) { note(`resumed ${queue.length} jobs`); setTimeout(pump, 500); }
 }
 
-function listResults() {
+function listResults(all) {
   const out = [];
   const walk = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name.startsWith("_")) continue;
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.(jpe?g|png)$/i.test(e.name)) out.push({ path: rel(p), time: fs.statSync(p).mtimeMs });
+      else if (/\.(jpe?g|png)$/i.test(e.name) && (all || fs.statSync(p).mtimeMs >= SINCE)) out.push({ path: rel(p), time: fs.statSync(p).mtimeMs });
     }
   };
   walk(OUT);
@@ -264,7 +266,20 @@ http.createServer(async (req, res) => {
       const picked = await new Promise((r) => execFile("powershell.exe", ["-NoProfile", "-STA", "-Command", ps], { encoding: "utf8", windowsHide: false }, (_e, out) => r(String(out ?? "").trim())));
       return send(res, 200, { path: picked });
     }
-    if (url.pathname === "/api/results") return send(res, 200, listResults());
+    if (url.pathname === "/api/results") return send(res, 200, listResults(url.searchParams.get("all") === "1"));
+    if (url.pathname === "/api/delete" && req.method === "POST") {
+      // Deleting attempts: chosen files, or every result (and the half-made temp folders), and the list of finished jobs.
+      const b = await readBody(req);
+      let n = 0;
+      const rm = (p) => { try { fs.rmSync(p, { force: true }); n++; } catch { /* in use */ } };
+      if (b.all) {
+        for (const r of listResults(true)) rm(path.join(OUT, r.path));
+        for (const d of fs.readdirSync(OUT, { withFileTypes: true })) if (d.isDirectory()) fs.rmSync(path.join(d.parentPath ?? OUT, d.name, "_tmp"), { recursive: true, force: true });
+      } else for (const p of b.paths ?? []) { const f = path.join(OUT, p); if (f.startsWith(OUT) && /\.(jpe?g|png)$/i.test(f)) rm(f); }
+      for (let i = jobs.length - 1; i >= 0; i--) if (jobs[i].status === "done" || jobs[i].status === "error") jobs.splice(i, 1);
+      save();
+      return send(res, 200, { deleted: n });
+    }
     if (url.pathname === "/api/jobs" && req.method === "GET") return send(res, 200, jobs.slice(-200).map((j) => ({ id: j.id, type: j.type, title: j.title, status: j.status, batch: j.batch, result: j.result, created: j.created, started: j.started, finished: j.finished, log: j.status === "queued" ? "" : j.log.slice(-1200) })));
     if (url.pathname === "/api/jobs" && req.method === "POST") {
       const b = await readBody(req);
