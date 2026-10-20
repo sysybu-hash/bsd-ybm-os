@@ -55,7 +55,8 @@
   <section>
     <div class="card">
       <h2>1 · מה להדמות</h2>
-      <div class="row" style="margin-top:0"><button id="pick">בחירת קובץ…</button></div>
+      <div class="row" style="margin-top:0"><button id="pick">בחירת קבצים…</button></div>
+      <div id="files"></div>
       <div id="file">אפשר לעבוד בלי קובץ (מרכז פסגה מהשרטוט המובנה, או דירה 20). סוגי קבצים: PDF של תוכנית דירה, DXF, תמונה (JPG/PNG/WEBP).</div>
       <label>פרויקט</label><select id="project"></select>
       <div id="pdfBox" hidden>
@@ -115,7 +116,7 @@
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-let marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
+let files = [], marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
 const api = (p, o) => fetch(p, o).then((r) => r.json());
 const post = (p, b) => api(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b ?? {}) });
 const proj = () => cfg.projects[$("project").value];
@@ -126,7 +127,7 @@ async function init() {
   $("preset").innerHTML = `<option value="auto">אוטומטי: חוץ או פנים לפי המבט</option>` + cfg.presets.map((p) => `<option value="${p}">${cfg.presetLabels[p] ?? p}</option>`).join("");
   $("style").innerHTML = cfg.styles.map((s) => `<option value="${s}">${cfg.styleLabels[s] ?? s}</option>`).join("");
   $("style").value = "haredi_classic";
-  $("project").onchange = () => { picked = picked && !proj().accepts.length ? "" : picked; pickProject(); };
+  $("project").onchange = () => pickProject();
   $("preset").onchange = () => { $("prompt").value = cfg.presetText[$("preset").value] ?? ""; };
   $("pick").onclick = pickFile; $("openOut").onclick = () => post("/api/open", {}); $("showFile").onclick = () => sel && post("/api/open", { path: sel });
   $("delMarked").onclick = async () => { const ps = [...marked]; if (!ps.length) return alert("לא סומנו תמונות (Ctrl + לחיצה)"); if (!confirm(`למחוק ${ps.length} תמונות מהדיסק?`)) return; await post("/api/delete", { paths: ps }); marked.clear(); sel = null; lastCount = -1; refresh(); };
@@ -142,19 +143,29 @@ async function init() {
   setupSlider(); refresh(); setInterval(refresh, 2500);
 }
 async function pickFile() {
-  const { path } = await api("/api/pick");
-  if (!path) return;
-  const info = await api("/api/probe?path=" + encodeURIComponent(path));
-  if (!info.ok) { alert(info.error); return; }
-  picked = path; $("project").value = info.project; pickProject();
-  $("file").textContent = `${info.label}: ${path}`;
+  const { paths } = await api("/api/pick");
+  for (const path of paths ?? []) {
+    if (files.some((f) => f.path === path)) continue;
+    const info = await api("/api/probe?path=" + encodeURIComponent(path));
+    if (!info.ok) { alert(`${path}
+${info.error}`); continue; }
+    files.push({ path, project: info.project, label: info.label, area: "" });
+  }
+  if (files.length) { $("project").value = files[0].project; pickProject(); }
+  drawFiles();
+}
+const base = (p) => p.split(/[\/]/).pop();
+function drawFiles() {
+  $("files").innerHTML = files.map((f, i) => `<div class="job"><b style="direction:ltr;text-align:right">${base(f.path)}</b>${f.label}${f.project === "pdf" ? ` · שטח ברוטו (מ"ר): <input data-i="${i}" class="ar" type="number" step="0.01" value="${f.area}" style="width:90px;display:inline">` : ""} <a data-d="${i}" style="color:var(--bad);cursor:pointer">הסר</a></div>`).join("");
+  document.querySelectorAll("#files .ar").forEach((x) => (x.oninput = () => (files[x.dataset.i].area = x.value)));
+  document.querySelectorAll("#files a").forEach((x) => (x.onclick = () => { files.splice(Number(x.dataset.d), 1); drawFiles(); }));
+  $("file").textContent = files.length ? `${files.length} קבצים: כל קובץ ייבנה בנפרד לפי סוגו, והמבטים המסומנים יחולו על כל קובץ שיש לו מבטים.` : "אפשר לעבוד בלי קובץ (מרכז פסגה מהשרטוט המובנה, או דירה 20). סוגי קבצים: PDF של תוכנית דירה, DXF, תמונה. אפשר לבחור כמה קבצים יחד.";
 }
 function pickProject() {
   const p = proj();
   chosen = new Set(p.views.slice(0, 1));
   $("quality").innerHTML = Object.entries(p.qualities).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
   $("pdfBox").hidden = !(p.needs || []).includes("area");
-  if (!picked) $("file").textContent = p.fileLabel ? `${p.fileLabel}: לא נבחר (${p.defaultFile ? "ייעשה שימוש בקובץ המובנה" : "חובה לבחור"})` : "לפרויקט הזה אין קובץ קלט: הוא מובנה.";
   $("fluxBtn").disabled = false;
   drawViews();
 }
@@ -167,13 +178,22 @@ function drawViews() {
 }
 const fluxParams = () => ({ preset: $("preset").value, prompt: $("prompt").value, steps: Number($("steps").value), width: Number($("width").value), cap: Number($("cap").value), sigma: Number($("sigma").value), seed: Number($("seed").value) });
 async function run(views) {
-  const p = proj(), project = $("project").value;
-  if (!views.length) return alert("לא סומן אף מבט");
-  if ((p.needs || []).includes("file") && !picked) return alert("יש לבחור קובץ");
-  if (project === "pdf" && !$("area").value) return alert('חסר שטח ברוטו מודפס (מ"ר)');
-  const render = { quality: $("quality").value, width: Number($("size").value), people: $("people").checked, groundPhoto: $("photo").checked, file: picked || undefined, area: $("area").value, style: $("style").value };
-  const r = await post("/api/jobs", { type: "batch", project, views, render, flux: $("thenFlux").checked ? fluxParams() : null });
-  if (r.error) alert(r.error);
+  const flux = $("thenFlux").checked ? fluxParams() : null;
+  const common = { quality: $("quality").value, width: Number($("size").value), people: $("people").checked, groundPhoto: $("photo").checked, style: $("style").value };
+  // With files chosen, each is built by its own pipeline (a PDF is one flat, a DXF has the chosen views, an image goes straight to FLUX); with none, the built-in project is used.
+  const plan = files.length ? files.map((f) => ({ project: f.project, file: f.path, area: f.area })) : [{ project: $("project").value, file: undefined, area: $("area").value }];
+  let sent = 0;
+  for (const it of plan) {
+    const p = cfg.projects[it.project];
+    const vs = it.project === "pdf" || it.project === "image" ? p.views : views.filter((v) => p.views.includes(v));
+    if (!vs.length) { if (!files.length) return alert("לא סומן אף מבט"); continue; }
+    if (it.project === "pdf" && !it.area) { alert(`חסר שטח ברוטו (מ"ר) לקובץ ${base(it.file)}`); return; }
+    if ((p.needs || []).includes("file") && !it.file) return alert("יש לבחור קובץ");
+    const r = await post("/api/jobs", { type: "batch", project: it.project, views: vs, render: { ...common, file: it.file, area: it.area }, flux });
+    if (r.error) return alert(r.error);
+    sent += vs.length;
+  }
+  if (!sent) alert("אין מבטים שמתאימים לקבצים שנבחרו");
   refresh();
 }
 async function fluxOne() {

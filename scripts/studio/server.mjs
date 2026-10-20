@@ -184,7 +184,8 @@ async function pump() {
 }
 
 function makeJob(type, params, batch) {
-  const label = type === "render" ? `רנדר · ${PROJECTS[params.project]?.title ?? params.project} · ${VIEW_LABELS[params.view] ?? params.view}` : `FLUX · ${VIEW_LABELS[params.view] ?? path.basename(params.src ?? "")}`;
+  const fileName = params.file ? ` · ${path.basename(params.file)}` : "";
+  const label = type === "render" ? `רנדר · ${PROJECTS[params.project]?.title ?? params.project}${fileName} · ${VIEW_LABELS[params.view] ?? params.view}` : `FLUX · ${VIEW_LABELS[params.view] ?? path.basename(params.src ?? "")}`;
   const job = { id: stamp() + Math.random().toString(36).slice(2, 6), type, title: label, status: "queued", log: "", created: Date.now(), params, batch: batch ?? null };
   jobs.push(job);
   save();
@@ -262,9 +263,9 @@ http.createServer(async (req, res) => {
     }
     if (url.pathname === "/api/pick") {
       // The system's own "open file" window, so any file on the machine can be chosen (a page cannot read a real path by itself).
-      const ps = "Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.OpenFileDialog; $f.Title='בחירת קובץ'; $f.Filter='כל הקבצים הנתמכים|*.pdf;*.dxf;*.jpg;*.jpeg;*.png;*.webp|כל הקבצים|*.*'; $o=New-Object System.Windows.Forms.Form; $o.TopMost=$true; if($f.ShowDialog($o) -eq 'OK'){[Console]::OutputEncoding=[Text.Encoding]::UTF8; Write-Output $f.FileName}";
+      const ps = "Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.OpenFileDialog; $f.Title='בחירת קבצים (אפשר כמה)'; $f.Multiselect=$true; $f.Filter='כל הקבצים הנתמכים|*.pdf;*.dxf;*.jpg;*.jpeg;*.png;*.webp|כל הקבצים|*.*'; $o=New-Object System.Windows.Forms.Form; $o.TopMost=$true; if($f.ShowDialog($o) -eq 'OK'){[Console]::OutputEncoding=[Text.Encoding]::UTF8; $f.FileNames | ForEach-Object { Write-Output $_ }}";
       const picked = await new Promise((r) => execFile("powershell.exe", ["-NoProfile", "-STA", "-Command", ps], { encoding: "utf8", windowsHide: false }, (_e, out) => r(String(out ?? "").trim())));
-      return send(res, 200, { path: picked });
+      return send(res, 200, { paths: picked.split(/\r?\n/).map((x) => x.trim()).filter(Boolean) });
     }
     if (url.pathname === "/api/results") return send(res, 200, listResults(url.searchParams.get("all") === "1"));
     if (url.pathname === "/api/delete" && req.method === "POST") {
