@@ -15,6 +15,7 @@ import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { runChat } from "./agent.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -270,6 +271,36 @@ function listResults(all) {
   return out.sort((a, b) => b.time - a.time);
 }
 
+/** One job per item (a house is one item made of several files); FLUX follows the single-picture kinds when asked. */
+function enqueueBuild(items, flux, batch = stamp()) {
+  const ids = [];
+  for (const it of items) {
+    const single = it.project !== "house" && it.project !== "permit";
+    const j = makeJob("render", { ...it, thenFlux: !!flux && single, flux: flux ?? undefined }, batch);
+    queue.push(j);
+    ids.push(j.id);
+  }
+  pump();
+  return ids;
+}
+const fluxDefaults = () => ({ preset: "auto", steps: 2, width: 1024, cap: 14, sigma: 30, seed: 0 });
+const probeHouse = (paths) => new Promise((r) => {
+  const c = spawn(NPX, ["tsx", "--conditions=react-server", "scripts/studio/probe-files.mts", ...paths].map((x) => (process.platform === "win32" && /\s/.test(x) ? `"${x}"` : x)), { cwd: ROOT, windowsHide: true, shell: process.platform === "win32" });
+  let o = "";
+  c.stdout.on("data", (d) => (o += d));
+  c.stderr.on("data", (d) => (o += d));
+  c.on("close", () => { const line = o.split("\n").find((l) => l.startsWith("PROBE ")); r(line ? JSON.parse(line.slice(6)) : { ok: false, problems: ["הבדיקה נכשלה: " + o.slice(-300)], models: [] }); });
+  c.on("error", () => r({ ok: false, problems: ["הבדיקה לא הופעלה"], models: [] }));
+});
+const chatDeps = {
+  ROOT, KINDS, EXT_KINDS, NOT_SUPPORTED, probeHouse, fluxDefaults,
+  startBuild: enqueueBuild,
+  status: () => ({ counts: jobs.reduce((a, j) => ((a[j.status] = (a[j.status] ?? 0) + 1), a), {}), jobs: jobs.slice(-15).map((j) => ({ id: j.id, title: j.title, status: j.status, result: j.result })), results: listResults(false).slice(0, 25).map((r) => r.path) }),
+  jobLog: (id) => { const j = jobs.find((x) => x.id === id); return j ? { status: j.status, log: j.log.slice(-1800) } : null; },
+  cancel: (ids) => { const set = ids?.length ? new Set(ids) : null; let n = 0; for (const j of jobs) if ((!set || set.has(j.id)) && (j.status === "queued" || j.status === "running")) { j.cancelled = true; if (j.status === "queued") { j.status = "cancelled"; const i = queue.indexOf(j); if (i >= 0) queue.splice(i, 1); } else if (child) execFile("taskkill", ["/F", "/T", "/PID", String(child.pid)], () => {}); n++; } save(); return { cancelled: n }; },
+  runFlux: (p) => { const src = String(p.src ?? ""); if (!fs.existsSync(path.join(OUT, src))) return { error: "תמונת המקור לא נמצאה" }; const j = makeJob("flux", { ...fluxDefaults(), ...p, src, view: "" }); queue.push(j); pump(); return { queued: j.id }; },
+};
+
 const send = (res, code, body, type = "application/json; charset=utf-8") => {
   res.writeHead(code, { "content-type": type, "cache-control": "no-store" });
   res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
@@ -292,6 +323,10 @@ http.createServer(async (req, res) => {
       const kinds = EXT_KINDS[ext];
       if (!kinds) return send(res, 200, { ok: false, error: `סוג קובץ לא נתמך (${ext || "ללא סיומת"}). נתמכים: DXF, DWF, PDF, JPG, PNG, WEBP` });
       return send(res, 200, { ok: true, kinds, size: fs.statSync(f).size });
+    }
+    if (url.pathname === "/api/chat" && req.method === "POST") {
+      const b = await readBody(req);
+      return send(res, 200, await runChat({ messages: b.messages ?? [], ui: b.ui, deps: chatDeps }));
     }
     if (url.pathname === "/api/probe-house" && req.method === "POST") {
       // What the platform's house reader makes of these files (models, floors, facades, what is missing), without building anything.
@@ -334,13 +369,7 @@ http.createServer(async (req, res) => {
       const batch = stamp() + Math.random().toString(36).slice(2, 5);
       const made = [];
       if (b.type === "build") {
-        // One job per item the page lists (a house is one item made of several files); FLUX follows the single-picture kinds when asked.
-        for (const it of b.items ?? []) {
-          const single = it.project !== "house" && it.project !== "permit";
-          const j = makeJob("render", { ...it, thenFlux: !!b.flux && single, flux: b.flux ?? undefined }, batch);
-          queue.push(j);
-          made.push(j.id);
-        }
+        made.push(...enqueueBuild(b.items ?? [], b.flux ?? null, batch));
       } else if (b.type === "batch") {
         for (const view of b.views ?? []) {
           const params = { ...b.render, project: b.project, view, thenFlux: !!b.flux, flux: b.flux ? { ...b.flux, preset: b.flux.preset } : undefined };
