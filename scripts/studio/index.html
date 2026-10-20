@@ -11,26 +11,27 @@
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui, "Segoe UI", Arial, sans-serif; }
   header { padding:12px 20px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; gap:14px; }
   header h1 { margin:0; font-size:18px; } header span { color:var(--mut); font-size:13px; flex:1; }
-  main { display:grid; grid-template-columns: 380px 1fr 300px; gap:16px; padding:16px 20px; align-items:start; }
+  main { display:grid; grid-template-columns: 400px 1fr 300px; gap:16px; padding:16px 20px; align-items:start; }
   @media (max-width: 1150px) { main { grid-template-columns: 1fr; } }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
   .card h2 { margin:0 0 10px; font-size:14px; color:var(--mut); font-weight:600; }
   label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
   label.chk { display:flex; gap:8px; align-items:center; color:var(--text); margin:8px 0 0; cursor:pointer; }
   label.chk input { width:auto; }
-  select, input, textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:8px 10px; font:inherit; }
+  select, input, textarea { width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:7px; padding:7px 9px; font:inherit; }
   textarea { min-height:110px; resize:vertical; direction:ltr; font-size:13px; }
   button { background:var(--acc); color:#1b1500; border:0; border-radius:8px; padding:9px 14px; font:inherit; font-weight:600; cursor:pointer; }
   button.sec { background:transparent; color:var(--text); border:1px solid var(--line); }
   button.bad { background:transparent; color:var(--bad); border:1px solid var(--bad); }
   button:disabled { opacity:.45; cursor:default; }
   .row { display:flex; gap:8px; margin-top:12px; } .row > * { flex:1; }
-  .views { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
-  .grp { margin-top:8px; font-size:12px; color:var(--mut); display:flex; gap:8px; align-items:center; }
-  .grp a { color:var(--acc); cursor:pointer; }
-  .chip { padding:4px 10px; border:1px solid var(--line); border-radius:999px; font-size:13px; cursor:pointer; background:var(--bg); }
-  .chip.on { background:var(--acc); color:#1b1500; border-color:var(--acc); }
-  #file { direction:ltr; font-size:12px; color:var(--mut); margin-top:6px; word-break:break-all; }
+  .file { border-top:1px solid var(--line); padding:8px 0; font-size:13px; }
+  .file:first-child { border-top:0; }
+  .file b { display:block; direction:ltr; text-align:right; word-break:break-all; font-weight:600; }
+  .file .f2 { display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; } .file .f2 > * { flex:1; min-width:110px; }
+  .file a { color:var(--bad); cursor:pointer; }
+  .probe { background:var(--bg); border-radius:8px; padding:8px 10px; font-size:13px; margin-top:8px; }
+  .probe .warn { color:var(--acc); } .probe .okk { color:var(--ok); }
   #stage { position:relative; width:100%; aspect-ratio:3/2; background:#000; border-radius:10px; overflow:hidden; user-select:none; }
   #stage img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
   #top { clip-path: inset(0 0 0 50%); }
@@ -39,45 +40,41 @@
   .hint { color:var(--mut); font-size:13px; margin-top:8px; }
   .job { border-top:1px solid var(--line); padding:8px 0; font-size:13px; }
   .job:first-child { border-top:0; } .job b { display:block; }
-  .st-cancelled { color:var(--mut); } .st-done { color:var(--ok); } .st-error { color:var(--bad); } .st-running { color:var(--acc); }
+  .st-done { color:var(--ok); } .st-error { color:var(--bad); } .st-running { color:var(--acc); } .st-cancelled { color:var(--mut); }
   pre { margin:6px 0 0; max-height:90px; overflow:auto; background:var(--bg); padding:6px; border-radius:6px; font-size:11px; direction:ltr; white-space:pre-wrap; }
   #gallery { display:grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap:6px; max-height:260px; overflow:auto; }
   #gallery img { width:100%; aspect-ratio:3/2; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; }
-  #gallery img.mk { opacity:.4; outline:3px solid var(--bad); }
+  #gallery .doc { aspect-ratio:3/2; border-radius:6px; border:1px dashed var(--line); display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; cursor:pointer; padding:4px; word-break:break-all; }
+  #gallery img.mk, #gallery .doc.mk { opacity:.4; outline:3px solid var(--bad); }
   #gallery img.on { border-color:var(--acc); } #gallery img.flux { outline:2px solid var(--ok); outline-offset:-2px; }
   details summary { cursor:pointer; color:var(--mut); font-size:13px; margin-top:10px; }
   .bar2 { height:6px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:6px; } .bar2 > i { display:block; height:100%; background:var(--acc); width:0; transition:width .4s; }
 </style>
 </head>
 <body>
-<header><h1>סטודיו הדמיות</h1><span>רנדר חינמי + מנוע FLUX המקומי · הכול רץ על המחשב הזה, בלי שליחה לאינטרנט</span><button class="sec" id="openOut">פתח תיקיית תוצאות</button></header>
+<header><h1>סטודיו הדמיות</h1><span>הדמיות מקבצי תכנון · רנדר חינמי + מנוע FLUX מקומי · הכול רץ על המחשב הזה</span><button class="sec" id="openOut">פתח תיקיית תוצאות</button></header>
 <main>
   <section>
     <div class="card">
-      <h2>1 · מה להדמות</h2>
-      <div class="row" style="margin-top:0"><button id="pick">בחירת קבצים…</button></div>
+      <h2>1 · הקבצים של הפרויקט</h2>
+      <div class="row" style="margin-top:0"><button id="pick">הוספת קבצים…</button><button class="sec" id="clearFiles">נקה רשימה</button></div>
       <div id="files"></div>
-      <div id="file">אפשר לעבוד בלי קובץ (מרכז פסגה מהשרטוט המובנה, או דירה 20). סוגי קבצים: PDF של תוכנית דירה, DXF, תמונה (JPG/PNG/WEBP).</div>
-      <label>פרויקט</label><select id="project"></select>
-      <div id="pdfBox" hidden>
-        <label>שטח ברוטו מודפס (מ"ר): קובע את קנה המידה</label><input id="area" type="number" step="0.01" placeholder="90.86">
-        <label>סגנון עיצוב</label><select id="style"></select>
+      <div id="houseBox" hidden>
+        <label>שם הפרויקט (לקבצי הבית/הבניין)</label><input id="projName" placeholder="למשל: בית כהן">
+        <div class="row" style="margin-top:8px"><button class="sec" id="probeBtn">בדוק איך המערכת מזהה את הקבצים</button></div>
+        <div id="probe"></div>
       </div>
-      <label>אזורים ומבטים (אפשר לסמן כמה יחד)</label>
-      <div id="views"></div>
-      <div class="row"><button class="sec" id="selAll">סמן הכול</button><button class="sec" id="selNone">נקה</button></div>
     </div>
     <div class="card">
-      <h2>2 · הגדרות רנדר חינמי</h2>
-      <label>איכות</label><select id="quality"></select>
-      <label>גודל התמונה (פיקסלים לרוחב)</label>
-      <select id="size"><option value="1200">1200 (מהיר)</option><option value="1800">1800</option><option value="2400" selected>2400 (מקסימום בטוח)</option></select>
-      <label class="chk"><input type="checkbox" id="people"> להציג דמויות (כבוי כברירת מחדל)</label>
-      <label class="chk"><input type="checkbox" id="photo"> טקסטורת קרקע מצילום האוויר (אם קיימת)</label>
+      <h2>2 · הגדרות</h2>
+      <label>איכות הרנדר</label>
+      <select id="quality"><option value="fast">רגיל (מהיר)</option><option value="traced">מעקב קרניים (איטי יותר, איכותי יותר, למערכת היתר)</option></select>
+      <label>סגנון עיצוב (לדירות)</label><select id="style"></select>
+      <label>מבט (לדירה ממערכת היתר)</label><select id="view"></select>
     </div>
     <div class="card">
       <h2>3 · FLUX: הפיכת הרנדר לצילום</h2>
-      <label class="chk"><input type="checkbox" id="thenFlux" checked> להריץ FLUX אחרי כל רנדר</label>
+      <label class="chk"><input type="checkbox" id="thenFlux"> להריץ FLUX אחרי הרנדר (לדירות ולתמונות)</label>
       <label>סגנון הנחיה</label><select id="preset"></select>
       <details><summary>ההנחיה שנשלחת ל-FLUX (אנגלית, ניתנת לעריכה)</summary><textarea id="prompt"></textarea></details>
       <div class="row">
@@ -89,11 +86,11 @@
         <label>סקאלת הפרטים שמגיעים מ-FLUX</label><input id="sigma" type="number" value="30" min="5" max="80">
         <label>זרע (0 = אקראי)</label><input id="seed" type="number" value="0" min="0">
       </details>
-      <div class="hint">1024 עם 2 צעדים: כדקה אחת לתמונה. FLUX עלול להוסיף פרטים שאינם בתוכנית: בדקו תמיד מול הרנדר.</div>
+      <div class="hint">FLUX על חוברת שלמה יוצר עשרות תמונות, ולכן הוא רץ אוטומטית רק על דירה בודדת ועל תמונה. לתמונה מתוך חוברת: בחרו אותה בהיסטוריה ולחצו "FLUX על התמונה הנבחרת".</div>
     </div>
     <div class="card">
-      <div class="row" style="margin-top:0"><button id="full">הדמיה מלאה: כל המבטים</button></div>
-      <div class="row"><button id="runSel">הרץ את המסומנים</button><button id="fluxBtn" class="sec">FLUX על התמונה הנבחרת</button></div>
+      <div class="row" style="margin-top:0"><button id="build">בנה הדמיות מכל הקבצים</button></div>
+      <div class="row"><button id="fluxBtn" class="sec">FLUX על התמונה הנבחרת</button></div>
       <div class="row"><button id="cancel" class="bad">עצור הכול</button></div>
       <div class="hint" id="eta"></div>
     </div>
@@ -102,40 +99,54 @@
     <div class="card">
       <h2 id="title">עדיין לא נבחרה תמונה</h2>
       <div id="stage"><img id="base" alt=""><img id="top" alt=""><div id="bar"></div></div>
-      <div class="hint">גררו את הפס להשוואה: צד שמאל הוא הרנדר החינמי וצד ימין תוצאת FLUX (כשיש). לחצו על תמונה בהיסטוריה לצפייה.</div>
+      <div class="hint">גררו את הפס להשוואה: צד שמאל הרנדר החינמי וצד ימין תוצאת FLUX (כשיש). לחצו על תמונה בהיסטוריה לצפייה. מסמכי PDF נפתחים בתוכנה שלהם.</div>
       <div class="row"><button class="sec" id="showFile">הצג בתיקייה</button></div>
     </div>
     <div class="card"><div id="gallery"></div>
       <div class="row"><button class="sec" id="delMarked">מחק את המסומנות</button><button class="bad" id="delAll">מחק את כל הניסיונות</button></div>
       <label class="chk"><input type="checkbox" id="showOld"> הצג גם הדמיות מהפעלות קודמות</label>
-      <div class="hint">סימון תמונה למחיקה: Ctrl + לחיצה (אפשר כמה). הקבצים נמחקים מהדיסק.</div></div>
+      <div class="hint">סימון למחיקה: Ctrl + לחיצה (אפשר כמה). הקבצים נמחקים מהדיסק.</div></div>
   </section>
   <section>
-    <div class="card"><h2>תור העבודות</h2><div class="row" style="margin:0 0 8px"><button class="sec" id="jobAll">סמן הכול</button><button class="sec" id="jobNone">נקה סימון</button></div>
+    <div class="card"><h2>תור העבודות</h2><div class="bar2"><i id="prog"></i></div>
+      <div class="row" style="margin:8px 0"><button class="sec" id="jobAll">סמן הכול</button><button class="sec" id="jobNone">נקה סימון</button></div>
       <div class="row" style="margin:0 0 8px"><button class="bad" id="jobCancel">בטל / הסר את המסומנות</button></div>
-      <div class="row" style="margin:0 0 8px"><button class="sec" id="clearDone">נקה רשימה שהסתיימה</button></div><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
+      <div class="row" style="margin:0 0 8px"><button class="sec" id="clearDone">נקה רשימה שהסתיימה</button></div>
+      <div id="jobs"></div></div>
   </section>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-let jobMarks = new Set(), lastJobs = [], files = [], marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
 const api = (p, o) => fetch(p, o).then((r) => r.json());
 const post = (p, b) => api(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b ?? {}) });
-const proj = () => cfg.projects[$("project").value];
+const esc = (s) => String(s).replace(/[<&>"]/g, (c) => ({ "<": "&lt;", "&": "&amp;", ">": "&gt;", '"': "&quot;" })[c]);
+const base = (p) => p.split(/[\\/]/).pop();
+let cfg, files = [], results = [], sel = null, marked = new Set(), jobMarks = new Set(), lastJobs = [], lastCount = -1;
+
+const ROLES = [["auto", "לפי השם / לשוניות"], ["ground", "קומת קרקע"], ["floor1", "קומה 1"], ["floor2", "קומה 2"], ["floor3", "קומה 3"], ["floor4", "קומה 4"], ["floor5", "קומה 5"], ["floor6", "קומה 6"], ["facades", "חזיתות"], ["skip", "התעלם מהקובץ"]];
+/** A guess from the file's name: the architect's own naming, in Hebrew or transliterated. */
+function guessRole(name) {
+  const n = name.toLowerCase();
+  if (/facad|elevation|חזית|chazit/.test(n)) return "facades";
+  if (/ground|קרקע|karka/.test(n)) return "ground";
+  if (/gag|roof|גג/.test(n)) return "skip";
+  const m = n.match(/(?:floor|קומה|tochnit|תכנית|תוכנית|plan)[\s_-]*(\d)/);
+  return m ? "floor" + m[1] : "auto";
+}
 
 async function init() {
   cfg = await api("/api/config");
-  $("project").innerHTML = Object.entries(cfg.projects).map(([k, v]) => `<option value="${k}">${v.title}</option>`).join("");
-  $("preset").innerHTML = `<option value="auto">אוטומטי: חוץ או פנים לפי המבט</option>` + cfg.presets.map((p) => `<option value="${p}">${cfg.presetLabels[p] ?? p}</option>`).join("");
+  $("preset").innerHTML = `<option value="auto">אוטומטי: חוץ או פנים</option>` + cfg.presets.map((p) => `<option value="${p}">${cfg.presetLabels[p] ?? p}</option>`).join("");
   $("style").innerHTML = cfg.styles.map((s) => `<option value="${s}">${cfg.styleLabels[s] ?? s}</option>`).join("");
   $("style").value = "haredi_classic";
-  $("project").onchange = () => pickProject();
+  $("view").innerHTML = ["overview", "dollhouse"].map((v) => `<option value="${v}">${cfg.viewLabels[v]}</option>`).join("");
   $("preset").onchange = () => { $("prompt").value = cfg.presetText[$("preset").value] ?? ""; };
-  $("pick").onclick = pickFile; $("openOut").onclick = () => post("/api/open", {}); $("showFile").onclick = () => sel && post("/api/open", { path: sel });
-  $("delMarked").onclick = async () => { const ps = [...marked]; if (!ps.length) return alert("לא סומנו תמונות (Ctrl + לחיצה)"); if (!confirm(`למחוק ${ps.length} תמונות מהדיסק?`)) return; await post("/api/delete", { paths: ps }); marked.clear(); sel = null; lastCount = -1; refresh(); };
-  $("delAll").onclick = async () => { if (!confirm("למחוק את כל תמונות הניסיונות שבתיקיית התוצאות, כולל הדמיות מהפעלות קודמות?")) return; await post("/api/delete", { all: true }); marked.clear(); sel = null; lastCount = -1; refresh(); };
+  $("pick").onclick = pickFile; $("clearFiles").onclick = () => { files = []; drawFiles(); };
+  $("probeBtn").onclick = probeHouse; $("build").onclick = build; $("fluxBtn").onclick = fluxOne; $("cancel").onclick = () => post("/api/cancel");
+  $("openOut").onclick = () => post("/api/open", {}); $("showFile").onclick = () => sel && post("/api/open", { path: sel });
+  $("delMarked").onclick = async () => { const ps = [...marked]; if (!ps.length) return alert("לא סומנו קבצים (Ctrl + לחיצה)"); if (!confirm(`למחוק ${ps.length} קבצים מהדיסק?`)) return; await post("/api/delete", { paths: ps }); marked.clear(); sel = null; lastCount = -1; refresh(); };
+  $("delAll").onclick = async () => { if (!confirm("למחוק את כל הניסיונות שבתיקיית התוצאות, כולל הדמיות מהפעלות קודמות?")) return; await post("/api/delete", { all: true }); marked.clear(); sel = null; lastCount = -1; refresh(); };
   $("showOld").onchange = () => { lastCount = -1; refresh(); };
-  $("clearDone").onclick = async () => { await post("/api/job-remove", {}); refresh(); };
   $("jobAll").onclick = () => { lastJobs.forEach((j) => jobMarks.add(j.id)); drawJobs(); };
   $("jobNone").onclick = () => { jobMarks.clear(); drawJobs(); };
   $("jobCancel").onclick = async () => {
@@ -146,91 +157,85 @@ async function init() {
     await post("/api/job-remove", { ids: ids.filter((i) => !live.includes(i)) });
     jobMarks.clear(); refresh();
   };
-  $("selAll").onclick = () => { proj().views.forEach((v) => chosen.add(v)); drawViews(); };
-  $("selNone").onclick = () => { chosen.clear(); drawViews(); };
-  $("full").onclick = () => run(proj().views);
-  $("runSel").onclick = () => run([...chosen]);
-  $("fluxBtn").onclick = fluxOne; $("cancel").onclick = () => post("/api/cancel");
-  $("photo").checked = !!cfg.groundPhoto; $("photo").disabled = !cfg.groundPhoto;
-  pickProject(); $("preset").value = "auto";
-  setupSlider(); refresh(); setInterval(refresh, 2500);
+  $("clearDone").onclick = async () => { await post("/api/job-remove", {}); refresh(); };
+  $("preset").value = "auto";
+  drawFiles(); setupSlider(); refresh(); setInterval(refresh, 2500);
 }
+
 async function pickFile() {
   const { paths } = await api("/api/pick");
   for (const path of paths ?? []) {
     if (files.some((f) => f.path === path)) continue;
     const info = await api("/api/probe?path=" + encodeURIComponent(path));
-    if (!info.ok) { alert(`${path}
-${info.error}`); continue; }
-    files.push({ path, project: info.project, label: info.label, area: "" });
+    if (!info.ok) { alert(`${base(path)}\n${info.error}`); continue; }
+    files.push({ path, kinds: info.kinds, kind: info.kinds[0], role: guessRole(base(path)), model: "A", area: "", unit: "" });
   }
-  if (files.length) { $("project").value = (files.find((f) => f.project === "pisga") ?? files.find((f) => f.project === "pdf") ?? files[0]).project; pickProject(); }
+  // Several drawing files together are one house (floors and facades); a lone DWF is a whole permit strip.
+  const sheets = files.filter((f) => f.kinds.includes("house"));
+  if (sheets.length > 1) sheets.forEach((f) => (f.kind = "house"));
   drawFiles();
 }
-const base = (p) => p.split(/[\/]/).pop();
-function drawFiles() {
-  $("files").innerHTML = files.map((f, i) => `<div class="job"><b style="direction:ltr;text-align:right">${base(f.path)}</b>${f.label}${f.project === "pdf" ? ` · שטח ברוטו (מ"ר): <input data-i="${i}" class="ar" type="number" step="0.01" value="${f.area}" style="width:90px;display:inline">` : ""} <a data-d="${i}" style="color:var(--bad);cursor:pointer">הסר</a></div>`).join("");
-  document.querySelectorAll("#files .ar").forEach((x) => (x.oninput = () => (files[x.dataset.i].area = x.value)));
-  document.querySelectorAll("#files a").forEach((x) => (x.onclick = () => { files.splice(Number(x.dataset.d), 1); drawFiles(); }));
-  $("file").textContent = files.length ? `${files.length} קבצים: כל קובץ ייבנה בנפרד לפי סוגו, והמבטים המסומנים יחולו על כל קובץ שיש לו מבטים.` : "אפשר לעבוד בלי קובץ (מרכז פסגה מהשרטוט המובנה, או דירה 20). סוגי קבצים: PDF של תוכנית דירה, DXF, תמונה. אפשר לבחור כמה קבצים יחד.";
-}
-function pickProject() {
-  const p = proj();
-  chosen = new Set(p.views.slice(0, 1));
-  $("quality").innerHTML = Object.entries(p.qualities).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
-  $("pdfBox").hidden = !(p.needs || []).includes("area");
-  $("fluxBtn").disabled = false;
-  drawViews();
-}
-function drawViews() {
-  const p = proj(), groups = Object.keys(p.groups).length ? p.groups : { "מבטים": p.views };
-  $("views").innerHTML = Object.entries(groups).map(([g, vs]) =>
-    `<div class="grp"><b>${g}</b><a data-g="${g}">סמן קבוצה</a></div><div class="views">${vs.map((v) => `<span class="chip ${chosen.has(v) ? "on" : ""}" data-v="${v}">${cfg.viewLabels[v] ?? v}</span>`).join("")}</div>`).join("");
-  document.querySelectorAll(".chip").forEach((c) => (c.onclick = () => { chosen.has(c.dataset.v) ? chosen.delete(c.dataset.v) : chosen.add(c.dataset.v); drawViews(); }));
-  document.querySelectorAll(".grp a").forEach((a) => (a.onclick = () => { groups[a.dataset.g].forEach((v) => chosen.add(v)); drawViews(); }));
-}
-const fluxParams = () => ({ preset: $("preset").value, prompt: $("prompt").value, steps: Number($("steps").value), width: Number($("width").value), cap: Number($("cap").value), sigma: Number($("sigma").value), seed: Number($("seed").value) });
-async function run(views) {
-  const flux = $("thenFlux").checked ? fluxParams() : null;
-  const common = { quality: $("quality").value, width: Number($("size").value), people: $("people").checked, groundPhoto: $("photo").checked, style: $("style").value };
-  // With files chosen, each is built by its own pipeline (a PDF is one flat, a DXF has the chosen views, an image goes straight to FLUX); with none, the built-in project is used.
-  const plan = files.length ? files.map((f) => ({ project: f.project, file: f.path, area: f.area })) : [{ project: $("project").value, file: undefined, area: $("area").value }];
-  let sent = 0, asked = false;
-  for (const it of plan) {
-    const p = cfg.projects[it.project];
-    let vs = it.project === "pdf" || it.project === "image" ? p.views : views.filter((v) => p.views.includes(v));
-    if (!vs.length && it.project === "pisga" && files.length && !asked) {
-      // No chosen view fits a drawing: offer every view rather than do nothing.
-      asked = true;
-      if (!confirm(`לא סומנו מבטים שמתאימים לקובצי ה-DXF. להריץ את כל ${p.views.length} המבטים לכל קובץ DXF?
 
-שימו לב: מסלול ה-DXF הנוכחי בנוי למרכז פסגה. שרטוט של בניין אחר לא ייבנה נכון בו.`)) return;
-    }
-    if (!vs.length && it.project === "pisga" && files.length) vs = p.views;
-    if (!vs.length) { if (!files.length) return alert("לא סומן אף מבט"); continue; }
-    if (it.project === "pdf" && !it.area) { alert(`חסר שטח ברוטו (מ"ר) לקובץ ${base(it.file)}`); return; }
-    if ((p.needs || []).includes("file") && !it.file) return alert("יש לבחור קובץ");
-    const r = await post("/api/jobs", { type: "batch", project: it.project, views: vs, render: { ...common, file: it.file, area: it.area }, flux });
-    if (r.error) return alert(r.error);
-    sent += vs.length;
+function drawFiles() {
+  const kindSel = (f, i) => `<select data-i="${i}" data-k="kind">${f.kinds.map((k) => `<option value="${k}" ${f.kind === k ? "selected" : ""}>${cfg.kinds[k].title}</option>`).join("")}</select>`;
+  const extra = (f, i) => {
+    if (f.kind === "house") return `<select data-i="${i}" data-k="role">${ROLES.map(([v, t]) => `<option value="${v}" ${f.role === v ? "selected" : ""}>${t}</option>`).join("")}</select><input data-i="${i}" data-k="model" value="${esc(f.model)}" placeholder="דגם (A, B…)" title="שם הדגם: קבצי קומות של אותו דגם יחד">`;
+    if (f.kind === "pdf") return `<input data-i="${i}" data-k="area" type="number" step="0.01" value="${esc(f.area)}" placeholder='שטח ברוטו מ"ר'>`;
+    if (f.kind === "unit") return `<input data-i="${i}" data-k="unit" type="number" value="${esc(f.unit)}" placeholder="מספר דירה">`;
+    return "";
+  };
+  $("files").innerHTML = files.length ? files.map((f, i) => `<div class="file"><b>${esc(base(f.path))}</b><div class="f2">${kindSel(f, i)}</div><div class="f2">${extra(f, i)}</div><a data-d="${i}">הסר</a><div class="hint" style="margin:0">${esc(cfg.kinds[f.kind].note)}</div></div>`).join("") : '<div class="hint">בחרו קבצי תכנון: DXF, DWF, PDF או תמונה. המערכת מזהה כל קובץ ומציעה איך לבנות ממנו הדמיה.</div>';
+  document.querySelectorAll("#files [data-k]").forEach((x) => (x.onchange = x.oninput = () => { files[x.dataset.i][x.dataset.k] = x.value; if (x.dataset.k === "kind") drawFiles(); }));
+  document.querySelectorAll("#files a").forEach((x) => (x.onclick = () => { files.splice(Number(x.dataset.d), 1); drawFiles(); }));
+  $("houseBox").hidden = !files.some((f) => f.kind === "house" || f.kind === "permit");
+  $("probe").innerHTML = "";
+}
+
+async function probeHouse() {
+  const hs = files.filter((f) => f.kind === "house" && f.role !== "skip");
+  if (!hs.length) return alert("אין קבצי בית ברשימה");
+  $("probe").innerHTML = '<div class="probe">בודק…</div>';
+  const r = await post("/api/probe-house", { paths: hs.map((f) => f.path) });
+  $("probe").innerHTML = `<div class="probe">${r.ok ? `<div class="okk">זוהו ${r.models.length} דגמים. חזיתות: ${esc(r.facades ?? "-")}</div>${r.models.map((m) => `<div>${esc(m.name)}: ${m.floors.length} קומות</div>`).join("")}` : '<div class="warn">הזיהוי האוטומטי לפי שם הקובץ לא הצליח. התפקידים שבחרתם בכל קובץ הם שייקבעו בבנייה.</div>'}${(r.problems ?? []).map((p) => `<div class="warn">${esc(p)}</div>`).join("")}</div>`;
+}
+
+const fluxParams = () => ({ preset: $("preset").value, prompt: $("prompt").value, steps: Number($("steps").value), width: Number($("width").value), cap: Number($("cap").value), sigma: Number($("sigma").value), seed: Number($("seed").value) });
+async function build() {
+  if (!files.length) return alert("לא נבחרו קבצים");
+  const common = { quality: $("quality").value, style: $("style").value, view: $("view").value };
+  const items = [];
+  const hs = files.filter((f) => f.kind === "house" && f.role !== "skip");
+  if (hs.length) {
+    if (!hs.some((f) => f.role === "facades" || f.role === "auto") && !confirm("לא סומן קובץ חזיתות. אם החזיתות לא נמצאות בתוך אחד הקבצים, הבנייה תיכשל. להמשיך?")) return;
+    items.push({ ...common, project: "house", name: $("projName").value.trim() || base(hs[0].path).replace(/\.[^.]+$/, ""), files: hs.map((f) => ({ path: f.path, role: f.role, model: f.model })) });
   }
-  if (!sent) alert("אין מבטים שמתאימים לקבצים שנבחרו");
+  for (const f of files) {
+    if (f.kind === "house") continue;
+    if (f.kind === "pdf" && !f.area) return alert(`חסר שטח ברוטו (מ"ר) לקובץ ${base(f.path)}`);
+    if (f.kind === "unit" && !f.unit) return alert(`חסר מספר דירה לקובץ ${base(f.path)}`);
+    items.push({ ...common, project: f.kind, file: f.path, area: f.area, unit: f.unit, ...(f.kind === "permit" ? { name: $("projName").value.trim() || base(f.path).replace(/\.[^.]+$/, "") } : {}) });
+  }
+  if (!items.length) return alert("אין מה לבנות: כל הקבצים מסומנים 'התעלם'");
+  const r = await post("/api/jobs", { type: "build", items, flux: $("thenFlux").checked ? fluxParams() : null });
+  if (r.error) alert(r.error);
   refresh();
 }
 async function fluxOne() {
-  if (!sel || /-flux-/.test(sel)) return alert("בחרו בהיסטוריה תמונת רנדר חינמי (לא תוצאת FLUX)");
+  if (!sel || /-flux-/.test(sel) || !/\.(jpe?g|png)$/i.test(sel)) return alert("בחרו בהיסטוריה תמונת רנדר חינמי (לא תוצאת FLUX ולא PDF)");
   await post("/api/jobs", { type: "flux", src: sel, view: "", ...fluxParams() });
   refresh();
 }
+
 const isFlux = (p) => /-flux-/.test(p);
+const isDoc = (p) => /\.pdf$/i.test(p);
 function pairOf(p) {
-  const dir = p.slice(0, p.lastIndexOf("/") + 1), base = p.slice(dir.length).replace(/-(free|flux)-.*/, "");
-  if (isFlux(p)) return results.find((r) => !isFlux(r.path) && r.path.startsWith(dir + base + "-free-"))?.path ?? null;
-  return results.find((r) => isFlux(r.path) && r.path.startsWith(dir + base + "-flux-"))?.path ?? null;
+  const dir = p.slice(0, p.lastIndexOf("/") + 1), b = p.slice(dir.length).replace(/-(free|flux)-.*/, "");
+  if (isFlux(p)) return results.find((r) => !isFlux(r.path) && r.path.startsWith(dir + b + "-free-"))?.path ?? null;
+  return results.find((r) => isFlux(r.path) && r.path.startsWith(dir + b + "-flux-"))?.path ?? null;
 }
 function show(p) {
   sel = p; $("title").textContent = p ?? "עדיין לא נבחרה תמונה";
-  if (!p) { $("base").removeAttribute("src"); $("top").style.display = "none"; $("bar").style.display = "none"; renderGallery(); return; }
+  if (!p || isDoc(p)) { if (!p) $("base").removeAttribute("src"); $("top").style.display = "none"; $("bar").style.display = "none"; renderGallery(); return; }
   const other = pairOf(p), free = isFlux(p) ? other : p, fx = isFlux(p) ? p : other;
   $("base").src = "/files/" + encodeURI(free || p);
   $("top").src = fx ? "/files/" + encodeURI(fx) : "";
@@ -238,24 +243,30 @@ function show(p) {
   renderGallery();
 }
 function renderGallery() {
-  $("gallery").innerHTML = results.map((r) => `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on " : ""}${marked.has(r.path) ? "mk" : ""}" title="${r.path}" data-p="${r.path}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
-  document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = (e) => { if (e.ctrlKey) { marked.has(i.dataset.p) ? marked.delete(i.dataset.p) : marked.add(i.dataset.p); renderGallery(); } else show(i.dataset.p); }));
+  $("gallery").innerHTML = results.map((r) => isDoc(r.path)
+    ? `<div class="doc ${marked.has(r.path) ? "mk" : ""}" data-p="${esc(r.path)}" title="${esc(r.path)}">📄 ${esc(r.path.split("/").pop().slice(0, 28))}</div>`
+    : `<img src="/files/${encodeURI(r.path)}" class="${isFlux(r.path) ? "flux " : ""}${r.path === sel ? "on " : ""}${marked.has(r.path) ? "mk" : ""}" title="${esc(r.path)}" data-p="${esc(r.path)}">`).join("") || '<span class="hint">אין עדיין תוצאות</span>';
+  document.querySelectorAll("#gallery [data-p]").forEach((i) => (i.onclick = (e) => {
+    const p = i.dataset.p;
+    if (e.ctrlKey) { marked.has(p) ? marked.delete(p) : marked.add(p); renderGallery(); }
+    else if (isDoc(p)) { sel = p; $("title").textContent = p; post("/api/open", { path: p, run: true }); }
+    else show(p);
+  }));
 }
-let lastCount = -1;
+
 function drawJobs() {
-  $("jobs").innerHTML = lastJobs.slice().reverse().map((j) => `<div class="job"><b><input type="checkbox" class="jm" data-j="${j.id}" ${jobMarks.has(j.id) ? "checked" : ""} style="width:auto"> ${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל", cancelled: "בוטל" }[j.status]}</span> <a data-j="${j.id}" data-a="${j.status === "queued" || j.status === "running" ? "cancel" : "remove"}" style="color:var(--bad);cursor:pointer;float:left">${j.status === "queued" ? "הסר מהתור" : j.status === "running" ? "בטל עבודה" : "הסר מהרשימה"}</a>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
+  $("jobs").innerHTML = lastJobs.slice().reverse().map((j) => `<div class="job"><b><input type="checkbox" class="jm" data-j="${j.id}" ${jobMarks.has(j.id) ? "checked" : ""} style="width:auto"> ${esc(j.title)}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל", cancelled: "בוטל" }[j.status]}</span> <a data-j="${j.id}" data-a="${j.status === "queued" || j.status === "running" ? "cancel" : "remove"}" style="color:var(--bad);cursor:pointer;float:left">${j.status === "queued" ? "הסר מהתור" : j.status === "running" ? "בטל עבודה" : "הסר מהרשימה"}</a>${j.status === "error" || j.status === "running" ? `<pre>${esc(j.log)}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
   document.querySelectorAll("#jobs a").forEach((a) => (a.onclick = async () => { await post(a.dataset.a === "cancel" ? "/api/cancel" : "/api/job-remove", { id: a.dataset.j }); refresh(); }));
   document.querySelectorAll("#jobs .jm").forEach((c) => (c.onchange = () => (c.checked ? jobMarks.add(c.dataset.j) : jobMarks.delete(c.dataset.j))));
 }
 async function refresh() {
   const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results" + ($("showOld").checked ? "?all=1" : ""))]);
-  const done = js.filter((j) => j.status === "done" || j.status === "error").length;
+  const done = js.filter((j) => j.status === "done" || j.status === "error" || j.status === "cancelled").length;
   $("prog").style.width = js.length ? (done / js.length) * 100 + "%" : "0";
   const left = js.filter((j) => j.status === "queued" || j.status === "running").length;
   $("eta").textContent = left ? `נותרו ${left} עבודות בתור. אפשר להשאיר את התוכנה פתוחה ולהמשיך לעבוד במקום אחר.` : "";
   lastJobs = js; drawJobs();
-  document.querySelectorAll("#jobs a").forEach((a) => (a.onclick = async () => { await post(a.dataset.a === "cancel" ? "/api/cancel" : "/api/job-remove", { id: a.dataset.j }); refresh(); }));
-  if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; if (!sel || !first) show(rs[0]?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
+  if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; const firstImg = rs.find((r) => !isDoc(r.path)); if (!sel || !first) show(firstImg?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
 }
 function setupSlider() {
   const stage = $("stage"), bar = $("bar"), top = $("top");

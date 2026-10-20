@@ -8,7 +8,7 @@
  * this file run in the FastSD environment. Jobs go through one queue, one at a time, so the renderer and the engine never fight over the CPU and the GPU. A
  * "full visualization" is just every chosen view queued at once, each optionally followed by its FLUX pass. Results are files under previews/studio.
  *
- * Env: STUDIO_PORT (4747), STUDIO_PY (the Python with FastSD), FASTSD_DIR, PISGA_DXF (the default Pisga drawing).
+ * Env: STUDIO_PORT (4747), STUDIO_PY (the Python with FastSD), FASTSD_DIR,.
  */
 import { spawn, execFile } from "node:child_process";
 import fs from "node:fs";
@@ -22,34 +22,33 @@ const OUT = path.join(ROOT, "previews", "studio");
 const PORT = Number(process.env.STUDIO_PORT ?? 4747);
 const PY = process.env.STUDIO_PY ?? "C:\\Users\\User\\AI\\fastsdcpu\\env\\Scripts\\python.exe";
 const FASTSD = process.env.FASTSD_DIR ?? "C:\\Users\\User\\AI\\fastsdcpu";
-const PISGA_DXF = process.env.PISGA_DXF ?? path.join(ROOT, "מערכת הדמיות", "מרכז פסגה", "14.19.2026", "מרכז פסגה 14.09.2026 - Standard", "קבצי DXF", "מרכז פסגה 14.09.2026.dxf");
-const GROUND_PHOTO = path.join(ROOT, "previews", "pisga-ground-photo.jpg");
-fs.mkdirSync(OUT, { recursive: true });
-
-const PISGA_VIEWS = ["aerial-ne", "aerial-sw", "north-facade", "courtyard", "site", "east-side", "west-side", "roof-top", "end-e", "end-w", "north-terrace", "lobby", "hall", "design", "event-hall", "classroom", "workshop", "computers"];
-const APT20_VIEWS = ["overview", "salon", "salon-wide", "kitchen", "bedroom-1", "bedroom-2", "bedroom-3", "entrance", "bathroom"];
-
-/** Hebrew names for the views and the groups: the page shows these, the scripts get the ids. */
-const VIEW_LABELS = {
-  "aerial-ne": "מבט-על צפון-מזרח", "aerial-sw": "מבט-על דרום-מערב", "north-facade": "חזית צפונית", courtyard: "חצר", site: "האתר והרחוב", "east-side": "צד מזרח", "west-side": "צד מערב", "roof-top": "הגג מלמעלה",
-  "end-e": "קצה מזרחי", "end-w": "קצה מערבי", "north-terrace": "מרפסת צפונית", lobby: "לובי", hall: "אולם", design: "מרחב למידה", "event-hall": "אולם אירועים", classroom: "כיתה", workshop: "סדנה", computers: "חדר מחשבים",
-  overview: "מבט כללי מלמעלה", salon: "סלון", "salon-wide": "סלון רחב", kitchen: "מטבח", "bedroom-1": "חדר שינה 1", "bedroom-2": "חדר שינה 2", "bedroom-3": "חדר שינה 3", entrance: "כניסה", bathroom: "אמבטיה",
-};
-const GROUPS = {
-  pisga: { "חוץ": ["aerial-ne", "aerial-sw", "north-facade", "courtyard", "site", "east-side", "west-side", "roof-top", "end-e", "end-w", "north-terrace"], "פנים": ["lobby", "hall", "design", "event-hall", "classroom", "workshop", "computers"] },
-  apt20: { "מבט כללי": ["overview"], "אזור מגורים": ["salon", "salon-wide", "kitchen", "entrance"], "חדרי שינה": ["bedroom-1", "bedroom-2", "bedroom-3"], "רטוב": ["bathroom"] },
-};
+/** Hebrew names for the few views a kind offers: the page shows these, the scripts get the ids. */
+const VIEW_LABELS = { overview: "מבט כללי מלמעלה", dollhouse: "בית בובות (חתך קומות)", image: "התמונה שנבחרה" };
 const PRESET_LABELS = { restyle: "כללי: להפוך לצילום", exterior: "חוץ: אבן, זכוכית, שמש", interior: "פנים: טיח, פרקט, אריחים" };
 const STYLES = ["contemporary", "luxury", "scandi", "jerusalem_stone", "developer_white", "haredi_classic", "haredi_modern"];
 const STYLE_LABELS = { contemporary: "עכשווי", luxury: "יוקרה", scandi: "סקנדינבי", jerusalem_stone: "אבן ירושלמית", developer_white: "לבן יזמי", haredi_classic: "חרדי קלאסי", haredi_modern: "חרדי מודרני" };
 
-const PROJECTS = {
-  pisga: { title: "מרכז פסגה (DXF)", views: PISGA_VIEWS, groups: GROUPS.pisga, qualities: { fast: "מהיר (רסטר)", traced: "מעקב קרניים 512 (כ-2 דקות)", best: "מעקב קרניים 1024 (איטי)" }, accepts: [".dxf"], fileLabel: "קובץ DXF", defaultFile: PISGA_DXF },
-  apt20: { title: "דירה 20 (מדידה ידנית)", views: APT20_VIEWS, groups: GROUPS.apt20, qualities: { fast: "רגיל" }, accepts: [] },
-  pdf: { title: "דירה מקובץ PDF של תוכנית", views: ["overview"], groups: {}, qualities: { fast: "רגיל" }, accepts: [".pdf"], fileLabel: "קובץ PDF", needs: ["file", "area", "styles"] },
-  image: { title: "תמונה כלשהי (FLUX בלבד)", views: ["image"], groups: {}, qualities: { none: "אין רנדר: ישר ל-FLUX" }, accepts: [".jpg", ".jpeg", ".png", ".webp"], fileLabel: "קובץ תמונה", needs: ["file"] },
+/**
+ * What the program can build, by the kind of input. No project is built in: the architect hands over files, each kind says what it needs. The routes behind
+ * them are the platform's own general ones (lib/projects/building): house sheets, a permit strip, one flat from a strip, one flat from a plan PDF; a picture goes
+ * straight to the local FLUX.
+ */
+const KINDS = {
+  house: { title: "בית או בניין משרטוטי קומות וחזיתות", note: "כל קובץ מקבל תפקיד (קרקע, קומה 1…, חזיתות). יוצאת חוברת עם הדמיות", accepts: [".dxf", ".dwf"], group: true, views: [] },
+  permit: { title: "בניין ממערכת היתר (DWF)", note: "גרמושקה שלמה: מודל הבניין, חזיתות ודירות, חוברת PDF", accepts: [".dwf"], needs: ["name"], views: [] },
+  unit: { title: "דירה אחת ממערכת היתר (DWF)", note: "הדירה לפי המספר שלה בגרמושקה", accepts: [".dwf"], needs: ["unit", "style"], views: ["overview", "dollhouse"] },
+  pdf: { title: "דירה מתוכנית PDF", note: "תוכנית של דירה אחת. שטח ברוטו מודפס קובע את קנה המידה", accepts: [".pdf"], needs: ["area", "style"], views: ["overview"] },
+  image: { title: "תמונה (רק FLUX)", note: "תמונה קיימת, בלי רנדר: מנוע FLUX מעבד אותה", accepts: [".jpg", ".jpeg", ".png", ".webp"], views: ["image"] },
 };
-VIEW_LABELS.image = "התמונה שנבחרה";
+/** Which kinds an extension can be: the first is the default for a single file. */
+const EXT_KINDS = { ".dxf": ["house"], ".dwf": ["permit", "unit", "house"], ".pdf": ["pdf"], ".jpg": ["image"], ".jpeg": ["image"], ".png": ["image"], ".webp": ["image"] };
+const NOT_SUPPORTED = {
+  ".dwg": "DWG: צריך להמיר ל-DXF (בתוכנת השרטוט: שמירה בשם → DXF) ואז לבחור את הקובץ שוב.",
+  ".dwfx": "DWFX: פורמט שונה מ-DWF. יש לייצא מחדש כ-DWF, או להמיר ל-DXF.",
+  ".rvt": "Revit: יש לייצא ל-DXF או ל-DWF.",
+  ".ifc": "IFC: עדיין לא נתמך. יש לייצא ל-DXF או ל-DWF.",
+  ".skp": "SketchUp: עדיין לא נתמך. יש לייצא ל-DXF.",
+};
 
 const FLUX_PRESETS = {
   restyle: "Restyle this 3D render as a photograph by giving its existing surfaces realistic textures under natural daylight. Nothing is added, removed, moved or resized: every window, door, piece of furniture and fixture keeps its place, count, size and shape. Crisp focus.",
@@ -91,47 +90,87 @@ function run(cmd, args, opts, job) {
   });
 }
 
+/** What a failed build most often means, in the architect's words (the log keeps the original). */
+const KNOWN_ERRORS = [
+  [/no floor sheet with a level mark/, "בשרטוטי הקומות לא נמצאו סימוני מפלס (למשל ±0.00 או +3.00), ובלעדיהם הקורא הכללי לא יודע איזו קומה היא איזו. בדקו שהתפקידים של הקבצים נכונים, או שהשרטוט כולל סימוני מפלס."],
+  [/אי אפשר לבנות בית מהקבצים/, "המערכת לא הצליחה לזהות קומות וחזיתות. סמנו תפקיד לכל קובץ (קרקע, קומה 1, חזיתות)."],
+  [/cannot read|לא ניתן לקרוא/i, "אי אפשר לקרוא את אחד הקבצים. ייתכן שהקובץ פגום או בפורמט שאינו נתמך."],
+];
+
+const roleName = (r) => (r === "ground" ? "ground" : r === "facades" ? "facades" : /^floor\d+$/.test(r) ? r : null);
+
+/** Runs one tsx script and moves what it made into the results folder. Pictures first, then the booklet. */
+async function collect(job, tmp, dir, label) {
+  const made = fs.existsSync(tmp) ? fs.readdirSync(tmp).filter((f) => /\.(jpe?g|png|pdf)$/i.test(f)) : [];
+  if (!made.length) throw new Error("לא נוצרו קבצים. הפרטים בלוג.");
+  fs.mkdirSync(dir, { recursive: true });
+  const t = stamp();
+  const out = [];
+  for (const f of made) {
+    const ext = path.extname(f);
+    const name = `${safe(label)}-${safe(path.basename(f, ext))}-free-${t}${ext}`;
+    fs.renameSync(path.join(tmp, f), path.join(dir, name));
+    out.push(path.join(dir, name));
+  }
+  fs.rmSync(tmp, { recursive: true, force: true });
+  return out.find((f) => /\.(jpe?g|png)$/i.test(f)) ?? out[0];
+}
+
 async function doRender(job) {
   const p = job.params;
-  const { project, view, quality, file, area, style } = p;
-  const dir = path.join(OUT, project === "pdf" ? `pdf-${safe(path.basename(file ?? "x", ".pdf"))}` : project);
+  const { project: kind, quality, file, area, style } = p;
+  const view = p.view || "overview";
+  const label = p.name ? safe(p.name) : file ? safe(path.basename(file, path.extname(file))) : kind;
+  const dir = path.join(OUT, `${kind}-${label}`);
   const tmp = path.join(dir, "_tmp", job.id);
   fs.mkdirSync(tmp, { recursive: true });
-  let args;
+  const shell = process.platform === "win32";
   const env = { ...process.env };
-  if (project === "image") {
+  let args;
+  if (kind === "image") {
     // No render: the picture is the source of the FLUX pass.
-    const name = `${safe(path.basename(file, path.extname(file)))}-free-${stamp()}${path.extname(file)}`;
-    fs.mkdirSync(dir, { recursive: true });
+    const name = `${label}-free-${stamp()}${path.extname(file)}`;
+    fs.rmSync(path.join(dir, "_tmp"), { recursive: true, force: true });
     fs.copyFileSync(file, path.join(dir, name));
     return path.join(dir, name);
   }
-  const needsShell = process.platform === "win32";
-  if (project === "pisga") {
-    args = ["tsx", "--conditions=react-server", "scripts/render-pisga.mts", "x", tmp, view];
-    env.DXF = file || PISGA_DXF;
-    env.PT = quality === "best" ? "1024" : quality === "traced" ? "512" : "0";
-    env.SIZE = String(p.width || 2400);
-    env.OUT = String(Math.min(2400, p.width || 2400));
-    if (p.people) env.PEOPLE = "1";
-    if (p.groundPhoto && fs.existsSync(GROUND_PHOTO)) env.PHOTO = GROUND_PHOTO;
-  } else if (project === "apt20") {
-    args = ["tsx", "--conditions=react-server", "scripts/_unit20-shots.mts", tmp, view];
-  } else {
+  if (kind === "house") {
+    // Each file under the name the house reader looks its role up by: "<model>-<role>.<ext>" (a DXF with several layout tabs keeps its own name).
+    const inDir = path.join(tmp, "_in");
+    fs.mkdirSync(inDir, { recursive: true });
+    const copies = [];
+    for (const f of p.files ?? []) {
+      if (f.role === "skip") continue;
+      const ext = path.extname(f.path);
+      const rn = roleName(f.role);
+      const to = path.join(inDir, rn ? `${safe(f.model || "A")}-${rn}${ext}` : safe(path.basename(f.path, ext)) + ext);
+      fs.copyFileSync(f.path, to);
+      copies.push(to);
+    }
+    if (!copies.length) throw new Error("לא נבחרו קבצים לבנייה");
+    args = ["tsx", "--conditions=react-server", "scripts/studio/run-house.mts", tmp, p.name || "בית", ...copies];
+  } else if (kind === "permit") {
+    if (!file) throw new Error("לא נבחר קובץ DWF");
+    args = ["tsx", "--conditions=react-server", "scripts/booklet-dwf.mts", "--dwf", file, "--name", p.name || path.basename(file, path.extname(file)), "--out", path.join(tmp, "booklet.pdf")];
+    if (quality === "traced") args.push("--trace", "128");
+  } else if (kind === "unit") {
+    if (!file) throw new Error("לא נבחר קובץ DWF");
+    if (!p.unit) throw new Error("חסר מספר דירה");
+    args = ["tsx", "--conditions=react-server", "scripts/render-dwf-flat.mts", "--dwf", file, "--unit", String(p.unit), "--view", view, "--style", style || "haredi_classic", "--out", tmp];
+  } else if (kind === "pdf") {
     if (!file) throw new Error("לא נבחר קובץ PDF");
     if (!area) throw new Error('חסר שטח ברוטו מודפס (מ"ר): הוא קובע את קנה המידה');
     args = ["tsx", "--conditions=react-server", "scripts/render-floorplan-3d.mts", "--pdf", file, "--area", String(area), "--style", style || "haredi_classic", "--out", tmp];
-  }
-  job.log += `$ npx ${args.join(" ")}\n`;
-  const code = await run(NPX, args, { env, shell: needsShell }, job);
+  } else throw new Error(`סוג עבודה לא מוכר: ${kind}`);
+  job.log += `$ npx ${args.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(" ")}\n`;
+  // cmd.exe splits on spaces: anything with one is quoted for it.
+  const code = await run(NPX, shell ? args.map((x) => (/\s/.test(x) ? `"${x}"` : x)) : args, { env, shell }, job);
   if (job.cancelled) throw new Error("בוטל");
-  const made = fs.existsSync(tmp) ? fs.readdirSync(tmp).filter((f) => /\.(jpe?g|png)$/i.test(f)) : [];
-  if (code !== 0 || made.length === 0) throw new Error(`הרנדר נכשל (קוד ${code}). הפרטים בלוג.`);
-  const name = `${safe(project === "pdf" ? `${view}-${style || "style"}` : view)}-free-${stamp()}.${made[0].split(".").pop()}`;
-  fs.mkdirSync(dir, { recursive: true });
-  fs.renameSync(path.join(tmp, made[0]), path.join(dir, name));
-  fs.rmSync(tmp, { recursive: true, force: true });
-  return path.join(dir, name);
+  if (code !== 0) {
+    const known = KNOWN_ERRORS.find(([re]) => re.test(job.log));
+    throw new Error(`הבנייה נכשלה (קוד ${code}). ${known ? known[1] : "הפרטים בלוג."}`);
+  }
+  return collect(job, tmp, dir, kind === "house" ? "house" : view);
 }
 
 async function doFlux(job) {
@@ -141,7 +180,7 @@ async function doFlux(job) {
   const base = path.basename(source).replace(/\.(jpe?g|png|webp)$/i, "").replace(/-free-.*/, "");
   const out = path.join(path.dirname(source), `${base}-flux-${stamp()}.jpg`);
   const promptFile = path.join(OUT, `_prompt-${job.id}.txt`);
-  const preset = p.preset === "auto" ? (INTERIOR_VIEWS.has(p.view) ? "interior" : "exterior") : p.preset;
+  const preset = p.preset === "auto" ? (INTERIOR_VIEWS.has(p.view) || /room|salon|kitchen|bed|bath|interior|flat|apart|plan|unit|pdf/i.test(p.src ?? "") ? "interior" : "exterior") : p.preset;
   fs.writeFileSync(promptFile, (p.prompt && p.prompt.trim()) || FLUX_PRESETS[preset] || FLUX_PRESETS.restyle, "utf8");
   const args = [path.join(HERE, "flux_job.py"), source, out, promptFile, String(p.steps ?? 2), String(p.width ?? 1024), String(p.cap ?? 14), String(p.sigma ?? 30), String(p.seed ?? 0)];
   job.log += `$ python flux_job.py ${path.basename(source)} steps=${p.steps ?? 2} width=${p.width ?? 1024}\n`;
@@ -184,8 +223,8 @@ async function pump() {
 }
 
 function makeJob(type, params, batch) {
-  const fileName = params.file ? ` · ${path.basename(params.file)}` : "";
-  const label = type === "render" ? `רנדר · ${PROJECTS[params.project]?.title ?? params.project}${fileName} · ${VIEW_LABELS[params.view] ?? params.view}` : `FLUX · ${VIEW_LABELS[params.view] ?? path.basename(params.src ?? "")}`;
+  const fileName = params.name ? ` · ${params.name}` : params.file ? ` · ${path.basename(params.file)}` : "";
+  const label = type === "render" ? `בנייה · ${KINDS[params.project]?.title ?? params.project}${fileName}${params.view && KINDS[params.project]?.views?.length > 1 ? ` · ${VIEW_LABELS[params.view] ?? params.view}` : ""}` : `FLUX · ${VIEW_LABELS[params.view] ?? path.basename(params.src ?? "")}`;
   const job = { id: stamp() + Math.random().toString(36).slice(2, 6), type, title: label, status: "queued", log: "", created: Date.now(), params, batch: batch ?? null };
   jobs.push(job);
   save();
@@ -224,46 +263,53 @@ function listResults(all) {
       if (e.name.startsWith("_")) continue;
       const p = path.join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else if (/\.(jpe?g|png)$/i.test(e.name) && (all || fs.statSync(p).mtimeMs >= SINCE)) out.push({ path: rel(p), time: fs.statSync(p).mtimeMs });
+      else if (/\.(jpe?g|png|pdf)$/i.test(e.name) && (all || fs.statSync(p).mtimeMs >= SINCE)) out.push({ path: rel(p), time: fs.statSync(p).mtimeMs });
     }
   };
   walk(OUT);
   return out.sort((a, b) => b.time - a.time);
 }
 
-const TYPES = {
-  ".pdf": { project: "pdf", label: "תוכנית דירה (PDF)" },
-  ".dxf": { project: "pisga", label: "שרטוט DXF (מסלול מרכז פסגה)" },
-  ".jpg": { project: "image", label: "תמונה" }, ".jpeg": { project: "image", label: "תמונה" }, ".png": { project: "image", label: "תמונה" }, ".webp": { project: "image", label: "תמונה" },
-};
-const NOT_YET = { ".dwg": "DWG: יש להמיר ל-DXF בתוכנית שרטוט (AutoCAD: שמירה בשם → DXF) ואז לבחור את הקובץ.", ".dwf": "DWF: המסלול קיים רק כסקריפט בטרמינל (booklet-dwf.mts) ועדיין לא מחובר לסטודיו.", ".dwfx": "DWFX: כמו DWF, עדיין לא מחובר לסטודיו." };
-
 const send = (res, code, body, type = "application/json; charset=utf-8") => {
   res.writeHead(code, { "content-type": type, "cache-control": "no-store" });
   res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 };
 const readBody = (req) => new Promise((r) => { let s = ""; req.on("data", (d) => (s += d)); req.on("end", () => r(s ? JSON.parse(s) : {})); });
-const MIME = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".html": "text/html; charset=utf-8" };
+const MIME = { ".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".html": "text/html; charset=utf-8" };
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   try {
     if (url.pathname === "/") return send(res, 200, fs.readFileSync(path.join(HERE, "index.html")), MIME[".html"]);
     if (url.pathname === "/api/config") {
-      return send(res, 200, { projects: PROJECTS, presets: Object.keys(FLUX_PRESETS), presetText: FLUX_PRESETS, presetLabels: PRESET_LABELS, viewLabels: VIEW_LABELS, styles: STYLES, styleLabels: STYLE_LABELS, out: OUT, groundPhoto: fs.existsSync(GROUND_PHOTO) });
+      return send(res, 200, { kinds: KINDS, extKinds: EXT_KINDS, presets: Object.keys(FLUX_PRESETS), presetText: FLUX_PRESETS, presetLabels: PRESET_LABELS, viewLabels: VIEW_LABELS, styles: STYLES, styleLabels: STYLE_LABELS, out: OUT });
     }
     if (url.pathname === "/api/probe") {
       const f = url.searchParams.get("path") ?? "";
       const ext = path.extname(f).toLowerCase();
       if (!f || !fs.existsSync(f)) return send(res, 200, { ok: false, error: "הקובץ לא נמצא" });
-      if (NOT_YET[ext]) return send(res, 200, { ok: false, error: NOT_YET[ext] });
-      const t = TYPES[ext];
-      if (!t) return send(res, 200, { ok: false, error: `סוג קובץ לא נתמך (${ext || "ללא סיומת"}). נתמכים: PDF, DXF, JPG, PNG, WEBP` });
-      return send(res, 200, { ok: true, project: t.project, label: t.label, size: fs.statSync(f).size });
+      if (NOT_SUPPORTED[ext]) return send(res, 200, { ok: false, error: NOT_SUPPORTED[ext] });
+      const kinds = EXT_KINDS[ext];
+      if (!kinds) return send(res, 200, { ok: false, error: `סוג קובץ לא נתמך (${ext || "ללא סיומת"}). נתמכים: DXF, DWF, PDF, JPG, PNG, WEBP` });
+      return send(res, 200, { ok: true, kinds, size: fs.statSync(f).size });
+    }
+    if (url.pathname === "/api/probe-house" && req.method === "POST") {
+      // What the platform's house reader makes of these files (models, floors, facades, what is missing), without building anything.
+      const b = await readBody(req);
+      const out = await new Promise((r) => {
+        const c = spawn(NPX, ["tsx", "--conditions=react-server", "scripts/studio/probe-files.mts", ...(b.paths ?? [])].map((x) => (process.platform === "win32" && /\s/.test(x) ? `"${x}"` : x)), { cwd: ROOT, windowsHide: true, shell: process.platform === "win32" });
+        let s = "";
+        c.stdout.on("data", (d) => (s += d));
+        c.stderr.on("data", (d) => (s += d));
+        c.on("close", () => r(s));
+        c.on("error", () => r(""));
+      });
+      const line = out.split("\n").find((l) => l.startsWith("PROBE "));
+      return send(res, 200, line ? JSON.parse(line.slice(6)) : { ok: false, problems: ["הבדיקה נכשלה: " + out.slice(-300)], models: [] });
     }
     if (url.pathname === "/api/pick") {
       // The system's own "open file" window, so any file on the machine can be chosen (a page cannot read a real path by itself).
-      const ps = "Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.OpenFileDialog; $f.Title='בחירת קבצים (אפשר כמה)'; $f.Multiselect=$true; $f.Filter='כל הקבצים הנתמכים|*.pdf;*.dxf;*.jpg;*.jpeg;*.png;*.webp|כל הקבצים|*.*'; $o=New-Object System.Windows.Forms.Form; $o.TopMost=$true; if($f.ShowDialog($o) -eq 'OK'){[Console]::OutputEncoding=[Text.Encoding]::UTF8; $f.FileNames | ForEach-Object { Write-Output $_ }}";
+      const ps = "Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.OpenFileDialog; $f.Title='בחירת קבצים (אפשר כמה)'; $f.Multiselect=$true; $f.Filter='כל הקבצים הנתמכים|*.dxf;*.dwf;*.pdf;*.jpg;*.jpeg;*.png;*.webp|כל הקבצים|*.*'; $o=New-Object System.Windows.Forms.Form; $o.TopMost=$true; if($f.ShowDialog($o) -eq 'OK'){[Console]::OutputEncoding=[Text.Encoding]::UTF8; $f.FileNames | ForEach-Object { Write-Output $_ }}";
       const picked = await new Promise((r) => execFile("powershell.exe", ["-NoProfile", "-STA", "-Command", ps], { encoding: "utf8", windowsHide: false }, (_e, out) => r(String(out ?? "").trim())));
       return send(res, 200, { paths: picked.split(/\r?\n/).map((x) => x.trim()).filter(Boolean) });
     }
@@ -276,7 +322,7 @@ http.createServer(async (req, res) => {
       if (b.all) {
         for (const r of listResults(true)) rm(path.join(OUT, r.path));
         for (const d of fs.readdirSync(OUT, { withFileTypes: true })) if (d.isDirectory()) fs.rmSync(path.join(d.parentPath ?? OUT, d.name, "_tmp"), { recursive: true, force: true });
-      } else for (const p of b.paths ?? []) { const f = path.join(OUT, p); if (f.startsWith(OUT) && /\.(jpe?g|png)$/i.test(f)) rm(f); }
+      } else for (const p of b.paths ?? []) { const f = path.join(OUT, p); if (f.startsWith(OUT) && /\.(jpe?g|png|pdf)$/i.test(f)) rm(f); }
       for (let i = jobs.length - 1; i >= 0; i--) if (jobs[i].status === "done" || jobs[i].status === "error") jobs.splice(i, 1);
       save();
       return send(res, 200, { deleted: n });
@@ -287,7 +333,15 @@ http.createServer(async (req, res) => {
       // A batch: one entry per chosen view; each render may chain its FLUX pass.
       const batch = stamp() + Math.random().toString(36).slice(2, 5);
       const made = [];
-      if (b.type === "batch") {
+      if (b.type === "build") {
+        // One job per item the page lists (a house is one item made of several files); FLUX follows the single-picture kinds when asked.
+        for (const it of b.items ?? []) {
+          const single = it.project !== "house" && it.project !== "permit";
+          const j = makeJob("render", { ...it, thenFlux: !!b.flux && single, flux: b.flux ?? undefined }, batch);
+          queue.push(j);
+          made.push(j.id);
+        }
+      } else if (b.type === "batch") {
         for (const view of b.views ?? []) {
           const params = { ...b.render, project: b.project, view, thenFlux: !!b.flux, flux: b.flux ? { ...b.flux, preset: b.flux.preset } : undefined };
           const j = makeJob("render", params, batch);
@@ -329,6 +383,7 @@ http.createServer(async (req, res) => {
       const b = await readBody(req);
       const target = b.path ? path.join(OUT, b.path) : OUT;
       if (!target.startsWith(OUT)) return send(res, 400, { error: "נתיב לא חוקי" });
+      if (b.run && b.path && fs.existsSync(target)) { execFile("cmd.exe", ["/c", "start", "", target], { windowsHide: true }, () => {}); return send(res, 200, { ok: true }); }
       execFile("explorer.exe", b.path && fs.existsSync(target) && fs.statSync(target).isFile() ? ["/select,", target] : [target], () => {});
       return send(res, 200, { ok: true });
     }
