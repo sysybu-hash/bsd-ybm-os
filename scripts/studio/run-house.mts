@@ -31,6 +31,19 @@ const { project, problems } = houseProjectFromFiles(files, { whole });
 for (const p of problems) console.log(`note: ${p}`);
 if (!project) throw new Error(`אי אפשר לבנות בית מהקבצים האלה: ${problems.join(" · ")}`);
 
+// The floors' heights, read from the elevations' own level marks (not the standard 3.00 m a storey) where the sheets bear them out.
+{
+  const { levelsFromElevations } = await import("@/lib/projects/building/cad-levels");
+  if (!project.levels && /\.dxf$/i.test(project.facades.file)) {
+    const storeys = Math.max(...project.models.map((m) => m.floors.length));
+    const found = levelsFromElevations(files.get(project.facades.file)!, storeys);
+    if (found) {
+      project.levels = { floors: found.floors, roof: found.roof, parapet: found.parapet };
+      console.log(`levels from the elevations' marks (${found.from})`);
+    } else console.log("levels: the elevations' marks do not make one rising run; the standard storey is used");
+  }
+}
+
 // A house's cars are a gate (a missed parking reading); a building whose DXF floors draw no parking at all (a school) is not held to it.
 const { houseSheetReader } = await import("@/lib/projects/building/house-project");
 const reader = houseSheetReader(async (name) => files.get(name)!);
@@ -72,7 +85,24 @@ const { html } = await runPrivateHouseBooklet({
   },
 });
 fs.writeFileSync(path.join(outDir, "booklet.html"), html);
-fs.writeFileSync(path.join(outDir, "quality.json"), JSON.stringify(quality));
+// Everything the drawings say that the model has to answer for (slopes, level marks, heights, curved walls, layers no reader takes): told, not dropped.
+const notes: string[] = [];
+{
+  const { auditDxf, auditLines } = await import("@/lib/projects/building/cad-audit");
+  for (const [name, bytes] of files) {
+    if (!/\.dxf$/i.test(name) || /facades/i.test(name)) continue;
+    try {
+      const audit = auditDxf(bytes, name);
+      if (!audit) continue;
+      const lines = auditLines(audit);
+      quality.push(...lines.warnings);
+      notes.push(...lines.notes);
+    } catch (err) {
+      console.log(`audit of ${name} failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+}
+fs.writeFileSync(path.join(outDir, "quality.json"), JSON.stringify({ warnings: quality, notes }));
 const pdf = await renderHtmlSectionsPdf(html, { sheet: BUILDING_BOOKLET_PAGE, jpegQuality: 80, timeoutMs: 300_000 });
 let file = path.join(outDir, "booklet.pdf");
 try {

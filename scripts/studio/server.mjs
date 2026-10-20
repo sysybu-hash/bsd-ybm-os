@@ -103,7 +103,11 @@ const roleName = (r) => (r === "ground" ? "ground" : r === "facades" ? "facades"
 /** Runs one tsx script and moves what it made into the results folder. Pictures first, then the booklet. */
 async function collect(job, tmp, dir, label) {
   // The model's check against the drawing (house kind): kept on the job so the page and the chat can say where the model and the drawing disagree.
-  try { job.warnings = JSON.parse(fs.readFileSync(path.join(tmp, "quality.json"), "utf8")); } catch { /* none */ }
+  try {
+    const q = JSON.parse(fs.readFileSync(path.join(tmp, "quality.json"), "utf8"));
+    job.warnings = Array.isArray(q) ? q : q.warnings ?? [];
+    job.notes = Array.isArray(q) ? [] : q.notes ?? [];
+  } catch { /* none */ }
   const made = fs.existsSync(tmp) ? fs.readdirSync(tmp).filter((f) => /\.(jpe?g|png|pdf)$/i.test(f)) : [];
   if (!made.length) throw new Error("לא נוצרו קבצים. הפרטים בלוג.");
   fs.mkdirSync(dir, { recursive: true });
@@ -297,8 +301,8 @@ const probeHouse = (paths) => new Promise((r) => {
 const chatDeps = {
   ROOT, KINDS, EXT_KINDS, NOT_SUPPORTED, probeHouse, fluxDefaults,
   startBuild: enqueueBuild,
-  status: () => ({ counts: jobs.reduce((a, j) => ((a[j.status] = (a[j.status] ?? 0) + 1), a), {}), jobs: jobs.slice(-15).map((j) => ({ id: j.id, title: j.title, status: j.status, result: j.result, warnings: j.warnings })), results: listResults(false).slice(0, 25).map((r) => r.path) }),
-  jobLog: (id) => { const j = jobs.find((x) => x.id === id); return j ? { status: j.status, warnings: j.warnings, log: j.log.slice(-1800) } : null; },
+  status: () => ({ counts: jobs.reduce((a, j) => ((a[j.status] = (a[j.status] ?? 0) + 1), a), {}), jobs: jobs.slice(-15).map((j) => ({ id: j.id, title: j.title, status: j.status, result: j.result, warnings: j.warnings, notes: j.notes })), results: listResults(false).slice(0, 25).map((r) => r.path) }),
+  jobLog: (id) => { const j = jobs.find((x) => x.id === id); return j ? { status: j.status, warnings: j.warnings, notes: j.notes, log: j.log.slice(-1800) } : null; },
   cancel: (ids) => { const set = ids?.length ? new Set(ids) : null; let n = 0; for (const j of jobs) if ((!set || set.has(j.id)) && (j.status === "queued" || j.status === "running")) { j.cancelled = true; if (j.status === "queued") { j.status = "cancelled"; const i = queue.indexOf(j); if (i >= 0) queue.splice(i, 1); } else if (child) execFile("taskkill", ["/F", "/T", "/PID", String(child.pid)], () => {}); n++; } save(); return { cancelled: n }; },
   runFlux: (p) => { const src = String(p.src ?? ""); if (!fs.existsSync(path.join(OUT, src))) return { error: "תמונת המקור לא נמצאה" }; const j = makeJob("flux", { ...fluxDefaults(), ...p, src, view: "" }); queue.push(j); pump(); return { queued: j.id }; },
 };
@@ -364,7 +368,7 @@ http.createServer(async (req, res) => {
       save();
       return send(res, 200, { deleted: n });
     }
-    if (url.pathname === "/api/jobs" && req.method === "GET") return send(res, 200, jobs.slice(-200).map((j) => ({ id: j.id, type: j.type, title: j.title, status: j.status, batch: j.batch, result: j.result, warnings: j.warnings, created: j.created, started: j.started, finished: j.finished, log: j.status === "queued" ? "" : j.log.slice(-1200) })));
+    if (url.pathname === "/api/jobs" && req.method === "GET") return send(res, 200, jobs.slice(-200).map((j) => ({ id: j.id, type: j.type, title: j.title, status: j.status, batch: j.batch, result: j.result, warnings: j.warnings, notes: j.notes, created: j.created, started: j.started, finished: j.finished, log: j.status === "queued" ? "" : j.log.slice(-1200) })));
     if (url.pathname === "/api/jobs" && req.method === "POST") {
       const b = await readBody(req);
       // A batch: one entry per chosen view; each render may chain its FLUX pass.
