@@ -65,7 +65,8 @@ export function dxfTreadSets(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.
     g.sort((p, q) => p.off - q.off);
     let run: Seg[] = [g[0]!];
     const flush = () => {
-      if (run.length >= 6) {
+      // Six lines make a stair of any layer; on the sheets' own stair layer (מדרגוט) three do — a landing's short flight.
+      if (run.length >= (/^מדרגוט/.test(run[0]?.layer ?? "") ? 3 : 6)) {
         const f = run[0]!;
         const l = run[run.length - 1]!;
         const mid = (s: Seg): [number, number] => [(s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2];
@@ -87,7 +88,7 @@ export function dxfTreadSets(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.
     };
     for (let i = 1; i < g.length; i++) {
       const gap = g[i]!.off - run[run.length - 1]!.off;
-      if (gap > 0.19 && gap < 0.38 && Math.abs(g[i]!.len - run[run.length - 1]!.len) < 0.12) run.push(g[i]!);
+      if (gap > 0.19 && gap < 0.42 && Math.abs(g[i]!.len - run[run.length - 1]!.len) < 0.12) run.push(g[i]!);
       else if (gap >= 0.05) {
         flush();
         run = [g[i]!];
