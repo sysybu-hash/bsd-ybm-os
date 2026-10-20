@@ -888,6 +888,8 @@ async function main() {
       geo.rotateX(-Math.PI / 2);
       const pos = geo.attributes.position, uv = geo.attributes.uv;
       const r = repeatOf(mat);
+      // The raster paints terrain's texture triplanar (below): flat ground and steep banks sample it by the way they face, so no seam runs between a flat mapping and a bank's. The path tracer keeps per-vertex UVs.
+      const triplanar = !p.photo && !P.pathTrace && !!mat.map;
       for (let j = ja; j <= jb; j++) for (let i = ia; i <= ib; i++) {
         const k = (j - ja) * cols + (i - ia);
         const x = p.x0 + i * p.dx, z = p.z0 + j * p.dx;
@@ -895,7 +897,7 @@ async function main() {
         // A slope near vertical (a cut bank, a wall of earth) stretched a flat top-down mapping into streaks: there the texture runs along the slope instead (height and the way across it).
         const hL = p.heights[j * p.nx + Math.max(0, i - 1)], hR = p.heights[j * p.nx + Math.min(p.nx - 1, i + 1)], hU = p.heights[Math.max(0, j - 1) * p.nx + i], hD = p.heights[Math.min(p.nz - 1, j + 1) * p.nx + i];
         const grad = Math.hypot((hR - hL) / (2 * p.dx), (hD - hU) / (2 * p.dx));
-        if (!p.photo && grad > 1.1) { uv.setXY(k, (x * 0.7 + z * 0.7) / r, p.heights[j * p.nx + i] / r); continue; }
+        if (!p.photo && !triplanar && grad > 1.1) { uv.setXY(k, (x * 0.7 + z * 0.7) / r, p.heights[j * p.nx + i] / r); continue; }
         if (p.photo) {
           // The fit's own mapping: pixel = ((dx·cos + dz·sin) / s + cu, (−dx·sin + dz·cos) / s + cv), the image's v counted down.
           const ph = p.photo, c = Math.cos(ph.rot), sn = Math.sin(ph.rot), dx = x - ph.cx, dz = z - ph.cz;
@@ -908,7 +910,24 @@ async function main() {
       // slopes, the bank between the back garden and the lower side yard read
       // as a square patch of another green (Gottlieb A, 13/10/2026).
       if (housePlan) { const nr = geo.attributes.normal; for (let k = 0; k < nr.count; k++) nr.setXYZ(k, 0, 1, 0); nr.needsUpdate = true; }
-      mesh = new THREE.Mesh(geo, mat);
+      let terrainMat = mat;
+      if (triplanar && !housePlan) {
+        // Three looks up the texture by what a surface faces: along x, along z, or up, blended by the normal. A bank of any slope and any direction keeps the texture's scale and never streaks.
+        const NL = String.fromCharCode(10);
+        const lines = (...l) => NL + l.join(NL) + NL;
+        terrainMat = mat.clone();
+        terrainMat.onBeforeCompile = (shader) => {
+          shader.uniforms.uRep = { value: r };
+          shader.vertexShader = shader.vertexShader
+            .replace("#include <common>", "#include <common>" + lines("varying vec3 vTriP;", "varying vec3 vTriN;"))
+            .replace("#include <begin_vertex>", "#include <begin_vertex>" + lines("vTriP = (modelMatrix * vec4(position, 1.0)).xyz;", "vTriN = normalize(mat3(modelMatrix) * normal);"));
+          shader.fragmentShader = shader.fragmentShader
+            .replace("#include <common>", "#include <common>" + lines("varying vec3 vTriP;", "varying vec3 vTriN;", "uniform float uRep;"))
+            .replace("#include <map_fragment>", lines("#ifdef USE_MAP", "vec3 triW = pow(abs(normalize(vTriN)), vec3(4.0));", "triW /= (triW.x + triW.y + triW.z);", "vec4 sampledDiffuseColor = texture2D(map, vTriP.zy / uRep) * triW.x + texture2D(map, vTriP.xz / uRep) * triW.y + texture2D(map, vTriP.xy / uRep) * triW.z;", "diffuseColor *= sampledDiffuseColor;", "#endif"));
+        };
+        terrainMat.customProgramCacheKey = () => "terrain-triplanar";
+      }
+      mesh = new THREE.Mesh(geo, terrainMat);
     } else if (p.type === "tree") {
       // A trunk and a crown of overlapping clumps, each its own green.
       const g = new THREE.Group();

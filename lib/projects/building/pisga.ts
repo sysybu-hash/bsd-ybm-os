@@ -267,10 +267,12 @@ function ramp(): Primitive[] {
   // plot's corner, +12.30.
   const out: Primitive[] = [];
   const tag = "site:ramp";
+  // The corridor's own lines (layer "מבט עבה", floor −1's sheet): north face z 16.38, south face z 17.88 from x 33.71, bending south-east at x 56.1 to the exit's door at (63.65, 19.55).
+  // The levels are the sheet's marks: +12.76 at x 33.9 and +11.86 at x 52.8 (a 4.8% fall), then up to the emergency exit's +12.30.
   const path: Array<[number, number, number]> = [
-    [30.8, 17.35, 12.73],
-    [53.9, 17.35, 11.86],
-    [66.2, 20.9, 12.3],
+    [33.71, 17.13, 12.77],
+    [56.1, 17.13, 11.8],
+    [63.65, 19.55, 12.3],
   ];
   const width = 1.5;
   for (let i = 1; i < path.length; i++) {
@@ -692,6 +694,18 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     }
   }
   prims.push({ type: "terrain", x0: far.x0, z0: far.z0, dx: far.dx, nx: far.nx, nz: far.nz, heights: farHeights, material: "soil", tag: "site:ground-far" });
+
+  // The covered ramp is a corridor on the street's level; where the ground falls away under it (the east slope) it stands on piers, one every four metres, not on air.
+  {
+    const slab = prims.filter((q): q is Extract<Primitive, { type: "box" }> => q.type === "box" && q.tag === "site:ramp" && q.material === "paving");
+    slab.forEach((q, i) => {
+      if (i % 8 !== 4) return;
+      const bottom = q.centre.y - q.size.y / 2;
+      const base = groundAt(q.centre.x, q.centre.z, true) - 0.4;
+      if (bottom - base < 0.6) return;
+      prims.push({ type: "box", centre: { x: q.centre.x, y: (bottom + base) / 2, z: q.centre.z }, size: { x: 0.35, y: bottom - base, z: 0.35 }, material: "concrete", tag: "site:ramp-pier" });
+    });
+  }
 
   // Every surface the plan sheets hatch (paving, concrete, grated decks), as the drawing's own polygons laid on the ground; the same hatch drawn on two sheets is one.
   if (dxf) {
