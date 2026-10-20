@@ -58,6 +58,13 @@ const FLUX_PRESETS = {
 };
 const INTERIOR_VIEWS = new Set(["lobby", "hall", "design", "event-hall", "classroom", "workshop", "computers", "salon", "salon-wide", "kitchen", "bedroom-1", "bedroom-2", "bedroom-3", "entrance", "bathroom"]);
 
+const STATE = path.join(OUT, "_state.json");
+const LOG = path.join(OUT, "_server.log");
+const note = (m) => { try { fs.appendFileSync(LOG, `${new Date().toISOString()} ${m}\n`); } catch { /* disk */ } };
+// A crash in one request or job must not take the program down or lose the queue.
+process.on("uncaughtException", (e) => note(`uncaught ${e instanceof Error ? e.stack : String(e)}`));
+process.on("unhandledRejection", (e) => note(`unhandled ${e instanceof Error ? e.stack : String(e)}`));
+
 /** @type {Array<any>} */
 const jobs = [];
 const queue = [];
@@ -152,12 +159,14 @@ async function pump() {
     current = job;
     job.status = "running";
     job.started = Date.now();
+    save();
     try {
       const file = job.type === "render" ? await doRender(job) : await doFlux(job);
       job.result = rel(file);
       job.status = "done";
       // A full visualization: the FLUX pass of a view follows its render.
       if (job.type === "render" && job.params.thenFlux) {
+        job.fluxQueued = true;
         const next = makeJob("flux", { ...job.params.flux, src: job.result, view: job.params.view }, job.batch);
         queue.unshift(next);
       }
@@ -167,6 +176,7 @@ async function pump() {
     }
     job.finished = Date.now();
     current = null;
+    save();
   }
   running = false;
 }
@@ -175,7 +185,33 @@ function makeJob(type, params, batch) {
   const label = type === "render" ? `רנדר · ${PROJECTS[params.project]?.title ?? params.project} · ${VIEW_LABELS[params.view] ?? params.view}` : `FLUX · ${VIEW_LABELS[params.view] ?? path.basename(params.src ?? "")}`;
   const job = { id: stamp() + Math.random().toString(36).slice(2, 6), type, title: label, status: "queued", log: "", created: Date.now(), params, batch: batch ?? null };
   jobs.push(job);
+  save();
   return job;
+}
+
+let saveTimer = null;
+function save() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try { const tmp = STATE + ".tmp"; fs.writeFileSync(tmp, JSON.stringify(jobs.slice(-300))); fs.renameSync(tmp, STATE); } catch (e) { note(`save ${String(e)}`); }
+  }, 300);
+}
+setInterval(save, 2000);
+
+/** After a restart: what was waiting or running goes back in the queue (a render that finished but whose FLUX pass was not yet queued gets it now). */
+function resume() {
+  let list = [];
+  try { list = JSON.parse(fs.readFileSync(STATE, "utf8")); } catch { return; }
+  for (const j of list) {
+    jobs.push(j);
+    if (j.status === "running" || j.status === "queued") { j.status = "queued"; j.log = (j.log ?? "") + "\n[התוכנה הופעלה מחדש: העבודה חוזרת לתור]\n"; queue.push(j); }
+    else if (j.status === "done" && j.type === "render" && j.params?.thenFlux && !j.fluxQueued && j.result) {
+      j.fluxQueued = true;
+      queue.push(makeJob("flux", { ...j.params.flux, src: j.result, view: j.params.view }, j.batch));
+    }
+  }
+  if (queue.length) { note(`resumed ${queue.length} jobs`); setTimeout(pump, 500); }
 }
 
 function listResults() {
@@ -274,4 +310,4 @@ http.createServer(async (req, res) => {
   } catch (e) {
     send(res, 500, { error: e instanceof Error ? e.message : String(e) });
   }
-}).listen(PORT, "127.0.0.1", () => console.log(`סטודיו הדמיות: http://localhost:${PORT}`));
+}).listen(PORT, "127.0.0.1", () => { console.log(`סטודיו הדמיות: http://localhost:${PORT}`); resume(); });
