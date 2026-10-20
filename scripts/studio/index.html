@@ -111,12 +111,14 @@
       <div class="hint">סימון תמונה למחיקה: Ctrl + לחיצה (אפשר כמה). הקבצים נמחקים מהדיסק.</div></div>
   </section>
   <section>
-    <div class="card"><h2>תור העבודות</h2><div class="row" style="margin:0 0 8px"><button class="sec" id="clearDone">נקה רשימה שהסתיימה</button></div><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
+    <div class="card"><h2>תור העבודות</h2><div class="row" style="margin:0 0 8px"><button class="sec" id="jobAll">סמן הכול</button><button class="sec" id="jobNone">נקה סימון</button></div>
+      <div class="row" style="margin:0 0 8px"><button class="bad" id="jobCancel">בטל / הסר את המסומנות</button></div>
+      <div class="row" style="margin:0 0 8px"><button class="sec" id="clearDone">נקה רשימה שהסתיימה</button></div><div class="bar2"><i id="prog"></i></div><div id="jobs"></div></div>
   </section>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-let files = [], marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
+let jobMarks = new Set(), lastJobs = [], files = [], marked = new Set(), cfg, results = [], sel = null, picked = "", chosen = new Set();
 const api = (p, o) => fetch(p, o).then((r) => r.json());
 const post = (p, b) => api(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(b ?? {}) });
 const proj = () => cfg.projects[$("project").value];
@@ -134,6 +136,16 @@ async function init() {
   $("delAll").onclick = async () => { if (!confirm("למחוק את כל תמונות הניסיונות שבתיקיית התוצאות, כולל הדמיות מהפעלות קודמות?")) return; await post("/api/delete", { all: true }); marked.clear(); sel = null; lastCount = -1; refresh(); };
   $("showOld").onchange = () => { lastCount = -1; refresh(); };
   $("clearDone").onclick = async () => { await post("/api/job-remove", {}); refresh(); };
+  $("jobAll").onclick = () => { lastJobs.forEach((j) => jobMarks.add(j.id)); drawJobs(); };
+  $("jobNone").onclick = () => { jobMarks.clear(); drawJobs(); };
+  $("jobCancel").onclick = async () => {
+    const ids = [...jobMarks]; if (!ids.length) return alert("לא סומנו עבודות");
+    const live = lastJobs.filter((j) => ids.includes(j.id) && (j.status === "queued" || j.status === "running")).map((j) => j.id);
+    if (!confirm(`לבטל ${live.length} עבודות פעילות ולהסיר ${ids.length - live.length} שהסתיימו?`)) return;
+    if (live.length) await post("/api/cancel", { ids: live });
+    await post("/api/job-remove", { ids: ids.filter((i) => !live.includes(i)) });
+    jobMarks.clear(); refresh();
+  };
   $("selAll").onclick = () => { proj().views.forEach((v) => chosen.add(v)); drawViews(); };
   $("selNone").onclick = () => { chosen.clear(); drawViews(); };
   $("full").onclick = () => run(proj().views);
@@ -222,13 +234,18 @@ function renderGallery() {
   document.querySelectorAll("#gallery img").forEach((i) => (i.onclick = (e) => { if (e.ctrlKey) { marked.has(i.dataset.p) ? marked.delete(i.dataset.p) : marked.add(i.dataset.p); renderGallery(); } else show(i.dataset.p); }));
 }
 let lastCount = -1;
+function drawJobs() {
+  $("jobs").innerHTML = lastJobs.slice().reverse().map((j) => `<div class="job"><b><input type="checkbox" class="jm" data-j="${j.id}" ${jobMarks.has(j.id) ? "checked" : ""} style="width:auto"> ${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל", cancelled: "בוטל" }[j.status]}</span> <a data-j="${j.id}" data-a="${j.status === "queued" || j.status === "running" ? "cancel" : "remove"}" style="color:var(--bad);cursor:pointer;float:left">${j.status === "queued" ? "הסר מהתור" : j.status === "running" ? "בטל עבודה" : "הסר מהרשימה"}</a>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
+  document.querySelectorAll("#jobs a").forEach((a) => (a.onclick = async () => { await post(a.dataset.a === "cancel" ? "/api/cancel" : "/api/job-remove", { id: a.dataset.j }); refresh(); }));
+  document.querySelectorAll("#jobs .jm").forEach((c) => (c.onchange = () => (c.checked ? jobMarks.add(c.dataset.j) : jobMarks.delete(c.dataset.j))));
+}
 async function refresh() {
   const [js, rs] = await Promise.all([api("/api/jobs"), api("/api/results" + ($("showOld").checked ? "?all=1" : ""))]);
   const done = js.filter((j) => j.status === "done" || j.status === "error").length;
   $("prog").style.width = js.length ? (done / js.length) * 100 + "%" : "0";
   const left = js.filter((j) => j.status === "queued" || j.status === "running").length;
   $("eta").textContent = left ? `נותרו ${left} עבודות בתור. אפשר להשאיר את התוכנה פתוחה ולהמשיך לעבוד במקום אחר.` : "";
-  $("jobs").innerHTML = js.slice().reverse().map((j) => `<div class="job"><b>${j.title}</b><span class="st-${j.status}">${{ queued: "ממתין בתור", running: "רץ עכשיו…", done: "הסתיים", error: "נכשל", cancelled: "בוטל" }[j.status]}</span> <a data-j="${j.id}" data-a="${j.status === "queued" || j.status === "running" ? "cancel" : "remove"}" style="color:var(--bad);cursor:pointer;float:left">${j.status === "queued" ? "הסר מהתור" : j.status === "running" ? "בטל עבודה" : "הסר מהרשימה"}</a>${j.status === "error" || j.status === "running" ? `<pre>${j.log.replace(/[<&]/g, "")}</pre>` : ""}</div>`).join("") || '<span class="hint">אין עבודות בתור</span>';
+  lastJobs = js; drawJobs();
   document.querySelectorAll("#jobs a").forEach((a) => (a.onclick = async () => { await post(a.dataset.a === "cancel" ? "/api/cancel" : "/api/job-remove", { id: a.dataset.j }); refresh(); }));
   if (rs.length !== lastCount) { const first = lastCount < 0; lastCount = rs.length; results = rs; if (!sel || !first) show(rs[0]?.path ?? null); else show(sel); if (!rs.length) renderGallery(); }
 }
