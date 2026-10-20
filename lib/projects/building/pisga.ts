@@ -208,7 +208,8 @@ function auditorium(level: number, seats = true, steps = { rows: 9, pitch: 0.95,
   floorBox(steps.z0 + steps.rows * steps.pitch, 16.2, level);
   void level;
   out.push({ type: "box", centre: { x: 49.0, y: HALL_FRONT + 0.12, z: 2.4 }, size: { x: 8.6, y: 0.24, z: 2.1 }, material: "floorWood", tag });
-  out.push({ type: "box", centre: { x: 48.0, y: HALL_FRONT + 0.24 + 0.375, z: 2.2 }, size: { x: 2.4, y: 0.75, z: 0.7 }, material: "timber", tag });
+  out.push({ type: "box", centre: { x: 48.0, y: HALL_FRONT + 0.24 + 0.73, z: 2.2 }, size: { x: 2.4, y: 0.04, z: 0.7 }, material: "timber", tag });
+  for (const [dx, dz] of [[-1.1, -0.3], [1.1, -0.3], [-1.1, 0.3], [1.1, 0.3]] as const) out.push({ type: "box", centre: { x: 48.0 + dx, y: HALL_FRONT + 0.24 + 0.355, z: 2.2 + dz }, size: { x: 0.05, y: 0.71, z: 0.05 }, material: "frame", tag });
   // A projection screen over the stage, and the walls either side lined in
   // oak slats for the room's acoustics.
   out.push({ type: "box", centre: { x: 49.0, y: HALL_FRONT + 2.1, z: 1.4 }, size: { x: 4.2, y: 2.4, z: 0.03 }, material: "whiteboard", tag });
@@ -387,7 +388,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // Under floor −1's double-height void (and its stair) floor −2 has no ceiling.
     const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
     // From the DXF the furniture is the sheet's own outlines, each extruded to what it is; the finishes, ceilings and lights stay the rooms'.
-    prims.push(...furnishFloor(rooms, dxf ? [] : items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
+    prims.push(...furnishFloor(rooms, dxf ? [] : items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, lowCeiling: spec.id === "floor-2" ? { x: 44.4, y: 1.3, w: 9.3, h: 15, m: HALL_FRONT - 0.32 - LEVEL.floorMinus2 } : undefined, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
     if (dxf) {
       // The fixtures the sheet draws in the WCs: a pan with its cistern, a basin on its stand, a counter's basins.
       for (const f of dxfFixtures(dxf, spec.id as "floor-2" | "floor-1")) {
@@ -423,6 +424,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
           prims.push({ type: "box", centre: { x: st.x, y: f + 0.44, z: st.z - 0.05 }, size: { x: 0.5, y: 0.1, z: 0.46 }, material: "seatFabric", tag });
           prims.push({ type: "box", centre: { x: st.x, y: f + 0.78, z: st.z + 0.18 }, size: { x: 0.5, y: 0.62, z: 0.08 }, material: "seatFabric", tag });
           prims.push({ type: "box", centre: { x: st.x - 0.28, y: f + 0.34, z: st.z }, size: { x: 0.05, y: 0.68, z: 0.5 }, material: "frame", tag });
+          // The seat is carried: a pedestal from its row's step up to the pan, so none hangs over the edge of a step.
+          prims.push({ type: "box", centre: { x: st.x, y: (HALL_FRONT - 0.3 + f) / 2, z: st.z - 0.02 }, size: { x: 0.24, y: f - (HALL_FRONT - 0.3), z: 0.3 }, material: "frame", tag });
         }
       }
     }
@@ -686,7 +689,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // (the building's north wall), the west faces at x 22.04/22.09 (to z −2.25 only: the wall is cut, which the model keeps open), the east end at x 32.94. So 10.84 m along the facade and 4.55 m out.
     // The wall is a 0.2 m parapet 1.1 m over the floor. (An earlier reading took the lines at z −8.45 for the same terrace and made it twice as deep.)
     {
-      const [nx0, nx1, nz0, nz1] = [22.04, 32.94, -3.64, 0.95];
+      const [nx0, nx1, nz0, nz1] = [22.04, 32.94, -3.64, 1.06];
       const t = 0.2, top = 8.27 + 1.1;
       prims.push({ type: "prism", ring: [[nx0, nz0], [nx1, nz0], [nx1, nz1], [nx0, nz1]], y0: 7.97, y1: 8.27, material: "paving", tag: "site:north-terrace" });
       for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx1 - t, nx1, nz0, nz1], [nx0, nx0 + t, nz0, -2.25]] as const) {
@@ -701,7 +704,14 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       return allSpots.filter((q) => Math.hypot(q.x - cx, q.z - cz) < 6 && q.level < 12).sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz))[0]?.level;
     };
     // (A plane through the sheet's level marks was tried for the ramps and sent a patch up the wall behind it: the marks name levels of things beside the paving too. Paving lies on the ground until a mark is tied to its own polygon.)
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel));
+    const flights = (["floor-2", "floor-1", "roof"] as const).flatMap((sheet) => dxfTreadSets(dxf, sheet));
+    const nearStair = (x: number, z: number) => flights.some((f) => {
+      const [ax, az, bx, bz] = [f.first[0], f.first[1], f.last[0], f.last[1]];
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2));
+      return Math.hypot(x - (ax + (bx - ax) * t), z - (az + (bz - az) * t)) < f.width / 2 + 1.2;
+    });
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, nearStair));
     // Every run of treads the sheets draw, but the two stairs built above from their own reading (the lobby's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 17.2);
     const runs = new Set<string>();

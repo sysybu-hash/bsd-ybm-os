@@ -741,6 +741,32 @@ export function dxfFixtures(drawing: DxfDrawing, floor: PisgaDxfFloor): FixtureS
 export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag: string): Array<{ cx: number; cy: number; cz: number; sx: number; sy: number; sz: number; rotY: number; material: "timber" | "seatFabric" | "sofaFabric" | "metal" | "worktop" | "cabinet" | "walnut" }> {
   const out: ReturnType<typeof furnitureFromShapes> = [];
   void tag;
+  // A chair the sheet draws tucked under a table: the chair's back would stand through the table top. Turn it to face the table and slide it out until its back is just clear of the table's edge;
+  // the seat stays under the table, as a pushed-in chair does.
+  const tables = shapes.filter((t) => t.kind === "table" || t.kind === "round-table" || t.kind === "cabinet" || t.kind === "bench" || t.kind === "sofa" || t.kind === "armchair");
+  shapes = shapes.map((c) => {
+    if (c.kind !== "chair") return c;
+    let best: { n: [number, number]; need: number } | null = null;
+    for (const t of tables) {
+      const tc = Math.cos(t.angle), ts = Math.sin(t.angle);
+      const dx = c.x - t.x, dz = c.z - t.z;
+      const u = dx * tc + dz * ts, v = -dx * ts + dz * tc;          // the chair's middle in the table's frame
+      const hu = t.length / 2, hv = t.width / 2;
+      const cr = Math.max(c.length, c.width) / 2;
+      if (Math.abs(u) > hu + cr || Math.abs(v) > hv + cr) continue;
+      // The side to leave by: the nearest edge to the chair's middle.
+      const du = hu - Math.abs(u), dv = hv - Math.abs(v);
+      const alongU = du < dv;
+      const sign = (alongU ? u : v) >= 0 ? 1 : -1;
+      const n: [number, number] = alongU ? [sign * tc, sign * ts] : [-sign * ts, sign * tc];
+      const dEdge = (alongU ? hu - Math.abs(u) : hv - Math.abs(v));      // how far inside the edge the middle is (negative: already outside)
+      const back = c.width / 2;                                          // the back's rear face stands this far out from the middle
+      const need = Math.max(0, dEdge + 0.03 - back);                    // slide out so the back's face meets the edge
+      if (!best || need < best.need) best = { n, need };
+    }
+    if (!best) return c;
+    return { ...c, x: c.x + best.n[0] * best.need, z: c.z + best.n[1] * best.need, angle: Math.atan2(best.n[0], -best.n[1]), length: Math.min(c.length, 0.55), width: Math.min(c.width, 0.5) };
+  });
   for (const s of shapes) {
     const base = { rotY: -s.angle };
     const put = (u: number, v: number, sx: number, sy: number, sz: number, y0: number, material: (typeof out)[number]["material"]) => {

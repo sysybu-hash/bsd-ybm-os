@@ -35,6 +35,8 @@ export type FurnishOptions = {
   tag: string;
   /** Clear height under the suspended ceiling. */
   ceilingM: number;
+  /** A part of the plan where the floor above sits lower (a raked hall's slab): its ceiling is this much lower. */
+  lowCeiling?: { x: number; y: number; w: number; h: number; m: number };
   /** Rooms that open to the floor above: no ceiling. */
   openAbove?: RoomKind[];
   /** Where the floor above is open — a double-height hall: no ceiling under it. */
@@ -73,9 +75,11 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
     if (!open) {
       const underVoid = (r: { x: number; y: number; w: number; h: number }) =>
         (options.voids ?? []).some((v) => r.x < v.x + v.w && r.x + r.w > v.x && r.y < v.y + v.h && r.y + r.h > v.y);
+      const lc = options.lowCeiling;
+      const heightAt = (x: number, z: number) => (lc && x > lc.x && x < lc.x + lc.w && z > lc.y && z < lc.y + lc.h ? lc.m : options.ceilingM);
       for (const whole of mergeRects(rects)) {
         for (const r of cutAway(whole, options.voids ?? [])) {
-          out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + options.ceilingM + 0.01, z: r.y + r.h / 2 }, size: { x: r.w + 0.02, y: 0.02, z: r.h + 0.02 }, material: "ceiling", tag: `${tag}:ceiling` });
+          out.push({ type: "box", centre: { x: r.x + r.w / 2, y: level + heightAt(r.x + r.w / 2, r.y + r.h / 2) + 0.01, z: r.y + r.h / 2 }, size: { x: r.w + 0.02, y: 0.02, z: r.h + 0.02 }, material: "ceiling", tag: `${tag}:ceiling` });
         }
       }
       // Light panels, 60 cm square, on a 2.4 m grid across the room.
@@ -83,7 +87,7 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
       for (let y = b.y + 1.2; y < b.y + b.h - 0.6; y += 2.4) {
         for (let x = b.x + 1.2; x < b.x + b.w - 0.6; x += 2.4) {
           if (!inRoom(room, x, y) || underVoid({ x: x - 0.3, y: y - 0.3, w: 0.6, h: 0.6 })) continue;
-          out.push({ type: "box", centre: { x, y: level + options.ceilingM - 0.005, z: y }, size: { x: 0.6, y: 0.012, z: 0.6 }, material: "lightPanel", tag: `${tag}:light` });
+          out.push({ type: "box", centre: { x, y: level + heightAt(x, y) - 0.005, z: y }, size: { x: 0.6, y: 0.012, z: 0.6 }, material: "lightPanel", tag: `${tag}:light` });
         }
       }
     }
@@ -92,13 +96,45 @@ export function furnishFloor(rooms: PlanRoom[], items: PlanItem[], options: Furn
   const pieces: Piece[] = [];
   for (const it of items) {
     const room = rooms.find((r) => inRoom(r, it.x, it.y));
-    if (!room || room.kind === "stair" || room.kind === "lift" || room.kind === "wc" || room.kind === "void") continue;
+    if (!room || room.kind === "stair" || room.kind === "lift" || room.kind === "void") continue;
+    if (room.kind === "wc") {
+      out.push(...fixture(it, level, `${tag}:fixture`));
+      continue;
+    }
     const kind = classify(it, room.kind);
     if (kind) pieces.push({ kind, x: it.x, y: it.y, length: it.length, width: it.width, angle: it.angle });
   }
   pieces.push(...tablesBetweenRows(pieces));
   pieces.push(...chairsAtBareTables(pieces, rooms));
   for (const p of pieces) out.push(...build(p, level, `${tag}:furniture`));
+  return out;
+}
+
+/**
+ * What a sheet draws in a WC: a run of basins on a counter (long and shallow),
+ * a pan with its cistern (a hand's breadth under a metre), else a fixture's
+ * ceramic block.
+ */
+function fixture(it: PlanItem, level: number, tag: string): Primitive[] {
+  const out: Primitive[] = [];
+  const ca = Math.cos(it.angle);
+  const sa = Math.sin(it.angle);
+  const part = (u: number, v: number, lu: number, lv: number, y0: number, y1: number, material: BuildingMaterial) =>
+    out.push({ type: "box", centre: { x: it.x + u * ca - v * sa, y: level + (y0 + y1) / 2, z: it.y + u * sa + v * ca }, size: { x: lu, y: y1 - y0, z: lv }, rotY: -it.angle, material, tag });
+  const { length: L, width: W } = it;
+  if (L >= 1.0 && W <= 0.7) {
+    part(0, 0, L, W, 0, 0.8, "cabinet");
+    part(0, 0, L + 0.02, W + 0.02, 0.8, 0.84, "worktop");
+    // A basin to each 60 cm of counter.
+    const n = Math.max(1, Math.round(L / 0.6));
+    for (let i = 0; i < n; i++) part(-L / 2 + ((i + 0.5) * L) / n, 0, 0.4, Math.min(0.34, W - 0.1), 0.8, 0.86, "ceramic");
+  } else if (Math.max(L, W) <= 0.9) {
+    // The pan, and its cistern at the wall end.
+    part(0, 0, Math.max(L, W) * 0.9, Math.min(L, W) * 0.8, 0, 0.4, "ceramic");
+    part(-Math.max(L, W) / 2 + 0.1, 0, 0.18, Math.min(L, W) * 0.8, 0.4, 0.8, "ceramic");
+  } else {
+    part(0, 0, L, W, 0, 0.45, "ceramic");
+  }
   return out;
 }
 

@@ -129,13 +129,24 @@ export function stairPrims(set: TreadSet, top: number, bottom: number, tag: stri
     const h = top - k * rise;
     const base = bottom - 0.4;
     out.push({ type: "box", centre: { x: cx, y: (h + base) / 2, z: cz }, size: { x: set.pitch, y: h - base, z: set.width }, rotY: -ang, material: "concrete", tag });
-    // A handrail up each side ("מאחז יד" on the sheets): a rail a metre over the tread, in steps a tread long, a post every third tread.
-    const perp: [number, number] = [-set.dir[1], set.dir[0]];
-    for (const side of [-1, 1]) {
-      const rx = cx + perp[0] * side * (set.width / 2 - 0.04);
-      const rz = cz + perp[1] * side * (set.width / 2 - 0.04);
-      out.push({ type: "box", centre: { x: rx, y: h + 0.95, z: rz }, size: { x: set.pitch + 0.01, y: 0.05, z: 0.05 }, rotY: -ang, material: "frame", tag: `${tag}-rail` });
-      if (k % 3 === 0) out.push({ type: "box", centre: { x: rx, y: h + 0.47, z: rz }, size: { x: 0.045, y: 0.95, z: 0.045 }, material: "frame", tag: `${tag}-rail` });
+  }
+  // A handrail up each side ("מאחז יד" on the sheets): one continuous rail a metre over the treads, from the first to the last, in fine sections so it follows the slope; a post every four treads.
+  const perp: [number, number] = [-set.dir[1], set.dir[0]];
+  for (const side of [-1, 1]) {
+    const sub = set.n * 3;
+    for (let q = 0; q < sub; q++) {
+      const t = (q + 0.5) / sub;
+      const px = set.first[0] + (set.last[0] - set.first[0]) * t + perp[0] * side * (set.width / 2 - 0.04);
+      const pz = set.first[1] + (set.last[1] - set.first[1]) * t + perp[1] * side * (set.width / 2 - 0.04);
+      const h = top - rise * (t * (set.n - 1)) ;
+      out.push({ type: "box", centre: { x: px, y: h + 0.95, z: pz }, size: { x: (set.pitch * set.n) / sub + 0.02, y: 0.05, z: 0.05 }, rotY: -ang, material: "frame", tag: `${tag}-rail` });
+    }
+    for (let k = 0; k < set.n; k += 4) {
+      const t = k / Math.max(1, set.n - 1);
+      const px = set.first[0] + (set.last[0] - set.first[0]) * t + perp[0] * side * (set.width / 2 - 0.04);
+      const pz = set.first[1] + (set.last[1] - set.first[1]) * t + perp[1] * side * (set.width / 2 - 0.04);
+      const h = top - k * rise;
+      out.push({ type: "box", centre: { x: px, y: h + 0.475, z: pz }, size: { x: 0.045, y: 0.95, z: 0.045 }, material: "frame", tag: `${tag}-rail` });
     }
   }
   return out;
