@@ -86,13 +86,14 @@ export function dxfSurfaces(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.s
 
 
 /** The railing edges already laid in one `surfacePrims` call, by its output array: two hatches that share an edge stand one railing there, not two. */
-const LAID = new WeakMap<Primitive[], Array<[[number, number], [number, number]]>>();
-function alreadyLaid(out: Primitive[], a: [number, number], b: [number, number]): boolean {
+const LAID = new WeakMap<Primitive[], Array<[[number, number], [number, number], number]>>();
+function alreadyLaid(out: Primitive[], a: [number, number], b: [number, number], level: number): boolean {
   const laid = LAID.get(out) ?? LAID.set(out, []).get(out)!;
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
   const ux = (b[0] - a[0]) / len;
   const uz = (b[1] - a[1]) / len;
-  for (const [p, q] of laid) {
+  for (const [p, q, lv] of laid) {
+    if (Math.abs(lv - level) > 0.6) continue;
     const pl = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
     if (Math.abs(((q[0] - p[0]) / pl) * uz - ((q[1] - p[1]) / pl) * ux) > 0.05) continue;
     const off = Math.abs((p[0] - a[0]) * -uz + (p[1] - a[1]) * ux);
@@ -102,12 +103,12 @@ function alreadyLaid(out: Primitive[], a: [number, number], b: [number, number])
     const overlap = Math.min(len, Math.max(t1, t2)) - Math.max(0, Math.min(t1, t2));
     if (overlap > 0.5 * Math.min(len, pl)) return true;
   }
-  laid.push([a, b]);
+  laid.push([a, b, level]);
   return false;
 }
 
 /** The railing round a deck or platform: along each edge of its ring that is not against the building (a drop of 0.5 m or more beyond it is assumed on the free sides). */
-function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[], groundAt: (x: number, z: number) => number, avoid?: (x: number, z: number) => boolean): void {
+function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[], groundAt: (x: number, z: number) => number, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean): void {
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i]!;
     const b = ring[(i + 1) % ring.length]!;
@@ -122,7 +123,7 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     const dxe = b[0] - a[0], dze = b[1] - a[1], le = Math.hypot(dxe, dze) || 1;
     const outx = mx + (dze / le) * 0.8, outz = mz - (dxe / le) * 0.8, inx = mx - (dze / le) * 0.8, inz = mz + (dxe / le) * 0.8;
     const far = insidePolygon(ring, outx, outz) ? [inx, inz] : [outx, outz];
-    if (level - groundAt(far[0]!, far[1]!) < 0.8) continue;
+    if (level - groundAt(far[0]!, far[1]!) < 0.8 && !force?.(mx, mz)) continue;
     // The edge's own railing, but for where a stair's handrail already stands: its runs either side are laid, not the whole edge dropped for the stair's width.
     const step = 0.25;
     const n = Math.max(1, Math.ceil(le / step));
@@ -131,7 +132,7 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
       if (t1 - t0 < 0.4 / le) return;
       const p: [number, number] = [a[0] + dxe * t0, a[1] + dze * t0];
       const q: [number, number] = [a[0] + dxe * t1, a[1] + dze * t1];
-      if (alreadyLaid(out, p, q)) return;
+      if (alreadyLaid(out, p, q, level)) return;
       out.push(...railingPrims(p, q, level, `${tag}-rail`));
     };
     for (let k = 0; k <= n; k++) {
@@ -152,7 +153,7 @@ const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", conc
  * not its holes) and a metre under it outside, so the paving follows every rise and fall of the
  * site, takes the polygon's edge to a quarter metre, and meets the ground at a kerb's height.
  */
-export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number) => boolean): Primitive[] {
+export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean): Primitive[] {
   const out: Primitive[] = [];
   for (const s of surfaces) {
     // A grated deck is a deck, level, on its own supports: a slab at the level its spot height gives, not a skin on the slope.
@@ -170,7 +171,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
           if (level - 0.22 - g > 0.1) out.push({ type: "box", centre: { x: px, y: (level - 0.22 + g) / 2, z: pz }, size: { x: 0.2, y: level - 0.22 - g, z: 0.2 }, material: "metal", tag: `${tag}:grate-post` });
         }
       }
-      ringRailing(s.ring, level, tag, out, groundAt, avoid);
+      ringRailing(s.ring, level, tag, out, groundAt, avoid, force);
       continue;
     }
     const xs = s.ring.map((q) => q[0]);
@@ -188,7 +189,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
         const sorted = [...gs].sort((a, b) => a - b);
         const top = sorted[Math.floor(sorted.length * 0.8)]! + lift;
         out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
-        ringRailing(s.ring, top, tag, out, groundAt, avoid);
+        ringRailing(s.ring, top, tag, out, groundAt, avoid, force);
         continue;
       }
     }

@@ -1,4 +1,4 @@
-import { dxfSpotHeights, dxfTreadSets, railingPrims, stairPrims } from "@/lib/projects/building/pisga-stairs";
+import { dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
@@ -726,9 +726,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       const [nx0, nx1, nz0, nz1] = [22.04, 32.94, -3.64, 1.06];
       const t = 0.2, top = 8.27 + 1.1;
       prims.push({ type: "prism", ring: [[nx0, nz0], [nx1, nz0], [nx1, nz1], [nx0, nz1]], y0: 7.97, y1: 8.27, material: "paving", tag: "site:north-terrace" });
-      // The west side is open from z −2.25 to the building (the block wall is cut there): a 3.9 m drop to the ground beside the terrace, so a railing stands across it.
-      prims.push(...railingPrims([nx0 + 0.1, -2.25], [nx0 + 0.1, nz1], 8.27, "site:north-terrace-rail"));
-      for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx1 - t, nx1, nz0, nz1], [nx0, nx0 + t, nz0, -2.25]] as const) {
+      // The west side's block wall is cut in the DXF from z −2.25 to the building, a 3.9 m drop beside the terrace; it is closed here in the same stone as the other sides (the user's call, 2026-10-21: the rest of the fence is stone).
+      for (const [x0, x1, z0, z1] of [[nx0, nx1, nz0, nz0 + t], [nx1 - t, nx1, nz0, nz1], [nx0, nx0 + t, nz0, nz1]] as const) {
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: (8.27 + top) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: top - 8.27, z: z1 - z0 }, material: "stone", tag: "site:north-parapet" });
       }
     }
@@ -752,9 +751,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       const [ax, az, bx, bz] = [f.first[0], f.first[1], f.last[0], f.last[1]];
       const l2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1;
       const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2));
-      return Math.hypot(x - (ax + (bx - ax) * t), z - (az + (bz - az) * t)) < f.width / 2 + 0.35;
+      return Math.hypot(x - (ax + (bx - ax) * t), z - (az + (bz - az) * t)) < f.width / 2 + 0.1;
     });
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, nearStair));
+    // The east landing and the grated deck below it are raised on fill with the bank behind: every free edge of theirs is railed, drop or not (the user marked them missing, 2026-10-21).
+    const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2;
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, nearStair, eastLanding));
     // Every run of treads the sheets draw, but the two stairs built above from their own reading (the lobby's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 17.2);
     const runs = new Set<string>();
