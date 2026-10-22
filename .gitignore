@@ -90,6 +90,9 @@ mobile-shot-*.png
 # working folder: source sales sheets fed through the viz pipeline
 תוכניות לביצוע הדמיות/
 תוכניות בנין/
+הדמיות גוטליב/
+# render captures and booklet runs made while working on the viz pipeline
+previews/
 e2e/_*-capture.spec.ts
 e2e/_boot-capture.spec.ts
 e2e/_dash-capture.spec.ts
@@ -117,4 +120,8 @@ next-env.d.ts
 
 # scratch diagnostics, hardcoded to one plan
 scripts/_*.mjs
+scripts/_*.mts
 e2e/_*.spec.ts
+scripts/_*.json
+
+.vercel

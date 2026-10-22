@@ -46,7 +46,9 @@ export type FurniturePiece = {
    * sheet's reading does not, and the render tells a bath from a basin by
    * shape; a permit plan's knows a pan from a basin by how each is drawn.
    */
-  fixture?: "bath" | "shower" | "toilet" | "basin";
+  fixture?: "bath" | "shower" | "toilet" | "basin" | "washer";
+  /** A bed's head, page-north up, where the drawing shows it (see bedHeadsFromDrawing). */
+  head?: "north" | "south" | "east" | "west";
 };
 
 type Edge = { at: number; a: number; b: number };
@@ -114,15 +116,28 @@ export function dropNested(
   rects: Array<{ x: number; y: number; w: number; h: number }>,
   minStack = 3,
 ): Array<{ x: number; y: number; w: number; h: number }> {
-  const drop = new Set<number>();
-  for (let i = 0; i < rects.length; i++) {
+  // A stack is rectangles of one width piled edge to edge — tiles, shelves —
+  // not any that share a column: 21's bath runs wall to wall, and the
+  // rectangles further up its bathroom, the same width, made it a "stack".
+  const n = rects.length;
+  const parent = rects.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  for (let i = 0; i < n; i++) {
     const a = rects[i]!;
-    const sharing = rects.filter(
-      (b, k) => k !== i && Math.abs(b.x - a.x) < 4 && Math.abs(b.w - a.w) < 8,
-    );
-    if (sharing.length + 1 >= minStack) drop.add(i);
+    for (let k = i + 1; k < n; k++) {
+      const b = rects[k]!;
+      if (Math.abs(b.x - a.x) >= 4 || Math.abs(b.w - a.w) >= 8) continue;
+      // Edge to edge, or one inside the other as a stair's treads are.
+      const within = (p: typeof a, q: typeof a) => p.y >= q.y - 4 && p.y + p.h <= q.y + q.h + 4;
+      const touching =
+        Math.abs(b.y - (a.y + a.h)) < 4 || Math.abs(a.y - (b.y + b.h)) < 4 || within(a, b) || within(b, a);
+      // The same rectangle found twice is one, not two of a stack.
+      if (touching && Math.abs(b.y - a.y) >= 4) parent[find(i)] = find(k);
+    }
   }
-  return rects.filter((_, i) => !drop.has(i));
+  const size = new Map<number, number>();
+  for (let i = 0; i < n; i++) size.set(find(i), (size.get(find(i)) ?? 0) + 1);
+  return rects.filter((_, i) => (size.get(find(i)) ?? 1) < minStack);
 }
 
 /** Keeps the largest rectangle wherever several describe one object. */
@@ -1011,9 +1026,17 @@ export function seatsDrawnAroundTable(
     for (const g of groups) {
       const width = g.b - g.a;
       const depth = g.hi - g.lo;
-      if (width < 0.3 * upm || width > 0.75 * upm || depth < 0.25 * upm || g.edge < 0.12 * upm) continue;
-      const mid = (g.a + g.b) / 2;
-      out.push(band.alongX ? make(mid, band.across) : make(band.across, mid));
+      if (width < 0.3 * upm || depth < 0.25 * upm || g.edge < 0.12 * upm) continue;
+      // Chairs side by side whose strokes the room's name runs between —
+      // "ח.מגורים" is written across דירה 21's two lower chairs, and the pair
+      // came out one 1.2 m piece and was dropped — are split at the pitch a
+      // row of chairs is set at.
+      const count = width <= 0.75 * upm ? 1 : Math.round(width / (0.6 * upm));
+      if (count > 4) continue;
+      for (let k = 0; k < count; k++) {
+        const mid = g.a + (width * (k + 0.5)) / count;
+        out.push(band.alongX ? make(mid, band.across) : make(band.across, mid));
+      }
     }
   }
   return out.length >= 2 ? out : null;
@@ -1150,6 +1173,104 @@ export function findRoundedTables(
   return dedupeRectangles(out).map((r) => out.find((p) => p.x === r.x && p.y === r.y && p.w === r.w)!);
 }
 
+/** How much of the smaller of two boxes the other covers. */
+function overlapShare(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }): number {
+  const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  if (ox <= 0 || oy <= 0) return 0;
+  return (ox * oy) / Math.max(1e-9, Math.min(a.w * a.h, b.w * b.h));
+}
+
+/**
+ * Sanitary ware found as the closed outlines it is drawn with.
+ *
+ * Clustering curves by nearness (findCurveFixtures) joins whatever touches:
+ * 22's WC lies under the room's name and against its bath, and the name's
+ * strokes, the "198" beside it and the bath knotted into one piece too big to
+ * be anything, so the WC was lost. A pan, a basin and a bath are each a closed
+ * line; lettering is open strokes. The short strokes are joined end to end,
+ * each closed run the size of a fixture is one, and of nested runs — a bowl
+ * inside its rim — the outer.
+ */
+export function findClosedOutlines(
+  strokes: VectorSegment[],
+  unitsPerMetre: number,
+  options?: { minCm?: number; maxCm?: number; maxStrokeM?: number; snap?: number },
+): FurniturePiece[] {
+  const minCm = options?.minCm ?? 25;
+  const maxCm = options?.maxCm ?? 90;
+  const maxStroke = (options?.maxStrokeM ?? 0.5) * unitsPerMetre;
+  // Ends a hair apart are one joint: a CAD's curve chords stop 0.1 units
+  // short of the line they meet, and rounding to a grid split such pairs.
+  const snap = options?.snap ?? 0.35;
+  const joints: Array<{ x: number; y: number; id: string }> = [];
+  const grid = new Map<string, number[]>();
+  const cell = (x: number, y: number) => `${Math.floor(x / snap)},${Math.floor(y / snap)}`;
+  const keyOf = (x: number, y: number): string => {
+    const cx = Math.floor(x / snap);
+    const cy = Math.floor(y / snap);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (const j of grid.get(`${cx + dx},${cy + dy}`) ?? []) {
+          const p = joints[j]!;
+          if (Math.hypot(p.x - x, p.y - y) <= snap) return p.id;
+        }
+      }
+    }
+    const id = `j${joints.length}`;
+    joints.push({ x, y, id });
+    const c = cell(x, y);
+    grid.set(c, [...(grid.get(c) ?? []), joints.length - 1]);
+    return id;
+  };
+  const parent = new Map<string, string>();
+  const find = (a: string): string => {
+    let n = a;
+    while (parent.get(n) !== n) {
+      parent.set(n, parent.get(parent.get(n)!)!);
+      n = parent.get(n)!;
+    }
+    return n;
+  };
+  const degree = new Map<string, number>();
+  const used = strokes.filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= maxStroke && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) > 0.05);
+  const ends = used.map((s) => [keyOf(s.x1, s.y1), keyOf(s.x2, s.y2)] as const);
+  for (const [a, b] of ends) {
+    for (const k of [a, b]) {
+      if (!parent.has(k)) parent.set(k, k);
+      degree.set(k, (degree.get(k) ?? 0) + 1);
+    }
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+  type Loop = { x0: number; y0: number; x1: number; y1: number; open: boolean; count: number };
+  const loops = new Map<string, Loop>();
+  used.forEach((s, i) => {
+    const root = find(ends[i]![0]);
+    const loop = loops.get(root) ?? { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, open: false, count: 0 };
+    loop.x0 = Math.min(loop.x0, s.x1, s.x2);
+    loop.y0 = Math.min(loop.y0, s.y1, s.y2);
+    loop.x1 = Math.max(loop.x1, s.x1, s.x2);
+    loop.y1 = Math.max(loop.y1, s.y1, s.y2);
+    loop.count++;
+    for (const k of ends[i]!) if ((degree.get(k) ?? 0) % 2 === 1) loop.open = true;
+    loops.set(root, loop);
+  });
+  const closed = [...loops.values()].filter((l) => {
+    if (l.open || l.count < 6) return false;
+    const w = ((l.x1 - l.x0) / unitsPerMetre) * 100;
+    const h = ((l.y1 - l.y0) / unitsPerMetre) * 100;
+    return Math.min(w, h) >= minCm && Math.max(w, h) <= maxCm;
+  });
+  const outer = closed.filter((l) => !closed.some((o) => o !== l && o.x0 <= l.x0 && o.y0 <= l.y0 && o.x1 >= l.x1 && o.y1 >= l.y1));
+  return outer.map((l) => {
+    const w = l.x1 - l.x0;
+    const h = l.y1 - l.y0;
+    return { x: l.x0, y: l.y0, w, h, widthCm: (w / unitsPerMetre) * 100, depthCm: (h / unitsPerMetre) * 100, kind: "fixture" as const };
+  });
+}
+
 export function findFurniture(
   segments: VectorSegment[],
   unitsPerMetre: number,
@@ -1197,6 +1318,12 @@ export function findFurniture(
   const ring = drawnInRing || roundedTable ? null : ringFound;
   const table = roundedTable ?? ring ?? pieces.find((p) => p.kind === "table");
   const seats = findSeatsAroundTable(options?.curves ?? [], table, unitsPerMetre);
+  // Closed outlines a fixture's size, where nothing found already stands: a
+  // chair round the table, a rectangle, a kitchen fitting.
+  const taken = [...pieces, ...seats, ...kitchen, ...(roundedTable ? [roundedTable] : []), ...(ring ? [ring] : [])];
+  const outlines = findClosedOutlines([...(options?.curves ?? []), ...segments], unitsPerMetre).filter(
+    (o) => !taken.some((p) => overlapShare(o, p) > 0.3),
+  );
   const withCurves = [
     ...(roundedTable ? [roundedTable] : []),
     ...(ring ? [ring] : []),
@@ -1207,20 +1334,23 @@ export function findFurniture(
     ...pieces.filter(
       (p) => !kitchen.some((k) => Math.abs(k.x - p.x) < 4 && Math.abs(k.y - p.y) < 4),
     ),
+    ...outlines,
     ...findCurveFixtures(options?.curves ?? [], unitsPerMetre).filter(
       (c) =>
         !pieces.some((p) => Math.abs(p.x - c.x) < c.w && Math.abs(p.y - c.y) < c.h) &&
         // A chair is the same shape and size as a basin; the ones round the
         // table have already been claimed as seats.
-        !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4),
+        !seats.some((s) => Math.abs(s.x - c.x) < 4 && Math.abs(s.y - c.y) < 4) &&
+        // An outline found already is that fixture.
+        !outlines.some((o) => overlapShare(o, c) > 0.3),
     ),
   ];
-  return panPartsAreNotSeats(
+  return bathroomSquaresAreNotSeats(panPartsAreNotSeats(
     chairsAreNotPans(
       settleTables(settleFixtures(withCurves, unitsPerMetre), options?.curves ?? [], unitsPerMetre, roundedTable ?? ring ?? drawnInRing),
       unitsPerMetre,
     ),
-  );
+  ), unitsPerMetre);
 }
 
 /**
@@ -1250,6 +1380,142 @@ export function chairsAreNotPans(pieces: FurniturePiece[], unitsPerMetre: number
       ? { ...piece, kind: "seat" as const }
       : piece,
   );
+}
+
+/**
+ * A fixture-sized square standing at the kitchen's run, with no bath near,
+ * is the fridge or an appliance column: 22's fridge was read as a pan, dropped
+ * as sanitary ware in a dry room, and the design furnished the empty corner
+ * with a bookcase. It is built as the tall unit it is.
+ */
+export function kitchenSquaresAreAppliances(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  // "unknown" too: the same column came out unknown on 14, 16, 17, 18 and 21.
+  const kitchen = pieces.filter((p) => p.kind === "counter" || p.kind === "hob" || p.kind === "sink");
+  const baths = pieces.filter((p) => p.kind === "fixture" && Math.max(p.widthCm, p.depthCm) >= 120);
+  const gap = (a: FurniturePiece, b: FurniturePiece) =>
+    Math.hypot(Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0), Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0));
+  return pieces.map((p) => {
+    if ((p.kind !== "fixture" && p.kind !== "unknown") || p.fixture) return p;
+    const long = Math.max(p.widthCm, p.depthCm);
+    const short = Math.min(p.widthCm, p.depthCm);
+    if (long > 90 || short < 50) return p;
+    if (baths.some((b) => gap(p, b) <= unitsPerMetre * 2.5)) return p;
+    return kitchen.some((k) => gap(p, k) <= unitsPerMetre * 0.35) ? { ...p, kind: "storage" as const } : p;
+  });
+}
+
+/**
+ * The diamonds a sheet marks a flat's number with, as their centres.
+ *
+ * The flat's legend — its number in a diamond, its gross area, its level —
+ * is a box the size of a shower tray inside the flat, and it was read as
+ * sanitary ware on 18 and 22 and as an unknown piece on 14, 16, 17 and 21.
+ * The diamond gives it away: four short strokes at 45°, two each way, round
+ * one point.
+ */
+export function findDiamonds(segments: VectorSegment[], unitsPerMetre: number): Array<{ x: number; y: number; r: number }> {
+  const min = unitsPerMetre * 0.04;
+  const max = unitsPerMetre * 0.25;
+  const diagonal = segments
+    .map((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      const deg = (Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI;
+      const a = ((deg % 180) + 180) % 180;
+      return { s, len, way: Math.abs(a - 45) < 8 ? 1 : Math.abs(a - 135) < 8 ? 2 : 0, mx: (s.x1 + s.x2) / 2, my: (s.y1 + s.y2) / 2 };
+    })
+    .filter((d) => d.way !== 0 && d.len >= min && d.len <= max);
+  const out: Array<{ x: number; y: number; r: number }> = [];
+  const used = new Set<number>();
+  diagonal.forEach((d, i) => {
+    if (used.has(i)) return;
+    const group = diagonal.map((o, j) => ({ o, j })).filter(({ o }) => Math.abs(o.len - d.len) <= d.len * 0.25 && Math.hypot(o.mx - d.mx, o.my - d.my) <= d.len * 1.1);
+    if (group.length !== 4) return;
+    if (group.filter(({ o }) => o.way === 1).length !== 2) return;
+    const x = group.reduce((t, { o }) => t + o.mx, 0) / 4;
+    const y = group.reduce((t, { o }) => t + o.my, 0) / 4;
+    // Each edge's middle is the same distance from the centre.
+    const r = group.map(({ o }) => Math.hypot(o.mx - x, o.my - y));
+    if (Math.max(...r) - Math.min(...r) > d.len * 0.2) return;
+    for (const { j } of group) used.add(j);
+    out.push({ x, y, r: d.len * 0.71 });
+  });
+  return out;
+}
+
+/**
+ * Which end of each bed its pillow is drawn at.
+ *
+ * The rules that turn a bed — its back to the nearest wall, else the short
+ * end nearer a wall — read the walls, and a bed's head is often at a window:
+ * 18's bed by the window came out end for end. The sheet draws the pillow, a
+ * small rectangle across one short end; that end has the line work. Each end
+ * a third of the bed long is measured for the length of line inside it, and
+ * the head is the end with clearly more.
+ */
+export function bedHeadsFromDrawing(pieces: FurniturePiece[], segments: VectorSegment[], unitsPerMetre: number): FurniturePiece[] {
+  const inset = unitsPerMetre * 0.03;
+  // The pillow itself first: a closed rectangle a pillow's size inside one
+  // end. Counting line alone took the room's name written across 21's bed
+  // for the pillow.
+  const pillows = findRectangles(segments, { unitsPerMetre, minSideM: 0.12, maxSideM: 0.8 });
+  return pieces.map((piece) => {
+    if (piece.kind !== "bed") return piece;
+    const down = piece.h >= piece.w;
+    const zone = (down ? piece.h : piece.w) / 3;
+    const inBed = pillows.filter(
+      (r) =>
+        r.x >= piece.x - inset &&
+        r.y >= piece.y - inset &&
+        r.x + r.w <= piece.x + piece.w + inset &&
+        r.y + r.h <= piece.y + piece.h + inset &&
+        // Across the bed, as a pillow lies, and not the whole bed.
+        (down ? r.w >= piece.w * 0.4 && r.h <= zone : r.h >= piece.h * 0.4 && r.w <= zone),
+    );
+    const near = (r: { x: number; y: number; w: number; h: number }) =>
+      down ? (r.y + r.h / 2 < piece.y + zone ? "north" : r.y + r.h / 2 > piece.y + piece.h - zone ? "south" : null) : r.x + r.w / 2 < piece.x + zone ? "west" : r.x + r.w / 2 > piece.x + piece.w - zone ? "east" : null;
+    const sides = new Set(inBed.map(near).filter((x): x is "north" | "south" | "east" | "west" => x != null));
+    if (sides.size === 1) return { ...piece, head: [...sides][0]! };
+    const ends = down
+      ? ([["north", { x0: piece.x, x1: piece.x + piece.w, y0: piece.y, y1: piece.y + zone }], ["south", { x0: piece.x, x1: piece.x + piece.w, y0: piece.y + piece.h - zone, y1: piece.y + piece.h }]] as const)
+      : ([["west", { x0: piece.x, x1: piece.x + zone, y0: piece.y, y1: piece.y + piece.h }], ["east", { x0: piece.x + piece.w - zone, x1: piece.x + piece.w, y0: piece.y, y1: piece.y + piece.h }]] as const);
+    const ink = ends.map(([, r]) => {
+      let total = 0;
+      for (const s of segments) {
+        const mx = (s.x1 + s.x2) / 2;
+        const my = (s.y1 + s.y2) / 2;
+        if (mx > r.x0 + inset && mx < r.x1 - inset && my > r.y0 + inset && my < r.y1 - inset) total += Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      }
+      return total;
+    });
+    const [a, b] = ink as [number, number];
+    // Clearly more: a pillow's outline is a metre or more of line.
+    const enough = unitsPerMetre * 0.4;
+    if (a > b * 1.5 && a - b >= enough) return { ...piece, head: ends[0][0] };
+    if (b > a * 1.5 && b - a >= enough) return { ...piece, head: ends[1][0] };
+    return piece;
+  });
+}
+
+/**
+ * A seat among the sanitary ware, away from any table, is sanitary ware or a
+ * washer, not a chair: דירה 21's 54 cm washing machine stood between its
+ * basin and its WC and was built as a dining chair, and the end of its bath,
+ * 90 by 55, as an armchair.
+ */
+export function bathroomSquaresAreNotSeats(pieces: FurniturePiece[], unitsPerMetre: number): FurniturePiece[] {
+  const wet = pieces.filter((piece) => piece.kind === "fixture");
+  const tables = pieces.filter((piece) => piece.kind === "table");
+  const gap = (a: FurniturePiece, b: FurniturePiece) =>
+    Math.hypot(
+      Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w), 0),
+      Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h), 0),
+    );
+  return pieces.map((piece) => {
+    if (piece.kind !== "seat") return piece;
+    if (Math.max(piece.widthCm, piece.depthCm) > 100 || Math.min(piece.widthCm, piece.depthCm) < 45) return piece;
+    if (tables.some((table) => gap(piece, table) <= unitsPerMetre * 0.9)) return piece;
+    return wet.some((fixture) => gap(piece, fixture) <= unitsPerMetre * 0.8) ? { ...piece, kind: "fixture" as const } : piece;
+  });
 }
 
 /**
@@ -1332,5 +1598,116 @@ export function findBaths(
         Math.max(c.y1, c.y2) < r.y + r.h,
     ).length;
     return inside >= 10;
+  });
+}
+
+/**
+ * A pan known by its cistern. A sales sheet draws a WC's bowl closed and its
+ * cistern as loose lines behind it, square to the bowl's long axis; the bowl
+ * alone reads as a small oval like a basin's, and which it is was left to the
+ * wall it was nearest — 22's bowl, 22 cm off its wall with the cistern
+ * between, was built as a basin, and a closer side wall in 16's narrow WC did
+ * the same. Lines like that at one end only make it a pan, its back there.
+ */
+export function pansFromCisterns(
+  pieces: FurniturePiece[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+): FurniturePiece[] {
+  const cm = (v: number) => (v / unitsPerMetre) * 100;
+  return pieces.map((piece) => {
+    if (piece.kind !== "fixture" || piece.fixture) return piece;
+    const long = Math.max(piece.widthCm, piece.depthCm);
+    const short = Math.min(piece.widthCm, piece.depthCm);
+    if (long < 28 || long > 50 || short < 22 || short > 42) return piece;
+    const alongX = piece.w >= piece.h;
+    const ends: Array<{ side: NonNullable<FurniturePiece["head"]>; at: number; dir: number }> = alongX
+      ? [
+          { side: "west", at: piece.x, dir: -1 },
+          { side: "east", at: piece.x + piece.w, dir: 1 },
+        ]
+      : [
+          { side: "north", at: piece.y, dir: -1 },
+          { side: "south", at: piece.y + piece.h, dir: 1 },
+        ];
+    const [lo, hi] = alongX ? [piece.y, piece.y + piece.h] : [piece.x, piece.x + piece.w];
+    const shortSpan = hi - lo;
+    // Collinear pieces together: 22's cistern face is drawn in two halves.
+    const cisternAt = ends.filter((end) => {
+      const lines = new Map<number, Array<[number, number]>>();
+      for (const s of segments) {
+        if (!isAxisAligned(s)) continue;
+        // Square to the bowl's long axis: vertical when the bowl runs along x.
+        if (alongX ? Math.abs(s.x2 - s.x1) > 1 : Math.abs(s.y2 - s.y1) > 1) continue;
+        const pos = alongX ? (s.x1 + s.x2) / 2 : (s.y1 + s.y2) / 2;
+        const off = cm((pos - end.at) * end.dir);
+        if (off < 3 || off > 30) continue;
+        const a = alongX ? Math.min(s.y1, s.y2) : Math.min(s.x1, s.x2);
+        const b = alongX ? Math.max(s.y1, s.y2) : Math.max(s.x1, s.x2);
+        const key = Math.round(pos);
+        lines.set(key, [...(lines.get(key) ?? []), [a, b]]);
+      }
+      return [...lines.values()].some((spans) => {
+        const sorted = [...spans].sort((p, q) => p[0] - q[0]);
+        const runs: Array<[number, number]> = [];
+        for (const [a, b] of sorted) {
+          const last = runs[runs.length - 1];
+          if (last && a <= last[1] + 1) last[1] = Math.max(last[1], b);
+          else runs.push([a, b]);
+        }
+        return runs.some(([a, b]) => {
+          const length = cm(b - a);
+          const overlap = Math.min(b, hi) - Math.max(a, lo);
+          return length >= short * 0.6 && length <= 70 && overlap >= shortSpan * 0.6;
+        });
+      });
+    });
+    if (cisternAt.length !== 1) return piece;
+    // The pan's footprint is the bowl and its cistern: 60 cm deep, grown
+    // toward the cistern, and at least 38 cm wide, so the pan built in it
+    // is a pan's size and stays inside what was measured.
+    const side = cisternAt[0]!.side;
+    const deep = Math.max(alongX ? piece.w : piece.h, 0.6 * unitsPerMetre);
+    const wide = Math.max(alongX ? piece.h : piece.w, 0.38 * unitsPerMetre);
+    const grow = deep - (alongX ? piece.w : piece.h);
+    const spread = wide - (alongX ? piece.h : piece.w);
+    const box = alongX
+      ? { x: side === "west" ? piece.x - grow : piece.x, y: piece.y - spread / 2, w: deep, h: wide }
+      : { x: piece.x - spread / 2, y: side === "north" ? piece.y - grow : piece.y, w: wide, h: deep };
+    return {
+      ...piece,
+      ...box,
+      widthCm: cm(box.w),
+      depthCm: cm(box.h),
+      fixture: "toilet",
+      head: side,
+    };
+  });
+}
+
+/**
+ * A washing machine known by its drum: a square cabinet a machine's size with
+ * a round door drawn in it. Unnamed, 21's 60 cm machine was built as a basin
+ * and listed as one.
+ */
+export function washersFromDrums(pieces: FurniturePiece[], curves: VectorSegment[], unitsPerMetre: number): FurniturePiece[] {
+  return pieces.map((piece) => {
+    if (piece.kind !== "fixture" || piece.fixture) return piece;
+    const long = Math.max(piece.widthCm, piece.depthCm);
+    const short = Math.min(piece.widthCm, piece.depthCm);
+    if (short < 50 || long > 70 || long > short * 1.2) return piece;
+    const inside = curves.filter(
+      (c) =>
+        Math.min(c.x1, c.x2) >= piece.x &&
+        Math.max(c.x1, c.x2) <= piece.x + piece.w &&
+        Math.min(c.y1, c.y2) >= piece.y &&
+        Math.max(c.y1, c.y2) <= piece.y + piece.h,
+    );
+    if (inside.length < 3) return piece;
+    const cm = (v: number) => (v / unitsPerMetre) * 100;
+    const w = cm(Math.max(...inside.map((c) => Math.max(c.x1, c.x2))) - Math.min(...inside.map((c) => Math.min(c.x1, c.x2))));
+    const h = cm(Math.max(...inside.map((c) => Math.max(c.y1, c.y2))) - Math.min(...inside.map((c) => Math.min(c.y1, c.y2))));
+    const round = Math.min(w, h) >= 20 && Math.max(w, h) <= 45 && Math.max(w, h) <= Math.min(w, h) * 1.25;
+    return round ? { ...piece, fixture: "washer" } : piece;
   });
 }

@@ -97,8 +97,16 @@ describe("floor too narrow to walk on", () => {
       { x: 10, y: 10, w: 280, h: 380 },
       // 30 cm wide, 10 m long: a channel between two lines, not floor.
       { x: 700, y: 0, w: 30, h: 1000 },
-      // 90 cm wide: a real piece of floor nobody claimed, which stays.
-      { x: 900, y: 0, w: 90, h: 300 },
+      // 90 cm wide: a real piece of floor nobody claimed, which stays — walled
+      // in, so inside the flat; unclaimed floor outside it is not laid.
+      { x: 900, y: 10, w: 90, h: 280 },
+    ];
+    withStrip.bodies = [
+      ...withStrip.bodies,
+      { orientation: "v", centre: 895, thickness: 10, from: 0, to: 300 },
+      { orientation: "v", centre: 995, thickness: 10, from: 0, to: 300 },
+      { orientation: "h", centre: 5, thickness: 10, from: 890, to: 1000 },
+      { orientation: "h", centre: 295, thickness: 10, from: 890, to: 1000 },
     ];
     const scene = buildScene(withStrip);
     const floors = scene.meshes.filter((m) => m.kind === "floor");

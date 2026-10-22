@@ -1,21 +1,28 @@
+import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { applyContentFrame, contentFrame, type ContentFrame } from "@/lib/projects/building/flat-finish";
+import { dollhousePixel, dollhouseView, flatToPrimitives, type FlatView } from "@/lib/projects/building/flat-model";
+import { renderBuildingFrames } from "@/lib/projects/building/renderer";
 import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
-import { QUALITY } from "@/lib/projects/scene3d/quality";
-import { chromiumSceneRenderer } from "@/lib/projects/scene3d/renderer";
+import { flatPieces, inventoryByPlace, listedKind, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
+import { auditFlatScene, type LayoutFault } from "@/lib/projects/scene3d/layout-audit";
 import { sceneStyleFor } from "@/lib/projects/scene3d/style";
+import type { FlatScene } from "@/lib/projects/scene3d/types";
 
 /**
  * The measured flat, photographed by the renderer rather than imagined.
  *
  * Everything here is free and certain: the geometry was measured from the
- * sheet, the scene is built from it by rule, and a renderer draws it. There is
- * no sampling, so there is nothing to audit and nothing to retry — and the
- * cost of the frame is a second of CPU rather than a dollar of image model.
+ * sheet, the scene is built from it by rule, and a renderer draws it — the
+ * building renderer the booklets use, so a flat on its own and a flat in its
+ * building look the same: walls cut solid, oak and porcelain, upholstered
+ * furniture, doors open as drawn. There is no sampling, so there is nothing
+ * to audit, and the cost of the frame is seconds of CPU.
  *
  * It never throws. A run that cannot draw this still has the one it already
  * has; the point of the deterministic path is to add certainty, not risk.
@@ -34,9 +41,147 @@ export type Render3dStillOptions = {
   selected?: boolean;
 };
 
-export async function renderMeasuredStill(
-  options: Render3dStillOptions,
-): Promise<FloorplanVizImage | null> {
+export type MeasuredStill = FloorplanVizImage & {
+  /** The frame before its caption bar: what a finish is painted over and checked against. */
+  plain: Buffer;
+  /** The walls alone, black on white, in the same frame: where a painting's walls must be. */
+  walls?: Buffer;
+  /** What stands in each room, as lines — what a design must keep, and is counted against. */
+  inventory?: string;
+  /** Each of those pieces' box in the plain frame, pixels: where a design is checked for it. */
+  pieceBoxes?: PieceBox[];
+  /** What the measurement got wrong, found on the scene; a flat with any is not painted. */
+  faults?: LayoutFault[];
+};
+
+export type PieceBox = { kind: ListedKind | "open floor" | "dining set" | "seating group" | "facing sofa"; place: string; x: number; y: number; w: number; h: number; chairs?: number };
+
+/**
+ * Where the flat's floor is open, for the design to leave open: told only
+ * what to keep, the model furnished דירה 21's open hall with a third sofa in
+ * every try.
+ */
+function openFloorLine(scene: FlatScene): string {
+  const places = [...new Set(openFloorSquares(scene).map((sq) => sq.place))];
+  return places.length > 0 ? `Open floor that stays open, with nothing added on it but a rug or a plant: the ${places.join(", the ")}.` : "";
+}
+
+/** The listed pieces' boxes in the cropped frame. */
+function boxesInFrame(
+  scene: FlatScene,
+  view: FlatView,
+  size: { width: number; height: number },
+  crop: ContentFrame,
+  options: { screens: boolean },
+): PieceBox[] {
+  const out: PieceBox[] = [];
+  const pieces = flatPieces(scene);
+  const toFrame = (x0: number, z0: number, x1: number, z1: number, y: number) => {
+    const a = dollhousePixel(view, size, { x: x0, y, z: z0 });
+    const b = dollhousePixel(view, size, { x: x1, y, z: z1 });
+    return { x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y) };
+  };
+  // What each sofa faces, out to the wall across: where a screen would stand.
+  // A haredi flat has none, and asked about the whole flat the judge called a
+  // black hob a screen and missed a dark panel facing the sofa.
+  if (options.screens) {
+    const e = scene.extent;
+    for (const p of pieces) {
+      if (p.what !== "sofa" || !p.box || !p.backAt) continue;
+      const dx = p.x - p.backAt.x;
+      const dz = p.z - p.backAt.z;
+      const b = p.box;
+      const region =
+        Math.abs(dx) >= Math.abs(dz)
+          ? dx > 0
+            ? [b.x1, b.z0 - 0.6, b.x1 + 4, b.z1 + 0.6]
+            : [b.x0 - 4, b.z0 - 0.6, b.x0, b.z1 + 0.6]
+          : dz > 0
+            ? [b.x0 - 0.6, b.z1, b.x1 + 0.6, b.z1 + 4]
+            : [b.x0 - 0.6, b.z0 - 4, b.x1 + 0.6, b.z0];
+      const [x0, z0, x1, z1] = [
+        Math.max(e.x, region[0]!),
+        Math.max(e.z, region[1]!),
+        Math.min(e.x + e.width, region[2]!),
+        Math.min(e.z + e.depth, region[3]!),
+      ];
+      if (x1 - x0 < 0.5 || z1 - z0 < 0.5) continue;
+      out.push({ kind: "facing sofa", place: planPlace(p.x, p.z, e), ...toFrame(x0, z0, x1, z1, 0) });
+    }
+  }
+  // Each dining table with the chairs drawn round it, counted: a design that
+  // seated ten at a table drawn for six passed every piece's own spot.
+  for (const table of pieces) {
+    if (table.what !== "table" || !table.box) continue;
+    const t = table.box;
+    const near = (b: NonNullable<typeof t>) => b.x1 >= t.x0 - 0.6 && b.x0 <= t.x1 + 0.6 && b.z1 >= t.z0 - 0.6 && b.z0 <= t.z1 + 0.6;
+    const chairs = pieces.filter((p) => p.what === "chair" && p.box && near(p.box));
+    const x0 = Math.min(t.x0, ...chairs.map((c) => c.box!.x0));
+    const x1 = Math.max(t.x1, ...chairs.map((c) => c.box!.x1));
+    const z0 = Math.min(t.z0, ...chairs.map((c) => c.box!.z0));
+    const z1 = Math.max(t.z1, ...chairs.map((c) => c.box!.z1));
+    const a = dollhousePixel(view, size, { x: x0, y: t.top, z: z0 });
+    const b = dollhousePixel(view, size, { x: x1, y: t.top, z: z1 });
+    out.push({ kind: "dining set", place: planPlace(table.x, table.z, scene.extent), x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y), chairs: chairs.length });
+  }
+  // And each group of sofas and armchairs standing together, counted: two
+  // sofas side by side came back as one long one, and each sofa's own spot
+  // still found a sofa.
+  const seating = pieces.filter((p) => (p.what === "sofa" || p.what === "armchair") && p.box);
+  const grouped = new Set<number>();
+  seating.forEach((seed, i) => {
+    if (grouped.has(i)) return;
+    const group = [i];
+    grouped.add(i);
+    for (let k = 0; k < group.length; k++) {
+      const g = seating[group[k]!]!.box!;
+      seating.forEach((other, j) => {
+        if (grouped.has(j)) return;
+        const o = other.box!;
+        if (o.x0 <= g.x1 + 1 && o.x1 >= g.x0 - 1 && o.z0 <= g.z1 + 1 && o.z1 >= g.z0 - 1) {
+          grouped.add(j);
+          group.push(j);
+        }
+      });
+    }
+    if (group.length < 2) return;
+    const boxes = group.map((j) => seating[j]!.box!);
+    const a = dollhousePixel(view, size, { x: Math.min(...boxes.map((b) => b.x0)), y: Math.max(...boxes.map((b) => b.top)), z: Math.min(...boxes.map((b) => b.z0)) });
+    const b = dollhousePixel(view, size, { x: Math.max(...boxes.map((b) => b.x1)), y: Math.max(...boxes.map((b) => b.top)), z: Math.max(...boxes.map((b) => b.z1)) });
+    out.push({ kind: "seating group", place: planPlace(seed.x, seed.z, scene.extent), x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y), chairs: group.length });
+  });
+  for (const p of pieces) {
+    const kind = listedKind(p.what);
+    if (!kind || !p.box) continue;
+    const a = dollhousePixel(view, size, { x: p.box.x0, y: p.box.top, z: p.box.z0 });
+    const b = dollhousePixel(view, size, { x: p.box.x1, y: p.box.top, z: p.box.z1 });
+    out.push({
+      kind,
+      place: planPlace(p.x, p.z, scene.extent),
+      x: Math.round(Math.min(a.x, b.x) - crop.left + crop.padLeft),
+      y: Math.round(Math.min(a.y, b.y) - crop.top + crop.padTop),
+      w: Math.round(Math.abs(b.x - a.x)),
+      h: Math.round(Math.abs(b.y - a.y)),
+    });
+  }
+  // And the open floor, where a design may add decor and nothing else.
+  for (const sq of openFloorSquares(scene)) {
+    const a = dollhousePixel(view, size, { x: sq.x - sq.half, y: 0, z: sq.z - sq.half });
+    const b = dollhousePixel(view, size, { x: sq.x + sq.half, y: 0, z: sq.z + sq.half });
+    out.push({ kind: "open floor", place: sq.place, x: Math.round(a.x - crop.left + crop.padLeft), y: Math.round(a.y - crop.top + crop.padTop), w: Math.round(b.x - a.x), h: Math.round(b.y - a.y) });
+  }
+  return out;
+}
+
+/**
+ * Milliseconds a frame is given, the browser's launch included. A flat's two
+ * frames take about 8 s; 120 s reserved skipped the render whenever the sheet's
+ * reading was slow, and the run fell back to the model drawing from the sheet.
+ */
+const FRAME_MS = 45_000;
+const OUTPUT_WIDTH_PX = 2000;
+
+export async function renderMeasuredStill(options: Render3dStillOptions): Promise<MeasuredStill | null> {
   try {
     const style = sceneStyleFor(options.styleKit);
     // The renderer draws what was measured and nothing else. Where the
@@ -56,26 +201,35 @@ export async function renderMeasuredStill(
     }
     const scene = buildSceneFromPayload(options.geometry, { rules: style.rules });
     if (scene.meshes.length === 0) return null;
+    if (options.deadlineMs && Date.now() + FRAME_MS > options.deadlineMs) {
+      log.warn("out of time for the measured still");
+      return null;
+    }
 
-    const frame = await chromiumSceneRenderer({
-      scene,
-      style,
-      view: { id: "overview" },
-      quality: QUALITY.booklet,
-      deadlineMs: options.deadlineMs,
-    });
+    const started = Date.now();
+    const view = dollhouseView(scene);
+    // Traced on a machine that has the tracer (a development dependency);
+    // rasterised on the platform.
+    const samples = env.NODE_ENV === "production" ? 0 : Number(env.FLOORPLAN_TRACE_SAMPLES ?? 0);
+    const [frame, wallsFrame] = await renderBuildingFrames(
+      [
+        { ...view.payload, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }), ...(samples > 0 ? { pathTrace: { samples } } : {}) },
+        { ...view.payload, ao: false, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM, wallsOnly: true }), camera: { ...view.payload.camera, mask: true } },
+      ],
+      { outputWidthPx: OUTPUT_WIDTH_PX, timeoutMs: FRAME_MS },
+    );
     if (!frame) return null;
-
+    const crop = await contentFrame(frame, "auto");
+    const plain = await applyContentFrame(frame, crop);
+    const walls = wallsFrame ? await applyContentFrame(wallsFrame, crop, { r: 255, g: 255, b: 255 }) : undefined;
+    // The frame's size as the renderer returns it: scaled to OUTPUT_WIDTH_PX.
+    const scale = Math.min(1, OUTPUT_WIDTH_PX / view.payload.width);
+    const size = { width: Math.round(view.payload.width * scale), height: Math.round(view.payload.height * scale) };
     const stamped = await stampFloorplanStill(
-      { base64: frame.base64, mimeType: frame.mimeType },
+      { base64: plain.toString("base64"), mimeType: "image/jpeg" },
       { unitLabel: options.unitTitle, areaM2: options.areaM2 },
     );
-    log.info("measured still rendered", {
-      ms: frame.ms,
-      quality: frame.quality,
-      px: `${frame.widthPx}x${frame.heightPx}`,
-      meshes: scene.meshes.length,
-    });
+    log.info("measured still rendered", { ms: Date.now() - started, meshes: scene.meshes.length, traced: samples > 0 });
     return {
       viewId: "overview",
       labelHe: "כל התוכנית — מבט על (מדוד)",
@@ -83,6 +237,21 @@ export async function renderMeasuredStill(
       base64: stamped.base64,
       origin: "render3d",
       selected: options.selected ?? false,
+      plain,
+      ...(walls ? { walls } : {}),
+      inventory: [inventoryByPlace(flatPieces(scene), scene.extent), openFloorLine(scene)].filter(Boolean).join("\n"),
+      pieceBoxes: boxesInFrame(scene, view, size, crop, { screens: options.styleKit.audience === "haredi" }),
+      faults: auditFlatScene(scene, {
+        labelled: (options.geometry.labelledRooms ?? []).map((label) => ({
+          name: label.name,
+          box: {
+            x: (label.box.x - (scene.pageCentre?.x ?? 0)) / scene.unitsPerMetre,
+            z: (label.box.y - (scene.pageCentre?.y ?? 0)) / scene.unitsPerMetre,
+            w: label.box.width / scene.unitsPerMetre,
+            d: label.box.height / scene.unitsPerMetre,
+          },
+        })),
+      }),
     };
   } catch (err: unknown) {
     log.warn("measured still failed; the run keeps the still it has", {

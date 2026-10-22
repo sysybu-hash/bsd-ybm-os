@@ -1,5 +1,7 @@
 import { buildSchematicPlateJpeg } from "@/lib/projects/floorplan-schematic-plate";
 import { renderMeasuredStill } from "@/lib/projects/floorplan-render3d-still";
+import { checkSpotsWithClaude, compareFinishWithClaude } from "@/lib/projects/floorplan-finish-judge";
+import { finishJudge, finishMeasuredStill } from "@/lib/projects/floorplan-finish-still";
 import { buildTintedPlanJpeg, type TerraceBox } from "@/lib/projects/floorplan-tinted-plan";
 import { withStructuralVerdict } from "@/lib/projects/floorplan-viz-structural";
 import { readMarkedOpenings } from "@/lib/projects/floorplan-marked-openings";
@@ -203,10 +205,12 @@ type VisualizeFloorplanOptions = {
    *
    * "ai" is the image model alone. "both" adds the deterministic render as a
    * second attempt in the same group, so the two can be compared on the same
-   * flat at no cost — it is the default while the renderer earns its keep.
+   * flat at no cost, the default until "finish" replaced it.
    * "render3d" ships the measured render as the one the booklet uses.
+   * "finish" (the default) paints the measured render with the image model
+   * and ships the painting only if it holds the render's edges and masses.
    */
-  renderMode?: "ai" | "render3d" | "both";
+  renderMode?: "ai" | "render3d" | "both" | "finish";
   /** On a permit strip (DWF), the apartment to draw; the strip draws a building. */
   dwfUnit?: DwfUnitChoice;
 };
@@ -339,7 +343,57 @@ async function visualizeWithSpend(
     );
     let images: FloorplanVizImage[] = [];
     const enginesUsed = [...extracted.enginesUsed, "geometry-cad"];
-    if (!alreadyHasOverview) {
+    // The measured flat, photographed: seconds of CPU, and it cannot be wrong
+    // about the building. By default it is then painted by the image model and
+    // the painting checked against it ("finish"); "both" keeps the old way —
+    // the model drawing from the sheet — with the render beside it; "ai" the
+    // old way alone; "render3d" the render alone.
+    const renderMode = options?.renderMode ?? "finish";
+    const unitTitle = titleFromFloorplanLayout(layout, options?.sourceName ?? "");
+    const measured =
+      renderMode !== "ai" && !alreadyHasOverview
+        ? await renderMeasuredStill({
+            geometry: cadResult.measured,
+            styleKit,
+            unitTitle,
+            areaM2: cadResult.truth?.grossM2,
+            deadlineMs,
+            selected: renderMode === "render3d",
+          })
+        : null;
+    const measuredImage: FloorplanVizImage | null = measured ? (({ plain: _plain, ...img }) => img)(measured) : null;
+    if (measured) {
+      recordFloorplanSpend(cadResult.spend, "image", "render3d");
+      enginesUsed.push("render3d");
+    }
+    if (!alreadyHasOverview && measured && measuredImage && (renderMode === "finish" || renderMode === "render3d")) {
+      const finished =
+        renderMode === "finish"
+          ? await runWithFloorplanSpend(cadResult.spend, () =>
+              finishMeasuredStill(measured, {
+                styleKit,
+                unitTitle,
+                areaM2: cadResult.truth?.grossM2,
+                spend: cadResult.spend,
+                deadlineMs,
+                judge: finishJudge(
+                  styleKit,
+                  measured.plain,
+                  compareFinishWithClaude,
+                  measured.inventory,
+                  measured.pieceBoxes ? (image) => checkSpotsWithClaude(image, measured.plain, measured.pieceBoxes!) : undefined,
+                ),
+              }),
+            )
+          : null;
+      if (finished) {
+        const { edges: _edges, masses: _masses, ...image } = finished;
+        images = [image, { ...measuredImage, selected: false }];
+        enginesUsed.push("gemini-finish");
+      } else {
+        images = [{ ...measuredImage, selected: true }];
+      }
+    } else if (!alreadyHasOverview) {
       const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth, {
         terraces: cadResult.measuredTerraces,
       });
@@ -391,6 +445,7 @@ async function visualizeWithSpend(
         if (isAnthropicConfigured()) {
           enginesUsed.push("claude-audit");
         }
+        if (measuredImage) images = [...images, { ...measuredImage, selected: false }];
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         // Never ship the blocky CAD plate as the brochure hero — that is a
@@ -413,7 +468,10 @@ async function visualizeWithSpend(
     // Interiors, measured rather than invented: the brief for each one is the
     // room the walls cut and the furniture already placed in it. A failure here
     // never sinks the run — the overview is what the client is buying.
-    if (scope === "full" || scope === "rooms") {
+    // Not in the measured modes: these views are drawn from the sheet, room
+    // by room, and nothing measures them; a measured interior is not yet
+    // composed well enough to ship (see interiorStand).
+    if ((scope === "full" || scope === "rooms") && renderMode !== "finish" && renderMode !== "render3d") {
       try {
         const companions = await runWithFloorplanSpend(cadResult.spend, () =>
           generateGeometryCompanions({
@@ -435,27 +493,6 @@ async function visualizeWithSpend(
         log.warn("geometry companions failed; shipping the overview alone", {
           error: err instanceof Error ? err.message : String(err),
         });
-      }
-    }
-    // The measured flat, photographed. It costs a second of CPU, it cannot be
-    // wrong about the building, and it travels as an attempt in the same group
-    // as the model's still so the two can be held side by side.
-    const renderMode = options?.renderMode ?? "both";
-    if (renderMode !== "ai" && !alreadyHasOverview) {
-      const measuredStill = await renderMeasuredStill({
-        geometry: cadResult.measured,
-        styleKit,
-        unitTitle: titleFromFloorplanLayout(layout, options?.sourceName ?? ""),
-        areaM2: cadResult.truth?.grossM2,
-        deadlineMs,
-        selected: renderMode === "render3d",
-      });
-      if (measuredStill) {
-        recordFloorplanSpend(cadResult.spend, "image", "render3d");
-        images = renderMode === "render3d"
-          ? [measuredStill, ...images.map((img) => ({ ...img, selected: false }))]
-          : [...images, measuredStill];
-        enginesUsed.push("render3d");
       }
     }
     return {
@@ -481,6 +518,18 @@ async function visualizeWithSpend(
   if (cadResult.outcome === "locked") {
     throw new Error(
       "לא ניתן לנעול את גיאומטריית התוכנית — לא הופקה הדמיה מומצאת",
+    );
+  }
+  // Measured or nothing: past here the image model draws the flat from the
+  // sheet, and nothing checks it against a measurement — how a sink and a hob
+  // swapped places and a roof terrace was furnished. The measured modes ship
+  // no such drawing; the sheet-drawn route is there only when asked for by
+  // name ("ai", "both").
+  const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
+  if (measuredOnly) {
+    const why = cadResult.outcome === "skip" && cadResult.reason ? ` (${cadResult.reason})` : "";
+    throw new Error(
+      `לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. העלו את קובץ ה-PDF המקורי של האדריכל, או DWG / DXF / DWF.`,
     );
   }
 
@@ -876,6 +925,13 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
     if (qualityFailure && !rendered.confidence.ok) {
       log.info("measured plate failed its own checks; using the raster route", {
         hard: rendered.confidence.hard,
+        // What the scale was locked against, and what it came from: a target
+        // that carries a roof terrace or a misread gross is a scale error the
+        // walls cannot fix.
+        targetAreaM2: route.targetAreaM2,
+        printedGrossM2: input.extractedLayout.grossAreaM2,
+        truthGrossM2: truth?.grossM2,
+        floorM2: rendered.flat.floorM2,
       });
       return { outcome: "skip", reason: qualityFailure, openings: measuredOpenings, sinkBasins };
     }

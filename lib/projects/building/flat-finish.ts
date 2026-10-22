@@ -59,24 +59,53 @@ export function roomKindOf(scene: FlatScene): (id: string) => SceneRoomKind | un
   return (id) => kinds.get(id);
 }
 
+/** Where a frame's content is, and the page it is set on: one crop for a render and its maps. */
+export type ContentFrame = { left: number; top: number; width: number; height: number; outW: number; outH: number; padLeft: number; padTop: number; bg: { r: number; g: number; b: number } };
+
 /**
  * A render framed to what it shows: the empty sheet round the flat trimmed
- * away, and an even margin put back, at the aspect the page wants.
+ * away, and an even margin put back, at the aspect the page wants — "auto",
+ * the page shape nearest the flat's own, a tall flat on a tall page.
  */
-export async function frameToContent(image: Buffer, aspect: number, margin = 0.05): Promise<Buffer> {
+export async function contentFrame(image: Buffer, aspect: number | "auto", margin = 0.05): Promise<ContentFrame> {
   const sharp = (await import("sharp")).default;
-  const { data, info } = await sharp(image).trim({ threshold: 18 }).toBuffer({ resolveWithObject: true });
-  const bg = await sharp(image).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer();
-  let w = Math.round(info.width * (1 + 2 * margin));
-  let h = Math.round(info.height * (1 + 2 * margin));
-  if (w / h < aspect) w = Math.round(h * aspect);
-  else h = Math.round(w / aspect);
-  const left = Math.floor((w - info.width) / 2);
-  const top = Math.floor((h - info.height) / 2);
-  return sharp(data)
-    .extend({ left, right: w - info.width - left, top, bottom: h - info.height - top, background: { r: bg[0] ?? 255, g: bg[1] ?? 255, b: bg[2] ?? 255 } })
+  const { info } = await sharp(image).trim({ threshold: 18 }).toBuffer({ resolveWithObject: true });
+  const px = await sharp(image).extract({ left: 2, top: 2, width: 1, height: 1 }).raw().toBuffer();
+  const left = -(info.trimOffsetLeft ?? 0);
+  const top = -(info.trimOffsetTop ?? 0);
+  if (aspect === "auto") {
+    const own = info.width / info.height;
+    aspect = [0.75, 1, 1.45].sort((p, q) => Math.abs(Math.log(p / own)) - Math.abs(Math.log(q / own)))[0]!;
+  }
+  let outW = Math.round(info.width * (1 + 2 * margin));
+  let outH = Math.round(info.height * (1 + 2 * margin));
+  if (outW / outH < aspect) outW = Math.round(outH * aspect);
+  else outH = Math.round(outW / aspect);
+  return {
+    left,
+    top,
+    width: info.width,
+    height: info.height,
+    outW,
+    outH,
+    padLeft: Math.floor((outW - info.width) / 2),
+    padTop: Math.floor((outH - info.height) / 2),
+    bg: { r: px[0] ?? 255, g: px[1] ?? 255, b: px[2] ?? 255 },
+  };
+}
+
+/** The same crop on any image of the same frame; `background` for a map's own ground. */
+export async function applyContentFrame(image: Buffer, f: ContentFrame, background?: { r: number; g: number; b: number }): Promise<Buffer> {
+  const sharp = (await import("sharp")).default;
+  return sharp(image)
+    .extract({ left: f.left, top: f.top, width: f.width, height: f.height })
+    .extend({ left: f.padLeft, right: f.outW - f.width - f.padLeft, top: f.padTop, bottom: f.outH - f.height - f.padTop, background: background ?? f.bg })
     .jpeg({ quality: 93, chromaSubsampling: "4:4:4" })
     .toBuffer();
+}
+
+export async function frameToContent(image: Buffer, aspect: number | "auto", margin = 0.05): Promise<Buffer> {
+  return applyContentFrame(image, await contentFrame(image, aspect, margin));
 }
 
 type Box2 = { x0: number; x1: number; z0: number; z1: number };

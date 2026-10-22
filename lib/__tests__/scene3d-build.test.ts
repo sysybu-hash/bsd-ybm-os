@@ -6,7 +6,7 @@ import {
   slicesByEnclosure,
 } from "@/lib/projects/scene3d/build-scene";
 import { hashScene } from "@/lib/projects/scene3d/hash";
-import { mergeSpanRows, outlineEdges } from "@/lib/projects/scene3d/floors";
+import { cropToPaving, mergeSpanRows, openRows, outlineEdges } from "@/lib/projects/scene3d/floors";
 import {
   DOOR_HEAD_M,
   WALL_HEIGHT_M,
@@ -202,6 +202,21 @@ describe("where a piece may stand", () => {
     expect(pieceBelongsIn("bed", undefined)).toBe(false);
   });
 
+  it("stands a bed whose middle fell just outside the bedroom the segmenter closed", () => {
+    // דירה 21: only a strip of the corner bedroom was closed, and the bed's
+    // centre (x 85) landed in the unnamed space beside it; 40% of it is in
+    // the bedroom.
+    const beds = (bedroomTo: number) =>
+      buildFlatScene(flat(), [
+        room("ח.שינה", "bedroom", rows(10, bedroomTo, 10, 390), 3),
+        room("חלל", "other", rows(bedroomTo, 296, 10, 390), 8),
+        ROOMS[1]!,
+      ]).meshes.filter((m) => m.sourceId.endsWith("/mattress")).length;
+    expect(beds(80)).toBe(1);
+    // Not a corner of it in a bedroom: no bed, as on דירה 15's roof terrace.
+    expect(beds(30)).toBe(0);
+  });
+
   it("keeps a pan out of the dry rooms", () => {
     expect(pieceBelongsIn("fixture", "bathroom")).toBe(true);
     expect(pieceBelongsIn("fixture", "living")).toBe(false);
@@ -255,5 +270,78 @@ describe("floor nobody claimed: inside the flat or outside it", () => {
     const runs = slicesByEnclosure({ x: 40, y: 40, w: 120, h: 10 }, walls, 10);
     expect(runs.map((run) => run.inside)).toEqual([true, false]);
     expect(runs[0]!.rect.x + runs[0]!.rect.w).toBeCloseTo(runs[1]!.rect.x);
+  });
+});
+
+describe("walls stand only where a wall can", () => {
+  const box = (kind: SceneBox["kind"], x: number, z: number, w: number, d: number): SceneBox =>
+    ({ kind, sourceId: `${kind}:${x},${z}`, material: "m", centre: { x, y: 1, z }, size: { x: w, y: 2, z: d } }) as unknown as SceneBox;
+
+  it("cuts a wall running on into a terrace, drops one across a terrace, and keeps the corners", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const floor = box("floor", 2, 2, 4, 4); // 0–4 × 0–4
+    const terrace = box("terrace", 2, 5.5, 4, 3); // 0–4 × 4–7
+    // The flat's east wall, run on 3 m into the terrace; a "wall" across the terrace; the south wall.
+    const east = box("wall", 4.1, 3.5, 0.2, 7);
+    const across = box("wall", 2, 6, 3, 0.1);
+    const south = box("wall", 2, 4.05, 4.4, 0.1);
+    const out = wallsBesideFloor([floor, terrace, east, across, south]).filter((m) => m.kind === "wall");
+    const eastNow = out.find((m) => Math.abs(m.centre.x - 4.1) < 0.01)!;
+    // East wall: beside the floor (0–4), and on into the terrace with nothing past it — a parapet.
+    expect(eastNow.size.z).toBeCloseTo(7, 1);
+    expect(out.some((m) => Math.abs(m.centre.z - 6) < 0.01)).toBe(false);
+    // The south wall reaches the east wall at its corner; its west end, past the flat with no wall there, goes.
+    expect(out.some((m) => Math.abs(m.centre.z - 4.05) < 0.01 && m.size.x >= 4.1)).toBe(true);
+  });
+
+  it("drops a stub standing in a terrace even where the flat's floor runs on under it", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const floor = box("floor", 2, 3.5, 4, 7); // 0–4 × 0–7, under the terrace too
+    const terrace = box("terrace", 2, 5.5, 4, 3); // 0–4 × 4–7
+    const stub = box("wall", 2, 4.6, 0.1, 1.0); // from the south wall into the terrace
+    const out = wallsBesideFloor([floor, terrace, stub]).filter((m) => m.kind === "wall");
+    expect(out).toHaveLength(0);
+  });
+
+  it("drops a wall with nothing on either side", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const out = wallsBesideFloor([box("floor", 2, 2, 4, 4), box("wall", 8, 2, 0.2, 3)]);
+    expect(out.filter((m) => m.kind === "wall")).toHaveLength(0);
+  });
+});
+
+describe("a terrace held to what is drawn of it", () => {
+  const block = (x0: number, x1: number, y0: number, y1: number) => {
+    const rows = [];
+    for (let y = y0; y < y1; y += 2) rows.push({ y, spans: [[x0, x1]] as Array<[number, number]> });
+    return rows;
+  };
+  const area = (rows: Array<{ spans: Array<[number, number]> }>) =>
+    rows.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * 2;
+
+  it("cuts a paved terrace's flood back to its paving", () => {
+    // 100 units a metre: paving over 0–200 × 0–150, the flood on to y = 300.
+    const rows = block(0, 200, 0, 300);
+    const joints = [];
+    for (let y = 0; y <= 150; y += 30) joints.push({ x1: 0, y1: y, x2: 100, y2: y }, { x1: 100, y1: y, x2: 200, y2: y });
+    for (let x = 0; x <= 200; x += 40) joints.push({ x1: x, y1: 0, x2: x, y2: 30 });
+    const cut = cropToPaving(rows, joints, 100);
+    expect(Math.max(...cut.map((r) => r.y))).toBeLessThanOrEqual(180);
+    expect(Math.max(...cut.map((r) => r.y))).toBeGreaterThanOrEqual(150);
+  });
+
+  it("leaves an unpaved terrace as it is", () => {
+    const rows = block(0, 200, 0, 300);
+    expect(cropToPaving(rows, [], 100)).toBe(rows);
+  });
+
+  it("closes hairline joints before opening, so a shallow terrace survives", () => {
+    // A metre deep, a hairline gap across it every 60: opened at a 35 radius it went.
+    const rows = block(0, 300, 0, 100).map((r) => ({
+      y: r.y,
+      spans: [[0, 58], [60, 118], [120, 178], [180, 238], [240, 300]] as Array<[number, number]>,
+    }));
+    expect(area(openRows(rows, 35))).toBeLessThan(area(rows) * 0.5);
+    expect(area(openRows(rows, 35, undefined, 10))).toBeGreaterThan(area(rows) * 0.7);
   });
 });

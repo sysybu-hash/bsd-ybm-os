@@ -27,6 +27,10 @@ export type FloorSpec = {
   /** Material of the outer skin, and of the walls inside. */
   facade: BuildingMaterial;
   interior: BuildingMaterial;
+  /** The frame standing proud of a window. Absent: the dark stone a permit elevation draws. */
+  surroundMaterial?: BuildingMaterial;
+  /** The frame of the glazing itself. Absent: aluminium. */
+  frameMaterial?: BuildingMaterial;
 };
 
 export function insidePolygon(ring: Outline, x: number, y: number): boolean {
@@ -163,6 +167,18 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
     wallPiece(b, y0, top, outerSide(b));
   }
 
+  // A curtain wall is glass from end to end: a door the plan draws in it is a leaf in that glass, with no stone over it and no portal round it.
+  const curtains = openings.filter((c) => within(c) && (c.orientation === "h" ? c.w : c.h) >= 6 && outerSide(c) !== 0);
+  const inCurtain = (o: PlanOpening) => {
+    const [a0, a1] = o.orientation === "h" ? [o.x, o.x + o.w] : [o.y, o.y + o.h];
+    return curtains.some((c) => {
+      if (c === o || c.orientation !== o.orientation) return false;
+      const [c0, c1] = c.orientation === "h" ? [c.x, c.x + c.w] : [c.y, c.y + c.h];
+      const across = c.orientation === "h" ? Math.abs(c.y - o.y) : Math.abs(c.x - o.x);
+      return a0 >= c0 - 0.05 && a1 <= c1 + 0.05 && across < 0.6;
+    });
+  };
+
   for (const found of openings) {
     if (!within(found)) continue;
     // Outside is where the floor's own outline says, not where the reader's
@@ -176,6 +192,56 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       wallPiece(o, y0 + 2.2, top, 0);
       continue;
     }
+    if (o.kind === "window" && o.door) {
+      // A door the plan draws: to the floor, in a frame on its jambs and head —
+      // a timber leaf, or glazed where it opens onto a balcony or a terrace.
+      const glassWall = inCurtain(o);
+      const surround = glassWall ? 0 : floor.window.surround;
+      const head = Math.max(2.0, o.head ?? floor.window.head);
+      if (!glassWall) wallPiece(o, y0 + head, top, side);
+      const along = o.orientation === "h" ? o.w : o.h;
+      const proud = 0.06;
+      const surroundMaterial = floor.surroundMaterial ?? "stoneDark";
+      const outer = (o.orientation === "h" ? (side < 0 ? o.y : o.y + o.h) : side < 0 ? o.x : o.x + o.w) - (side < 0 ? proud : 0);
+      // The surround laid on the wall round the opening, as a window's is —
+      // laid within it, a 16 cm frame left an 86 cm entrance a 54 cm leaf
+      // (Gottlieb, 11/10/2026: "why are the doors so narrow?"). A plain
+      // door's frame is the slim one of its own leaf.
+      const frame = surround > 0 ? 0.05 : Math.max(surround, 0.08);
+      const reach = (t: number) => {
+        const mid = o.orientation === "h" ? o.y + o.h / 2 : o.x + o.w / 2;
+        const at = (o.orientation === "h" ? o.x : o.y) + t;
+        return o.orientation === "h" ? insidePolygon(ring, at, mid) : insidePolygon(ring, mid, at);
+      };
+      const room = (from: number, dir: -1 | 1) => {
+        for (let e = surround; e > 0.005; e -= 0.01) if (reach(from + dir * (e - 0.005))) return e;
+        return 0;
+      };
+      const before = surround > 0 ? room(0, -1) : 0;
+      const after = surround > 0 ? room(along, 1) : 0;
+      const headTop = Math.min(head + surround, floor.height - 0.02);
+      const pieces: Array<[number, number, number, number]> =
+        surround > 0
+          ? [[-before, 0, 0, headTop], [along, along + after, 0, headTop], [-before, along + after, head, headTop], [0, frame, 0, head], [along - frame, along, 0, head], [0, along, head - frame, head]]
+          : [[0, frame, 0, head], [along - frame, along, 0, head], [0, along, head - frame, head]];
+      for (const [p0, p1, h0, h1] of pieces) {
+        if (p1 - p0 < 0.01 || h1 - h0 < 0.01) continue;
+        const material = surround > 0 && (p1 <= 0.001 || p0 >= along - 0.001 || h0 >= head - 0.001) ? surroundMaterial : surround > 0 ? (floor.frameMaterial ?? "frame") : surroundMaterial;
+        if (o.orientation === "h") box(o.x + p0, outer, p1 - p0, SKIN + proud, y0 + h0, y0 + h1, material, `${tag}:door`);
+        else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, material, `${tag}:door`);
+      }
+      if (o.full || glassWall) glazing(out, o, y0, y0 + head - frame, frame, side, `${tag}:door`, o.sliding ? Math.max(2, Math.round(along / 1.5)) : 1, floor.frameMaterial ?? "frame");
+      else {
+        const thick = o.orientation === "h" ? o.h : o.w;
+        const face = (o.orientation === "h" ? o.y : o.x) + (side < 0 ? 0.12 : side > 0 ? thick - 0.12 : thick / 2);
+        const len = along - 2 * frame;
+        const start = (o.orientation === "h" ? o.x : o.y) + frame;
+        const centre = o.orientation === "h" ? { x: start + len / 2, y: y0 + (head - frame) / 2, z: face } : { x: face, y: y0 + (head - frame) / 2, z: start + len / 2 };
+        const size = o.orientation === "h" ? { x: len, y: head - frame, z: 0.05 } : { x: 0.05, y: head - frame, z: len };
+        out.push({ type: "box", centre, size, material: "timber", tag: `${tag}:door` });
+      }
+      continue;
+    }
     if (o.kind === "window") {
       const { surround } = floor.window;
       // As the elevation draws it where it does; a door onto a terrace is glazed from the floor.
@@ -183,26 +249,50 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       const sill = o.sill ?? (o.full ? 0 : floor.window.sill);
       wallPiece(o, y0, y0 + sill, side);
       wallPiece(o, y0 + head, top, side);
-      // The stone surround, standing proud of the facade by 6 cm.
+      // The stone surround, standing proud of the facade by 6 cm, laid on the
+      // wall round the opening as a mason sets it — not within it. Laid within,
+      // a 16 cm frame ate 32 cm of every window's glass: a 0.60 m bathroom
+      // window glazed 0.28 m, a 0.40 m one a slit. The opening is the sheet's.
       const along = o.orientation === "h" ? o.w : o.h;
       const proud = 0.06;
+      const surroundMaterial = floor.surroundMaterial ?? "stoneDark";
       const outer = (o.orientation === "h" ? (side < 0 ? o.y : o.y + o.h) : side < 0 ? o.x : o.x + o.w) - (side < 0 ? proud : 0);
+      // A jamb stops where its wall does: at a corner the frame runs to the edge, not past it.
+      const reach = (t: number) => {
+        const mid = o.orientation === "h" ? o.y + o.h / 2 : o.x + o.w / 2;
+        const at = (o.orientation === "h" ? o.x : o.y) + t;
+        return o.orientation === "h" ? insidePolygon(ring, at, mid) : insidePolygon(ring, mid, at);
+      };
+      const room = (from: number, dir: -1 | 1) => {
+        for (let e = surround; e > 0.005; e -= 0.01) if (reach(from + dir * (e - 0.005))) return e;
+        return 0;
+      };
+      const before = room(0, -1);
+      const after = room(along, 1);
+      const headTop = Math.min(head + surround, floor.height - 0.02);
+      const ledge = !(o.full || sill < 0.05);
+      const sillBottom = Math.max(0, sill - surround);
       const pieces: Array<[number, number, number, number]> = [
-        [0, surround, sill, head],
-        [along - surround, along, sill, head],
-        [0, along, sill, sill + surround],
-        [0, along, head - surround, head],
+        [-before, 0, sill, headTop],
+        [along, along + after, sill, headTop],
+        [-before, along + after, head, headTop],
       ];
       for (const [p0, p1, h0, h1] of pieces) {
-        if (o.orientation === "h") box(o.x + p0, outer, p1 - p0, SKIN + proud, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
-        else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, "stoneDark", `${tag}:surround`);
+        if (p1 - p0 < 0.01 || h1 - h0 < 0.01) continue;
+        if (o.orientation === "h") box(o.x + p0, outer, p1 - p0, SKIN + proud, y0 + h0, y0 + h1, surroundMaterial, `${tag}:surround`);
+        else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, surroundMaterial, `${tag}:surround`);
       }
-      // The sill: a stone ledge standing 8 cm proud under the surround.
-      if (o.full || sill < 0.05) {
-        // No ledge under a door.
-      } else if (o.orientation === "h") box(o.x - 0.05, outer - 0.03, o.w + 0.1, SKIN + proud + 0.04, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
-      else box(outer - 0.03, o.y - 0.05, SKIN + proud + 0.04, o.h + 0.1, y0 + sill - 0.06, y0 + sill, "stone", `${tag}:sill`);
-      glazing(out, o, y0 + sill + surround, y0 + head - surround, surround, side, `${tag}:window`, 1);
+      // The sill: the frame's bottom course, a stone ledge 4 cm prouder and a little wider.
+      const sillMaterial = floor.surroundMaterial ?? "stone";
+      if (ledge) {
+        const s0 = -before - 0.04;
+        const s1 = along + after + 0.04;
+        const face = side < 0 ? outer - 0.04 : outer;
+        if (o.orientation === "h") box(o.x + s0, face, s1 - s0, SKIN + proud + 0.04, y0 + sillBottom, y0 + sill, sillMaterial, `${tag}:sill`);
+        else box(face, o.y + s0, SKIN + proud + 0.04, s1 - s0, y0 + sillBottom, y0 + sill, sillMaterial, `${tag}:sill`);
+      }
+      // The glass fills the opening; a window of two leaves where it is wide enough to slide.
+      glazing(out, o, y0 + sill, y0 + head, 0, side, `${tag}:window`, along >= 0.9 ? 2 : 1, floor.frameMaterial ?? "frame");
       continue;
     }
     // A curtain wall: to its head, mullions every two metres or so, stone above.
@@ -226,6 +316,7 @@ function glazing(
   side: -1 | 0 | 1,
   tag: string,
   panes: number,
+  frameMaterial: BuildingMaterial = "frame",
 ): void {
   const horizontal = o.orientation === "h";
   const len = (horizontal ? o.w : o.h) - 2 * inset;
@@ -241,11 +332,11 @@ function glazing(
     out.push({ type: "box", centre, size, material, tag });
   };
   put(start, start + len, a, b, 0.02, "glass");
-  put(start, start + len, a, a + frameT, 0.08, "frame");
-  put(start, start + len, b - frameT, b, 0.08, "frame");
+  put(start, start + len, a, a + frameT, 0.08, frameMaterial);
+  put(start, start + len, b - frameT, b, 0.08, frameMaterial);
   for (let i = 0; i <= panes; i++) {
     const x = start + (len * i) / panes;
-    put(x - frameT / 2, x + frameT / 2, a, b, 0.08, "frame");
+    put(x - frameT / 2, x + frameT / 2, a, b, 0.08, frameMaterial);
   }
 }
 
@@ -271,7 +362,8 @@ export function parapet(outline: Outline, level: number, top: number, thickness:
     }
     const cx = (ax + bx) / 2 + (nx * thickness) / 2;
     const cy = (ay + by) / 2 + (ny * thickness) / 2;
-    const horizontal = Math.abs(by - ay) < 1e-6;
+    // A drawn edge is rarely exactly square: 2 cm over 5 m still runs along x.
+    const horizontal = Math.abs(by - ay) <= Math.abs(bx - ax);
     out.push({
       type: "box",
       centre: { x: cx, y: (level + top) / 2, z: cy },

@@ -1,5 +1,6 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import {
+  componentsOf,
   assignFurniture,
   isEnvelopeOpening,
   markEntranceHall,
@@ -406,5 +407,24 @@ describe("a bathroom cut off its hall at the door", () => {
     expect(area(split![0])).toBeGreaterThan(2.6);
     expect(area(split![0])).toBeLessThan(3.6);
     expect(area(split![1])).toBeGreaterThan(11);
+  });
+});
+
+describe("a room's parts, joined only where one can walk through", () => {
+  const block = (x0: number, x1: number, y0: number, y1: number): SpanRow[] => {
+    const rows: SpanRow[] = [];
+    for (let y = y0; y < y1; y += 2) rows.push({ y, spans: [[x0, x1]] });
+    return rows;
+  };
+  // 100 units a metre: a corridor 0.9 m wide, and a WC below it.
+  it("keeps a corridor and a WC apart where only a sliver joins them", () => {
+    const rows = [...block(0, 90, 0, 200), ...block(40, 50, 200, 210), ...block(0, 90, 210, 330)];
+    // The corridor, the WC, and the sliver between them on its own.
+    expect(componentsOf(rows, 2, 30)).toHaveLength(3);
+  });
+
+  it("keeps a room whole where its parts meet a doorway wide", () => {
+    const rows = [...block(0, 90, 0, 200), ...block(10, 80, 200, 210), ...block(0, 90, 210, 330)];
+    expect(componentsOf(rows, 2, 30)).toHaveLength(1);
   });
 });

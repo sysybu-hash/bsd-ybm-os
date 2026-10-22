@@ -1251,6 +1251,24 @@ export function wallBodiesFromHatch(
         // Hatch in the middle, not on average across the band.
         if (field.density(bodyRect(body)) < minDensity) continue;
         if (!hatchFillsMiddle(field, body, minDensity)) continue;
+        if (!hatchAlongBand(field, body, upm)) {
+          // Hatch to one side of the band: one face is the wall's, the other
+          // a line past it. The wall is the band from that face to the far
+          // side of its hatch's middle. Dropped instead, 22's entrance wall
+          // was left a 12 cm sliver with a gap by the door, and the living
+          // room flooded out of it.
+          const fitted = wallOnOneSide(field, body);
+          if (
+            fitted &&
+            fitted.thickness >= minThickness &&
+            field.density(bodyRect(fitted)) >= minDensity &&
+            hatchFillsMiddle(field, fitted, minDensity) &&
+            hatchAlongBand(field, fitted, upm, false)
+          ) {
+            bodies.push(fitted);
+          }
+          continue;
+        }
         bodies.push(body);
       }
     }
@@ -1274,7 +1292,46 @@ export function wallBodiesFromHatch(
   const deduped = shrinkToHatch(dedupe(bodies), segments);
   if (options.keepOpenings) return deduped.filter((b) => b.to - b.from >= minLength);
   const merged = bridgeOpenings(deduped, (options.mergeGapM ?? 1.2) * upm);
-  return merged.filter((b) => b.to - b.from >= minLength);
+  return trimThinToFaces(merged, segments, upm).filter((b) => b.to - b.from >= minLength);
+}
+
+/**
+ * A thin wall held to its drawn faces. Joined across what looked like a
+ * doorway, דירה 17's 8 cm partition ran on a metre and a half past its end,
+ * along the axis line and a dimension's ticks, into the bathroom. A
+ * partition's two face lines run the length of it, doorways aside: one whose
+ * faces cover under 60 % of it is cut back to the longest stretch they do.
+ */
+export function trimThinToFaces(bodies: WallBody[], segments: VectorSegment[], upm: number): WallBody[] {
+  const thin = 0.12 * upm;
+  return bodies.flatMap((body) => {
+    if (body.thickness > thin) return [body];
+    const faces = [body.centre - body.thickness / 2, body.centre + body.thickness / 2];
+    const spans: Array<[number, number]> = [];
+    for (const seg of segments) {
+      const vertical = Math.abs(seg.x1 - seg.x2) < 0.5;
+      const horizontal = Math.abs(seg.y1 - seg.y2) < 0.5;
+      if (body.orientation === "v" ? !vertical : !horizontal) continue;
+      // An axis line's dashes lie on a face too; a face is drawn in lengths.
+      if (Math.hypot(seg.x2 - seg.x1, seg.y2 - seg.y1) < 0.2 * upm) continue;
+      const at = body.orientation === "v" ? seg.x1 : seg.y1;
+      if (!faces.some((f) => Math.abs(f - at) <= 1.5)) continue;
+      const a = Math.max(body.from, Math.min(body.orientation === "v" ? seg.y1 : seg.x1, body.orientation === "v" ? seg.y2 : seg.x2));
+      const b = Math.min(body.to, Math.max(body.orientation === "v" ? seg.y1 : seg.x1, body.orientation === "v" ? seg.y2 : seg.x2));
+      if (b > a) spans.push([a, b]);
+    }
+    spans.sort((p, q) => p[0] - q[0]);
+    const union: Array<[number, number]> = [];
+    for (const span of spans) {
+      const last = union[union.length - 1];
+      if (last && span[0] <= last[1] + 1) last[1] = Math.max(last[1], span[1]);
+      else union.push([span[0], span[1]]);
+    }
+    const covered = union.reduce((sum, [a, b]) => sum + (b - a), 0);
+    if (covered >= 0.6 * (body.to - body.from)) return [body];
+    const longest = union.sort((p, q) => q[1] - q[0] - (p[1] - p[0]))[0];
+    return longest ? [{ ...body, from: longest[0], to: longest[1] }] : [];
+  });
 }
 
 /**
@@ -1322,6 +1379,84 @@ export function stubsInsideCrossingWalls(bodies: WallBody[], tolerance = 1): Wal
  * Requiring every slice to carry hatch was tried and is wrong for the same
  * indexing reason — it rejects thin walls whose strokes all land centrally.
  */
+/**
+ * Hatch along the band, not in a few places of it. A thin band's area is
+ * small, so a handful of strokes makes it dense: a dimension line beside a
+ * bath, with its 45° end ticks and the "165" written along it, measured as an
+ * 8 cm wall 3 m long through דירה 17's bathroom. A wall is hatched the length
+ * of it; three slices in five will do.
+ */
+export function hatchAlongBand(field: HatchField, body: WallBody, upm: number, centred = true): boolean {
+  const rect = bodyRect(body);
+  const length = body.to - body.from;
+  const step = 0.25 * upm;
+  if (length < step * 2) return true;
+  const slices = Math.floor(length / step);
+  let hatched = 0;
+  for (let i = 0; i < slices; i++) {
+    const slice =
+      body.orientation === "h"
+        ? { x: body.from + i * step, y: rect.y, w: step, h: rect.h }
+        : { x: rect.x, y: body.from + i * step, w: rect.w, h: step };
+    if (field.count(slice) > 0) hatched++;
+  }
+  if (hatched < 0.6 * slices) return false;
+  // And centred across it. A stroke crosses its wall face to face, so its
+  // middle — what the field holds — lies on the wall's middle. A band
+  // bracketing a wall and the axis line beside it (22's bathroom: 47 cm where
+  // the wall is 10, the dimension's figures between) has its hatch to one
+  // side. Over 12 cm thick, the middle third holds most of it, or both outer
+  // thirds share it.
+  // Judged slice by slice: a band can run from a thin wall into a thick one
+  // hatched across, and the whole band's count then looks centred.
+  if (!centred || body.thickness <= 0.12 * upm) return true;
+  let judged = 0;
+  let oneSided = 0;
+  for (let i = 0; i < slices; i++) {
+    const lane = (k: number) =>
+      field.count(
+        body.orientation === "h"
+          ? { x: body.from + i * step, y: rect.y + (rect.h * k) / 3, w: step, h: rect.h / 3 }
+          : { x: rect.x + (rect.w * k) / 3, y: body.from + i * step, w: rect.w / 3, h: step },
+      );
+    const [c0, c1, c2] = [lane(0), lane(1), lane(2)];
+    if (c0 + c1 + c2 === 0) continue;
+    judged++;
+    const centred = c1 >= 0.4 * (c0 + c1 + c2) || (Math.min(c0, c2) > 0 && Math.min(c0, c2) >= 0.25 * Math.max(c0, c2));
+    if (!centred) oneSided++;
+  }
+  return judged > 0 && oneSided <= 0.4 * judged;
+}
+
+/**
+ * The wall inside a band whose hatch lies to one side of it: from the face
+ * the hatch is nearer to, out to the same distance past the hatch's middle —
+ * a stroke crosses its wall face to face, so its middle is the wall's.
+ */
+export function wallOnOneSide(field: HatchField, body: WallBody): WallBody | null {
+  const rect = bodyRect(body);
+  const LANES = 9;
+  let total = 0;
+  let moment = 0;
+  for (let k = 0; k < LANES; k++) {
+    const n = field.count(
+      body.orientation === "h"
+        ? { x: rect.x, y: rect.y + (rect.h * k) / LANES, w: rect.w, h: rect.h / LANES }
+        : { x: rect.x + (rect.w * k) / LANES, y: rect.y, w: rect.w / LANES, h: rect.h },
+    );
+    total += n;
+    moment += n * ((k + 0.5) / LANES);
+  }
+  if (total === 0) return null;
+  const middle = moment / total;
+  if (middle > 0.4 && middle < 0.6) return null;
+  const near = middle <= 0.5 ? 0 : 1;
+  const thickness = 2 * Math.abs(middle - near) * body.thickness;
+  const low = body.centre - body.thickness / 2;
+  const from = near === 0 ? low : low + body.thickness - thickness;
+  return { ...body, centre: from + thickness / 2, thickness };
+}
+
 function hatchFillsMiddle(field: HatchField, body: WallBody, minDensity: number): boolean {
   const rect = bodyRect(body);
   const across = body.orientation === "h" ? rect.h : rect.w;
@@ -1530,14 +1665,23 @@ export function interiorComponents(
   // wall separates two rooms; a bath does not.
   const separateRooms = options?.separateAcrossWalls === true;
   const horizontal = (options?.walls ?? bodies).filter((body) => body.orientation === "h");
-  const wallBetween = (yAbove: number, yBelow: number, lo: number, hi: number) =>
-    horizontal.some(
-      (body) =>
-        body.centre > yAbove &&
-        body.centre < yBelow &&
-        body.from < hi &&
-        body.to > lo,
-    );
+  // Across most of where the two rows meet: a short wall in the gap — a
+  // jamb, a wardrobe's end read as one — cut 21's twin bedroom along the
+  // whole width of its beds, and its lower metre became a corridor.
+  const wallBetween = (yAbove: number, yBelow: number, lo: number, hi: number) => {
+    const pieces = horizontal
+      .filter((body) => body.centre > yAbove && body.centre < yBelow && body.from < hi && body.to > lo)
+      .map((body) => [Math.max(lo, body.from), Math.min(hi, body.to)] as const)
+      .sort((p, q) => p[0] - q[0]);
+    let covered = 0;
+    let reach = lo;
+    for (const [p0, p1] of pieces) {
+      if (p1 <= reach) continue;
+      covered += p1 - Math.max(p0, reach);
+      reach = p1;
+    }
+    return covered >= (hi - lo) * 0.6;
+  };
   for (let r = 1; r < rows.length; r++) {
     const gapped = separateRooms && rows[r]!.y - rows[r - 1]!.y > pitch * 1.5;
     for (const a of index.get(r - 1) ?? []) {
@@ -1610,6 +1754,10 @@ export type Opening = {
   thickness: number;
   from: number;
   to: number;
+  /** A door's leaf as the sheet draws it open, hinge to tip, page units. */
+  leaf?: { x: number; y: number; dx: number; dy: number };
+  /** A hatch gap a door swing is drawn round: a doorway whatever its floor says. */
+  swung?: boolean;
 };
 
 /**
@@ -1631,10 +1779,11 @@ export function findHatchGaps(
   bodies: WallBody[],
   segments: VectorSegment[],
   unitsPerMetre: number,
-  options?: { minWidthM?: number; maxWidthM?: number },
+  options?: { minWidthM?: number; maxWidthM?: number; curves?: VectorSegment[] },
 ): Opening[] {
   if (bodies.length === 0) return [];
   const minWidth = (options?.minWidthM ?? 0.55) * unitsPerMetre;
+  const curves = options?.curves ?? [];
   const maxWidth = (options?.maxWidthM ?? 3.2) * unitsPerMetre;
   const step = 0.08 * unitsPerMetre;
 
@@ -1662,6 +1811,10 @@ export function findHatchGaps(
     }
     // A wall that is barely hatched is not hatched: its blank runs say nothing.
     if (hatched.filter(Boolean).length < steps * 0.25) continue;
+    // A lone hatched cell in a blank run is a door frame's stroke, not wall:
+    // one cut 22's front door to a 56 cm gap the rules then set aside.
+    const lone = hatched.map((h, i) => h && !hatched[i - 1] && !hatched[i + 1] && !hatched[i - 2] && !hatched[i + 2]);
+    lone.forEach((l, i) => { if (l) hatched[i] = false; });
 
     let run = 0;
     for (let i = 0; i <= steps; i++) {
@@ -1676,13 +1829,29 @@ export function findHatchGaps(
         // hole in it.
         const atStart = to - width <= body.from + step;
         const atEnd = to >= body.to - step;
-        if (width >= minWidth && width <= maxWidth && !atStart && !atEnd) {
+        // Unless a door swings from it: the wall measured on through a door
+        // at its end — 22's front door, the wall run on past it to the fire
+        // cabinet on the landing — has its blank run there, and the arc.
+        const from = to - width;
+        const swung =
+          (atStart || atEnd) &&
+          width >= minWidth &&
+          width <= unitsPerMetre * 1.3 &&
+          [from, to].some((end) => {
+            const hx = body.orientation === "h" ? end : body.centre;
+            const hy = body.orientation === "h" ? body.centre : end;
+            return (
+              curves.filter((c) => Math.abs(Math.hypot((c.x1 + c.x2) / 2 - hx, (c.y1 + c.y2) / 2 - hy) - width) <= width * 0.2).length >= 4
+            );
+          });
+        if (width >= minWidth && width <= maxWidth && ((!atStart && !atEnd) || swung)) {
           out.push({
             orientation: body.orientation,
             centre: body.centre,
             thickness: body.thickness,
             from: to - width,
             to,
+            ...(swung ? { swung: true } : {}),
           });
         }
         run = 0;
@@ -1814,8 +1983,27 @@ export function findDoorSwings(
         y <= rect.y + rect.h + 3,
     );
 
-  type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody };
+  type Swing = { x: number; y: number; width: number; arcs: number; body: WallBody; side: number; tip: { x: number; y: number } };
   const swings: Swing[] = [];
+  // Short strokes by grid cell, for the dashed swings below: scanned whole
+  // for every leaf-length line, they made a sheet take minutes to measure.
+  const cell = maxWidth;
+  const dashCells = new Map<string, VectorSegment[]>();
+  for (const d of segments) {
+    const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+    if (len > maxWidth * 0.22 || len < unitsPerMetre * 0.02) continue;
+    const key = `${Math.floor((d.x1 + d.x2) / 2 / cell)}:${Math.floor((d.y1 + d.y2) / 2 / cell)}`;
+    const list = dashCells.get(key);
+    if (list) list.push(d);
+    else dashCells.set(key, [d]);
+  }
+  const dashesNear = (x: number, y: number): VectorSegment[] => {
+    const cx = Math.floor(x / cell);
+    const cy = Math.floor(y / cell);
+    const out: VectorSegment[] = [];
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) out.push(...(dashCells.get(`${cx + i}:${cy + j}`) ?? []));
+    return out;
+  };
   for (const s of segments) {
     const width = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     if (width < minWidth || width > maxWidth) continue;
@@ -1825,7 +2013,40 @@ export function findDoorSwings(
     // with neither is furniture standing in the room.
     if ((a && b) || (!a && !b)) continue;
     const hinge = a ? { x: s.x1, y: s.y1 } : { x: s.x2, y: s.y2 };
+    const tip = a ? { x: s.x2, y: s.y2 } : { x: s.x1, y: s.y1 };
+    // A leaf ends free, or in its own thin end: a furniture edge runs on
+    // round a corner. 17's beds, a line 70 cm from the wall to a corner with
+    // the pillow's rounded corners at that radius, came out doors in the
+    // outer walls. A stroke more than 12 cm long leaving the tip square to the
+    // leaf is the next side of a piece, not a door.
+    {
+      const lx = (tip.x - (a ? s.x1 : s.x2)) / width;
+      const ly = (tip.y - (a ? s.y1 : s.y2)) / width;
+      const turns = segments.some((o) => {
+        if (o === s) return false;
+        const len = Math.hypot(o.x2 - o.x1, o.y2 - o.y1);
+        if (len < unitsPerMetre * 0.12) return false;
+        const atTip = Math.hypot(o.x1 - tip.x, o.y1 - tip.y) < 2 || Math.hypot(o.x2 - tip.x, o.y2 - tip.y) < 2;
+        if (!atTip) return false;
+        const dot = Math.abs(((o.x2 - o.x1) * lx + (o.y2 - o.y1) * ly) / len);
+        return dot < 0.3;
+      });
+      if (turns) continue;
+    }
     const body = (a ?? b)!.body;
+    // Which way along the wall the arc sweeps: the doorway runs from the
+    // hinge that way, a door's width.
+    // A leaf stands out from its wall, not along it: a line lying along the
+    // wall is the wall's own face or a sill, and 17 got a door that way in the
+    // wall between two bedrooms.
+    {
+      const ux = Math.abs(tip.x - hinge.x) / width;
+      const uy = Math.abs(tip.y - hinge.y) / width;
+      const alongWall = body.orientation === "h" ? ux : uy;
+      if (alongWall > 0.85) continue;
+    }
+    let alongSum = 0;
+    const alongOf = (mx: number, my: number) => (body.orientation === "h" ? mx - hinge.x : my - hinge.y);
     /**
      * The arc is measured at the middle of each chord, and stays that way.
      *
@@ -1847,6 +2068,32 @@ export function findDoorSwings(
       const d = Math.hypot(mx - hinge.x, my - hinge.y);
       if (Math.abs(d - width) > width * 0.18) continue;
       angles.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+      alongSum += alongOf(mx, my);
+    }
+    // A swing drawn dashed is short segments, not curves: 21's bottom
+    // bedroom and 14's corridor had their doors drawn so, and came out
+    // sealed. Dashes on the radius, off every wall, running along the arc,
+    // count as it — the wall's own hatch at the radius lies in the wall.
+    if (angles.length < minArc) {
+      const dashes: number[] = [];
+      let dashAlong = 0;
+      for (const d of dashesNear(hinge.x, hinge.y)) {
+        const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+        if (len > width * 0.22 || len < unitsPerMetre * 0.02) continue;
+        const mx = (d.x1 + d.x2) / 2;
+        const my = (d.y1 + d.y2) / 2;
+        const dist = Math.hypot(mx - hinge.x, my - hinge.y);
+        if (Math.abs(dist - width) > width * 0.12) continue;
+        if (pointHitsBody(mx, my, bodies)) continue;
+        const radial = Math.abs(((mx - hinge.x) * (d.x2 - d.x1) + (my - hinge.y) * (d.y2 - d.y1)) / (dist * len));
+        if (radial > 0.5) continue;
+        dashes.push((Math.atan2(my - hinge.y, mx - hinge.x) * 180) / Math.PI);
+        dashAlong += alongOf(mx, my);
+      }
+      if (dashes.length >= 6) {
+        angles.push(...dashes);
+        alongSum += dashAlong;
+      }
     }
     const arcs = angles.length;
     if (arcs < minArc) continue;
@@ -1865,7 +2112,7 @@ export function findDoorSwings(
     ) {
       continue;
     }
-    swings.push({ ...hinge, width, arcs, body });
+    swings.push({ ...hinge, width, arcs, body, side: Math.sign(alongSum), tip });
   }
 
   // One door is drawn with several strokes — the leaf, its frame, its stop — so
@@ -1892,11 +2139,13 @@ export function findDoorSwings(
 
   return kept.flatMap((swing) => {
     const at = along(swing);
-    // The leaf hinges at one edge of the doorway and the door fills its width,
-    // but which side is not known from the leaf alone. Centring on the hinge
-    // keeps the error to half a door either way and never lands off the wall.
-    const from = Math.max(swing.body.from, at - swing.width / 2);
-    const to = Math.min(swing.body.to, at + swing.width / 2);
+    // The leaf hinges at one edge of the doorway and the door fills its width
+    // toward where its arc meets the wall. Centred on the hinge, the doorway
+    // stood half a door off; where the arc does not say, it still is.
+    const near = swing.side === 0 ? at - swing.width / 2 : at;
+    const far = swing.side === 0 ? at + swing.width / 2 : at + swing.side * swing.width;
+    const from = Math.max(swing.body.from, Math.min(near, far));
+    const to = Math.min(swing.body.to, Math.max(near, far));
     // Clipped to nothing where the swing sits at the very end of its wall, which
     // is a door into the next room drawn against this one's corner.
     if (to - from < minWidth * 0.7) return [];
@@ -1907,6 +2156,8 @@ export function findDoorSwings(
         thickness: swing.body.thickness,
         from,
         to,
+        // The leaf as the sheet draws it open, hinge to tip.
+        leaf: { x: swing.x, y: swing.y, dx: swing.tip.x - swing.x, dy: swing.tip.y - swing.y },
       },
     ];
   });
@@ -2613,6 +2864,16 @@ export function floorWithoutLanding(
     return floor[index]!.spans.some(([a, b]) => x >= a && x <= b) && !pointHitsBody(x, y, barriers);
   };
   const total = spanArea(floor) / (step * step);
+  // The seed is on the arrow's side of the door: reached from the arrow with
+  // no wall or opening crossed. 22's arrow stands over its front door, and the
+  // nearest floor was the hall inside it — which was taken off as the landing.
+  const inReach = (from: { x: number; y: number }, x: number, y: number) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x - from.x, y - from.y) / (step / 2)));
+    for (let k = 0; k <= n; k++) {
+      if (pointHitsBody(from.x + ((x - from.x) * k) / n, from.y + ((y - from.y) * k) / n, barriers)) return false;
+    }
+    return true;
+  };
   const removed = new Set<string>();
   for (const marker of markers) {
     let seed: { x: number; y: number } | null = null;
@@ -2622,7 +2883,7 @@ export function floorWithoutLanding(
         for (let b = -r; b <= r && !seed; b++) {
           const x = marker.x + a * step;
           const y = marker.y + b * step;
-          if (open(x, y)) seed = { x: Math.round(x / step) * step, y: floor[rowAt(y)]!.y };
+          if (open(x, y) && inReach(marker, x, y)) seed = { x: Math.round(x / step) * step, y: floor[rowAt(y)]!.y };
         }
       }
     }
@@ -2796,8 +3057,12 @@ function figureIn(inPen: VectorSegment[], r: number): LevelText | null {
     .sort((a, b) => b.hi - a.hi);
   const lineOf: typeof spans = [];
   let top = Infinity;
+  // A figure stands about its mark's radius tall; lettering just above it
+  // ("מ"ר" over 21's "+15.94") is not taken into the line.
+  const bottom = spans[0]?.hi ?? 0;
   for (const span of spans) {
     if (lineOf.length > 0 && span.hi < top - r * 0.25) break;
+    if (span.lo < bottom - r * 1.5) continue;
     lineOf.push(span);
     top = Math.min(top, span.lo);
   }
@@ -3175,4 +3440,1421 @@ export function smoothFootprint(
     if (spans.length > 0) out.push({ y: originY + y * step, spans });
   }
   return out;
+}
+
+/**
+ * A paved terrace taken from its paving. The flood runs on the flat's
+ * footprint and stops only at wall: it ran past a terrace's thin edge line
+ * (18's 4.6 m², down to the bedroom wall below it), was cut where the
+ * footprint ends (18's and 22's 8 m², at the sheet's flat extent) and was
+ * split by a level mark's leader (22's). The joints say where the terrace is:
+ * strokes of the joints' own weight, square to the sheet, touching one
+ * another, grown from the ones the flood holds. The region is their extent,
+ * less wall.
+ *
+ * Left as flooded where there is no paving, where the paving reaches a piece
+ * of furniture — then it is not a terrace's joints it found — or where it
+ * comes out more than three times the flood or past what a terrace measures.
+ */
+export function terraceFromPaving(
+  rows: SpanRow[],
+  segments: ReadonlyArray<VectorSegment>,
+  bodies: WallBody[],
+  furniture: ReadonlyArray<{ x: number; y: number; w: number; h: number }>,
+  unitsPerMetre: number,
+  /** Whether the region found may stand; see the caller's level check. */
+  accept: (region: SpanRow[]) => boolean = () => true,
+  /**
+   * Seed from every stroke that crosses the rows, not only those whose middle
+   * lies in them: a small square round a level mark holds few joints' middles.
+   */
+  seedByCrossing = false,
+): SpanRow[] {
+  if (rows.length === 0) return rows;
+  const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
+  const area = (list: SpanRow[]) => list.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch;
+  const square = (s: VectorSegment) => {
+    const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    return (
+      // A joint runs a tile's side at least; the outlined letters of
+      // "שטח המרפסת", strokes of a hand's length, are not paving, and on
+      // דירה 22 they spilled the terrace past its edge.
+      length >= unitsPerMetre * 0.25 &&
+      length <= unitsPerMetre * 8 &&
+      Math.min(Math.abs(s.x2 - s.x1), Math.abs(s.y2 - s.y1)) <= length * 0.02
+    );
+  };
+  const inRows = (s: VectorSegment) => {
+    if (spansContain(rows, (s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2)) return true;
+    if (!seedByCrossing) return false;
+    const n = Math.max(2, Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / 2));
+    for (let k = 0; k <= n; k++) {
+      if (spansContain(rows, s.x1 + ((s.x2 - s.x1) * k) / n, s.y1 + ((s.y2 - s.y1) * k) / n)) return true;
+    }
+    return false;
+  };
+  const held = segments.filter((s) => square(s) && inRows(s));
+  // Six will do: the cluster grows from them, and 22's 3.3 m² terrace
+  // flooded only the lower half of its paving, eleven joints of it.
+  if (held.length < 6) return rows;
+  // The joints' weights: those of the strokes the flood holds. One will not
+  // do — 22's 3.3 m² terrace is paved in 2 and 4 and edged in 5, and the
+  // edge is what joins its rows.
+  const weights = new Set(held.map((s) => s.lineWidth));
+  // A stroke along a wall is the wall's: 18's facade, drawn in the terrace
+  // edge's own pen, carried the joints past the wall into the terrace of the
+  // storey above. A joint that only ends on a wall is still a joint.
+  const margin = unitsPerMetre * 0.03;
+  const alongWall = (s: VectorSegment) => {
+    const n = Math.max(2, Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / (unitsPerMetre * 0.1)));
+    let on = 0;
+    for (let k = 0; k <= n; k++) {
+      const x = s.x1 + ((s.x2 - s.x1) * k) / n;
+      const y = s.y1 + ((s.y2 - s.y1) * k) / n;
+      if (
+        bodies.some((body) => {
+          const r = bodyRect(body);
+          return x >= r.x - margin && x <= r.x + r.w + margin && y >= r.y - margin && y <= r.y + r.h + margin;
+        })
+      ) {
+        on++;
+      }
+    }
+    return on >= 0.3 * (n + 1);
+  };
+  const ys = rows.map((r) => r.y);
+  const xs = rows.flatMap((r) => r.spans.flat());
+  // First with a reach of three metres round the flood; where that runs on
+  // into what is not this terrace, again with half a metre: on דירה 18 the
+  // sheet's edge line, four metres long, joined its terrace's paving to the
+  // +12.79 terrace of the storey above.
+  const attempt = (reachM: number): SpanRow[] | null => {
+    const reach = unitsPerMetre * reachM;
+    const box = {
+      x0: Math.min(...xs) - reach,
+      x1: Math.max(...xs) + reach,
+      y0: Math.min(...ys) - reach,
+      y1: Math.max(...ys) + reach,
+    };
+    // Clipped to the reach, not dropped at it: a terrace's paving is joined
+    // by its edge lines, and those run on past it.
+    const clip = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+    const pool = segments
+      .filter(
+        (s) =>
+          weights.has(s.lineWidth) &&
+          square(s) &&
+          Math.max(s.x1, s.x2) >= box.x0 &&
+          Math.min(s.x1, s.x2) <= box.x1 &&
+          Math.max(s.y1, s.y2) >= box.y0 &&
+          Math.min(s.y1, s.y2) <= box.y1 &&
+          !alongWall(s),
+      )
+      .map((s) => ({
+        ...s,
+        x1: clip(s.x1, box.x0, box.x1),
+        x2: clip(s.x2, box.x0, box.x1),
+        y1: clip(s.y1, box.y0, box.y1),
+        y2: clip(s.y2, box.y0, box.y1),
+      }));
+    const touch = unitsPerMetre * 0.02;
+    const near = (p: { x: number; y: number }, s: VectorSegment) => {
+      const dx = s.x2 - s.x1;
+      const dy = s.y2 - s.y1;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / len2));
+      return Math.hypot(p.x - (s.x1 + t * dx), p.y - (s.y1 + t * dy)) <= touch;
+    };
+    const touches = (a: VectorSegment, b: VectorSegment) =>
+      near({ x: a.x1, y: a.y1 }, b) ||
+      near({ x: a.x2, y: a.y2 }, b) ||
+      near({ x: b.x1, y: b.y1 }, a) ||
+      near({ x: b.x2, y: b.y2 }, a);
+    const inCluster = new Set<number>();
+    const queue: number[] = [];
+    // Seeded from strokes of a grid: each touches another the flood holds. A
+    // stroke alone is not paving — 22's "191" dimension line, in a flood that
+    // had leaked past its terrace, carried the terrace down to it.
+    const inFlood = pool.filter(inRows);
+    pool.forEach((s, i) => {
+      if (inFlood.includes(s) && pool.some((o) => o !== s && touches(s, o))) {
+        inCluster.add(i);
+        queue.push(i);
+      }
+    });
+    if (queue.length === 0) return null;
+    while (queue.length > 0) {
+      const a = pool[queue.pop()!]!;
+      pool.forEach((b, j) => {
+        if (inCluster.has(j) || !touches(a, b)) return;
+        inCluster.add(j);
+        queue.push(j);
+      });
+    }
+    const joints = [...inCluster].map((i) => pool[i]!);
+    let x0 = Math.min(...joints.flatMap((s) => [s.x1, s.x2]));
+    let x1 = Math.max(...joints.flatMap((s) => [s.x1, s.x2]));
+    let y0 = Math.min(...joints.flatMap((s) => [s.y1, s.y2]));
+    let y1 = Math.max(...joints.flatMap((s) => [s.y1, s.y2]));
+    // Out to the terrace's edge: the paving stops short of its railing, and
+    // the printed area is to the railing — 22's 8 m² measured 5.4 to the last
+    // joint. Each side moves out to the line along it within 45 cm that runs
+    // most of its length.
+    const out45 = unitsPerMetre * 0.45;
+    // A dimension line is no edge: it carries its ticks — at 45°, or square
+    // across it — where its extension lines meet it: 22's "191" under its
+    // terrace.
+    const ticks = segments.filter((t) => {
+      const len = Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
+      if (len > unitsPerMetre * 0.2 || len < unitsPerMetre * 0.02) return false;
+      const deg = ((Math.atan2(t.y2 - t.y1, t.x2 - t.x1) * 180) / Math.PI + 180) % 90;
+      return Math.abs(deg - 45) < 10;
+    });
+    const shortSquare = segments.filter((t) => {
+      const len = Math.hypot(t.x2 - t.x1, t.y2 - t.y1);
+      return len <= unitsPerMetre * 0.2 && len >= unitsPerMetre * 0.04 && (Math.abs(t.x2 - t.x1) <= 1 || Math.abs(t.y2 - t.y1) <= 1);
+    });
+    const isDimensionLine = (s: VectorSegment) => {
+      const horizontal = Math.abs(s.y2 - s.y1) <= 1;
+      const pos = horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2;
+      const a = horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+      const b = horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+      // Where a short stroke crosses the line, end to end on both sides.
+      const crossAt = (t: VectorSegment): number | null => {
+        const [p, q] = horizontal ? [t.y1 - pos, t.y2 - pos] : [t.x1 - pos, t.x2 - pos];
+        if (!(p * q < 0)) return null;
+        const f = p / (p - q);
+        return horizontal ? t.x1 + (t.x2 - t.x1) * f : t.y1 + (t.y2 - t.y1) * f;
+      };
+      const marks = [...ticks, ...shortSquare].map(crossAt).filter((v): v is number => v != null);
+      // One at each end: the hatch of the wall a railing starts from crosses
+      // it at that end only.
+      const reachEnd = unitsPerMetre * 0.12;
+      return marks.some((m) => Math.abs(m - a) <= reachEnd) && marks.some((m) => Math.abs(m - b) <= reachEnd);
+    };
+    const edgeOut = (side: "x0" | "x1" | "y0" | "y1"): number => {
+      const horizontal = side === "y0" || side === "y1";
+      const at = side === "x0" ? x0 : side === "x1" ? x1 : side === "y0" ? y0 : y1;
+      const sign = side === "x0" || side === "y0" ? -1 : 1;
+      const [lo, hi] = horizontal ? [x0, x1] : [y0, y1];
+      // Collinear pieces together: an edge is often drawn in several, split
+      // where a diagonal or a railing post meets it.
+      const cover = new Map<number, Array<[number, number]>>();
+      for (const s of segments) {
+        if (horizontal ? Math.abs(s.y2 - s.y1) > 1 : Math.abs(s.x2 - s.x1) > 1) continue;
+        const d = Math.round(((horizontal ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2) - at) * sign);
+        if (d <= 0 || d > out45 || isDimensionLine(s)) continue;
+        const a = Math.max(lo, horizontal ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2));
+        const b = Math.min(hi, horizontal ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2));
+        if (b > a) cover.set(d, [...(cover.get(d) ?? []), [a, b]]);
+      }
+      const covered = (spans: Array<[number, number]>) => {
+        let total = 0;
+        let end = -Infinity;
+        for (const [a, b] of [...spans].sort((p, q) => p[0] - q[0])) {
+          if (b <= end) continue;
+          total += b - Math.max(a, end);
+          end = b;
+        }
+        return total;
+      };
+      const lines = [...cover.entries()]
+        .filter(([, spans]) => covered(spans) >= 0.6 * (hi - lo))
+        .map(([d]) => d)
+        .sort((p, q) => p - q);
+      // The nearest, and on only to a line hard by it — a railing drawn
+      // double. Past that is the next thing: 22's "191" dimension line.
+      let reached = 0;
+      for (const d of lines) {
+        if (reached > 0 && d - reached > unitsPerMetre * 0.12) break;
+        reached = d;
+      }
+      return at + reached * sign;
+    };
+    [x0, x1, y0, y1] = [edgeOut("x0"), edgeOut("x1"), edgeOut("y0"), edgeOut("y1")];
+    if (furniture.some((p) => {
+      const cx = p.x + p.w / 2;
+      const cy = p.y + p.h / 2;
+      return cx > x0 && cx < x1 && cy > y0 && cy < y1;
+    })) {
+      return null;
+    }
+    // A short wall standing mostly inside the paving is the sheet's ink, not
+    // a wall: 22's level mark's leader and lettering, read as stubs into its
+    // terrace, cut it in two.
+    const standing = bodies.filter((body) => {
+      const r = bodyRect(body);
+      const ox = Math.min(r.x + r.w, x1) - Math.max(r.x, x0);
+      const oy = Math.min(r.y + r.h, y1) - Math.max(r.y, y0);
+      const inside = ox > 0 && oy > 0 ? (ox * oy) / (r.w * r.h) : 0;
+      if (inside >= 0.5 && body.to - body.from <= unitsPerMetre * 1.5) return false;
+      // Nor one that ends out on the paving, a stub into it: a divider runs
+      // the terrace's depth, and 22's bathroom wall, run on past the facade,
+      // cut its terrace in two.
+      const end = unitsPerMetre * 0.15;
+      const endsInside =
+        body.orientation === "v"
+          ? (body.to > y0 + end && body.to < y1 - end) || (body.from > y0 + end && body.from < y1 - end)
+          : (body.to > x0 + end && body.to < x1 - end) || (body.from > x0 + end && body.from < x1 - end);
+      const across = body.orientation === "v" ? r.x + r.w / 2 > x0 && r.x + r.w / 2 < x1 : r.y + r.h / 2 > y0 && r.y + r.h / 2 < y1;
+      if (endsInside && across) return false;
+      // Nor one the joints run straight across: a real wall stops the paving.
+      const crossed = joints.some((j) =>
+        body.orientation === "v"
+          ? Math.abs(j.y2 - j.y1) < 1 &&
+            Math.min(j.x1, j.x2) < r.x &&
+            Math.max(j.x1, j.x2) > r.x + r.w &&
+            j.y1 > r.y &&
+            j.y1 < r.y + r.h
+          : Math.abs(j.x2 - j.x1) < 1 &&
+            Math.min(j.y1, j.y2) < r.y &&
+            Math.max(j.y1, j.y2) > r.y + r.h &&
+            j.x1 > r.x &&
+            j.x1 < r.x + r.w,
+      );
+      return !crossed;
+    });
+    const out: SpanRow[] = [];
+    const step = pitch;
+    for (let y = y0 + step / 2; y < y1; y += step) {
+      const spans: Array<[number, number]> = [];
+      let start: number | null = null;
+      for (let x = x0; x <= x1 + step / 2; x += step) {
+        const on = x <= x1 && !pointHitsBody(x, y, standing);
+        if (on && start == null) start = x;
+        if (!on && start != null) {
+          spans.push([start, x]);
+          start = null;
+        }
+      }
+      if (start != null) spans.push([start, x1]);
+      if (spans.length > 0) out.push({ y, spans });
+    }
+    const grown = area(out);
+    if (grown > unitsPerMetre * unitsPerMetre * 20 || !accept(out)) return null;
+    return out;
+  };
+  return attempt(3) ?? attempt(0.5) ?? rows;
+}
+
+/** A door's swing as the sheet draws it: a quarter circle round its hinge. */
+export type SwingArc = { cx: number; cy: number; r: number; a0: number; a1: number; strokes: number };
+
+/**
+ * Every door swing on the sheet, found as the circle it is.
+ *
+ * Each short stroke — a chord of a curve, a dash of a dashed arc — votes for
+ * the centres it could be on: along its normal, at every door's radius. A
+ * swing's strokes agree on one centre and one radius; a pillow's corners, a
+ * WC's rim, a legend box's corners and a level mark's circle do not, or do at
+ * a radius no door has, or sweep a whole circle. Kept: a circle fitted
+ * through them that its strokes all lie on, a quarter turn of it (70 to 110
+ * degrees) with both ends square to the sheet — a door opens square to its
+ * wall — inked along a third of it at least and with no gap wider than 15
+ * degrees. Letters and a crossing swing's dashes line up at a radius by
+ * chance; they leave the gaps.
+ *
+ * Some sheets draw a swing as one or two Bézier curves, which reach here as
+ * their chords: those are read as the polyline they are, see chordSwings.
+ */
+export function findSwingArcs(
+  segments: VectorSegment[],
+  curves: VectorSegment[],
+  unitsPerMetre: number,
+  options?: {
+    /** Only swings round a hinge in this box, page units. */
+    extent?: { x: number; y: number; width: number; height: number };
+    /** Door radii, page units, when the scale is not yet known. */
+    radius?: { min: number; max: number };
+  },
+): SwingArc[] {
+  const rMin = options?.radius?.min ?? unitsPerMetre * 0.55;
+  const rMax = options?.radius?.max ?? unitsPerMetre * 1.15;
+  const box = options?.extent;
+  const inBox = (s: VectorSegment) =>
+    !box ||
+    (Math.max(s.x1, s.x2) >= box.x - rMax &&
+      Math.min(s.x1, s.x2) <= box.x + box.width + rMax &&
+      Math.max(s.y1, s.y2) >= box.y - rMax &&
+      Math.min(s.y1, s.y2) <= box.y + box.height + rMax);
+  const strokes = [
+    ...curves.filter((s) => Math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= unitsPerMetre * 0.35),
+    ...segments.filter((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      return len >= unitsPerMetre * 0.008 && len <= unitsPerMetre * 0.15;
+    }),
+  ].filter(inBox);
+  // The strokes by where they are, to ask a centre for its circle's.
+  const gridCell = unitsPerMetre * 0.25;
+  const grid = new Map<string, VectorSegment[]>();
+  for (const s of strokes) {
+    const k = `${Math.floor((s.x1 + s.x2) / 2 / gridCell)}:${Math.floor((s.y1 + s.y2) / 2 / gridCell)}`;
+    const list = grid.get(k);
+    if (list) list.push(s);
+    else grid.set(k, [s]);
+  }
+  const near = (cx: number, cy: number, reach: number) => {
+    const found: VectorSegment[] = [];
+    const i0 = Math.floor((cx - reach) / gridCell);
+    const i1 = Math.floor((cx + reach) / gridCell);
+    const j0 = Math.floor((cy - reach) / gridCell);
+    const j1 = Math.floor((cy + reach) / gridCell);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) found.push(...(grid.get(`${i}:${j}`) ?? []));
+    return found;
+  };
+
+  const cell = unitsPerMetre * 0.06;
+  const rStep = unitsPerMetre * 0.04;
+  // Numeric keys: a string per vote was most of the time on a 30 000-stroke sheet.
+  const K = 1 << 14;
+  const keyOf = (i: number, j: number, k: number) => ((i + K / 2) * K + (j + K / 2)) * 64 + k;
+  const votes = new Map<number, number>();
+  for (const s of strokes) {
+    const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    const mx = (s.x1 + s.x2) / 2;
+    const my = (s.y1 + s.y2) / 2;
+    const nx = -(s.y2 - s.y1) / len;
+    const ny = (s.x2 - s.x1) / len;
+    for (let r = rMin; r <= rMax; r += rStep) {
+      for (const sg of [1, -1]) {
+        const key = keyOf(Math.round((mx + sg * nx * r) / cell), Math.round((my + sg * ny * r) / cell), Math.round(r / rStep));
+        votes.set(key, (votes.get(key) ?? 0) + 1);
+      }
+    }
+  }
+  const peaks = [...votes.entries()].filter(([, n]) => n >= 4).sort((a, b) => b[1] - a[1]);
+  const out: SwingArc[] = [];
+  const taken: Array<Set<VectorSegment>> = [];
+  // Each neighbourhood is asked once, at its strongest peak.
+  const asked = new Set<number>();
+  for (const [key] of peaks) {
+    const ir = key % 64;
+    const iy = (Math.floor(key / 64) % K) - K / 2;
+    const ix = Math.floor(key / 64 / K) - K / 2;
+    let near1 = false;
+    for (let a = -1; a <= 1 && !near1; a++) for (let b = -1; b <= 1 && !near1; b++) for (let c = -1; c <= 1 && !near1; c++) near1 = asked.has(keyOf(ix + a, iy + b, ir + c));
+    asked.add(key);
+    if (near1) continue;
+    const cx = ix * cell;
+    const cy = iy * cell;
+    const r0 = ir * rStep;
+    if (out.some((a) => Math.hypot(a.cx - cx, a.cy - cy) < unitsPerMetre * 0.15 && Math.abs(a.r - r0) < unitsPerMetre * 0.1)) continue;
+    const on = near(cx, cy, r0 * 1.15).filter((s) => {
+      const mx = (s.x1 + s.x2) / 2;
+      const my = (s.y1 + s.y2) / 2;
+      const d = Math.hypot(mx - cx, my - cy);
+      if (Math.abs(d - r0) > r0 * 0.1) return false;
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1) || 1;
+      return Math.abs(((mx - cx) * (s.x2 - s.x1) + (my - cy) * (s.y2 - s.y1)) / (d * len)) < 0.4;
+    });
+    if (on.length < 5) continue;
+    // The run of strokes round the centre with no gap wider than 15 degrees
+    // that holds the most: other ink at the same radius — a cabinet's edge
+    // beside 22's front door — is a run of its own, and does not widen it.
+    const withAngle = on
+      .map((st) => ({ st, a: (Math.atan2((st.y1 + st.y2) / 2 - cy, (st.x1 + st.x2) / 2 - cx) * 180) / Math.PI }))
+      .sort((p, q) => p.a - q.a);
+    const n = withAngle.length;
+    let bestRun: typeof withAngle = [];
+    for (let k0 = 0; k0 < n; k0++) {
+      const run = [withAngle[k0]!];
+      for (let k = 1; k < n; k++) {
+        const cur = withAngle[(k0 + k) % n]!;
+        let g = cur.a - run[run.length - 1]!.a;
+        if (g < 0) g += 360;
+        if (g > 15) break;
+        run.push(cur);
+      }
+      if (run.length > bestRun.length) bestRun = run;
+    }
+    if (bestRun.length < 5) continue;
+    const fit = fitSwing(
+      bestRun.map((q) => q.st),
+      rMin,
+      rMax,
+    );
+    if (!fit) continue;
+    const used = new Set(bestRun.map((q) => q.st));
+    if (taken.some((t) => [...used].filter((st) => t.has(st)).length > used.size * 0.4)) continue;
+    taken.push(used);
+    out.push({ ...fit, strokes: bestRun.length });
+  }
+  const hingeIn = (a: SwingArc) => !box || (a.cx >= box.x - rMax * 0.5 && a.cx <= box.x + box.width + rMax * 0.5 && a.cy >= box.y - rMax * 0.5 && a.cy <= box.y + box.height + rMax * 0.5);
+  for (const a of chordSwings(curves.filter(inBox), segments.filter(inBox), unitsPerMetre, rMin, rMax)) {
+    if (out.some((b) => Math.hypot(a.cx - b.cx, a.cy - b.cy) < unitsPerMetre * 0.15 && Math.abs(a.r - b.r) < unitsPerMetre * 0.1)) continue;
+    out.push(a);
+  }
+  return out.filter(hingeIn);
+}
+
+/** Unwrapped angles (degrees) of points round a centre, about their middle one. */
+function sweepOf(pts: Array<{ x: number; y: number }>, cx: number, cy: number) {
+  const angs = pts.map((q) => (Math.atan2(q.y - cy, q.x - cx) * 180) / Math.PI);
+  const midA = angs[Math.floor(angs.length / 2)]!;
+  const rel = angs.map((x) => {
+    let d = x - midA;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    return d;
+  });
+  return { rel, lo: midA + Math.min(...rel), hi: midA + Math.max(...rel) };
+}
+
+const offAxis = (deg: number) => {
+  const m = ((deg % 90) + 90) % 90;
+  return Math.min(m, 90 - m);
+};
+
+/**
+ * The swing through a run of strokes, or null when they are not one: the
+ * circle fitted through them (Kasa) — the vote's cell is coarse — that every
+ * stroke lies on to within 8% of its radius, a quarter turn whose two ends lie
+ * square to the sheet, inked along at least a third of it.
+ */
+function fitSwing(run: VectorSegment[], rMin: number, rMax: number): Omit<SwingArc, "strokes"> | null {
+  const pts = run.flatMap((st) => [
+    { x: st.x1, y: st.y1 },
+    { x: st.x2, y: st.y2 },
+  ]);
+  let ux = 0;
+  let uy = 0;
+  for (const q of pts) {
+    ux += q.x;
+    uy += q.y;
+  }
+  ux /= pts.length;
+  uy /= pts.length;
+  let suu = 0;
+  let svv = 0;
+  let suv = 0;
+  let suuu = 0;
+  let svvv = 0;
+  let suvv = 0;
+  let svuu = 0;
+  for (const q of pts) {
+    const u = q.x - ux;
+    const v = q.y - uy;
+    suu += u * u;
+    svv += v * v;
+    suv += u * v;
+    suuu += u * u * u;
+    svvv += v * v * v;
+    suvv += u * v * v;
+    svuu += v * u * u;
+  }
+  const det = suu * svv - suv * suv;
+  if (Math.abs(det) < 1e-9) return null;
+  const bu = (suuu + suvv) / 2;
+  const bv = (svvv + svuu) / 2;
+  const cx = ux + (bu * svv - bv * suv) / det;
+  const cy = uy + (bv * suu - bu * suv) / det;
+  const r = pts.reduce((t, q) => t + Math.hypot(q.x - cx, q.y - cy), 0) / pts.length;
+  if (r < rMin * 0.95 || r > rMax * 1.05) return null;
+  if (pts.some((q) => Math.abs(Math.hypot(q.x - cx, q.y - cy) - r) > r * 0.08)) return null;
+  const { rel, lo, hi } = sweepOf(pts, cx, cy);
+  const span = hi - lo;
+  if (span < 70 || span > 110) return null;
+  if (offAxis(lo) > 12 || offAxis(hi) > 12) return null;
+  // Inked: the union of the strokes' own angular spans.
+  const spans = run
+    .map((_, k) => [Math.min(rel[2 * k]!, rel[2 * k + 1]!), Math.max(rel[2 * k]!, rel[2 * k + 1]!)] as const)
+    .sort((p, q) => p[0] - q[0]);
+  let inked = 0;
+  let reach = -Infinity;
+  for (const [a, b] of spans) {
+    if (b <= reach) continue;
+    inked += b - Math.max(a, reach);
+    reach = b;
+  }
+  if (inked < span / 3) return null;
+  return { cx, cy, r, a0: lo, a1: hi };
+}
+
+/**
+ * Swings drawn as one or two Bézier curves: the reader keeps each curve as its
+ * chord, so the swing reaches here as a polyline of a few long chords end to
+ * end. Two or more chords fix the circle; one does not — its hinge is one of
+ * the two corners square to it — and is kept only with the leaf drawn from
+ * that corner.
+ */
+function chordSwings(curves: VectorSegment[], segments: VectorSegment[], unitsPerMetre: number, rMin: number, rMax: number): SwingArc[] {
+  const long = curves.filter((s) => {
+    const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    return len > unitsPerMetre * 0.3 && len < rMax * 1.5;
+  });
+  const join = unitsPerMetre * 0.02;
+  const meets = (p: { x: number; y: number }, q: { x: number; y: number }) => Math.hypot(p.x - q.x, p.y - q.y) <= join;
+  // Chains, end to end, each chord in one.
+  const used = new Set<VectorSegment>();
+  const chains: Array<Array<{ x: number; y: number }>> = [];
+  for (const s of long) {
+    if (used.has(s)) continue;
+    used.add(s);
+    const pts = [
+      { x: s.x1, y: s.y1 },
+      { x: s.x2, y: s.y2 },
+    ];
+    for (let grew = true; grew && pts.length < 6; ) {
+      grew = false;
+      for (const t of long) {
+        if (used.has(t)) continue;
+        const a = { x: t.x1, y: t.y1 };
+        const b = { x: t.x2, y: t.y2 };
+        const head = pts[0]!;
+        const tail = pts[pts.length - 1]!;
+        if (meets(tail, a)) pts.push(b);
+        else if (meets(tail, b)) pts.push(a);
+        else if (meets(head, a)) pts.unshift(b);
+        else if (meets(head, b)) pts.unshift(a);
+        else continue;
+        used.add(t);
+        grew = true;
+      }
+    }
+    chains.push(pts);
+  }
+  const out: SwingArc[] = [];
+  for (const pts of chains) {
+    const p0 = pts[0]!;
+    const pn = pts[pts.length - 1]!;
+    let centres: Array<{ x: number; y: number }>;
+    if (pts.length >= 3) {
+      const pm = pts[Math.floor(pts.length / 2)]!;
+      const d = 2 * (p0.x * (pm.y - pn.y) + pm.x * (pn.y - p0.y) + pn.x * (p0.y - pm.y));
+      if (Math.abs(d) < 1e-9) continue;
+      const q0 = p0.x * p0.x + p0.y * p0.y;
+      const qm = pm.x * pm.x + pm.y * pm.y;
+      const qn = pn.x * pn.x + pn.y * pn.y;
+      centres = [
+        {
+          x: (q0 * (pm.y - pn.y) + qm * (pn.y - p0.y) + qn * (p0.y - pm.y)) / d,
+          y: (q0 * (pn.x - pm.x) + qm * (p0.x - pn.x) + qn * (pm.x - p0.x)) / d,
+        },
+      ];
+    } else {
+      // One chord: square to the sheet both ways, |dx| ≈ |dy|.
+      const dx = Math.abs(pn.x - p0.x);
+      const dy = Math.abs(pn.y - p0.y);
+      if (Math.abs(dx - dy) > Math.max(dx, dy) * 0.15) continue;
+      centres = [
+        { x: p0.x, y: pn.y },
+        { x: pn.x, y: p0.y },
+      ].filter((c) =>
+        // The leaf: a straight stroke from the corner to one end, a radius long.
+        [p0, pn].some((e) => {
+          const r = Math.hypot(e.x - c.x, e.y - c.y);
+          return segments.some((s) => {
+            const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+            if (Math.abs(len - r) > r * 0.15) return false;
+            const fromC = Math.hypot(s.x1 - c.x, s.y1 - c.y) <= join * 3 || Math.hypot(s.x2 - c.x, s.y2 - c.y) <= join * 3;
+            const toE = Math.hypot(s.x1 - e.x, s.y1 - e.y) <= join * 3 || Math.hypot(s.x2 - e.x, s.y2 - e.y) <= join * 3;
+            return fromC && toE;
+          });
+        }),
+      );
+    }
+    for (const c of centres) {
+      const r = pts.reduce((t, q) => t + Math.hypot(q.x - c.x, q.y - c.y), 0) / pts.length;
+      if (r < rMin || r > rMax) continue;
+      if (pts.some((q) => Math.abs(Math.hypot(q.x - c.x, q.y - c.y) - r) > r * 0.1)) continue;
+      const { lo, hi } = sweepOf(pts, c.x, c.y);
+      const span = hi - lo;
+      if (span < 70 || span > 110) continue;
+      if (offAxis(lo) > 12 || offAxis(hi) > 12) continue;
+      out.push({ cx: c.x, cy: c.y, r, a0: lo, a1: hi, strokes: pts.length - 1 });
+    }
+  }
+  return out;
+}
+
+/**
+ * The flat's doors, from the swings the sheet draws (findSwingArcs).
+ *
+ * A swing is the whole door: its centre is the hinge, one end of the quarter
+ * lies on the wall at the far jamb and the other at the leaf's tip. Each
+ * detector before this found doors by a part of that — a leaf with arcs near
+ * it, arcs round a hatch gap's end — and both took a bed's pillow corners, a
+ * WC pan, a legend box or a level mark for one, while missing doors whose
+ * leaf or gap they could not see. So the swings decide:
+ *
+ * - An opening a swing's doorway lies in is that door, its leaf open toward
+ *   the tip. A window under a swing is a door: the floor test called a
+ *   terrace door a window.
+ * - A swing on a wall no opening was found in makes the opening: the hatch
+ *   ran on across the doorway, and the wall was built straight over it.
+ * - A door no swing is drawn for is a doorway with no leaf, which is what the
+ *   sheet shows there.
+ *
+ * Which end is the jamb: the one an opening lies along, else the one a wall
+ * runs in line with, ending at the jamb or the hinge — a hinge often stands
+ * where a cross wall meets, so the run may carry on from one end only. A
+ * swing with neither is not on a wall — furniture, a legend, a stair hall's
+ * door drawn off the flat — and is left.
+ */
+export function doorsFromSwings<T extends Opening & { kind?: string }>(
+  openings: T[],
+  arcs: SwingArc[],
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  /** Whether a doorway has the flat's floor on at least one side of it. */
+  servesTheFlat: (o: Opening) => boolean,
+): Array<T | (Opening & { kind: "door" })> {
+  const out: Array<T | (Opening & { kind: "door" })> = openings.map((o) =>
+    o.kind === "door" ? { ...o, kind: "opening", leaf: undefined } : o,
+  );
+  const claimed = new Set<number>();
+  // Hatch across a wall: three strokes at least, one way, each the wall's
+  // depth or more. A dimension's tick is a diamond of four short ones.
+  const diagonals = segments.filter((s) => {
+    const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 90;
+    return deg >= 30 && deg <= 60 && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= unitsPerMetre * 0.8;
+  });
+  const hatchedAcross = (r: { x: number; y: number; w: number; h: number }, thickness: number) => {
+    const ways = [0, 0];
+    for (const s of diagonals) {
+      const mx = (s.x1 + s.x2) / 2;
+      const my = (s.y1 + s.y2) / 2;
+      if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) continue;
+      if (Math.hypot(s.x2 - s.x1, s.y2 - s.y1) < thickness * 0.8) continue;
+      ways[(s.x2 - s.x1) * (s.y2 - s.y1) > 0 ? 0 : 1]!++;
+    }
+    return Math.max(ways[0]!, ways[1]!) >= 3;
+  };
+  for (const arc of arcs) {
+    const end = (deg: number) => ({
+      x: arc.cx + arc.r * Math.cos((deg * Math.PI) / 180),
+      y: arc.cy + arc.r * Math.sin((deg * Math.PI) / 180),
+    });
+    // Each end tried as the jamb, the other as the tip.
+    const tries = [
+      { jamb: end(arc.a0), tip: end(arc.a1) },
+      { jamb: end(arc.a1), tip: end(arc.a0) },
+    ].map(({ jamb, tip }) => {
+      const orientation: "h" | "v" = Math.abs(jamb.x - arc.cx) >= Math.abs(jamb.y - arc.cy) ? "h" : "v";
+      const line = orientation === "h" ? arc.cy : arc.cx;
+      const a = orientation === "h" ? arc.cx : arc.cy;
+      const b = orientation === "h" ? jamb.x : jamb.y;
+      const from = Math.min(a, b);
+      const to = Math.max(a, b);
+      // An opening along this doorway: same wall line, overlapping half of it.
+      const index = out.findIndex(
+        (o, i) =>
+          !claimed.has(i) &&
+          o.orientation === orientation &&
+          Math.abs(o.centre - line) <= o.thickness / 2 + unitsPerMetre * 0.1 &&
+          Math.min(o.to, to) - Math.max(o.from, from) >= (to - from) * 0.5,
+      );
+      // The walls in line with the doorway that end at its hinge or its
+      // jamb: the doorway is the wall's gap. The hinge often stands where a
+      // cross wall meets, so the run may carry on from the jamb only. A wall
+      // running on across the doorway's middle, hatched there, says the
+      // doorway is not on this line: 17's middle bedroom door has its jamb on
+      // the bedroom's side wall and its leaf along the hatched wall below. One
+      // with no hatch there was built over the doorway (22's bathroom).
+      const reach = unitsPerMetre * 0.25;
+      const onLine = bodies.filter(
+        (w) => w.orientation === orientation && Math.abs(w.centre - line) <= w.thickness / 2 + unitsPerMetre * 0.08,
+      );
+      const mid = (from + to) / 2;
+      const spanning = onLine.filter((w) => w.from < mid - reach / 2 && w.to > mid + reach / 2);
+      const hatchedAtMid = (w: WallBody) => {
+        const r = bodyRect(w);
+        const slice =
+          orientation === "h"
+            ? { x: mid - reach / 2, y: r.y, w: reach, h: r.h }
+            : { x: r.x, y: mid - reach / 2, w: r.w, h: reach };
+        return hatchedAcross(slice, w.thickness);
+      };
+      const across = spanning.some(hatchedAtMid);
+      const over = spanning.filter((w) => !hatchedAtMid(w));
+      // A wall ending where the doorway does, beyond it: at the jamb is the
+      // surer sign — the frame stands there — while the hinge often sits on a
+      // cross wall's face.
+      const endingAt = (at: number) =>
+        onLine.filter((w) => (at === from ? Math.abs(w.to - from) <= reach : Math.abs(w.from - to) <= reach));
+      const atJamb = endingAt(b < a ? from : to);
+      const atHinge = endingAt(b < a ? to : from);
+      const inLine = [...atJamb, ...atHinge, ...over];
+      const wallBehind = !across && inLine.length > 0 ? inLine.reduce((p, q) => (q.thickness > p.thickness ? q : p)) : undefined;
+      return { orientation, line, from, to, tip, index, wallBehind, ends: 2 * Number(atJamb.length > 0) + Number(atHinge.length > 0) + Number(over.length > 0) };
+    });
+    const pick =
+      tries.find((t) => t.index >= 0) ??
+      [...tries].filter((t) => t.wallBehind).sort((p, q) => q.ends - p.ends)[0];
+    if (!pick) continue;
+    const leaf = { x: arc.cx, y: arc.cy, dx: pick.tip.x - arc.cx, dy: pick.tip.y - arc.cy };
+    if (pick.index >= 0) {
+      const o = out[pick.index]!;
+      // The opening's own extent when it is the door's width; the swing's
+      // when the gap ran wider or narrower than the leaf.
+      const width = o.to - o.from;
+      const fits = Math.abs(width - (pick.to - pick.from)) <= unitsPerMetre * 0.2;
+      const door = {
+        ...o,
+        kind: "door" as const,
+        from: fits ? o.from : pick.from,
+        to: fits ? o.to : pick.to,
+        leaf,
+      };
+      if (!servesTheFlat(door)) continue;
+      out[pick.index] = door;
+      claimed.add(pick.index);
+      continue;
+    }
+    const wall = pick.wallBehind!;
+    const door = {
+      orientation: pick.orientation,
+      centre: wall.centre,
+      thickness: wall.thickness,
+      from: pick.from,
+      to: pick.to,
+      kind: "door" as const,
+      leaf,
+    };
+    if (!servesTheFlat(door)) continue;
+    out.push(door);
+    claimed.add(out.length - 1);
+  }
+  return out;
+}
+
+/**
+ * The openings that stand in a wall: each end of it meets one — the wall it
+ * cuts, carrying on in line, or a cross wall at a corner. A gap in the hatch
+ * or between two bodies can be read where no wall is, and 17's top bedroom
+ * got a window standing in the room off its corner, along the bed's head.
+ * Doors are the swings' (see doorsFromSwings) and are kept.
+ */
+export function openingsInWalls<T extends Opening & { kind?: string }>(
+  openings: T[],
+  bodies: WallBody[],
+  unitsPerMetre: number,
+  options?: {
+    segments?: VectorSegment[];
+    /** Whether an opening has the flat's floor on both sides. */
+    betweenRooms?: (o: Opening) => boolean;
+  },
+): T[] {
+  const reach = unitsPerMetre * 0.25;
+  const near = unitsPerMetre * 0.1;
+  const inLine = (o: Opening, w: WallBody) =>
+    w.orientation === o.orientation && Math.abs(w.centre - o.centre) <= Math.max(w.thickness, o.thickness) / 2 + unitsPerMetre * 0.08;
+  const meets = (o: Opening, at: number) => {
+    const p = o.orientation === "h" ? { x: at, y: o.centre } : { x: o.centre, y: at };
+    return bodies.some((w) => {
+      if (w.orientation === o.orientation) {
+        if (!inLine(o, w)) return false;
+        return Math.abs(w.to - at) <= reach || Math.abs(w.from - at) <= reach || (w.from <= at && w.to >= at);
+      }
+      const r = bodyRect(w);
+      return p.x >= r.x - near && p.x <= r.x + r.w + near && p.y >= r.y - near && p.y <= r.y + r.h + near;
+    });
+  };
+  // Both faces drawn on across the gap: the wall goes on there unhatched — a
+  // wardrobe's back, a stretch the draughtsman left blank — and no one walks
+  // through it. 18's bedroom got a 1.6 m hole into the kitchen there.
+  const axis = (options?.segments ?? []).filter((s) => Math.abs(s.x2 - s.x1) < 0.5 || Math.abs(s.y2 - s.y1) < 0.5);
+  const faceDrawn = (o: Opening, line: number) => {
+    const spans: Array<[number, number]> = [];
+    for (const s of axis) {
+      const h = Math.abs(s.y2 - s.y1) < 0.5;
+      if (h !== (o.orientation === "h")) continue;
+      const at = h ? s.y1 : s.x1;
+      if (Math.abs(at - line) > unitsPerMetre * 0.02) continue;
+      const a = h ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+      const b = h ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+      if (b > o.from && a < o.to) spans.push([Math.max(a, o.from), Math.min(b, o.to)]);
+    }
+    spans.sort((p, q) => p[0] - q[0]);
+    let covered = 0;
+    let reachTo = o.from;
+    for (const [a, b] of spans) {
+      if (b <= reachTo) continue;
+      covered += b - Math.max(a, reachTo);
+      reachTo = b;
+    }
+    return covered >= (o.to - o.from) * 0.9;
+  };
+  const walledOver = (o: Opening) =>
+    o.thickness > 0 && faceDrawn(o, o.centre - o.thickness / 2) && faceDrawn(o, o.centre + o.thickness / 2);
+  return openings.flatMap((o) => {
+    if (o.kind !== "door") {
+      if (!(meets(o, o.from) && meets(o, o.to))) return [];
+      if (options?.betweenRooms?.(o) && walledOver(o)) return [];
+    }
+    // Held to the wall it stands in, as that wall was finally measured: a
+    // wall narrowed to its hatch takes its doorways with it.
+    const wall = bodies.find(
+      (w) => inLine(o, w) && (Math.abs(w.to - o.from) <= reach || Math.abs(w.from - o.to) <= reach || (w.from <= o.from && w.to >= o.to)),
+    );
+    if (wall && wall.thickness < o.thickness * 0.8) return [{ ...o, centre: wall.centre, thickness: wall.thickness }];
+    return [o];
+  });
+}
+
+/**
+ * Walls the sheet hatches that no body was built for.
+ *
+ * The bodies come from paired faces, and a short hatched piece between a
+ * corner and a doorway pairs wrong or not at all: 17's front door had the
+ * jamb on its left drawn as a hatched band 57 cm long and measured as a 9 cm
+ * sliver, which the hatch test then dropped — the door had no wall to stand
+ * in, and the envelope a hole beside it. So the hatch is read as area: its
+ * strokes drawn into a grid and closed across their pitch, what the bodies
+ * already cover taken off, and each piece left that is a wall's shape —
+ * a solid band at least 6 cm thick and 25 cm long, hatched with four strokes
+ * or more, against a wall already found — becomes one. A level mark's
+ * hatched quarter, a hatched symbol in a legend, stands clear of every wall
+ * and is left.
+ */
+export function hatchedWallsMissed(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  extent: { x: number; y: number; width: number; height: number },
+  /** Told of every uncovered hatched piece and what was decided; for debugging. */
+  onPiece?: (rect: { x: number; y: number; w: number; h: number }, verdict: string) => void,
+): WallBody[] {
+  const g = unitsPerMetre * 0.025;
+  const pad = unitsPerMetre * 0.5;
+  const x0 = extent.x - pad;
+  const y0 = extent.y - pad;
+  const W = Math.ceil((extent.width + 2 * pad) / g);
+  const H = Math.ceil((extent.height + 2 * pad) / g);
+  if (W <= 0 || H <= 0 || W * H > 8_000_000) return [];
+  const strokes = segments.filter((s) => {
+    const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+    if (len < unitsPerMetre * 0.04 || len > unitsPerMetre * 0.8) return false;
+    const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 90;
+    if (deg < 35 || deg > 55) return false;
+    const mx = (s.x1 + s.x2) / 2;
+    const my = (s.y1 + s.y2) / 2;
+    return mx >= x0 && my >= y0 && mx < x0 + W * g && my < y0 + H * g;
+  });
+  const ink = new Uint8Array(W * H);
+  for (const s of strokes) {
+    const n = Math.ceil(Math.hypot(s.x2 - s.x1, s.y2 - s.y1) / (g / 2));
+    for (let k = 0; k <= n; k++) {
+      const i = Math.floor((s.x1 + ((s.x2 - s.x1) * k) / n - x0) / g);
+      const j = Math.floor((s.y1 + ((s.y2 - s.y1) * k) / n - y0) / g);
+      if (i >= 0 && j >= 0 && i < W && j < H) ink[j * W + i] = 1;
+    }
+  }
+  const grow = (m: Uint8Array, r: number, keep: 0 | 1): Uint8Array => {
+    // keep 1: dilate (any set in the square), keep 0: erode (all set).
+    const out = new Uint8Array(m.length);
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        let hit = keep === 0;
+        for (let dj = -r; dj <= r && hit === (keep === 0); dj++) {
+          for (let di = -r; di <= r; di++) {
+            const ii = i + di;
+            const jj = j + dj;
+            const v = ii >= 0 && jj >= 0 && ii < W && jj < H ? m[jj * W + ii]! : 0;
+            if (keep === 1 && v) {
+              hit = true;
+              break;
+            }
+            if (keep === 0 && !v) {
+              hit = false;
+              break;
+            }
+          }
+        }
+        if (hit) out[j * W + i] = 1;
+      }
+    }
+    return out;
+  };
+  // Closed across the pitch: a hatch is drawn every 4 to 7 cm.
+  const r = Math.max(1, Math.round((unitsPerMetre * 0.04) / g));
+  const solid = grow(grow(ink, r, 1), r, 0);
+  const covered = new Uint8Array(W * H);
+  for (const b of bodies) {
+    const rc = bodyRect(b);
+    const i0 = Math.max(0, Math.floor((rc.x - x0) / g) - 1);
+    const i1 = Math.min(W - 1, Math.ceil((rc.x + rc.w - x0) / g) + 1);
+    const j0 = Math.max(0, Math.floor((rc.y - y0) / g) - 1);
+    const j1 = Math.min(H - 1, Math.ceil((rc.y + rc.h - y0) / g) + 1);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) covered[j * W + i] = 1;
+  }
+  const seen = new Uint8Array(W * H);
+  const out: WallBody[] = [];
+  const minThin = Math.max(3 * g, unitsPerMetre * 0.06);
+  // A door's jamb is a hatched post 20 cm square: 21's front door stood in
+  // nothing without it.
+  const minLong = unitsPerMetre * 0.2;
+  for (let start = 0; start < W * H; start++) {
+    if (!solid[start] || covered[start] || seen[start]) continue;
+    const cells: number[] = [];
+    const stack = [start];
+    seen[start] = 1;
+    let ci0 = W, ci1 = 0, cj0 = H, cj1 = 0;
+    while (stack.length) {
+      const c = stack.pop()!;
+      cells.push(c);
+      const i = c % W;
+      const j = (c - i) / W;
+      ci0 = Math.min(ci0, i);
+      ci1 = Math.max(ci1, i);
+      cj0 = Math.min(cj0, j);
+      cj1 = Math.max(cj1, j);
+      for (const n of [c - 1, c + 1, c - W, c + W]) {
+        if (n < 0 || n >= W * H || seen[n] || !solid[n] || covered[n]) continue;
+        if ((n === c - 1 && i === 0) || (n === c + 1 && i === W - 1)) continue;
+        seen[n] = 1;
+        stack.push(n);
+      }
+    }
+    // Split into rectangles: the piece left beside a body is often an L or a
+    // step, and a wall is a band. Greedy, the longest run first, grown across
+    // the rows that carry all of it.
+    const left = new Set(cells);
+    while (left.size > 0) {
+      let best = { j: -1, a: 0, b: -1 };
+      for (let j = cj0; j <= cj1; j++) {
+        let runA = -1;
+        for (let i = ci0; i <= ci1 + 1; i++) {
+          const on = i <= ci1 && left.has(j * W + i);
+          if (on && runA < 0) runA = i;
+          if (!on && runA >= 0) {
+            if (i - runA > best.b - best.a + 1) best = { j, a: runA, b: i - 1 };
+            runA = -1;
+          }
+        }
+      }
+      // And the tallest column, so a vertical band is not cut into rows.
+      let bestV = { i: -1, a: 0, b: -1 };
+      for (let i = ci0; i <= ci1; i++) {
+        let runA = -1;
+        for (let j = cj0; j <= cj1 + 1; j++) {
+          const on = j <= cj1 && left.has(j * W + i);
+          if (on && runA < 0) runA = j;
+          if (!on && runA >= 0) {
+            if (j - runA > bestV.b - bestV.a + 1) bestV = { i, a: runA, b: j - 1 };
+            runA = -1;
+          }
+        }
+      }
+      let ri0: number, ri1: number, rj0: number, rj1: number;
+      // Grown across a row or column that carries most of the run: the
+      // closed hatch is ragged by a cell or two at a band's ends.
+      const full = (i0: number, i1: number, j0: number, j1: number) => {
+        let on = 0;
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (left.has(j * W + i)) on++;
+        return on >= 0.85 * (i1 - i0 + 1) * (j1 - j0 + 1);
+      };
+      if (best.b - best.a >= bestV.b - bestV.a) {
+        ri0 = best.a;
+        ri1 = best.b;
+        rj0 = best.j;
+        rj1 = best.j;
+        while (rj0 > cj0 && full(ri0, ri1, rj0 - 1, rj0 - 1)) rj0--;
+        while (rj1 < cj1 && full(ri0, ri1, rj1 + 1, rj1 + 1)) rj1++;
+      } else {
+        rj0 = bestV.a;
+        rj1 = bestV.b;
+        ri0 = bestV.i;
+        ri1 = bestV.i;
+        while (ri0 > ci0 && full(ri0 - 1, ri0 - 1, rj0, rj1)) ri0--;
+        while (ri1 < ci1 && full(ri1 + 1, ri1 + 1, rj0, rj1)) ri1++;
+      }
+      for (let j = rj0; j <= rj1; j++) for (let i = ri0; i <= ri1; i++) left.delete(j * W + i);
+      const bw = (ri1 - ri0 + 1) * g;
+      const bh = (rj1 - rj0 + 1) * g;
+      const rect = { x: x0 + ri0 * g, y: y0 + rj0 * g, w: bw, h: bh };
+      if (Math.min(bw, bh) < minThin || Math.max(bw, bh) < minLong) {
+        if ((ri1 - ri0 + 1) * (rj1 - rj0 + 1) > 20) onPiece?.(rect, "size");
+        continue;
+      }
+      const hatched = strokes.filter((st) => {
+        const mx = (st.x1 + st.x2) / 2;
+        const my = (st.y1 + st.y2) / 2;
+        return mx >= rect.x && mx <= rect.x + rect.w && my >= rect.y && my <= rect.y + rect.h;
+      }).length;
+      if (hatched < 4) {
+        onPiece?.(rect, "strokes");
+        continue;
+      }
+      const cx = rect.x + rect.w / 2;
+      const cy = rect.y + rect.h / 2;
+      if (cx < extent.x || cx > extent.x + extent.width || cy < extent.y || cy > extent.y + extent.height) {
+        onPiece?.(rect, "outside");
+        continue;
+      }
+      const near = unitsPerMetre * 0.1;
+      // A strip along a wall already found is that wall's own hatch, wider
+      // than its faces were read: not a second wall beside it.
+      const h = bw >= bh;
+      const alongside = bodies.some((b) => {
+        if (b.orientation !== (h ? "h" : "v")) return false;
+        const rc = bodyRect(b);
+        const overlap = h ? Math.min(rc.x + rc.w, rect.x + rect.w) - Math.max(rc.x, rect.x) : Math.min(rc.y + rc.h, rect.y + rect.h) - Math.max(rc.y, rect.y);
+        const gap = h ? Math.max(rc.y - (rect.y + rect.h), rect.y - (rc.y + rc.h)) : Math.max(rc.x - (rect.x + rect.w), rect.x - (rc.x + rc.w));
+        return overlap >= 0.5 * (h ? rect.w : rect.h) && gap <= near;
+      });
+      if (alongside) {
+        onPiece?.(rect, "alongside");
+        continue;
+      }
+      const touches = [...bodies, ...out].some((b) => {
+        const rc = bodyRect(b);
+        return rc.x <= rect.x + rect.w + near && rc.x + rc.w >= rect.x - near && rc.y <= rect.y + rect.h + near && rc.y + rc.h >= rect.y - near;
+      });
+      if (!touches) {
+        onPiece?.(rect, "alone");
+        continue;
+      }
+      onPiece?.(rect, "wall");
+      out.push(
+        bw >= bh
+          ? { orientation: "h", source: "hatch", centre: rect.y + bh / 2, thickness: bh, from: rect.x, to: rect.x + bw }
+          : { orientation: "v", source: "hatch", centre: rect.x + bw / 2, thickness: bw, from: rect.y, to: rect.y + bh },
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * Walls held to their hatch where a door's leaf was read into them.
+ *
+ * A leaf standing open along a wall is drawn as a thin rectangle against its
+ * face, and the faces pair across it: 22's bathroom wall came out 48 cm where
+ * the sheet draws 10, and the bathroom lost the strip. Where a leaf (from
+ * doorsFromSwings) lies inside a body along it, the body is narrowed to its
+ * hatch: a stroke runs face to face, so the strokes' middles give the wall's
+ * line and their depth across it the wall's thickness — 22's leaf and
+ * wardrobe stood either side of a 10 cm wall's hatch, and no side of the
+ * band was the wall.
+ */
+export function narrowWallsAroundLeaves(
+  bodies: WallBody[],
+  doors: Array<Opening & { kind?: string }>,
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+): WallBody[] {
+  const leaves = doors.flatMap((o) => (o.kind === "door" && o.leaf ? [o.leaf] : []));
+  if (leaves.length === 0) return bodies;
+  const diagonals = segments.filter((s) => {
+    const deg = Math.abs((Math.atan2(s.y2 - s.y1, s.x2 - s.x1) * 180) / Math.PI) % 90;
+    return deg >= 30 && deg <= 60 && Math.hypot(s.x2 - s.x1, s.y2 - s.y1) <= unitsPerMetre * 0.8;
+  });
+  const median = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
+  return bodies.map((body) => {
+    if (body.thickness <= unitsPerMetre * 0.15) return body;
+    const r = bodyRect(body);
+    const holds = leaves.some((leaf) => {
+      const along = body.orientation === "h" ? Math.abs(leaf.dx) > Math.abs(leaf.dy) * 3 : Math.abs(leaf.dy) > Math.abs(leaf.dx) * 3;
+      if (!along) return false;
+      const mx = leaf.x + leaf.dx / 2;
+      const my = leaf.y + leaf.dy / 2;
+      return mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
+    });
+    if (!holds) return body;
+    const inside = diagonals.filter((s) => {
+      const mx = (s.x1 + s.x2) / 2;
+      const my = (s.y1 + s.y2) / 2;
+      return mx >= r.x && mx <= r.x + r.w && my >= r.y && my <= r.y + r.h;
+    });
+    if (inside.length < 5) return body;
+    const h = body.orientation === "h";
+    const centre = median(inside.map((s) => (h ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2)));
+    const thickness = median(inside.map((s) => (h ? Math.abs(s.y2 - s.y1) : Math.abs(s.x2 - s.x1))));
+    if (thickness < unitsPerMetre * 0.05 || thickness > body.thickness * 0.8) return body;
+    // One hatched band, not two: 18's outer wall is hatched in two rows a
+    // cavity apart, and the median kept one of them.
+    const onLine = inside.filter((s) => Math.abs((h ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2) - centre) <= thickness / 2 + unitsPerMetre * 0.03).length;
+    if (onLine < inside.length * 0.75) return body;
+    return { ...body, centre, thickness };
+  });
+}
+
+/**
+ * The crossed boxes on the sheet: a rectangle with both its diagonals drawn,
+ * the draughtsman's mark for a void — a shaft, a fire-hose cabinet, a duct.
+ * Neither floor nor room, and a wall framing one is the box's, not a room's.
+ */
+export function findCrossedBoxes(
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+): Array<{ x: number; y: number; w: number; h: number }> {
+  const min = unitsPerMetre * 0.2;
+  const max = unitsPerMetre * 2.5;
+  const e = unitsPerMetre * 0.03;
+  const diagonals = segments.filter((s) => {
+    const dx = Math.abs(s.x2 - s.x1);
+    const dy = Math.abs(s.y2 - s.y1);
+    return dx >= min && dy >= min && dx <= max && dy <= max;
+  });
+  const out: Array<{ x: number; y: number; w: number; h: number }> = [];
+  for (let i = 0; i < diagonals.length; i++) {
+    const a = diagonals[i]!;
+    const x0 = Math.min(a.x1, a.x2);
+    const x1 = Math.max(a.x1, a.x2);
+    const y0 = Math.min(a.y1, a.y2);
+    const y1 = Math.max(a.y1, a.y2);
+    const down = (a.x2 - a.x1) * (a.y2 - a.y1) > 0;
+    const other = diagonals.find((b, j) => {
+      if (j === i || ((b.x2 - b.x1) * (b.y2 - b.y1) > 0) === down) return false;
+      return (
+        Math.abs(Math.min(b.x1, b.x2) - x0) <= e &&
+        Math.abs(Math.max(b.x1, b.x2) - x1) <= e &&
+        Math.abs(Math.min(b.y1, b.y2) - y0) <= e &&
+        Math.abs(Math.max(b.y1, b.y2) - y1) <= e
+      );
+    });
+    if (!other || !down) continue;
+    if (out.some((r) => Math.abs(r.x - x0) <= e && Math.abs(r.y - y0) <= e)) continue;
+    out.push({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 });
+  }
+  return out;
+}
+
+/**
+ * The walls with floor beside them: off one face or another, the flat's floor
+ * or its terrace, outside every crossed box. A crossed box's frame faces the
+ * box and the stair hall — 22's fire-hose cabinet stood at its front door as
+ * four columns, its frame read as walls — and is not the flat's.
+ */
+export function wallsBesideFlatFloor(
+  bodies: WallBody[],
+  floor: { room: (x: number, y: number) => boolean; terrace: (x: number, y: number) => boolean },
+  voids: Array<{ x: number; y: number; w: number; h: number }>,
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  /** Level marks: their hatched quarters are not a wall's hatch. */
+  marks: Array<{ x: number; y: number; r: number }> = [],
+): WallBody[] {
+  const inVoid = (x: number, y: number) => voids.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+  const clear = (x: number, y: number) =>
+    !inVoid(x, y) && !bodies.some((b) => {
+      const r = bodyRect(b);
+      return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+    });
+  // Beside a terrace only, a wall must be hatched there: a terrace's paving
+  // pairs into bands like a wall's faces, and 18's two terraces got two walls
+  // across them where the sheet draws a strip of paving between them.
+  const diagonals = segments.filter((sg) => {
+    const deg = Math.abs((Math.atan2(sg.y2 - sg.y1, sg.x2 - sg.x1) * 180) / Math.PI) % 90;
+    if (!(deg >= 30 && deg <= 60 && Math.hypot(sg.x2 - sg.x1, sg.y2 - sg.y1) <= unitsPerMetre * 0.8)) return false;
+    const mx = (sg.x1 + sg.x2) / 2;
+    const my = (sg.y1 + sg.y2) / 2;
+    return !marks.some((m) => Math.hypot(mx - m.x, my - m.y) <= m.r * 1.3);
+  });
+  const hatchedAt = (b: WallBody, t: number) => {
+    const r = bodyRect(b);
+    const half = unitsPerMetre * 0.15;
+    // Three strokes one way, each across most of the band: a level figure's
+    // "4" and "2" have a diagonal each, and stood a wall on 18's terrace.
+    const ways = [0, 0];
+    for (const sg of diagonals) {
+      const mx = (sg.x1 + sg.x2) / 2;
+      const my = (sg.y1 + sg.y2) / 2;
+      const along = b.orientation === "h" ? mx : my;
+      if (Math.abs(along - t) > half) continue;
+      if (mx < r.x - 1 || mx > r.x + r.w + 1 || my < r.y - 1 || my > r.y + r.h + 1) continue;
+      const across = b.orientation === "h" ? Math.abs(sg.y2 - sg.y1) : Math.abs(sg.x2 - sg.x1);
+      // Across a real wall's depth, not the band's: a band read wider than
+      // its wall (a leaf, a frame beside it) holds strokes shorter than itself.
+      if (across < Math.min(b.thickness * 0.6, unitsPerMetre * 0.05)) continue;
+      const k = (sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1;
+      if (++ways[k]! >= 3) return true;
+    }
+    return false;
+  };
+  const free = (b: WallBody, t: number, x: number, y: number) =>
+    clear(x, y) && (floor.room(x, y) || (floor.terrace(x, y) && hatchedAt(b, t)));
+  // Off its long faces; off its ends too only for a stub, which is all ends
+  // — a band over 18's terrace had the living room past its end, through
+  // the wall it ran out of.
+  const kept = bodies.filter((b) => {
+    const r = bodyRect(b);
+    const stub = b.to - b.from < b.thickness * 2;
+    // Out to 40 cm: a window's frame lines can stand between an outer wall
+    // and the floor (21's twin bedroom), and the opened floor stops short.
+    for (const d of [0.1, 0.25, 0.4].map((m) => m * unitsPerMetre)) {
+      for (const f of [0.15, 0.5, 0.85]) {
+        const px = r.x + r.w * f;
+        const py = r.y + r.h * f;
+        const t = b.orientation === "h" ? px : py;
+        const faces = b.orientation === "h" ? free(b, t, px, r.y - d) || free(b, t, px, r.y + r.h + d) : free(b, t, r.x - d, py) || free(b, t, r.x + r.w + d, py);
+        const ends = b.orientation === "h" ? free(b, t, r.x - d, py) || free(b, t, r.x + r.w + d, py) : free(b, t, px, r.y - d) || free(b, t, px, r.y + r.h + d);
+        if (faces || (stub && ends)) return true;
+      }
+    }
+    return false;
+  });
+  // And each cut back to where it has floor beside it, through the cross wall
+  // at its end: the party walls ran on 46 cm past 22's west wall into the
+  // neighbour's flat.
+  const step = unitsPerMetre * 0.05;
+  const out: WallBody[] = [];
+  for (const b of kept) {
+    const h = b.orientation === "h";
+    const reachSide = b.thickness / 2 + unitsPerMetre * 0.1;
+    const beside = (t: number) =>
+      [reachSide, reachSide + unitsPerMetre * 0.15, reachSide + unitsPerMetre * 0.3].some((d) =>
+        h ? free(b, t, t, b.centre - d) || free(b, t, t, b.centre + d) : free(b, t, b.centre - d, t) || free(b, t, b.centre + d, t),
+      );
+    let tA: number | null = null;
+    let tB: number | null = null;
+    for (let t = b.from; t <= b.to; t += step) {
+      if (!beside(t)) continue;
+      if (tA == null) tA = t;
+      tB = t;
+    }
+    if (tA == null || tB == null) {
+      out.push(b);
+      continue;
+    }
+    const inCross = (t: number) =>
+      kept.some((o) => {
+        if (o === b || o.orientation === b.orientation) return false;
+        const r = bodyRect(o);
+        const [x, y] = h ? [t, b.centre] : [b.centre, t];
+        return x >= r.x - step && x <= r.x + r.w + step && y >= r.y - step && y <= r.y + r.h + step;
+      });
+    let from = Math.max(b.from, tA - step);
+    let to = Math.min(b.to, tB + step);
+    while (from - step >= b.from && inCross(from - step)) from -= step;
+    while (to + step <= b.to && inCross(to + step)) to += step;
+    // Within a step of the end, the end as drawn.
+    if (from - b.from <= step * 1.5) from = b.from;
+    if (b.to - to <= step * 1.5) to = b.to;
+    // And a hatched wall's unhatched end that stands in the open — room
+    // floor off both faces — is not wall: 21's WC wall ran on 1.5 m across
+    // the hall into the flat's legend box, with two "openings" in it.
+    const sliceStep = unitsPerMetre * 0.1;
+    const hatchedSlice = (t: number) => hatchedAt(b, t);
+    const openBoth = (t: number) => {
+      const d = b.thickness / 2 + unitsPerMetre * 0.15;
+      return h
+        ? clear(t, b.centre - d) && floor.room(t, b.centre - d) && clear(t, b.centre + d) && floor.room(t, b.centre + d)
+        : clear(b.centre - d, t) && floor.room(b.centre - d, t) && clear(b.centre + d, t) && floor.room(b.centre + d, t);
+    };
+    let hatchedCount = 0;
+    let total = 0;
+    for (let t = from; t < to; t += sliceStep) {
+      total++;
+      if (hatchedSlice(t)) hatchedCount++;
+    }
+    if (total > 0 && hatchedCount >= total * 0.4) {
+      while (to - from > unitsPerMetre * 0.3 && !hatchedSlice(to - sliceStep / 2) && openBoth(to - sliceStep / 2)) to -= sliceStep;
+      while (to - from > unitsPerMetre * 0.3 && !hatchedSlice(from + sliceStep / 2) && openBoth(from + sliceStep / 2)) from += sliceStep;
+    }
+    if (to - from < unitsPerMetre * 0.1) continue;
+    out.push(from === b.from && to === b.to ? b : { ...b, from, to });
+  }
+  // A band lying half in a wall found beside it, its other half unhatched:
+  // 18's bathroom window, sill and rescue hatch read as a 50 cm wall reaching
+  // out onto the terrace from inside the outer wall.
+  const strokesIn = (r: { x: number; y: number; w: number; h: number }, thickness: number) => {
+    const ways = [0, 0];
+    for (const sg of diagonals) {
+      const mx = (sg.x1 + sg.x2) / 2;
+      const my = (sg.y1 + sg.y2) / 2;
+      if (mx < r.x || mx > r.x + r.w || my < r.y || my > r.y + r.h) continue;
+      if (Math.max(Math.abs(sg.x2 - sg.x1), Math.abs(sg.y2 - sg.y1)) < Math.min(thickness * 0.6, unitsPerMetre * 0.05)) continue;
+      ways[(sg.x2 - sg.x1) * (sg.y2 - sg.y1) > 0 ? 0 : 1]!++;
+    }
+    return Math.max(ways[0]!, ways[1]!);
+  };
+  return out.filter((b) => {
+    const r = bodyRect(b);
+    const h = b.orientation === "h";
+    return !out.some((o) => {
+      if (o === b || o.orientation !== b.orientation) return false;
+      const along = Math.min(b.to, o.to) - Math.max(b.from, o.from);
+      if (along < (b.to - b.from) * 0.8) return false;
+      const lo = Math.max(b.centre - b.thickness / 2, o.centre - o.thickness / 2);
+      const hi = Math.min(b.centre + b.thickness / 2, o.centre + o.thickness / 2);
+      if (hi - lo < b.thickness * 0.3 || o.thickness < b.thickness * 0.5) return false;
+      // The part of b beyond o, on whichever side it lies.
+      const below = o.centre - o.thickness / 2 - (b.centre - b.thickness / 2);
+      const above = b.centre + b.thickness / 2 - (o.centre + o.thickness / 2);
+      const strip = above >= below ? { a: o.centre + o.thickness / 2, d: above } : { a: b.centre - b.thickness / 2, d: below };
+      if (strip.d < unitsPerMetre * 0.05) return false;
+      const rect = h ? { x: r.x, y: strip.a, w: r.w, h: strip.d } : { x: strip.a, y: r.y, w: strip.d, h: r.h };
+      const metres = (b.to - b.from) / unitsPerMetre;
+      return strokesIn(rect, strip.d) < Math.max(3, metres * 4);
+    });
+  });
+}
+
+/**
+ * The flat's open floor as a lookup, with what is too narrow to stand in
+ * taken off: floor between the walls, opened by a disc of the given radius.
+ * The scanline footprint runs on past the envelope where a neighbour's wall
+ * or a cabinet's frame closes a sliver beyond it — 22 had 28 cm of "floor"
+ * outside its west wall — and a wall standing on that sliver is not the
+ * flat's.
+ */
+export function openFloorLookup(
+  floor: SpanRow[],
+  bodies: WallBody[],
+  unitsPerMetre: number,
+  radiusM = 0.15,
+  /** Floor that is not the rooms' — the terraces, another flat's — taken off before opening. */
+  exclude?: (x: number, y: number) => boolean,
+): (x: number, y: number) => boolean {
+  if (floor.length === 0) return () => false;
+  const g = unitsPerMetre * 0.05;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const row of floor) for (const [a, b] of row.spans) {
+    minX = Math.min(minX, a);
+    maxX = Math.max(maxX, b);
+  }
+  const pitch = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
+  const minY = floor[0]!.y;
+  const maxY = floor[floor.length - 1]!.y + pitch;
+  const W = Math.ceil((maxX - minX) / g) + 2;
+  const H = Math.ceil((maxY - minY) / g) + 2;
+  const at = (i: number, j: number) => ({ x: minX + (i + 0.5) * g, y: minY + (j + 0.5) * g });
+  const rects = bodies.map(bodyRect);
+  const m = new Uint8Array(W * H);
+  for (let j = 0; j < H; j++) {
+    for (let i = 0; i < W; i++) {
+      const p = at(i, j);
+      if (!spansContain(floor, p.x, p.y)) continue;
+      if (exclude?.(p.x, p.y)) continue;
+      if (rects.some((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)) continue;
+      m[j * W + i] = 1;
+    }
+  }
+  const r = Math.max(1, Math.round((radiusM * unitsPerMetre) / g));
+  const pass = (src: Uint8Array, erode: boolean) => {
+    const out = new Uint8Array(src.length);
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        let v = erode;
+        for (let dj = -r; dj <= r && v === erode; dj++) {
+          for (let di = -r; di <= r; di++) {
+            if (di * di + dj * dj > r * r) continue;
+            const ii = i + di;
+            const jj = j + dj;
+            const s = ii >= 0 && jj >= 0 && ii < W && jj < H ? src[jj * W + ii]! : 0;
+            if (erode && !s) {
+              v = false;
+              break;
+            }
+            if (!erode && s) {
+              v = true;
+              break;
+            }
+          }
+        }
+        if (v) out[j * W + i] = 1;
+      }
+    }
+    return out;
+  };
+  const opened = pass(pass(m, true), false);
+  return (x, y) => {
+    const i = Math.floor((x - minX) / g);
+    const j = Math.floor((y - minY) / g);
+    return i >= 0 && j >= 0 && i < W && j < H && opened[j * W + i] === 1;
+  };
 }

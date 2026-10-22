@@ -12,6 +12,7 @@ import {
   FURNITURE_HEIGHT_M,
   GLASS_T_M,
   RAILING_H_M,
+  RAIL_CAP_W_M,
   RAIL_CAP_M,
   SLIDER_MIN_CLEAR_M,
   TERRACE_DROP_M,
@@ -120,15 +121,26 @@ function distanceToRects(point: { x: number; y: number }, rects: Rect[]): number
 
 type MeasuredRoom = { room: SceneInput["rooms"][number]; rects: Rect[]; index: number };
 
-/** The measured room a point belongs to, or the nearest one to it. */
+/**
+ * The measured room a point belongs to, or the nearest one to it. Where rooms
+ * overlap, the smallest: a segmented region and the labelled rooms within it
+ * both come through, and דירה 14's bath and pans, assigned to a 28 m²
+ * "bedroom" that also covered both bathrooms, were dropped as fixtures in a
+ * dry room.
+ */
 function roomAt(point: { x: number; y: number }, rooms: MeasuredRoom[]): MeasuredRoom | null {
   let nearest: { room: MeasuredRoom; distance: number } | null = null;
+  let within: { room: MeasuredRoom; area: number } | null = null;
   for (const entry of rooms) {
-    if (pointInRects(point, entry.rects)) return entry;
+    if (pointInRects(point, entry.rects)) {
+      const area = entry.rects.reduce((sum, r) => sum + r.w * r.h, 0);
+      if (!within || area < within.area) within = { room: entry, area };
+      continue;
+    }
     const distance = distanceToRects(point, entry.rects);
     if (!nearest || distance < nearest.distance) nearest = { room: entry, distance };
   }
-  return nearest?.room ?? null;
+  return within?.room ?? nearest?.room ?? null;
 }
 
 export type BuildSceneOptions = {
@@ -161,7 +173,7 @@ export type SceneInput = {
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
-  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"] }>;
+  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"]; head?: "north" | "south" | "east" | "west" }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
   /**
    * The rooms as the sheet labels them, in page units.
@@ -177,51 +189,62 @@ export type SceneInput = {
 };
 
 /**
- * Which rooms the scene draws: the segmenter's, or the sheet's own labels.
+ * Which rooms the scene draws: the segmenter's, each split by the sheet's own
+ * labels only where two or more of them name it.
  *
- * The labels win when the sheet names more rooms than the flood found, which
- * is what happens whenever a doorway was missed. Each labelled room takes the
- * measured floor rectangles whose centres fall inside the box its name was
- * read at; a rectangle no label claims stays with the segmenter's answer, so
- * nothing measured is ever dropped and nothing unmeasured is ever added.
+ * A missed doorway lets the flood run from one room into the next, and the
+ * two come back as one: such a room carries two names, and its rectangles go
+ * each to the name whose box holds its middle, or else to the nearest name.
+ * A room with one name, or none, is the segmenter's as measured. The labels
+ * used to re-cut the whole floor whenever the sheet named more rooms than the
+ * flood found — and a label's box is a model's reading of where a word is
+ * printed, not a room: on 18 a "bathroom" claimed 22.7 m² of strips running
+ * across the flat, on 16 one claimed 13.6, and every flat was drawn with two
+ * sets of rooms, one over the other. Nothing measured is dropped, and nothing
+ * unmeasured is added.
  */
 export function roomsForScene(input: SceneInput): SceneInput["rooms"] {
   const labelled = input.labelledRooms ?? [];
-  if (labelled.length <= input.rooms.length) return input.rooms;
-
-  // Claimed by value, not by reference: the segmenter's rectangles and the
-  // floor's are equal numbers in different objects.
-  const keyOf = (rect: Rect) => `${rect.x}:${rect.y}:${rect.w}:${rect.h}`;
-  const claimed = new Set<string>();
+  if (labelled.length === 0) return input.rooms;
+  const centre = (box: Rect) => ({ x: box.x + box.w / 2, y: box.y + box.h / 2 });
+  const holds = (rects: Rect[], x: number, y: number) =>
+    rects.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   const out: SceneInput["rooms"] = [];
-  for (const label of labelled) {
-    const mine = input.floorRects.filter((rect) => {
-      if (claimed.has(keyOf(rect))) return false;
-      const cx = rect.x + rect.w / 2;
-      const cy = rect.y + rect.h / 2;
-      return (
-        cx >= label.box.x &&
-        cx <= label.box.x + label.box.w &&
-        cy >= label.box.y &&
-        cy <= label.box.y + label.box.h
-      );
-    });
-    if (mine.length === 0) continue;
-    for (const rect of mine) claimed.add(keyOf(rect));
-    const areaUnits = mine.reduce((sum, r) => sum + r.w * r.h, 0);
-    out.push({
-      name: label.name,
-      kind: label.kind,
-      areaM2: areaUnits / (input.unitsPerMetre * input.unitsPerMetre),
-      rects: mine,
-    });
-  }
-  // Floor no label claimed keeps the room the flood gave it.
   for (const room of input.rooms) {
-    const left = room.rects.filter((rect) => !claimed.has(keyOf(rect)));
-    if (left.length > 0) out.push({ ...room, rects: left });
+    const names = labelled.filter((label) => {
+      const c = centre(label.box);
+      return holds(room.rects, c.x, c.y);
+    });
+    if (names.length < 2 || room.kind === "balcony") {
+      out.push(room);
+      continue;
+    }
+    const parts = new Map<number, Rect[]>();
+    for (const rect of room.rects) {
+      const c = centre(rect);
+      const inBox = names.findIndex(
+        (label) => c.x >= label.box.x && c.x <= label.box.x + label.box.w && c.y >= label.box.y && c.y <= label.box.y + label.box.h,
+      );
+      const nearest =
+        inBox >= 0
+          ? inBox
+          : names.reduce((best, label, k) => {
+              const d = (l: typeof label) => Math.hypot(centre(l.box).x - c.x, centre(l.box).y - c.y);
+              return d(label) < d(names[best]!) ? k : best;
+            }, 0);
+      parts.set(nearest, [...(parts.get(nearest) ?? []), rect]);
+    }
+    for (const [k, rects] of parts) {
+      const label = names[k]!;
+      out.push({
+        name: label.name,
+        kind: label.kind,
+        areaM2: rects.reduce((sum, r) => sum + r.w * r.h, 0) / (input.unitsPerMetre * input.unitsPerMetre),
+        rects,
+      });
+    }
   }
-  return out.length > 0 ? out : input.rooms;
+  return out;
 }
 
 /**
@@ -278,7 +301,7 @@ export function sceneInputFromFlat(flat: BuiltFlat, rooms: SegmentedRoom[]): Sce
     bodies: flat.bodies,
     openings: flat.openings,
     floorRects: mergeSpanRows(flat.floor),
-    terraceRects: flat.terraces.map((rows) => mergeSpanRows(rows)),
+    terraceRects: flat.terraces.map((rows) => mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2))),
     furniture: flat.furniture,
     rooms: rooms.map((room) => ({
       name: room.name,
@@ -330,7 +353,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // The box is the flat's bounding rectangle, and a neighbour's wall running
   // along its edge sits inside it: on דירה 14 that is how a two-storey slab
   // belonging to the flat next door stayed in the frame.
-  const walked = [...floorRects, ...terraceRects.flat()];
+  // With the rooms' own regions: a WC's floor comes as strips too narrow to
+  // keep alone, and 21's pan stood on none of them.
+  const walked = [...floorRects, ...roomRectsAll, ...terraceRects.flat()];
   const ground = walked.length > 0 ? walked : [printed];
 
   /**
@@ -355,8 +380,10 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   const bodies = input.bodies.filter((body) => touchesGround(bandToRect(body), reach));
   // A piece of furniture standing on no floor we measured is the neighbour's
   // too, and it stretched the frame the same way.
+  // Sanitary ware within a hand of it: a pan's own ink stops the floor's
+  // flood, and 21's WC pan stood on no floor of its own and was dropped.
   const grounded = input.furniture.filter((piece) =>
-    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, 0),
+    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, piece.kind === "fixture" ? 0.3 * upm : 0),
   );
   // One drawn object is one piece. The detector can find a rectangle twice a
   // few millimetres apart, and דירה 15 got two beds in one place.
@@ -521,11 +548,21 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   // --- floors, one material per room kind, cut to the measured region.
+  // Where measured rooms overlap — a segmented region and the labelled rooms
+  // inside it both come through — the smallest lays its floor and the larger
+  // only round it: two floors at one height in two materials fought, and the
+  // render drew them as patches of boards and tiles.
+  const floorOwner = new Map<number, Rect[]>();
+  const laid: Rect[] = [];
+  for (const entry of [...roomRects].sort((a, b) => rectsArea(a.rects) - rectsArea(b.rects))) {
+    floorOwner.set(entry.index, subtractRects(entry.rects, laid));
+    laid.push(...entry.rects);
+  }
   const sceneRooms: SceneRoom[] = roomRects.map(({ room, rects, index }) => {
     const kind = room.kind as SceneRoomKind;
     const material = FLOOR_MATERIAL[kind] ?? "floorWood";
     const id = `room:${index}`;
-    for (const rect of rects) {
+    for (const rect of floorOwner.get(index) ?? rects) {
       meshes.push(boxFrom(p, rect, -FLOOR_T_M, 0, "floor", material, id));
     }
     const bounds = rectsBounds(rects) ?? { x: 0, y: 0, w: 0, h: 0 };
@@ -554,10 +591,18 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // One scan rect can run from a roof, under an outer wall, into the flat —
   // דירה 22's strip along its north side crosses both roofs — so it is judged
   // in slices along its length, and each run of slices gets its own floor.
-  for (const rect of floorRects) {
-    if (pointInRects(rectCentre(rect), claimed)) continue;
+  // Less what the rooms claim, not dropped whole where its middle is in one:
+  // 21's scan rect ran from its bathroom on down the corridor to the bottom
+  // bedroom's door, and the corridor came out with no floor and the bedroom
+  // with no way in.
+  const unclaimed = subtractRects(floorRects, claimed).filter((r) => Math.min(r.w, r.h) >= minWalkable * 0.5);
+  for (const rect of unclaimed) {
     for (const run of slicesByEnclosure(rect, blockers, upm * 0.25)) {
-      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", run.inside ? "floorWood" : "floorStone", "floor:unclaimed"));
+      // Inside the flat only. Outside it is the landing or the stair beside
+      // the flat (21's came out tiled past its east wall), and a roof that is
+      // not the flat's is no longer in its floor (see foreign).
+      if (!run.inside) continue;
+      meshes.push(boxFrom(p, run.rect, -FLOOR_T_M, 0, "floor", "floorWood", "floor:unclaimed"));
     }
   }
 
@@ -576,10 +621,12 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       // An edge the flat's own wall stands on, or runs along a hand's breadth
       // off (the facade's cladding), is a wall, not a drop.
       if (distanceToRects(rectCentre(rect), wallRects) <= upm * 0.35) continue;
+      const cap: Rect =
+        edge.orientation === "h"
+          ? { x: edge.from, y: edge.at - RAIL_CAP_W_M * upm * 0.5, w: edge.to - edge.from, h: RAIL_CAP_W_M * upm }
+          : { x: edge.at - RAIL_CAP_W_M * upm * 0.5, y: edge.from, w: RAIL_CAP_W_M * upm, h: edge.to - edge.from };
       meshes.push(boxFrom(p, rect, -TERRACE_DROP_M, RAILING_H_M - RAIL_CAP_M, "railing", "glass", id));
-      meshes.push(
-        boxFrom(p, rect, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`),
-      );
+      meshes.push(boxFrom(p, cap, RAILING_H_M - RAIL_CAP_M, RAILING_H_M, "railing", "metal", `${id}/cap`));
     }
   });
 
@@ -601,18 +648,42 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     // The written rules, kept here and not only asked of a model: a bed only
     // in a bedroom or the ממ"ד, a pan or a bath never in a dry room. A paving
     // hatch on דירה 15's roof terrace measured as a bed, and was drawn as one.
-    if (!pieceBelongsIn(piece.kind, host?.room.kind)) return;
+    // A bed whose middle fell just outside its bedroom — the segmenter closed
+    // only part of דירה 21's corner bedroom, and the bed's centre landed in
+    // the strip beside it — still stands where a quarter of it is in one.
+    const inSleeping =
+      piece.kind === "bed" &&
+      roomRects.some(
+        (room) => SLEEPING.has(room.room.kind) && overlapArea(box, room.rects) >= 0.25 * box.w * box.h,
+      );
+    // A pan beside a bathroom whose measured region stops short of it — the
+    // label's region covered half of דירה 14's main bathroom, and its WC and
+    // washer fell in the dry region round it — is that bathroom's.
+    const besideWet =
+      piece.kind === "fixture" &&
+      roomRects.some(
+        (room) => isWetRoom(room.room.kind as SceneRoomKind) && distanceToRects(rectCentre(box), room.rects) <= input.unitsPerMetre * 1.2,
+      );
+    if (!inSleeping && !besideWet && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
       walls: wallRectsAll,
       anchors: anchorRects.filter((rect) => rect !== box),
+      seat: piece.kind === "seat",
       roomCentre: hostBounds
         ? { x: hostBounds.x + hostBounds.w / 2, y: hostBounds.y + hostBounds.h / 2 }
         : rectCentre(box),
       unitsPerMetre: upm,
     });
-    const facing = piece.kind === "bed" ? headFacing(box, decided) : decided;
+    // A bed's head where the sheet draws its pillow; else by the walls.
+    // A pan's back where the sheet draws its cistern; see pansFromCisterns.
+    const facing =
+      piece.kind === "bed"
+        ? (piece.head ?? headFacing(box, decided, wallRectsAll))
+        : piece.kind === "fixture" && piece.fixture === "toilet" && piece.head
+          ? piece.head
+          : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
     for (const built of partsFor(kind, {
       wM: box.w / upm,
@@ -634,6 +705,49 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   });
 
   const extentCorner = project(p, spanned.x, spanned.y);
+  const standing = wallsBesideFloor(meshes);
+  // An opening needs a wall to be in: one whose wall, head and sill all went
+  // stands in nothing — 18's "door" on the line of the level figure at its
+  // terrace's edge kept its frame, its leaf and a mezuzah, floating.
+  const walled = standing.filter((m) => m.kind === "wall" || m.kind === "wallHead" || m.kind === "wallSill");
+  const orphaned = new Set(
+    openings
+      .filter((o) => {
+        const reach = 0.15;
+        return !walled.some(
+          (m) =>
+            Math.abs(m.centre.x - o.centre.x) <= (m.size.x + o.size.x) / 2 + reach &&
+            Math.abs(m.centre.z - o.centre.z) <= (m.size.z + o.size.z) / 2 + reach,
+        );
+      })
+      .map((o) => o.id),
+  );
+  // Nor a wall that touches nothing — no floor, terrace or other wall within
+  // a hand of it: 21's 5 by 12 cm sliver stood on its own (see auditFlatScene).
+  {
+    const box = (m: SceneBox) => ({ x0: m.centre.x - m.size.x / 2 - 0.15, x1: m.centre.x + m.size.x / 2 + 0.15, z0: m.centre.z - m.size.z / 2 - 0.15, z1: m.centre.z + m.size.z / 2 + 0.15 });
+    const meets = (a: ReturnType<typeof box>, m: SceneBox) =>
+      a.x0 <= m.centre.x + m.size.x / 2 && a.x1 >= m.centre.x - m.size.x / 2 && a.z0 <= m.centre.z + m.size.z / 2 && a.z1 >= m.centre.z - m.size.z / 2;
+    const ground = standing.filter((m) => m.kind === "floor" || m.kind === "terrace");
+    const built = standing.filter((m) => m.kind === "wall" || m.kind === "wallSill" || m.kind === "wallHead" || m.kind === "wallCap");
+    for (let i = standing.length - 1; i >= 0; i--) {
+      const m = standing[i]!;
+      if (m.kind !== "wall") continue;
+      const b = box(m);
+      if (!ground.some((g) => meets(b, g)) && !built.some((w) => w !== m && meets(b, w))) standing.splice(i, 1);
+    }
+  }
+  // Nor a skirting whose wall went: 18's stub left its two white strips.
+  const wallsLeft = new Set(standing.filter((m) => m.kind === "wall").map((m) => m.sourceId));
+  meshes.length = 0;
+  meshes.push(
+    ...standing.filter(
+      (m) =>
+        !orphaned.has(m.sourceId.split("/")[0]!) &&
+        !(m.kind === "skirting" && m.sourceId.startsWith("wall:") && !wallsLeft.has(m.sourceId.split("/")[0]!)),
+    ),
+  );
+  if (orphaned.size > 0) openings.splice(0, openings.length, ...openings.filter((o) => !orphaned.has(o.id)));
   const scene: FlatScene = {
     version: 1,
     unitsPerMetre: upm,
@@ -659,6 +773,127 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   return scene;
 }
 
+function rectsArea(rects: Rect[]): number {
+  return rects.reduce((sum, r) => sum + r.w * r.h, 0);
+}
+
+/** Each rectangle with the cutters taken out of it, as rectangles. */
+export function subtractRects(rects: Rect[], cutters: Rect[]): Rect[] {
+  let out = rects;
+  for (const c of cutters) {
+    const next: Rect[] = [];
+    for (const r of out) {
+      const x0 = Math.max(r.x, c.x);
+      const x1 = Math.min(r.x + r.w, c.x + c.w);
+      const y0 = Math.max(r.y, c.y);
+      const y1 = Math.min(r.y + r.h, c.y + c.h);
+      if (x1 <= x0 || y1 <= y0) {
+        next.push(r);
+        continue;
+      }
+      // Above, below, and the two sides of the overlap.
+      if (y0 > r.y) next.push({ x: r.x, y: r.y, w: r.w, h: y0 - r.y });
+      if (y1 < r.y + r.h) next.push({ x: r.x, y: y1, w: r.w, h: r.y + r.h - y1 });
+      if (x0 > r.x) next.push({ x: r.x, y: y0, w: x0 - r.x, h: y1 - y0 });
+      if (x1 < r.x + r.w) next.push({ x: x1, y: y0, w: r.x + r.w - x1, h: y1 - y0 });
+    }
+    out = next.filter((r) => r.w > 1e-6 && r.h > 1e-6);
+  }
+  return out;
+}
+
+// The windows and frames set in those walls go with them.
+const STANDING_KINDS = new Set(["wall", "wallHead", "wallSill", "wallCap", "glazing", "frame"]);
+
+/**
+ * Walls only where a wall can stand: with the flat's floor beside it, or a
+ * terrace's edge with nothing past it. The measurement also finds what is not
+ * a wall — the underline and hatched circle of a level mark across דירה 18's
+ * terrace, its outer walls run on into the terrace, a dimension chain — and a
+ * design given those either drew them or was refused for leaving them out.
+ * Each wall is cut to the stretches where it stands; a stretch with terrace
+ * on both sides, or nothing on either, goes.
+ */
+export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
+  const rectOf = (m: SceneBox) => ({ x0: m.centre.x - m.size.x / 2, x1: m.centre.x + m.size.x / 2, z0: m.centre.z - m.size.z / 2, z1: m.centre.z + m.size.z / 2 });
+  const floors = meshes.filter((m) => m.kind === "floor").map(rectOf);
+  const terraces = meshes.filter((m) => m.kind === "terrace").map(rectOf);
+  if (floors.length === 0) return meshes;
+  // 3 cm of slack: a slice's sample on the very edge of the floor is beside it.
+  const E = 0.03;
+  const inAny = (rects: ReturnType<typeof rectOf>[], x: number, z: number) =>
+    rects.some((r) => x >= r.x0 - E && x <= r.x1 + E && z >= r.z0 - E && z <= r.z1 + E);
+  // A side inside another wall is a corner, where the wall turns: it stands.
+  const walls = meshes.filter((m) => m.kind === "wall").map(rectOf);
+  // Terrace first: the flat's floor runs on under its terraces, and a stub
+  // with terrace on both sides — 17's level mark's leader, read as a wall in
+  // the middle of its terrace — stood on that floor.
+  const side = (x: number, z: number) =>
+    inAny(terraces, x, z) ? "terrace" : inAny(floors, x, z) ? "floor" : inAny(walls, x, z) ? "wall" : "none";
+  const STEP = 0.2;
+  const out: SceneBox[] = [];
+  for (const m of meshes) {
+    if (!STANDING_KINDS.has(m.kind)) {
+      out.push(m);
+      continue;
+    }
+    const alongX = m.size.x >= m.size.z;
+    const length = alongX ? m.size.x : m.size.z;
+    const off = (alongX ? m.size.z : m.size.x) / 2 + 0.2;
+    const slices = Math.max(1, Math.round(length / STEP));
+    const step = length / slices;
+    const start = (alongX ? m.centre.x : m.centre.z) - length / 2;
+    const stands = Array.from({ length: slices }, (_, i) => {
+      const t = start + step * (i + 0.5);
+      const [a, b] = alongX
+        ? [side(t, m.centre.z - off), side(t, m.centre.z + off)]
+        : [side(m.centre.x - off, t), side(m.centre.x + off, t)];
+      return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (a === "terrace") !== (b === "terrace");
+    });
+    // A stub with no floor of the flat beside it is no parapet: a terrace's
+    // edge runs its length, and 18's 35 cm block at its level mark stood
+    // alone on its terrace.
+    if (m.kind === "wall" && length < 0.6) {
+      // A hand further out: 18's stub stood on the terrace's very edge, its
+      // far side a sliver of floor a centimetre past it.
+      const far = off + 0.15;
+      const floorBeside = Array.from({ length: slices }, (_, i) => {
+        const t = start + step * (i + 0.5);
+        const [a, b] = alongX
+          ? [side(t, m.centre.z - far), side(t, m.centre.z + far)]
+          : [side(m.centre.x - far, t), side(m.centre.x + far, t)];
+        return a === "floor" || b === "floor" || a === "wall" || b === "wall";
+      }).some(Boolean);
+      if (!floorBeside) continue;
+    }
+    if (stands.every(Boolean)) {
+      out.push(m);
+      continue;
+    }
+    // The stretches that stand, each its own box.
+    for (let i = 0; i < slices; ) {
+      if (!stands[i]) {
+        i++;
+        continue;
+      }
+      let j = i;
+      while (j < slices && stands[j]) j++;
+      const from = start + step * i;
+      const to = start + step * j;
+      if (to - from >= 0.15) {
+        const mid = (from + to) / 2;
+        out.push({
+          ...m,
+          centre: alongX ? { ...m.centre, x: mid } : { ...m.centre, z: mid },
+          size: alongX ? { ...m.size, x: to - from } : { ...m.size, z: to - from },
+        });
+      }
+      i = j;
+    }
+  }
+  return out;
+}
+
 /** Glazing sits in the middle of the wall, not across its whole thickness. */
 function glazingThickness(
   opening: Band,
@@ -668,6 +903,17 @@ function glazingThickness(
 }
 
 const SLEEPING = new Set(["bedroom", "mmd"]);
+
+/** How much of a rectangle lies within a set of rectangles (assumed apart). */
+function overlapArea(a: Rect, rects: Rect[]): number {
+  let total = 0;
+  for (const b of rects) {
+    const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    if (w > 0 && h > 0) total += w * h;
+  }
+  return total;
+}
 const DRY = new Set(["bedroom", "mmd", "living", "kitchen"]);
 
 /** Whether a measured piece may stand in the room it was measured in. */

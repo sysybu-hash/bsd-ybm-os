@@ -17,7 +17,38 @@ import { WALL_HEIGHT_M } from "@/lib/projects/scene3d/standards";
 
 const CEILING_T_M = 0.12;
 
-export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number; ceiling?: boolean } = {}): BuildingModel {
+const WALL_KINDS = new Set(["wall", "wallHead", "wallSill", "wallCap"]);
+
+export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number; ceiling?: boolean; wallsOnly?: boolean } = {}): BuildingModel {
+  if (options.wallsOnly) {
+    // The walls alone, cut: the map a painting's walls are checked against.
+    const walls: Primitive[] = [];
+    // Only walls that bound a room: the neighbour's walls the sheet draws past
+    // the flat's edge, with floor on neither side, a design leaves out — and
+    // דירה 21's were scored as walls it had moved, try after try.
+    const rects = scene.rooms.flatMap((room) => room.rects);
+    const floorAt = (x: number, z: number) => rects.some((r) => x >= r.x && x <= r.x + r.w && z >= r.z && z <= r.z + r.d);
+    // Floor beside it along its length, on either side: a stub touching a
+    // room's wall at one end only is still the neighbour's.
+    const bounds = (m: (typeof scene.meshes)[number]) => {
+      const alongX = m.size.x >= m.size.z;
+      const off = (alongX ? m.size.z : m.size.x) / 2 + 0.25;
+      const beside = [0.25, 0.5, 0.75].filter((t) => {
+        const x = alongX ? m.centre.x - m.size.x / 2 + m.size.x * t : m.centre.x;
+        const z = alongX ? m.centre.z : m.centre.z - m.size.z / 2 + m.size.z * t;
+        return alongX ? floorAt(x, z - off) || floorAt(x, z + off) : floorAt(x - off, z) || floorAt(x + off, z);
+      });
+      return beside.length >= 2;
+    };
+    for (const mesh of scene.meshes) {
+      if (!WALL_KINDS.has(mesh.kind)) continue;
+      if (rects.length > 0 && !bounds(mesh)) continue;
+      const kept = options.cutAboveM != null ? cutBox(mesh, options.cutAboveM) : mesh;
+      if (kept) walls.push({ type: "box", centre: kept.centre, size: kept.size, material: "plaster", tag: `wall:${kept.sourceId}` });
+    }
+    const { x, z, width, depth } = scene.extent;
+    return { name: "walls", primitives: walls, extent: { x, z, width, depth, yMin: 0, yMax: WALL_HEIGHT_M }, north: { x: 0, z: -1 } };
+  }
   const prims: Primitive[] = [];
   const kindOf = roomKindOf(scene);
   const cut = options.cutAboveM;
@@ -62,12 +93,15 @@ export type FlatView = { id: string; title: string; payload: Omit<BuildingRender
 /** The whole flat from above and in front, its walls cut at 1.1 m. */
 export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
   const { x, z, width, depth } = scene.extent;
-  const aspect = Math.min(1.8, Math.max(1.1, width / depth));
+  // Straight down, north up, as a sales sheet's 3D plan is shown — the
+  // oblique view read as a model on a table, and hid what stood against the
+  // near walls. A little perspective keeps the walls' cut tops reading as
+  // walls.
+  const aspect = Math.min(1.8, Math.max(0.62, width / depth));
   const height = Math.round(widthPx / aspect);
-  const pitch = (58 * Math.PI) / 180;
-  const fov = 30;
+  const fov = 32;
   const t = Math.tan(((fov / 2) * Math.PI) / 180);
-  const d = Math.max((depth / 2) / t + depth * 0.3, (width / 2) / (t * aspect) + depth * 0.3) * 1.08;
+  const above = Math.max(depth / 2 / t, width / 2 / (t * aspect)) * 1.06 + 1.1;
   const cx = x + width / 2;
   const cz = z + depth / 2;
   return {
@@ -79,9 +113,34 @@ export function dollhouseView(scene: FlatScene, widthPx = 2400): FlatView {
       height,
       exposure: 0.62,
       ao: true,
-      camera: { position: { x: cx, y: d * Math.sin(pitch), z: cz + d * Math.cos(pitch) }, target: { x: cx, y: 0.2, z: cz }, fovDeg: fov, studio: true },
-      sun: { azimuthDeg: 215, elevationDeg: 62 },
+      camera: {
+        position: { x: cx, y: above, z: cz + 0.001 },
+        target: { x: cx, y: 0, z: cz },
+        up: { x: 0, y: 0, z: -1 },
+        fovDeg: fov,
+        studio: true,
+      },
+      // High, so the narrow rooms are not left in the walls' shadow: at 70° a
+      // bath between two walls was a dark slab, painted as a shower.
+      sun: { azimuthDeg: 215, elevationDeg: 82 },
     },
+  };
+}
+
+/**
+ * Where a point of the scene lands in a frame of the dollhouse view: the
+ * pixel, in a frame of that view's shape at any size. What lets a design be
+ * checked piece by piece where each piece stands.
+ */
+export function dollhousePixel(view: FlatView, frame: { width: number; height: number }, p: { x: number; y: number; z: number }): { x: number; y: number } {
+  const cam = view.payload.camera;
+  const t = Math.tan(((cam.fovDeg / 2) * Math.PI) / 180);
+  const d = cam.position.y - p.y;
+  const aspect = view.payload.width / view.payload.height;
+  return {
+    x: (0.5 + (p.x - cam.target.x) / (d * t * aspect) / 2) * frame.width,
+    // North up: the camera's up is -z, so z grows down the frame.
+    y: (0.5 + (p.z - cam.target.z) / (d * t) / 2) * frame.height,
   };
 }
 

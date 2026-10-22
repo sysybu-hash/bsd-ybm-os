@@ -59,9 +59,8 @@ function buildAllowedDevOrigins() {
 
 /** @type {import('next').NextConfig} */
 /** What a building booklet's steps read off disk; see outputFileTracingIncludes. */
-const BUILDING_BOOKLET_FILES = [
-  "./lib/pdf/fonts/**",
-  "./lib/pdf/load-pdf-font-buffers.ts",
+/** three and the add-ons the building renderer's page imports, read by path. */
+const BUILDING_RENDERER_FILES = [
   "./node_modules/three/build/three.module.js",
   "./node_modules/three/build/three.core.js",
   "./node_modules/three/examples/jsm/environments/**",
@@ -71,6 +70,11 @@ const BUILDING_BOOKLET_FILES = [
   "./node_modules/three/examples/jsm/shaders/**",
   "./node_modules/three/examples/jsm/math/**",
   "./node_modules/@sparticuz/chromium/**",
+];
+const BUILDING_BOOKLET_FILES = [
+  "./lib/pdf/fonts/**",
+  "./lib/pdf/load-pdf-font-buffers.ts",
+  ...BUILDING_RENDERER_FILES,
   ...PDF_READER_FILES,
 ];
 
@@ -241,13 +245,11 @@ const nextConfig = {
     "/api/projects/visualize-floorplan-run": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",
-      // The deterministic renderer draws the measured flat in a headless
-      // Chromium and serves three.js to it off disk. Nothing imports those
-      // files — the page fetches them from an origin that exists only inside
-      // the browser — so tracing cannot see them.
-      "./node_modules/three/build/three.module.js",
-      "./node_modules/three/build/three.core.js",
-      "./node_modules/@sparticuz/chromium/**",
+      // The measured flat is drawn by the building renderer in a headless
+      // Chromium, which serves three and its add-ons to the page off disk.
+      // Nothing imports those files — the page fetches them from an origin
+      // that exists only inside the browser — so tracing cannot see them.
+      ...BUILDING_RENDERER_FILES,
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],

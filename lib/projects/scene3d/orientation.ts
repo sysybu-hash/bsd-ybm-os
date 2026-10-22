@@ -18,6 +18,7 @@ export type Facing = "north" | "east" | "south" | "west";
 
 /** Page axes: north is up the page (-y), east is +x. */
 const ORDER: Facing[] = ["north", "east", "south", "west"];
+const OPPOSITE: Record<Facing, Facing> = { north: "south", south: "north", east: "west", west: "east" };
 
 function gapTo(piece: Rect, other: Rect, side: Facing): number | null {
   const overlapsX = other.x < piece.x + piece.w && other.x + other.w > piece.x;
@@ -37,9 +38,13 @@ function gapTo(piece: Rect, other: Rect, side: Facing): number | null {
 function nearestSide(piece: Rect, others: Rect[], reach: number): Facing | null {
   let best: { side: Facing; gap: number } | null = null;
   for (const side of ORDER) {
+    // Overlapping a wall is standing against it, however deep the overlap
+    // short of the piece's own middle: 14's sofa ran 15 cm into the wall
+    // behind it, past the reach, and was turned to face that wall.
+    const half = (side === "north" || side === "south" ? piece.h : piece.w) / 2;
     for (const other of others) {
       const gap = gapTo(piece, other, side);
-      if (gap == null || gap < -reach || gap > reach) continue;
+      if (gap == null || gap < -Math.max(reach, half) || gap > reach) continue;
       // The first side in ORDER wins a tie, which is what keeps this stable.
       if (!best || gap < best.gap - 1e-9) best = { side, gap };
     }
@@ -56,6 +61,12 @@ export type FacingInput = {
   /** The centre of the room the piece stands in, page units. */
   roomCentre: { x: number; y: number };
   unitsPerMetre: number;
+  /**
+   * A seat: its back goes AWAY from the table it stands at. Rule 2 turns a
+   * piece's back to the counter beside it, which is right for a sink's tap
+   * and backwards for a chair — דירה 21's dining chairs sat facing out.
+   */
+  seat?: boolean;
 };
 
 /**
@@ -69,10 +80,15 @@ export type FacingInput = {
  */
 export function facingFor(input: FacingInput): Facing {
   const reach = FACING_REACH_M * input.unitsPerMetre;
+  // A chair at a table faces the table, even where a wall is as near.
+  if (input.seat) {
+    const table = nearestSide(input.piece, input.anchors, reach);
+    if (table) return OPPOSITE[table];
+  }
   const wall = nearestSide(input.piece, input.walls, reach);
   if (wall) return wall;
   const anchor = nearestSide(input.piece, input.anchors, reach);
-  if (anchor) return anchor;
+  if (anchor) return input.seat ? OPPOSITE[anchor] : anchor;
 
   const cx = input.piece.x + input.piece.w / 2;
   const cy = input.piece.y + input.piece.h / 2;
@@ -95,9 +111,23 @@ export function runsDownThePage(piece: Rect): boolean {
  * pillow at the short end by the same rule — so the two renderers put the head
  * of every bed at the same end of the same rectangle.
  */
-export function headFacing(piece: Rect, facing: Facing): Facing {
+export function headFacing(piece: Rect, facing: Facing, walls: Rect[] = []): Facing {
   const down = runsDownThePage(piece);
   const alongLongAxis = down ? facing === "north" || facing === "south" : facing === "east" || facing === "west";
   if (alongLongAxis) return facing;
-  return down ? "north" : "west";
+  // Its long side is against the wall: the head goes to whichever short end
+  // is nearer a wall. North by default turned דירה 14's shelter bed, pillow
+  // drawn at the south wall, end for end.
+  const ends: [Facing, Facing] = down ? ["north", "south"] : ["west", "east"];
+  const distance = (side: Facing) => {
+    let best = Infinity;
+    for (const wall of walls) {
+      const gap = gapTo(piece, wall, side);
+      if (gap != null && gap > -(down ? piece.h : piece.w) / 2) best = Math.min(best, Math.max(0, gap));
+    }
+    return best;
+  };
+  const [a, b] = [distance(ends[0]), distance(ends[1])];
+  if (b < a) return ends[1];
+  return ends[0];
 }

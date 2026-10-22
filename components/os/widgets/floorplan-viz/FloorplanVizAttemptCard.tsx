@@ -95,7 +95,9 @@ export default function FloorplanVizAttemptCard({
         ? "workspaceWidgets.floorplanViz.originCad"
         : current.origin === "render3d"
           ? "workspaceWidgets.floorplanViz.originRender3d"
-          : "workspaceWidgets.floorplanViz.originGenerate";
+          : current.origin === "finish"
+            ? "workspaceWidgets.floorplanViz.originFinish"
+            : "workspaceWidgets.floorplanViz.originGenerate";
 
   const go = (delta: number) => {
     const idx = group.attempts.indexOf(current);

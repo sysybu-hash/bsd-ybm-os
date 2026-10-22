@@ -127,12 +127,22 @@ describe("which way a piece faces", () => {
     );
   });
 
-  it("turns a chair's back to the table when no wall is near", () => {
+  it("turns a piece's back to the counter beside it — a sink's tap", () => {
+    const piece = { x: 100, y: 200, w: 45, h: 45 };
+    const counter = { x: 100, y: 250, w: 140, h: 90 };
+    expect(
+      facingFor({ piece, walls: [], anchors: [counter], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm }),
+    ).toBe("south");
+  });
+
+  it("turns a chair to face its table, even with a wall as near", () => {
+    // North of the table: its back to the north, its seat to the table.
     const piece = { x: 100, y: 200, w: 45, h: 45 };
     const table = { x: 100, y: 250, w: 140, h: 90 };
+    const sideWall = { x: 80, y: 150, w: 10, h: 300 };
     expect(
-      facingFor({ piece, walls: [], anchors: [table], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm }),
-    ).toBe("south");
+      facingFor({ piece, walls: [sideWall], anchors: [table], roomCentre: { x: 300, y: 200 }, unitsPerMetre: upm, seat: true }),
+    ).toBe("north");
   });
 
   it("otherwise turns it away from the middle of the room", () => {
@@ -165,5 +175,35 @@ describe("seating longer than a metre is a sofa", () => {
   it("leaves a dining chair a chair", () => {
     const parts = partsFor("seat", { wM: 0.5, dM: 0.5, hM: 0.45, facing: "north" });
     expect(parts.filter((p) => p.tag === "leg")).toHaveLength(4);
+  });
+});
+
+describe("an unnamed sanitary fixture", () => {
+  const tags = (spec: { wM: number; dM: number }) => partsFor("fixture", { ...spec, hM: 0.5, facing: "north" }).map((p) => p.tag);
+
+  it("is a pan when it runs out from its wall, and a basin or a block when it does not", () => {
+    // דירה 14's WC, drawn as curves: 60 wide, 66 out from the wall.
+    expect(tags({ wM: 0.6, dM: 0.66 })).toContain("cistern");
+    // Its 57 cm square washer, and a basin along the wall.
+    expect(tags({ wM: 0.57, dM: 0.57 })).not.toContain("cistern");
+    expect(tags({ wM: 0.6, dM: 0.45 })).not.toContain("cistern");
+    // A bath is still a bath.
+    expect(tags({ wM: 0.7, dM: 1.6 })).toContain("tub");
+  });
+});
+
+describe("a bed against a wall along its side", () => {
+  it("puts the head at the short end nearer a wall, not north by default", () => {
+    // A bed 90 × 200 down the page, its long side on the west wall, its foot end
+    // a metre clear of the north wall and its head end at the south wall.
+    const bed = { x: 10, y: 100, w: 90, h: 200 };
+    const walls = [
+      { x: 0, y: 0, w: 10, h: 400 }, // west
+      { x: 0, y: 0, w: 400, h: 10 }, // north, 90 above the bed
+      { x: 0, y: 300, w: 400, h: 10 }, // south, at the bed's end
+    ];
+    expect(headFacing(bed, "west", walls)).toBe("south");
+    // With no wall at either end, north as before.
+    expect(headFacing(bed, "west", [walls[0]!])).toBe("north");
   });
 });

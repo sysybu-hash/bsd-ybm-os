@@ -1422,8 +1422,10 @@ export type FloorplanVizViewId = "overview" | "isometric" | "interior";
  *
  * "render3d" is the deterministic renderer: the measured flat photographed
  * rather than imagined, which is why it carries no audit and costs nothing.
+ * "finish" is that render painted by the image model and checked against it
+ * edge for edge: the render's structure, a photograph's surfaces.
  */
-export type FloorplanVizStillOrigin = "generate" | "edit" | "cad" | "render3d";
+export type FloorplanVizStillOrigin = "generate" | "edit" | "cad" | "render3d" | "finish";
 export type FloorplanVizAuditStatus = "passed" | "needs_review" | "rejected";
 
 export type FloorplanVizImage = {

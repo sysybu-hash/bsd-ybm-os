@@ -148,14 +148,16 @@ export function printedTruthFromRooms(
   let bedrooms = 0;
   let mmd = 0;
   let bathrooms = 0;
-  const terraces: Array<{ m2: number }> = [];
+  const terraces: PrintedTerrace[] = [];
   for (const room of rooms) {
     const kind = room.kind ?? inferRoomKind(room.name);
     if (kind === "bedroom") bedrooms += 1;
     else if (kind === "mmd") mmd += 1;
     else if (kind === "bathroom") bathrooms += 1;
     else if (kind === "balcony" && room.areaM2 != null && room.areaM2 >= 2 && room.areaM2 <= 16) {
-      terraces.push({ m2: room.areaM2 });
+      // Its level with it: a terrace the sheet prints a floor up or down is a
+      // roof terrace, and floorPlateTerraces leaves it out of the plate.
+      terraces.push(room.levelM != null ? { m2: room.areaM2, levelM: room.levelM } : { m2: room.areaM2 });
     }
   }
   if (bedrooms + mmd + bathrooms === 0) return null;
@@ -561,7 +563,7 @@ export function printedTruthFromSheet(
     counts.terraces.length > 0
       ? counts.terraces
       : terraceFigures(sheet.areas, grossM2).map((fig) => ({ m2: fig.value }));
-  return { ...counts, grossM2, terraces };
+  return { ...counts, grossM2, terraces, ...(layout.unitLevelM != null ? { levelM: layout.unitLevelM } : {}) };
 }
 
 /**
