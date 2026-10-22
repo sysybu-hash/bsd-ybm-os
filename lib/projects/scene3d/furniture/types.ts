@@ -23,7 +23,7 @@ export type PieceSpec = {
   /** Modesty rules, applied by the constructors that have to obey them. */
   haredi?: boolean;
   /** Which sanitary fixture, where the reading knows; otherwise told by shape. */
-  fixture?: "bath" | "shower" | "toilet" | "basin";
+  fixture?: "bath" | "shower" | "toilet" | "basin" | "washer";
 };
 
 export type PiecePart = {

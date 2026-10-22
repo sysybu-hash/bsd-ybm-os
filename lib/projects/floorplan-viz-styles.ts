@@ -493,6 +493,72 @@ export const FLOORPLAN_VIZ_PRESETS: Record<FloorplanVizPresetId, FloorplanVizSty
   }),
 };
 
+/**
+ * The style as told to the model that designs the measured layout.
+ *
+ * The presets' prompt blocks were written for the model drawing the flat from
+ * the sales sheet, and read beside a layout whose furniture is fixed they
+ * contradict it: "the plan" and "the sheet" for an image that is neither,
+ * "almost empty rooms" (developer white) against "keep every piece", and a
+ * sefarim cabinet added to the living room (both haredi kits) against "add no
+ * cabinet". A model handed both resolves the contradiction itself, and a
+ * design it resolves the wrong way is refused and paid for again. Here each
+ * style is its materials, palette and mood only; what it may ask of the
+ * furniture is to finish the pieces the layout has.
+ */
+const DESIGN_LOOK: Record<FloorplanVizPresetId, string> = {
+  contemporary:
+    "STYLE — contemporary Israeli apartment: light oak parquet, white plaster walls, cream stone kitchen counters, matte nickel hardware. Warm, calm and lived in.",
+  luxury:
+    "STYLE — luxury Israeli apartment: large-format porcelain or marble floors, fluted wood fronts, recessed cove lighting, slim black or brass profiles, rich upholstery. Refined and soft, evening-neutral light — not a nightclub.",
+  scandi:
+    "STYLE — Scandinavian minimal: white walls, pale birch wood, linen textiles, wool rugs, a few plants. Airy and calm; no gold, no heavy drapes.",
+  jerusalem_stone:
+    "STYLE — Jerusalem stone: warm limestone floors and accent cladding, oak wood, terracotta and stone tones. Wooden shutters only on the windows the layout has.",
+  developer_white:
+    "STYLE — Israeli developer handover: plain white walls, light grey porcelain tile, plain white kitchen cabinets. Every piece the layout has is there, plainly finished, with almost no décor. Cool neutral daylight.",
+  haredi_classic:
+    "STYLE — contemporary haredi family home, warm oak, NOT antique: 2020s Israeli millwork, honey parquet or warm large-format tile, warm recessed lighting, slim profiles. The layout's dining table is a simple modern Shabbat table with a white cloth and candles. Where the layout has a cabinet on a living-room wall, finish it as a flush sefarim cabinet with unmarked spines; never add one. No carved, baroque or period furniture, no heavy velvet drapes.",
+  haredi_modern:
+    "STYLE — minimal contemporary haredi home, NOT antique: pale oak, warm off-white walls, slim profiles, plenty of daylight; a linen throw and a plant on the seating the layout has. No carved wood, no baroque, no heavy drapes, no museum Judaica.",
+};
+
+/** What every style yields to: the layout. */
+export const DESIGN_PRECEDENCE =
+  "The layout comes first. Where this style would ask for a piece the layout does not have — a sofa, a television, a cabinet, a desk, shelving — leave it out and finish the pieces the layout has.";
+
+/**
+ * The modesty and light blocks as told to the design, without what they
+ * assume the flat has. Written for drawing from the sheet, they speak of "a
+ * desk" and "the living seating" and "bedside lamps" as given — and 14's
+ * design came back with a desk and its lamp in two bedrooms; 18 has no
+ * sofa to stand a floor lamp by.
+ */
+export const HAREDI_MODESTY_DESIGN = HAREDI_MODESTY_PROMPT.replace(
+  " A desk holds unmarked books, a lamp, or a clock, never a monitor.",
+  "",
+).replace(
+  /- A desk holds exactly this:[^\n]*/,
+  "- No desk, no laptop open or closed, no tablet, no keyboard, and no dark slab of any size resting on a shelf, a counter or a bedside table anywhere in this apartment.",
+);
+
+export const WARM_LIGHT_DESIGN = WARM_INVITING_LIGHT.replace(
+  "a pendant over the dining table, under-cabinet strips in the kitchen, bedside lamps, a floor lamp beside the living seating, warm cove light along millwork.",
+  "a pendant over the layout's dining table, under-cabinet strips along its kitchen run, a lamp beside each bed and each sofa the layout has, warm cove light along millwork — never a piece of furniture added to hold one.",
+);
+
+export function designStyleBlock(kit: FloorplanVizStyleKit): string {
+  const look = isFloorplanVizPresetId(kit.id)
+    ? DESIGN_LOOK[kit.id]
+    : // A custom kit is the client's own words, kept as they wrote them.
+      kit.promptBlock.replace(/\n\n(MODESTY \(global|AESTHETIC \(haredi)[\s\S]*$/, "").trim();
+  const parts = [look, DESIGN_PRECEDENCE];
+  if (kit.audience === "haredi") parts.push(HAREDI_MODESTY_DESIGN);
+  // The developer handover stays cool, as it does on every other route.
+  if (kit.id !== "developer_white") parts.push(WARM_LIGHT_DESIGN);
+  return parts.join("\n\n");
+}
+
 export function isFloorplanVizPresetId(value: string): value is FloorplanVizPresetId {
   return (FLOORPLAN_VIZ_PRESET_IDS as readonly string[]).includes(value);
 }

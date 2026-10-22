@@ -223,3 +223,170 @@ export function outlineEdges(rects: Rect[], tolerance = 1e-6): Edge[] {
   }
   return out.sort((a, b) => a.orientation.localeCompare(b.orientation) || a.at - b.at || a.from - b.from);
 }
+
+/**
+ * The rows with every part narrower than twice the radius taken off: eroded
+ * by the radius, then grown back by it. A terrace flooded through the gap
+ * between a facade and its sills ran on down the wall in a strip; the strip
+ * goes and the terrace stands as drawn.
+ */
+export function openRows(rows: SpanRow[], radius: number, pitch?: number, closeFirst = 0): SpanRow[] {
+  if (rows.length === 0 || !(radius > 0)) return rows;
+  const step = pitch && pitch > 0 ? pitch : rowPitch(rows);
+  const sorted = [...rows].sort((a, b) => a.y - b.y);
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  for (const row of sorted) for (const [a, b] of row.spans) { x0 = Math.min(x0, a); x1 = Math.max(x1, b); }
+  const cols = Math.ceil((x1 - x0) / step) + 1;
+  const y0 = sorted[0]!.y;
+  const lines = Math.round((sorted[sorted.length - 1]!.y - y0) / step) + 1;
+  if (cols * lines > 4_000_000) return rows;
+  const grid = new Uint8Array(cols * lines);
+  for (const row of sorted) {
+    const r = Math.round((row.y - y0) / step);
+    for (const [a, b] of row.spans) for (let c = Math.round((a - x0) / step); c < Math.round((b - x0) / step); c++) grid[r * cols + c] = 1;
+  }
+  const k = Math.max(1, Math.round(radius / step));
+  const pass = (src: Uint8Array, keep: (count: number, size: number) => boolean) => {
+    const out = new Uint8Array(src.length);
+    for (let r = 0; r < lines; r++) {
+      for (let c = 0; c < cols; c++) {
+        let n = 0;
+        let size = 0;
+        for (let dr = -k; dr <= k; dr++) {
+          for (let dc = -k; dc <= k; dc++) {
+            const rr = r + dr;
+            const cc = c + dc;
+            size++;
+            if (rr >= 0 && rr < lines && cc >= 0 && cc < cols && src[rr * cols + cc]) n++;
+          }
+        }
+        out[r * cols + c] = keep(n, size) ? 1 : 0;
+      }
+    }
+    return out;
+  };
+  // Closed first where asked: a terrace's paving lines leave hairline gaps
+  // in its flood, and eroding through them took 17's whole terrace away.
+  let base = grid;
+  if (closeFirst > 0) {
+    const kc = Math.max(1, Math.round(closeFirst / step));
+    // Past the grid counts as set when eroding back: the dilation was cut at
+    // the grid's edge, and eroding it again took a strip off every side.
+    const passK = (src: Uint8Array, kk: number, keep: (count: number, size: number) => boolean, outside = 0) => {
+      const out = new Uint8Array(src.length);
+      for (let r = 0; r < lines; r++) {
+        for (let c = 0; c < cols; c++) {
+          let n = 0;
+          let size = 0;
+          for (let dr = -kk; dr <= kk; dr++) {
+            for (let dc = -kk; dc <= kk; dc++) {
+              const rr = r + dr;
+              const cc = c + dc;
+              size++;
+              if (rr >= 0 && rr < lines && cc >= 0 && cc < cols ? src[rr * cols + cc] : outside) n++;
+            }
+          }
+          out[r * cols + c] = keep(n, size) ? 1 : 0;
+        }
+      }
+      return out;
+    };
+    base = passK(passK(grid, kc, (n) => n > 0), kc, (n, size) => n === size, 1);
+  }
+  const eroded = pass(base, (n, size) => n === size);
+  const opened = pass(eroded, (n) => n > 0);
+  const out: SpanRow[] = [];
+  for (let r = 0; r < lines; r++) {
+    const spans: Array<[number, number]> = [];
+    let start = -1;
+    for (let c = 0; c <= cols; c++) {
+      const on = c < cols && opened[r * cols + c] === 1 && base[r * cols + c] === 1;
+      if (on && start < 0) start = c;
+      if (!on && start >= 0) {
+        spans.push([x0 + start * step, x0 + c * step]);
+        start = -1;
+      }
+    }
+    if (spans.length) out.push({ y: y0 + r * step, spans });
+  }
+  return out;
+}
+
+/**
+ * A paved terrace held to its paving. The flood runs on the flat's footprint
+ * and stops only at wall, so a terrace edged by a thin line ran past it:
+ * דירה 18's 4.6 m² terrace went on down to the bedroom wall below it. The
+ * joints are drawn over the whole of the paving and nowhere else, so the
+ * region is cut to their extent and a margin of half a tile. Left as it is
+ * when there is no paving to go by, or when the paving is only a sample
+ * drawn in one corner.
+ */
+export function cropToPaving(
+  rows: SpanRow[],
+  segments: ReadonlyArray<{ x1: number; y1: number; x2: number; y2: number }>,
+  unitsPerMetre: number,
+): SpanRow[] {
+  if (rows.length === 0) return rows;
+  const pitch = rowPitch(rows);
+  const contains = (x: number, y: number) =>
+    rows.some((row) => Math.abs(row.y - y) <= pitch / 2 && row.spans.some(([a, b]) => x >= a && x <= b));
+  const joints = segments.filter((s) => {
+    const dx = Math.abs(s.x2 - s.x1);
+    const dy = Math.abs(s.y2 - s.y1);
+    const length = Math.hypot(dx, dy);
+    if (length < unitsPerMetre * 0.15 || length > unitsPerMetre * 2) return false;
+    if (Math.min(dx, dy) > length * 0.02) return false;
+    return contains((s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2);
+  });
+  if (joints.length < 12) return rows;
+  const margin = unitsPerMetre * 0.3;
+  const x0 = Math.min(...joints.flatMap((s) => [s.x1, s.x2])) - margin;
+  const x1 = Math.max(...joints.flatMap((s) => [s.x1, s.x2])) + margin;
+  const y0 = Math.min(...joints.flatMap((s) => [s.y1, s.y2])) - margin;
+  const y1 = Math.max(...joints.flatMap((s) => [s.y1, s.y2])) + margin;
+  const area = (list: SpanRow[]) => list.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0);
+  const cropped = rows
+    .filter((row) => row.y >= y0 && row.y <= y1)
+    .map((row) => ({
+      y: row.y,
+      spans: row.spans
+        .map(([a, b]): [number, number] => [Math.max(a, x0), Math.min(b, x1)])
+        .filter(([a, b]) => b > a),
+    }))
+    .filter((row) => row.spans.length > 0);
+  const kept = area(cropped) / Math.max(1e-9, area(rows));
+  return kept < 0.35 ? rows : cropped;
+}
+
+/**
+ * The rows less what the cuts cover, row by row; the rows themselves where
+ * nothing is cut.
+ */
+export function withoutRows(rows: SpanRow[], cuts: SpanRow[][]): SpanRow[] {
+  if (cuts.length === 0) return rows;
+  const pitch = rows.length > 1 ? Math.abs(rows[1]!.y - rows[0]!.y) || 1 : 1;
+  let changed = false;
+  const out = rows
+    .map((row) => {
+      let spans = row.spans;
+      for (const cut of cuts) {
+        for (const other of cut) {
+          if (Math.abs(other.y - row.y) > pitch / 2) continue;
+          for (const [ca, cb] of other.spans) {
+            spans = spans.flatMap(([a, b]): Array<[number, number]> => {
+              if (cb <= a || ca >= b) return [[a, b]];
+              changed = true;
+              return [
+                ...(ca > a ? [[a, ca] as [number, number]] : []),
+                ...(cb < b ? [[cb, b] as [number, number]] : []),
+              ];
+            });
+          }
+        }
+      }
+      return { y: row.y, spans };
+    })
+    .filter((row) => row.spans.length > 0);
+  return changed ? out : rows;
+}

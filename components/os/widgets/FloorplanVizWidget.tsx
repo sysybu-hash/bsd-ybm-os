@@ -10,6 +10,7 @@ import FloorplanVizResults from "@/components/os/widgets/floorplan-viz/Floorplan
 import FloorplanVizStylePicker from "@/components/os/widgets/floorplan-viz/FloorplanVizStylePicker";
 import FloorplanVizDwfUnitPicker from "@/components/os/widgets/floorplan-viz/FloorplanVizDwfUnitPicker";
 import FloorplanVizBuildingBooklet from "@/components/os/widgets/floorplan-viz/FloorplanVizBuildingBooklet";
+import FloorplanVizPaintContact from "@/components/os/widgets/floorplan-viz/FloorplanVizPaintContact";
 import { OsButton } from "@/components/os/ui";
 import { useFloorplanVizRun } from "@/components/os/widgets/floorplan-viz/useFloorplanVizRun";
 
@@ -41,6 +42,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
     scope,
     setScope,
     runs,
+    access,
     editingKey,
     titleDraft,
     setTitleDraft,
@@ -115,7 +117,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.dwf,.jpg,.jpeg,.png,.webp,.heic,.heif,image/*"
+            accept=".pdf,.dwf"
             className="hidden"
             onChange={(e) => {
               onFile(e.target.files?.[0] ?? null);
@@ -161,17 +163,34 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             variant="primary"
             size="sm"
             loading={loading && pendingCount === 0}
-            disabled={(!file && !result?.runId) || loading || dwf.reading || (dwf.isDwf && !dwf.choice && !result?.runId)}
-            onClick={() => void generate(scope)}
+            disabled={(!file && !result?.runId) || loading || dwf.reading || (dwf.isDwf && !dwf.choice && !result?.runId) || access?.subscriber !== true}
+            onClick={() => void generate(scope, "render3d")}
           >
             {scope === "full"
               ? t("workspaceWidgets.floorplanViz.generateFull")
               : t("workspaceWidgets.floorplanViz.generateOverview")}
           </OsButton>
+          {access?.paint ? (
+            <OsButton
+              variant="secondary"
+              size="sm"
+              loading={loading && pendingCount === 0}
+              disabled={(!file && !result?.runId) || loading || dwf.reading || (dwf.isDwf && !dwf.choice && !result?.runId)}
+              onClick={() => void generate(scope, "finish")}
+            >
+              {t("workspaceWidgets.floorplanViz.paintAction")}
+            </OsButton>
+          ) : null}
         </div>
       </div>
       <div data-widget-scroll-pane className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
         <div className="mb-4 space-y-4">
+          {access?.subscriber === false ? (
+            <p className="rounded-xl border border-[color:var(--border-main)] px-4 py-3 text-sm text-[color:var(--foreground-muted)]">
+              {t("workspaceWidgets.floorplanViz.subscriberOnly")}
+            </p>
+          ) : null}
+          {access?.subscriber && !access.paint ? <FloorplanVizPaintContact t={t} email={access.contactEmail} /> : null}
           <section className="rounded-xl border border-[color:var(--border-main)] p-3">
             <p className="mb-2 text-[11px] font-semibold">{t("workspaceWidgets.floorplanViz.library")}</p>
             <FloorplanVizLibrary
@@ -266,9 +285,9 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             geometry={result?.geometry}
             runId={result?.runId}
             editingKey={editingKey}
-            onEditStill={(img, instruction, region) => void editStill(img, instruction, region)}
-            onImproveStill={(img, failures) => void improveStill(img, failures)}
-            onRescanStill={(img) => void rescanStill(img)}
+            onEditStill={access?.paint ? (img, instruction, region) => void editStill(img, instruction, region) : undefined}
+            onImproveStill={access?.paint ? (img, failures) => void improveStill(img, failures) : undefined}
+            onRescanStill={access?.paint ? (img) => void rescanStill(img) : undefined}
             onDeleteStill={(img) => void deleteStill(img)}
             onSelectStill={(img) => void selectStill(img)}
             onDismissIssue={(img, issue, dismissed) => void dismissIssue(img, issue, dismissed)}

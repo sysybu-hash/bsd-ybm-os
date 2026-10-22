@@ -986,44 +986,44 @@
     "subheadline": "Choose the precise subscription for your business needs",
     "choose": "Choose Plan",
     "free": {
-      "name": "FREE",
-      "price": "$0",
-      "desc": "For basic personal management",
-      "f1": "10 AI scans per month",
-      "f2": "Basic expense tracking",
-      "f3": "Access to the Avenue dashboard"
+      "name": "Free",
+      "price": "₪0",
+      "desc": "10 standard scans, no premium. Waits for an admin.",
+      "f1": "10 standard scans",
+      "f2": "0 premium scans",
+      "f3": "One company"
     },
     "household": {
-      "name": "HOUSEHOLD",
-      "price": "$9",
-      "desc": "For households",
-      "f1": "50 AI scans per month",
-      "f2": "Multi-engine scanning",
-      "f3": "Basic flow forecasting"
+      "name": "Household",
+      "price": "₪59.90",
+      "desc": "Home use",
+      "f1": "50 standard scans a month",
+      "f2": "5 premium scans",
+      "f3": "One company"
     },
     "dealer": {
-      "name": "DEALER",
-      "price": "$29",
-      "desc": "Freelancers & Solopreneurs",
-      "f1": "200 AI scans per month",
-      "f2": "Autonomous negotiation agent",
-      "f3": "CRM client management"
+      "name": "Licensed dealer",
+      "price": "₪99.90",
+      "desc": "The recommended plan for a one-person business",
+      "f1": "100 standard scans a month",
+      "f2": "15 premium scans",
+      "f3": "One company"
     },
     "company": {
-      "name": "COMPANY",
-      "price": "$59",
-      "desc": "Teams & Small companies",
-      "f1": "1000 AI scans per month",
-      "f2": "Inventory & Field Ops",
-      "f3": "Meckano & full sync"
+      "name": "Company",
+      "price": "₪159.90",
+      "desc": "A team with two companies",
+      "f1": "200 standard scans a month",
+      "f2": "40 premium scans",
+      "f3": "Up to 2 companies"
     },
     "corporate": {
-      "name": "CORPORATE",
-      "price": "Custom",
-      "desc": "Enterprises & Groups",
-      "f1": "Unlimited scans",
-      "f2": "Premium negotiation agent",
-      "f3": "VIP support & integrations"
+      "name": "Corporate",
+      "price": "₪299.90",
+      "desc": "Several companies",
+      "f1": "500 standard scans a month",
+      "f2": "100 premium scans",
+      "f3": "No practical company cap"
     }
   },
   "platformAdmin": {
@@ -1750,6 +1750,12 @@
     "unsupported_action": "Unsupported action type",
     "use_notebook_endpoint": "Use /api/notebooklm/from-scan for notebooks",
     "rate_limited": "Rate limit reached. Try again later.",
+    "invalid_budget": "The budget cap is not valid.",
+    "invalid_action": "Unknown action.",
+    "invalid_state": "The job is not in a state that allows this action.",
+    "picture_not_found": "Picture not found.",
+    "booklet_not_saved": "The booklet was not saved.",
+    "booklet_not_ready": "The booklet is not ready yet.",
     "viz_edit_redrew_frame": "The edit redrew the frame instead of fixing it — the previous still was kept.",
     "cad_unreadable": "The CAD file could not be read. Save the drawing again as DXF or PDF and try again.",
     "dwg_conversion_unavailable": "DWG conversion is not available — save the drawing as DXF and upload that.",

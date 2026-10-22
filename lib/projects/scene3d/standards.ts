@@ -50,6 +50,13 @@ export const GLASS_T_M = 0.012;
 /** The metal capping on top of a glass balustrade. */
 export const RAIL_CAP_M = 0.05;
 
+/**
+ * The capping's width: a handrail, wider than the glass it caps. As thin as
+ * the glass it was a 12 mm line from above, and the terraces read as having
+ * no railing at all.
+ */
+export const RAIL_CAP_W_M = 0.06;
+
 /** Skirting: how tall, and how far it stands proud of the wall face. */
 export const SKIRTING_H_M = 0.08;
 export const SKIRTING_PROUD_M = 0.015;

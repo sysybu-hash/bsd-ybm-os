@@ -23,6 +23,10 @@ export type PlanOpening = {
   outward?: 1 | -1;
   /** Glazed to the floor: a door onto a terrace, not a window over a sill. */
   full?: boolean;
+  /** A door the plan draws — its leaf's swing — in an outside wall: to the floor, in a frame. */
+  door?: boolean;
+  /** A sliding door the plan draws — its panels on tracks of their own — glazed to the floor; no leaf swings. */
+  sliding?: boolean;
   /** Its sill and head above the floor, where an elevation draws them. */
   sill?: number;
   head?: number;

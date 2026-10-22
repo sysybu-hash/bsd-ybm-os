@@ -1,6 +1,7 @@
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { inferRoomKind, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
+  bodyRect,
   bridgeGlazedGaps,
   bridgeOpenings,
   interiorComponents,
@@ -265,10 +266,11 @@ function restitchFurnishedFragments(
     // A cell with a WC or a basin in it is a room of its own, not the end of
     // the next one: put back, דירה 16's WC went into the bathroom beside it and
     // the flat lost a bathroom.
-    if (
-      area(rows) >= WET_CELL_MIN_M2 &&
-      inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")
-    ) {
+    // Nor is a smaller piece holding one: a pan's own outline stops the
+    // flood, and 21's WC pan, cut off in a sliver of its cell, was put into
+    // the twin bedroom across the wall — and the bedroom was then cut in two
+    // as a bedroom and a bathroom in one.
+    if (inside.some((piece) => piece.kind === "fixture" || piece.kind === "sink")) {
       return;
     }
     const [lo, hi] = xRange(rows);
@@ -438,9 +440,39 @@ export function segmentRooms(input: {
   ];
   // The pen the walls are drawn with, read off this sheet rather than assumed.
   const inkCut = wallInkThreshold(input.segments ?? []);
-  const ink = (input.segments ?? []).filter(
-    (segment) => segment.lineWidth >= inkCut && isAxisAligned(segment),
-  );
+  // A room's name is lettered in strokes of the same pen, and its letters
+  // are short axis lines in the middle of the floor: 22's "ח.אמבטיה" sealed
+  // across its bathroom and cut it in two. A short stroke counts only where
+  // it meets a wall — a jamb's cap, a frame — and never standing clear.
+  const wallRects = bodies.map(bodyRect);
+  const nearWall = (x: number, y: number) => {
+    const e = unitsPerMetre * 0.05;
+    return wallRects.some((r) => x >= r.x - e && x <= r.x + r.w + e && y >= r.y - e && y <= r.y + r.h + e);
+  };
+  // Nor a dimension chain: it runs straight through the walls it measures,
+  // and 21's "381" across the twin bedroom cut the room's lower metre off
+  // as a corridor. A wall's face stops at the walls it meets; a line through
+  // the middle of two of them is not a face.
+  const crossesWalls = (segment: VectorSegment) => {
+    const h = Math.abs(segment.y2 - segment.y1) < Math.abs(segment.x2 - segment.x1);
+    const a = h ? Math.min(segment.x1, segment.x2) : Math.min(segment.y1, segment.y2);
+    const b = h ? Math.max(segment.x1, segment.x2) : Math.max(segment.y1, segment.y2);
+    const at = h ? (segment.y1 + segment.y2) / 2 : (segment.x1 + segment.x2) / 2;
+    const m = unitsPerMetre * 0.02;
+    let n = 0;
+    for (const r of wallRects) {
+      const [lo, hi, across0, across1] = h ? [r.x, r.x + r.w, r.y, r.y + r.h] : [r.y, r.y + r.h, r.x, r.x + r.w];
+      if (lo > a + m && hi < b - m && at > across0 + m && at < across1 - m) n++;
+      if (n >= 2) return true;
+    }
+    return false;
+  };
+  const ink = (input.segments ?? []).filter((segment) => {
+    if (segment.lineWidth < inkCut || !isAxisAligned(segment)) return false;
+    if (crossesWalls(segment)) return false;
+    if (Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) >= unitsPerMetre * 0.25) return true;
+    return nearWall(segment.x1, segment.y1) || nearWall(segment.x2, segment.y2);
+  });
   // The border flood decides inside from outside by trying to reach in, and on
   // a sheet whose envelope is drawn in one pen throughout that works. A plotted
   // sheet draws part of its outer wall in the same thin pen as its dimension
@@ -480,8 +512,13 @@ export function segmentRooms(input: {
     // that makes an empty region a room. Dropped, the flat lost a bathroom:
     // four reference sheets did, once rooms stopped being joined across walls.
     if (areaM2 < minRoomM2 && !(named.length > 0 && areaM2 >= WET_CELL_MIN_M2)) {
+      // The cell's size with its pan and basin in it: their outlines are
+      // flooded round, and 21's WC measured a fraction of its 90 by 120.
+      const fixtureM2 = standing
+        .filter((piece) => piece.kind === "fixture" || piece.kind === "sink")
+        .reduce((t, piece) => t + (piece.w * piece.h) / (unitsPerMetre * unitsPerMetre), 0);
       const hasFixture =
-        areaM2 >= WET_CELL_MIN_M2 &&
+        areaM2 + fixtureM2 >= WET_CELL_MIN_M2 &&
         // Standing in it, not an island beside it: a balcony's drain symbol
         // is drawn closed too, and pulled in it kept a balcony as a bathroom.
         standing.some(
@@ -548,13 +585,17 @@ export function segmentRooms(input: {
     });
   }
 
-  const split = splitMergedWetRooms(rooms, {
-    bodies,
-    ink,
+  const split = splitLooselyJoined(
+    splitMergedWetRooms(rooms, {
+      bodies,
+      ink,
+      unitsPerMetre,
+      floorPitch,
+      minRoomM2,
+    }),
     unitsPerMetre,
-    floorPitch,
     minRoomM2,
-  });
+  );
 
   // The ממ"ד is the bedroom the sheet marks with its "+2" sill, and no other.
   //
@@ -587,6 +628,180 @@ export function segmentRooms(input: {
     return { ...room, name: `${room.name} ${index}` };
   });
   return markEntranceHall(named, openings, floor, unitsPerMetre);
+}
+
+/**
+ * A room that is two rooms joined by a sliver: each part a room's size, and
+ * where they meet narrower than anyone walks through. On דירה 14 the corridor
+ * and the guest WC at its end came back as one "bathroom" — the corridor's
+ * floor with the WC's pan. Each part is its own room again, of the kind its
+ * own pieces make it.
+ */
+function splitLooselyJoined(rooms: SegmentedRoom[], unitsPerMetre: number, minRoomM2: number): SegmentedRoom[] {
+  const sliver = unitsPerMetre * 0.3;
+  const areaM2 = (rows: SpanRow[]) => spanArea(rows) / (unitsPerMetre * unitsPerMetre);
+  const asRoom = (rows: SpanRow[], contents: FurniturePiece[], pitch: number): SegmentedRoom => {
+    const area = areaM2(rows);
+    const classified = classifyRoomFromContents({ areaM2: area, contents });
+    return {
+      rows,
+      bounds: boundsOf(rows, pitch),
+      areaM2: Math.round(area * 100) / 100,
+      kind: classified.kind,
+      name: KIND_NAME_HE[classified.kind],
+      bedCount: classified.bedCount,
+      contents,
+    };
+  };
+  const out: SegmentedRoom[] = [];
+  const strays: Array<{ rows: SpanRow[]; contents: FurniturePiece[]; home: SegmentedRoom }> = [];
+  for (const room of rooms) {
+    if (room.kind === "balcony" || room.rows.length < 2) {
+      out.push(room);
+      continue;
+    }
+    const pitch = rowPitch(room.rows);
+    const parts = componentsOf(room.rows, pitch, sliver);
+    if (parts.length < 2) {
+      out.push(room);
+      continue;
+    }
+    // Joined once its furniture stands on it again: the floor is flooded
+    // round the pieces, so beds side by side leave only a sliver between the
+    // room and the strip at their feet — 21's twin bedroom lost its lower
+    // metre as a "corridor" that way. A neck made by furniture is not one.
+    const furnished = room.rows.map((row) => {
+      const spans: Array<[number, number]> = row.spans.map(([a, b]) => [a, b]);
+      for (const piece of room.contents) {
+        if (row.y >= piece.y && row.y <= piece.y + piece.h) spans.push([piece.x, piece.x + piece.w]);
+      }
+      spans.sort((p, q) => p[0] - q[0]);
+      const merged: Array<[number, number]> = [];
+      for (const span of spans) {
+        const last = merged[merged.length - 1];
+        if (last && span[0] <= last[1] + pitch) last[1] = Math.max(last[1], span[1]);
+        else merged.push([span[0], span[1]]);
+      }
+      return { y: row.y, spans: merged };
+    });
+    if (componentsOf(furnished, pitch, sliver).length < 2) {
+      out.push(room);
+      continue;
+    }
+    // Each piece to the part it stands in, or the nearest: a pan's own ink
+    // stops the flood, and its centre can fall outside both.
+    const boxes = parts.map((rows) => boundsOf(rows, pitch));
+    const partOf = (piece: FurniturePiece) => {
+      const cx = piece.x + piece.w / 2;
+      const cy = piece.y + piece.h / 2;
+      const inside = parts.findIndex((rows) => covers(rows, pitch, cx, cy));
+      if (inside >= 0) return inside;
+      return boxes.reduce((best, b, k) => (boxGap(b, cx, cy) < boxGap(boxes[best]!, cx, cy) ? k : best), 0);
+    };
+    const withContents = parts.map((rows, k) => ({ rows, contents: room.contents.filter((piece) => partOf(piece) === k) }));
+    // A part stands as a room at a room's size, or at a WC cell's with a pan
+    // or a basin in it — 21's WC, joined to the bedroom's foot by a sliver.
+    const stands = withContents.filter(
+      ({ rows, contents }) =>
+        areaM2(rows) >= minRoomM2 ||
+        (areaM2(rows) >= 0.4 && contents.some((piece) => piece.kind === "fixture" || piece.kind === "sink")),
+    );
+    if (stands.length === 0) {
+      out.push(room);
+      continue;
+    }
+    const made = stands.map(({ rows, contents }) => asRoom(rows, contents, pitch));
+    out.push(...made);
+    // The rest — 21's strip at the beds' feet, cut off from its bedroom by
+    // the beds' own outlines — goes to the room beside it.
+    const biggest = made.reduce((a, b) => (b.areaM2 > a.areaM2 ? b : a));
+    for (const part of withContents) {
+      if (stands.includes(part)) continue;
+      strays.push({ ...part, home: biggest });
+    }
+  }
+  const reach = unitsPerMetre * 0.35;
+  for (const stray of strays) {
+    const pitch = rowPitch(stray.rows);
+    // The room it shares the most border with, read off the floor round it,
+    // not off bounding boxes: the living room's box covered 21's strip whole.
+    const probes: Array<[number, number]> = [];
+    const sorted = [...stray.rows].sort((a, b) => a.y - b.y);
+    const ends = [sorted[0]!, sorted[sorted.length - 1]!];
+    for (const [k, row] of ends.entries()) {
+      for (const [a, b] of row.spans) {
+        for (let x = a; x <= b; x += 2) {
+          for (let d = pitch; d <= reach; d += pitch) probes.push([x, k === 0 ? row.y - d : row.y + d]);
+        }
+      }
+    }
+    for (const row of sorted) {
+      for (const [a, b] of row.spans) {
+        for (let d = 2; d <= reach; d += 2) probes.push([a - d, row.y], [b + d, row.y]);
+      }
+    }
+    const touching = out
+      .filter((room) => room.kind !== "balcony")
+      .map((room) => {
+        const p = rowPitch(room.rows);
+        return { room, hits: probes.filter(([x, y]) => covers(room.rows, p, x, y)).length };
+      })
+      .filter(({ hits }) => hits > 0)
+      .sort((a, b) => b.hits - a.hits)[0]?.room;
+    const into = touching ?? stray.home;
+    // Row by row, so a y held by both is one row: the area is read off the
+    // rows' pitch, and a repeated y made it zero.
+    const byY = new Map<number, Array<[number, number]>>();
+    for (const row of [...into.rows, ...stray.rows]) byY.set(row.y, [...(byY.get(row.y) ?? []), ...row.spans]);
+    into.rows = [...byY.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([y, spans]) => ({ y, spans: spans.sort((a, b) => a[0] - b[0]) }));
+    into.contents = [...into.contents, ...stray.contents];
+    into.bounds = boundsOf(into.rows, rowPitch(into.rows));
+    into.areaM2 = Math.round(areaM2(into.rows) * 100) / 100;
+  }
+  return out;
+}
+
+function boxGap(b: { x: number; y: number; width: number; height: number }, x: number, y: number): number {
+  return Math.hypot(Math.max(b.x - x, x - (b.x + b.width), 0), Math.max(b.y - y, y - (b.y + b.height), 0));
+}
+
+/** The rows' parts, joined row to row only where they overlap by `join`. */
+export function componentsOf(rows: SpanRow[], pitch: number, join: number): SpanRow[][] {
+  const sorted = [...rows].sort((a, b) => a.y - b.y);
+  const spans: Array<{ row: number; a: number; b: number }> = [];
+  sorted.forEach((row, r) => row.spans.forEach(([a, b]) => spans.push({ row: r, a, b })));
+  const parent = spans.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  const byRow = new Map<number, number[]>();
+  spans.forEach((span, i) => byRow.set(span.row, [...(byRow.get(span.row) ?? []), i]));
+  for (const [r, list] of byRow) {
+    const prev = byRow.get(r - 1);
+    if (!prev || Math.abs(sorted[r]!.y - sorted[r - 1]!.y) > pitch * 1.5) continue;
+    for (const i of list) {
+      for (const j of prev) {
+        const overlap = Math.min(spans[i]!.b, spans[j]!.b) - Math.max(spans[i]!.a, spans[j]!.a);
+        // A sliver joins the rest of itself, row to row, but not what it
+        // runs into.
+        const wi = spans[i]!.b - spans[i]!.a;
+        const wj = spans[j]!.b - spans[j]!.a;
+        const bothNarrow = wi < join && wj < join && overlap >= 0.9 * Math.min(wi, wj);
+        if (overlap >= join || bothNarrow) parent[find(i)] = find(j);
+      }
+    }
+  }
+  const groups = new Map<number, SpanRow[]>();
+  spans.forEach((span, i) => {
+    const key = find(i);
+    const list = groups.get(key) ?? [];
+    const y = sorted[span.row]!.y;
+    const last = list[list.length - 1];
+    if (last && last.y === y) last.spans.push([span.a, span.b]);
+    else list.push({ y, spans: [[span.a, span.b]] });
+    groups.set(key, list);
+  });
+  return [...groups.values()];
 }
 
 type ClusterPoint = { x: number; y: number };

@@ -1,0 +1,439 @@
+import sharp from "sharp";
+
+import { parseModelJsonText } from "@/lib/ai-document-json";
+import { getAnthropicModelCandidates, isAnthropicConfigured, isAnthropicEligibleForModelFallback } from "@/lib/ai-providers";
+import { recordAiUsage, usageFromAnthropic } from "@/lib/ai-usage";
+import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
+import { recordAmbientFloorplanSpend } from "@/lib/projects/floorplan-spend";
+
+/**
+ * Did the painting change the flat?
+ *
+ * The general still audit judges a picture against a plan, and is told to
+ * prefer false alarms; asked about a painting of a measured render it called
+ * a single bed with a headboard double, run after run. This asks the narrower
+ * question the painting answers to: the render beside the painting, and only
+ * what the painting changed — a bed made wider, a second bed, a screen, words,
+ * a room or a terrace that is not in the render, the plan turned.
+ */
+
+const log = createLogger("floorplan-finish-judge");
+
+export type FinishComparison = {
+  bedWidened: boolean;
+  bedAdded: boolean;
+  bedRemoved: boolean;
+  furnitureAdded: boolean;
+  /** Beds counted in each: a painting that counts otherwise has lost or made one. */
+  bedsInRender: number;
+  bedsInPainting: number;
+  sofasInRender: number;
+  sofasInPainting: number;
+  /** Against the measured inventory: pieces the painting has beyond it, and ones it lacks. */
+  extraPieces: string[];
+  missingPieces: string[];
+  /** A bed two people wide: two pillows side by side. */
+  doubleBed: boolean;
+  screenAdded: boolean;
+  textAdded: boolean;
+  spaceAdded: boolean;
+  turnedOrMirrored: boolean;
+  notes: string;
+};
+
+const INSTRUCTION = `
+Image 1 is an exact architectural RENDER of an apartment seen from above. Image 2 is a PAINTING of that render: the same view repainted with photographic materials.
+The painting may change surfaces, colours, textures, light, plants and small decor. It may NOT change the apartment.
+
+Compare image 2 to image 1, bed by bed and room by room. Report only what the painting CHANGED:
+- bedWidened: a bed in the painting is clearly wider than the same bed in the render (e.g. a one-person bed painted as a two-person bed, two pillows side by side where the render has one).
+- bedAdded: the painting has a bed where the render has none.
+- bedRemoved: a bed in the render is missing from the painting, or painted as something else (a sofa, a bench, a table).
+- furnitureAdded: the painting has a sofa, armchair, table, bed, cabinet or appliance where the render has NO furniture at all. (Plants, cushions, throws, lamps and small decor on existing furniture do not count.)
+- screenAdded: the painting adds a television, monitor or screen.
+- textAdded: the painting adds letters, numbers, signs or logos.
+- spaceAdded: the painting adds a room, terrace, balcony or outdoor area the render does not have, or opens a wall the render closes.
+- turnedOrMirrored: the painting is rotated or mirrored relative to the render.
+Also COUNT the beds in each image (a bed is a mattress with a pillow; a sofa has a back and arms): bedsInRender, bedsInPainting; and the sofas and armchairs: sofasInRender, sofasInPainting.
+Judge by comparison, not by your idea of a typical flat.
+{INVENTORY} If a bed has the same width in both images it is NOT widened, whatever its size.
+
+Return JSON only:
+{"bedWidened": false, "bedAdded": false, "bedRemoved": false, "furnitureAdded": false, "screenAdded": false, "textAdded": false, "spaceAdded": false, "turnedOrMirrored": false, "bedsInRender": 0, "bedsInPainting": 0, "sofasInRender": 0, "sofasInPainting": 0, "extraPieces": [], "missingPieces": [], "doubleBed": false, "notes": "one short sentence"}
+`;
+
+function imagePart(base64: string) {
+  return { type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg", data: base64 } };
+}
+
+/**
+ * The models that judge. A judge has to see a pillow: the fallback chain ends
+ * on Haiku, which passed a painting with four sofas, a coffee table and an
+ * island where the drawing has two sofas. Sonnet 5 first: Sonnet 4.6 said
+ * no bed in four of 14's five frames that each held one, and no armchair
+ * where one stood; Sonnet 5 saw them all, twice, and what the design really
+ * added — a desk in two bedrooms.
+ */
+const JUDGE_MODELS = ["claude-sonnet-5", "claude-sonnet-4-6", "claude-opus-4-7"];
+
+async function askClaude(key: string, content: unknown[], maxTokens: number): Promise<{ raw: Record<string, unknown>; model: string } | null> {
+  for (const model of [...new Set([...JUDGE_MODELS, ...getAnthropicModelCandidates().filter((m) => !/haiku/i.test(m))])]) {
+    // A dropped connection or an overloaded API is tried again on the same
+    // model, twice, after a pause: one "fetch failed" left a design unjudged,
+    // and the next models in the list are not served to this key.
+    for (let tryNo = 0; tryNo < 3; tryNo++) {
+      if (tryNo > 0) await new Promise((resolve) => setTimeout(resolve, 1500 * tryNo));
+      let res: Response;
+      try {
+        res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
+          // Temperature only where the model takes it: the 5-series refuse
+          // the field ("deprecated for this model") with a 400.
+          body: JSON.stringify({
+            model,
+            max_tokens: maxTokens,
+            ...(/claude-[a-z]+-4/.test(model) ? { temperature: 0 } : {}),
+            messages: [{ role: "user", content }],
+          }),
+        });
+      } catch (err: unknown) {
+        log.warn("finish judge error", { model, tryNo, error: err instanceof Error ? err.message : String(err) });
+        continue;
+      }
+      const body = await res.text().catch(() => res.statusText);
+      if (res.status === 429 || res.status >= 500) {
+        log.info("finish judge busy; again", { model, status: res.status, tryNo });
+        continue;
+      }
+      if (!res.ok) {
+        if (isAnthropicEligibleForModelFallback(res.status, body)) {
+          log.info("finish judge model unavailable; next", { model, status: res.status });
+          break;
+        }
+        log.warn("finish judge failed", { model, status: res.status });
+        return null;
+      }
+      try {
+        const parsed = JSON.parse(body) as { model?: string; content?: Array<{ type?: string; text?: string }> };
+        recordAiUsage(parsed.model ?? model, usageFromAnthropic(parsed));
+        return { raw: parseModelJsonText(parsed.content?.find((c) => c.type === "text")?.text ?? body), model };
+      } catch (err: unknown) {
+        log.warn("finish judge unreadable", { model, error: err instanceof Error ? err.message : String(err) });
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
+export async function compareFinishWithClaude(render: Buffer, painting: Buffer, inventory?: string): Promise<FinishComparison | null> {
+  if (!isAnthropicConfigured()) return null;
+  recordAmbientFloorplanSpend("audit", "claude-finish-judge");
+  const key = env.ANTHROPIC_API_KEY!.trim();
+  const instruction = INSTRUCTION.replace(
+    "{INVENTORY}",
+    inventory
+      ? `The apartment's furniture as measured from the drawing, with where each piece stands on the plan (seen from above, north up):
+${inventory}
+Count the PAINTING against this list, place by place. extraPieces: every piece the painting has beyond it — a sofa, armchair, chair, table, coffee table, kitchen island, bed or wardrobe more than listed at a place (plants, rugs, cushions, lamps and small decor do not count). missingPieces: every listed piece the painting lacks. doubleBed: any bed painted two people wide, two pillows side by side.`
+      : "extraPieces and missingPieces: leave empty. doubleBed: any bed painted two people wide, two pillows side by side.",
+  );
+  // Room-by-room lists and a note: 400 tokens cut the JSON off mid-list.
+  const asked = await askClaude(key, [imagePart(render.toString("base64")), imagePart(painting.toString("base64")), { type: "text", text: instruction }], 1500);
+  if (!asked) return null;
+  const { raw, model } = asked;
+  const count = (v: unknown) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : -1);
+  const out: FinishComparison = {
+    bedWidened: raw.bedWidened === true,
+    bedAdded: raw.bedAdded === true,
+    bedRemoved: raw.bedRemoved === true,
+    furnitureAdded: raw.furnitureAdded === true,
+    bedsInRender: count(raw.bedsInRender),
+    bedsInPainting: count(raw.bedsInPainting),
+    sofasInRender: count(raw.sofasInRender),
+    sofasInPainting: count(raw.sofasInPainting),
+    extraPieces: Array.isArray(raw.extraPieces) ? raw.extraPieces.map(String).slice(0, 12) : [],
+    missingPieces: Array.isArray(raw.missingPieces) ? raw.missingPieces.map(String).slice(0, 12) : [],
+    doubleBed: raw.doubleBed === true,
+    screenAdded: raw.screenAdded === true,
+    textAdded: raw.textAdded === true,
+    spaceAdded: raw.spaceAdded === true,
+    turnedOrMirrored: raw.turnedOrMirrored === true,
+    notes: typeof raw.notes === "string" ? raw.notes.slice(0, 200) : "",
+  };
+  log.info("finish comparison", { model, ...out });
+  return out;
+}
+
+/** A spot in the design where the layout has a piece: its box in the layout's frame, pixels. */
+export type PieceSpot = { kind: string; place: string; x: number; y: number; w: number; h: number; chairs?: number };
+
+const CHAIRS = `
+This is a top-down picture of a dining table. Count every chair, stool and bench seat standing round it, one by one.
+Return JSON only: {"chairs": 0}
+`;
+
+const SCREEN_SPOT = `
+This is a top-down picture of part of a living room, the view from a sofa toward the wall across. Is there a television, monitor or any other screen in it — a flat dark panel on the wall or on a low cabinet? Lamps, mirrors, paintings, windows, doors, wardrobes, bookcases and kitchen appliances are not screens.
+Return JSON only: {"screen": false}
+`;
+
+const SEATS = `
+This is a top-down picture of a living room's seating. Count the separate sofas and armchairs, one by one: a long sofa is one piece, two sofas set end to end are two. Do not count cushions, side tables or coffee tables.
+Return JSON only: {"chairs": 0}
+`;
+
+/**
+ * The design cut to a spot with room round it, the spot itself framed in red
+ * when asked: told to look at the middle half, the judge named the sofa
+ * standing just past a square of open floor as standing on it.
+ */
+async function cropSpot(sized: Buffer, frame: { width: number; height: number }, s: PieceSpot, pad: number, framed = false) {
+  const left = Math.max(0, s.x - pad);
+  const top = Math.max(0, s.y - pad);
+  const width = Math.min(frame.width - left, s.w + 2 * pad);
+  const height = Math.min(frame.height - top, s.h + 2 * pad);
+  let crop = sharp(sized).extract({ left, top, width, height });
+  if (framed) {
+    const line = Math.max(3, Math.round(Math.max(width, height) / 140));
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect x="${s.x - left}" y="${s.y - top}" width="${s.w}" height="${s.h}" fill="none" stroke="#ff0000" stroke-width="${line}"/></svg>`;
+    crop = sharp(await crop.composite([{ input: Buffer.from(svg) }]).toBuffer());
+  }
+  const out = await crop.resize(420, 420, { fit: "inside" }).jpeg({ quality: 88 }).toBuffer();
+  return imagePart(out.toString("base64"));
+}
+
+const SPOTS = `
+Each image is a crop of a top-down picture of an apartment, with one spot framed by a thin red line. For each image, list every piece that stands INSIDE THE RED FRAME — on it or reaching into it — and nothing that stands wholly outside the frame, in these words:
+bed, sofa, armchair, ottoman, chair, dining table, coffee table, side table, lamp, wardrobe, cabinet, kitchen counter, kitchen island, toilet, bath, shower, basin, television, plant, rug, empty floor, wall, other.
+Return JSON only, one list per image in order: {"answers": [["bed", "wall"], ["empty floor"], ...]}
+`;
+
+/**
+ * The piece a spot is asked about, as the question names it. Not a WC, a
+ * kitchen run or a wardrobe: a WC drawn small in its wall's shadow, an island
+ * with its stools and a wardrobe in timber were answered "not there" in
+ * designs that had them.
+ */
+const PIECE_WORD: Record<string, string> = {
+  beds: "bed",
+  sofas: "sofa",
+  armchairs: "armchair",
+  "dining tables": "dining table",
+  // A bath is large and plain from above, and a design swapped 22's for a
+  // shower; asked whether one is there, a judge can tell.
+  baths: "bath",
+  toilets: "toilet",
+};
+
+/** What each kind looks like from above, and what else counts as it. */
+const PIECE_LOOK: Record<string, string> = {
+  // Not "a long mattress": a designed single with its throw read as no bed
+  // at all in four of 14's five frames.
+  beds: "a bed — seen from above a mattress, usually with a pillow at one end and bedding or a throw over it; a day bed counts",
+  sofas: "a sofa — a seat for two or more with a back and arms",
+  armchairs: "an armchair, or another upholstered seat for one such as a pouf",
+  "dining tables": "a dining table",
+  baths: "a bathtub — a long tub with a rim, the length of a person, not a shower tray",
+  toilets: "a toilet — a WC pan with its cistern, seen from above",
+};
+
+/** The second look at a piece: the layout's spot and the design's, side by side. */
+function compareQuestion(kind: string): string {
+  return `Two crops of the same spot, framed by a thin red line: the first from a plain 3D layout of an apartment seen from above, the second from a designed, photorealistic version of it. The layout has ${PIECE_LOOK[kind] ?? kind} in its frame. Does the design also have one in its frame — restyled, recoloured or with different bedding, but the same piece in the same place? Return JSON only: {"answer": true} or {"answer": false}`;
+}
+
+/** One yes-or-no question per crop, in order: is the named piece in its frame? */
+function piecesQuestion(kinds: string[]): string {
+  const lines = kinds.map((k, i) => `${i + 1}. Is there ${PIECE_LOOK[k] ?? k} inside the red frame (on it or reaching into it)?`);
+  return `Each image is a crop of a top-down picture of an apartment, with one spot framed by a thin red line. Answer each question about its own image, in order:
+${lines.join("\n")}
+Return JSON only, one answer per image in order: {"answers": [true, false]}`;
+}
+
+
+
+
+/**
+ * A yes, however it comes back: true, "true", "yes", 1, or an object holding
+ * one. Read as strictly true, a "yes" was a piece missing.
+ */
+export function isYes(answer: unknown): boolean {
+  if (answer === true || answer === 1) return true;
+  if (typeof answer === "string") return /^\s*(true|yes|y|1)\b/i.test(answer);
+  if (answer && typeof answer === "object") {
+    const value = Object.values(answer as Record<string, unknown>)[0];
+    return value !== answer && isYes(value);
+  }
+  return false;
+}
+
+/** What a design may put on the layout's open floor: decor, never furniture. */
+const DECOR = new Set(["empty floor", "rug", "plant", "lamp", "side table", "wall", "other"]);
+
+/**
+ * Each piece the layout has, looked for where it stands in the design: the
+ * design cut to that spot, and a call shown the crops alone asked what is at
+ * each centre. Shown the whole flat, judges counted beds as one and missed an
+ * added sofa; a crop has one thing in the middle. Answers the pieces missing,
+ * or null when nobody answered.
+ */
+/**
+ * What a spot check found wrong, and where, in the layout's frame: "clear"
+ * where the design added something, "restore" where it lost a piece.
+ */
+export type SpotFinding = { reason: string; box: { x: number; y: number; w: number; h: number }; action: "clear" | "restore" };
+
+export async function checkSpotsWithClaude(design: Buffer, layout: Buffer, spots: PieceSpot[]): Promise<SpotFinding[] | null> {
+  const checked = spots.filter((s) => (PIECE_WORD[s.kind] || s.kind === "open floor") && s.w > 4 && s.h > 4);
+  // Sofas and armchairs counted, not dining chairs: asked twice, a table of
+  // eight came back 6, 7 and 10, both looks agreeing.
+  const sets = spots.filter((s) => s.kind === "seating group" && s.chairs != null && s.w > 4 && s.h > 4);
+  const facing = spots.filter((s) => s.kind === "facing sofa" && s.w > 4 && s.h > 4);
+  if (checked.length === 0) return [];
+  if (!isAnthropicConfigured()) return null;
+  recordAmbientFloorplanSpend("audit", "claude-finish-spots");
+  const meta = await sharp(layout).metadata();
+  const frame = { width: meta.width ?? 0, height: meta.height ?? 0 };
+  const sized = await sharp(design).resize(frame.width, frame.height, { fit: "fill" }).toBuffer();
+  // Each spot framed in red with room round it — half a square for open
+  // floor, a third of a piece for a piece the design may have moved a little
+  // — and asked about inside the frame.
+  const crops = await Promise.all(
+    checked.map((s) => cropSpot(sized, frame, s, s.kind === "open floor" ? Math.round(Math.max(s.w, s.h) / 2) : Math.max(40, Math.round(Math.max(s.w, s.h) * 0.35)), true)),
+  );
+  // Each dining set's chairs, counted by a call of its own: asked alongside
+  // the spots, the count came back 4 for a table with eight round it.
+  const key = env.ANTHROPIC_API_KEY!.trim();
+  // Counted twice: a table with eight came back 10 one time and 8 the next.
+  // A count stands only when both looks agree on it.
+  const counting = Promise.all(
+    sets.map(async (s) => {
+      const crop = await cropSpot(sized, frame, s, Math.round(Math.max(s.w, s.h) * 0.12));
+      const looks = await Promise.all(
+        [0, 1].map(async () => {
+          const said = await askClaude(key, [crop, { type: "text", text: s.kind === "seating group" ? SEATS : CHAIRS }], 200);
+          const n = Number(said?.raw.chairs);
+          return said && Number.isFinite(n) ? n : null;
+        }),
+      );
+      return looks[0] != null && looks[0] === looks[1] ? looks[0] : null;
+    }),
+  );
+  // Eight crops a call: asked about thirty at once, the judge saw chairs on
+  // squares of bare floor. Open floor is asked what stands on it; a piece is
+  // asked whether it is there — asked what stood in a bed's frame, the judge
+  // answered "sofa, rug" for a single bed with a throw over its foot, and
+  // asked "is there a bed", it said yes.
+  const BATCH = 8;
+  const indexes = checked.map((_, i) => i);
+  const openIdx = indexes.filter((i) => checked[i]!.kind === "open floor");
+  // One kind a batch: asked about a table, five beds and a sofa together,
+  // the judge answered no bed in four frames that each held one.
+  // Sanitary ware beside the layout's own crop of the spot, one at a time: a
+  // bath restyled, or a WC small in its wall's shadow, is told by comparing
+  // with the plain piece — asked alone, a shower passed for 22's bath.
+  const WET = new Set(["baths", "toilets"]);
+  const wetIdx = indexes.filter((i) => WET.has(checked[i]!.kind));
+  const pieceIdx = indexes
+    .filter((i) => checked[i]!.kind !== "open floor" && !WET.has(checked[i]!.kind))
+    .sort((a, b) => checked[a]!.kind.localeCompare(checked[b]!.kind) || a - b);
+  const chunks = (list: number[]) => {
+    const out: number[][] = [];
+    for (const i of list) {
+      const last = out[out.length - 1];
+      if (last && last.length < BATCH && checked[last[0]!]!.kind === checked[i]!.kind) last.push(i);
+      else out.push([i]);
+    }
+    return out;
+  };
+  const askOpen = (group: number[]) => askClaude(key, [...group.map((i) => crops[i]!), { type: "text", text: SPOTS }], 900);
+  const askPieces = (group: number[]) =>
+    askClaude(key, [...group.map((i) => crops[i]!), { type: "text", text: piecesQuestion(group.map((i) => checked[i]!.kind)) }], 400);
+  const [openBatches, pieceBatches] = await Promise.all([Promise.all(chunks(openIdx).map(askOpen)), Promise.all(chunks(pieceIdx).map(askPieces))]);
+  const counts = await counting;
+  if ([...openBatches, ...pieceBatches].some((said) => !said || !Array.isArray(said.raw.answers))) return null;
+  const asked = openBatches[0] ?? pieceBatches[0];
+  const listOf = (a: unknown) => (Array.isArray(a) ? a : [a]).map((w) => String(w).toLowerCase().trim());
+  /** What was seen at each spot: a list for open floor, yes or no for a piece. */
+  const seenAt = new Map<number, string[] | boolean>();
+  chunks(openIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, listOf((openBatches[k]!.raw.answers as unknown[])[j] ?? []))));
+  chunks(pieceIdx).forEach((group, k) => group.forEach((i, j) => seenAt.set(i, isYes((pieceBatches[k]!.raw.answers as unknown[])[j]))));
+  const wetSeen = await Promise.all(
+    wetIdx.map(async (i) => {
+      const spot = checked[i]!;
+      const plain = await cropSpot(layout, frame, spot, Math.max(40, Math.round(Math.max(spot.w, spot.h) * 0.35)), true);
+      const said = await askClaude(key, [plain, crops[i]!, { type: "text", text: compareQuestion(spot.kind) }], 100);
+      const answer = said?.raw.answer ?? (Array.isArray(said?.raw.answers) ? (said!.raw.answers as unknown[])[0] : undefined);
+      return answer === undefined ? null : isYes(answer);
+    }),
+  );
+  if (wetSeen.some((seen) => seen == null)) return null;
+  wetIdx.forEach((i, k) => seenAt.set(i, wetSeen[k] === true));
+  // What each sofa faces, asked twice over: a screen there refuses a haredi
+  // design only if both looks see one.
+  const screens = await Promise.all(
+    facing.map(async (s) => {
+      const crop = await cropSpot(sized, frame, s, 0);
+      for (let look = 0; look < 2; look++) {
+        const said = await askClaude(key, [crop, { type: "text", text: SCREEN_SPOT }], 150);
+        if (said?.raw.screen !== true) return null;
+      }
+      return { reason: `a screen facing the sofa at the ${s.place}`, box: s, action: "clear" as const };
+    }),
+  );
+  /** What is wrong at a spot, given what was seen there; null when nothing is. */
+  const verdict = (s: PieceSpot, seen: string[] | boolean): string | null => {
+    if (s.kind === "open floor") {
+      const added = (Array.isArray(seen) ? seen : []).filter((w) => !DECOR.has(w));
+      return added.length > 0 ? `open floor at the ${s.place} (the design added ${added.join(", ")} there)` : null;
+    }
+    return seen === true ? null : `${PIECE_WORD[s.kind] ?? s.kind} missing at the ${s.place}`;
+  };
+  // A spot that fails is asked about again on its own, and fails only if the
+  // second look agrees.
+  const failed = indexes.filter((i) => verdict(checked[i]!, seenAt.get(i) ?? []));
+  const second = await Promise.all(
+    failed.map(async (i) => {
+      const spot = checked[i]!;
+      if (spot.kind === "open floor") {
+        const said = await askClaude(key, [crops[i]!, { type: "text", text: SPOTS }], 200);
+        return Array.isArray(said?.raw.answers) ? listOf((said!.raw.answers as unknown[])[0] ?? []) : null;
+      }
+      // Beside the layout's own crop of the spot: a piece is easier to
+      // recognise restyled when the plain one is shown with it.
+      const plain = await cropSpot(layout, frame, spot, Math.max(40, Math.round(Math.max(spot.w, spot.h) * 0.35)), true);
+      const said = await askClaude(key, [plain, crops[i]!, { type: "text", text: compareQuestion(spot.kind) }], 100);
+      if (!said) return null;
+      const answer = said.raw.answer ?? (Array.isArray(said.raw.answers) ? (said.raw.answers as unknown[])[0] : undefined);
+      return answer === undefined ? null : isYes(answer);
+    }),
+  );
+  const missing: SpotFinding[] = [];
+  const at = (s: PieceSpot) => ({ x: s.x, y: s.y, w: s.w, h: s.h });
+  failed.forEach((i, k) => {
+    const again = second[k];
+    // No second answer: the first stands.
+    const spot = checked[i]!;
+    const wrong = verdict(spot, again ?? seenAt.get(i) ?? []);
+    if (wrong) missing.push({ reason: wrong, box: at(spot), action: spot.kind === "open floor" ? "clear" : "restore" });
+  });
+  for (const found of screens) if (found) missing.push({ ...found, box: at(found.box) });
+  sets.forEach((s, i) => {
+    const n = counts[i];
+    if (n == null || n === s.chairs) return;
+    missing.push({
+      reason:
+        s.kind === "seating group"
+          ? `sofas and armchairs at the ${s.place}: ${n} pieces (the layout has ${s.chairs})`
+          : `dining table at the ${s.place} with ${n} chairs (the layout has ${s.chairs})`,
+      box: at(s),
+      action: "restore",
+    });
+  });
+  log.info("finish spots", { model: asked?.model, checked: checked.length, calls: openBatches.length + pieceBatches.length, missing: missing.map((m) => m.reason) });
+  return missing;
+}
+

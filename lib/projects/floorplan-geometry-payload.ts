@@ -1,7 +1,8 @@
 import { z } from "zod";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
-import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
-import { fillEnclosedHoles, mergeSpanRows, type Rect } from "@/lib/projects/scene3d/floors";
+import { componentsOf, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import { spansContain, type SpanRow } from "@/lib/projects/floorplan-solid";
+import { fillEnclosedHoles, mergeSpanRows, withoutRows, type Rect } from "@/lib/projects/scene3d/floors";
 
 /**
  * The measured flat, in the smallest shape a viewer needs.
@@ -58,7 +59,9 @@ export const floorplanGeometrySchema = z.object({
         widthCm: z.number(),
         depthCm: z.number(),
         /** Which sanitary fixture, where the reading knew; see FurniturePiece. */
-        fixture: z.enum(["bath", "shower", "toilet", "basin"]).optional(),
+        fixture: z.enum(["bath", "shower", "toilet", "basin", "washer"]).optional(),
+        /** A bed's head, where the drawing shows it; see bedHeadsFromDrawing. */
+        head: z.enum(["north", "south", "east", "west"]).optional(),
       }),
     )
     .max(2000),
@@ -110,6 +113,71 @@ export type GeometryPayloadExtras = {
   page?: { width: number; height: number };
 };
 
+/**
+ * Whether sanitary ware, or a piece not yet named, stands in one of the flat's rooms, or right at one's
+ * edge — its own ink stops the room's flood, so a pan can sit just outside
+ * the region. One in no room is lettering or a window's ink: on דירה 18 one
+ * on the terrace of the storey above, one in the window onto the terrace, and
+ * "פתח מילוט" across the outer wall. A terrace is no room for it.
+ */
+function standsInARoom(
+  piece: BuiltFlat["furniture"][number],
+  rooms: SegmentedRoom[],
+  unitsPerMetre: number,
+): boolean {
+  if (piece.kind !== "fixture" && piece.kind !== "unknown") return true;
+  const cx = piece.x + piece.w / 2;
+  const cy = piece.y + piece.h / 2;
+  // A quarter metre round it: a bath's rim stops the flood, and 21's bath
+  // stood outside its bathroom's region all along its length.
+  const rx = piece.w / 2 + 0.25 * unitsPerMetre;
+  const ry = piece.h / 2 + 0.25 * unitsPerMetre;
+  const probes: Array<[number, number]> = [
+    [cx, cy],
+    [cx - rx, cy],
+    [cx + rx, cy],
+    [cx, cy - ry],
+    [cx, cy + ry],
+  ];
+  return rooms.some(
+    (room) => room.kind !== "balcony" && probes.some(([x, y]) => spansContain(room.rows, x, y)),
+  );
+}
+
+/**
+ * The floor less what is not the flat's, and less the scraps that cut leaves
+ * standing on their own: on 18 slivers of the storey above's terrace kept its
+ * wall ends standing, floating off the flat.
+ */
+function withoutForeign(floor: SpanRow[], foreign: SpanRow[][], unitsPerMetre: number): SpanRow[] {
+  const cut = withoutRows(floor, foreign);
+  if (cut === floor) return floor;
+  const pitch = floor.length > 1 ? Math.abs(floor[1]!.y - floor[0]!.y) || 1 : 1;
+  const area = (rows: SpanRow[]) =>
+    (rows.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0) * pitch) / unitsPerMetre ** 2;
+  const byY = new Map<number, Array<[number, number]>>();
+  for (const part of componentsOf(cut, pitch, 1)) {
+    // A scrap the cut left: small, and beside what was cut away. Not every
+    // small part — 21's WC is 0.4 m² of its own, and went with its pan.
+    const beside = part.some((row) =>
+      row.spans.some(([a, b]) => foreign.some((f) => spansContain(f, a - 3, row.y) || spansContain(f, b + 3, row.y) || spansContain(f, (a + b) / 2, row.y - 3) || spansContain(f, (a + b) / 2, row.y + 3))),
+    );
+    if (area(part) < 0.5 && beside) continue;
+    for (const row of part) byY.set(row.y, [...(byY.get(row.y) ?? []), ...row.spans]);
+  }
+  return [...byY.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([y, spans]) => ({ y, spans: spans.sort((a, b) => a[0] - b[0]) }));
+}
+
+/** Whether most of a room lies in a region that is not the flat's. */
+function mostlyForeign(rows: SpanRow[], foreign: SpanRow[][]): boolean {
+  if (foreign.length === 0) return false;
+  const area = (list: SpanRow[]) => list.reduce((t, r) => t + r.spans.reduce((u, [a, b]) => u + (b - a), 0), 0);
+  const whole = area(rows);
+  return whole > 0 && area(withoutRows(rows, foreign)) < whole * 0.5;
+}
+
 export function floorplanGeometryPayload(
   flat: BuiltFlat,
   rooms: SegmentedRoom[],
@@ -137,7 +205,11 @@ export function floorplanGeometryPayload(
       kind: opening.kind,
       ...(opening.leaf ? { leaf: opening.leaf } : {}),
     })),
-    furniture: flat.furniture.map((piece) => ({
+    // Against the flat's own rooms: a region on someone else's roof is not one,
+    // and 21's roof lettering stood in it as two fixtures.
+    furniture: flat.furniture
+      .filter((piece) => standsInARoom(piece, rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])), flat.unitsPerMetre))
+      .map((piece) => ({
       x: piece.x,
       y: piece.y,
       w: piece.w,
@@ -146,6 +218,7 @@ export function floorplanGeometryPayload(
       widthCm: piece.widthCm,
       depthCm: piece.depthCm,
       ...(piece.fixture ? { fixture: piece.fixture } : {}),
+      ...(piece.head ? { head: piece.head } : {}),
     })),
     // Page fractions become page units, which is what the geometry speaks.
     labelledRooms:
@@ -161,9 +234,11 @@ export function floorplanGeometryPayload(
             },
           }))
         : undefined,
-    floor: toRects(mergeSpanRows(flat.floor)),
-    terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(rows))),
-    rooms: rooms.map((room) => ({
+    // Less what is someone else's: 21's roof at +15.94, beside its bedroom.
+    floor: toRects(mergeSpanRows(withoutForeign(flat.floor, flat.foreign ?? [], flat.unitsPerMetre))),
+    // A terrace's printed "שטח המרפסת" left its letters as holes too.
+    terraces: flat.terraces.map((rows) => toRects(mergeSpanRows(fillEnclosedHoles(rows, 0.5 * flat.unitsPerMetre ** 2)))),
+    rooms: rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])).map((room) => ({
       name: room.name,
       kind: room.kind,
       areaM2: room.areaM2,

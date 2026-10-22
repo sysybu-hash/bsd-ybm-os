@@ -38,8 +38,10 @@ export function bed(spec: PieceSpec): PiecePart[] {
   const parts: PiecePart[] = [
     part("base", "timber", { x: offsetX, y: baseH / 2, z: offsetZ, w: mattressW, h: baseH, d: mattressD }, 0.01),
     part("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.03, w: mattressW * 0.98, h: mattressH, d: mattressD - 0.08 }, 0.05),
-    // An upholstered headboard, padded, standing behind the mattress.
-    part("headboard", "upholstery", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.035),
+    // A timber headboard behind the mattress. Upholstered in the sofas'
+    // fabric it made a bed read from above as a sofa, and the painting
+    // repainted it as one.
+    part("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.02),
   ];
   const pillows = !spec.haredi && mattressW >= DOUBLE_BED_MIN_M ? 2 : 1;
   const pillowW = Math.min(0.62, (mattressW / pillows) * 0.82);
@@ -137,8 +139,8 @@ function sofa(w: number, d: number, h: number): PiecePart[] {
 export function seat(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   if (w > 1.0) return sofa(w, d, h);
-  // An armchair: a sofa of one place.
-  if (w > 0.7 && d > 0.7) return sofa(w, d, h);
+  // An armchair: a sofa of one place. דירה 14's is 77 × 67 cm.
+  if (w > 0.7 && d > 0.6) return sofa(w, d, h);
   const padH = 0.07;
   const legW = Math.min(0.035, w * 0.1);
   const parts = [
@@ -267,21 +269,44 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   if (spec.fixture === "toilet") return toilet(w, d);
   if (spec.fixture === "shower") return shower(w, d);
-  if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
-  if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath")) {
+  // A washing machine: a white box with its round door on top, as a sheet
+  // draws it — a square with a drum. 21's, unnamed, was built as a basin.
+  if (spec.fixture === "washer") {
+    const drum = Math.min(w, d) * 0.62;
     return [
-      part("tub", "ceramic", { x: 0, y: h / 2, z: 0, w, h, d }, 0.04),
-      part("water", "ceramic", {
-        x: 0,
-        y: h - 0.03,
-        z: 0,
-        w: Math.max(0.1, w - 0.12),
-        h: 0.02,
-        d: Math.max(0.1, d - 0.12),
-      }),
-      part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + 0.06, w: 0.04, h: 0.16, d: 0.04 }),
+      part("washer", "ceramic", { x: 0, y: 0.425, z: 0, w, h: 0.85, d }, 0.03),
+      part("drum", "metal", { x: 0, y: 0.855, z: 0, w: drum, h: 0.01, d: drum }),
     ];
   }
+  if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
+  // A bath is long as well as narrow: a pan with the room's dimension written
+  // in it measured 60 by 100 and was built as a third bath in 17.
+  if (spec.fixture === "bath" || (!spec.fixture && fixtureKind(w, d) === "bath" && Math.max(w, d) >= 1.2)) {
+    // A tub, not a block: a rim round a basin sunk nearly to the floor. Built
+    // solid with a plate on top, from above it read as a white box, and the
+    // designs drew a cabinet there.
+    const rim = Math.min(0.08, Math.min(w, d) * 0.12);
+    const inner = { w: Math.max(0.1, w - 2 * rim), d: Math.max(0.1, d - 2 * rim) };
+    return [
+      // Its basin a hand below the rim, not at the floor: sunk to the floor it
+      // lay in its own shadow, a dark slab the designs painted as a shower.
+      part("tub", "ceramic", { x: 0, y: (h - 0.12) / 2, z: 0, w, h: h - 0.12, d }, 0.03),
+      part("rim", "ceramic", { x: 0, y: h / 2, z: -d / 2 + rim / 2, w, h, d: rim }, 0.02),
+      part("rim", "ceramic", { x: 0, y: h / 2, z: d / 2 - rim / 2, w, h, d: rim }, 0.02),
+      part("rim", "ceramic", { x: -w / 2 + rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
+      part("rim", "ceramic", { x: w / 2 - rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
+      part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + rim / 2, w: 0.04, h: 0.16, d: 0.04 }),
+    ];
+  }
+  // Unnamed and not a bath: a pan runs out from its wall, a basin along it.
+  // A sales sheet draws both as curves, with no name; every one was built as
+  // a basin, and דירה 14's two bathrooms had no WC. A square is neither —
+  // its 57 cm washer is one — and stays the plain block it was.
+  // And a pan is at most 60 cm across: an 80 cm "pan" was a level mark's
+  // hatched circle on 18's roof.
+  // Its bowl is often all that is drawn closed (22's: 34 by 27, the cistern a
+  // pair of loose lines), so a pan is built at a pan's size round it.
+  if (!spec.fixture && d >= w * 1.05 && d >= 0.3 && w <= 0.6 && d <= 0.85) return toilet(Math.max(w, 0.38), Math.max(d, 0.6));
   return [
     part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
     part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),

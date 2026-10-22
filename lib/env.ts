@@ -64,8 +64,13 @@ const serverSchema = z.object({
   GEMINI_ADMIN_ASSISTANT_MODEL: optStr,
   GEMINI_BLUEPRINT_MODEL: optStr,
   GEMINI_BLUEPRINT_PRIMARY_MODEL: optStr,
-  /** מודל יצירת תמונה להדמיות מתוכנית (ברירת מחדל: Nano Banana Pro → Flash Image) */
+  /** מודל יצירת תמונה להדמיות מתוכנית (ברירת מחדל: Nano Banana 2.1 → Flash Image. Pro רק כשמוגדר כאן) */
   GEMINI_IMAGE_MODEL: optStr,
+  /**
+   * Path-trace a flat's measured still with this many samples a pixel. Local
+   * only: the tracer is a development dependency the platform does not carry.
+   */
+  FLOORPLAN_TRACE_SAMPLES: optStr,
   GEMINI_OMNI_VOICE_MODEL: optStr,
   // Per-scan-type model overrides — allows env-based tuning without redeploy
   GEMINI_INVOICE_MODEL: optStr,
@@ -215,6 +220,8 @@ const serverSchema = z.object({
   // --- Admin / Tenant ---
   OS_ADMIN_EMAIL: optStr,
   OS_ADMIN_EMAILS: optStr,
+  /** Extra logins that may paint a visualisation, comma-separated. sysybu@gmail.com is always included. */
+  VIZ_PAINT_EMAILS: optStr,
   ALLOWED_LOGIN_EMAILS: optStr,
   LOGIN_ALLOWLIST_EMAILS: optStr,
   LOGIN_BLOCKED_EMAILS: optStr,

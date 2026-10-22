@@ -97,3 +97,40 @@ describe("the page", () => {
     expect(html).toContain("__renderError");
   });
 });
+
+describe("where an interior is photographed from", () => {
+  const box = (kind: string, x: number, z: number, w: number, d: number, h = 1) => ({
+    kind,
+    material: "wall",
+    centre: { x, y: h / 2, z },
+    size: { x: w, y: h, z: d },
+    sourceId: kind,
+  });
+  // A 4 by 3 m room, a door in its south wall at x = 2, a bed in its far corner.
+  const room = { id: "r", name: "r", kind: "bedroom", areaM2: 12, rects: [{ x: 0, z: 0, w: 4, d: 3 }], bounds: { x: 0, z: 0, w: 4, d: 3 } };
+  const scene = {
+    version: 1,
+    unitsPerMetre: 100,
+    extent: { x: 0, z: 0, width: 4, depth: 3 },
+    meshes: [box("wall", 2, -0.05, 4, 0.1, 2.6), box("furniture", 0.5, 1, 0.9, 2, 0.5)],
+    rooms: [room],
+    openings: [{ id: "d", kind: "door", centre: { x: 2, y: 1, z: -0.05 }, size: { x: 0.9, y: 2, z: 0.1 }, sillM: 0, headM: 2.1, exterior: false }],
+    lights: [],
+  };
+
+  it("stands a step inside the doorway", async () => {
+    const { interiorStand } = await import("@/lib/projects/scene3d/cameras");
+    const at = interiorStand(scene as never, room);
+    expect(at.x).toBeCloseTo(2, 5);
+    expect(at.z).toBeGreaterThan(0.2);
+    expect(at.z).toBeLessThan(1);
+  });
+
+  it("never stands in a piece of furniture", async () => {
+    const { interiorStand } = await import("@/lib/projects/scene3d/cameras");
+    const noDoor = { ...scene, openings: [] };
+    const at = interiorStand(noDoor as never, room);
+    const inBed = Math.abs(at.x - 0.5) < 0.45 + 0.35 && Math.abs(at.z - 1) < 1 + 0.35;
+    expect(inBed).toBe(false);
+  });
+});
