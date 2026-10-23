@@ -764,7 +764,7 @@ export function interiorSpans(
     unitsPerMetre?: number;
   },
 ): SpanRow[] {
-  const step = options?.resolution ?? 2;
+  let step = options?.resolution ?? 2;
   // A terrace slider is the widest opening on these sheets at about 2.4 m.
   const upm = options?.unitsPerMetre;
   const maxOpening =
@@ -779,9 +779,18 @@ export function interiorSpans(
   const reach =
     options?.cornerReachUnits ?? (upm && upm > 0 ? CORNER_REACH_M * upm : maxOpening / 2);
   const sealed = bridgeOpenings(closeCorners(bodies, reach), maxOpening);
-  const w = Math.ceil(bounds.width / step) + 2;
-  const h = Math.ceil(bounds.height / step) + 2;
-  if (w <= 2 || h <= 2) return [];
+  let w = Math.ceil(bounds.width / step) + 2;
+  let h = Math.ceil(bounds.height / step) + 2;
+  // A drawing in millimetres is tens of thousands of units across. A cell per
+  // two units is then most of a gigabyte, and the process is killed before the
+  // flood starts. The step doubles until the plate fits. A sales sheet never
+  // reaches this: its flat is a few hundred cells on a side.
+  while (w > 2 && h > 2 && w * h > 8_000_000 && step < bounds.width) {
+    step *= 2;
+    w = Math.ceil(bounds.width / step) + 2;
+    h = Math.ceil(bounds.height / step) + 2;
+  }
+  if (w <= 2 || h <= 2 || w * h > 8_000_000) return [];
 
   const WALL = 1;
   const OUTSIDE = 2;

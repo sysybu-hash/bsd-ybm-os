@@ -248,6 +248,21 @@ describe("the floor the walls enclose", () => {
     const area = rows.reduce((sum, r) => sum + r.spans.reduce((t, [a, b]) => t + (b - a), 0), 0);
     expect(area).toBeLessThan(30_000);
   });
+
+  it("encloses a room on a millimetre page without a plate the size of the page", () => {
+    const box = [
+      { orientation: "h" as const, centre: 0, from: 0, to: 4000, thickness: 200 },
+      { orientation: "h" as const, centre: 4000, from: 0, to: 4000, thickness: 200 },
+      { orientation: "v" as const, centre: 0, from: 0, to: 4000, thickness: 200 },
+      { orientation: "v" as const, centre: 4000, from: 0, to: 4000, thickness: 200 },
+    ];
+    const started = Date.now();
+    const rows = interiorSpans(box, { x: 0, y: 0, width: 120_000, height: 25_000 });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    const area = spanArea(rows);
+    expect(area).toBeGreaterThan(8_000_000);
+    expect(area).toBeLessThan(24_000_000);
+  });
 });
 
 describe("walls the thickness rules used to throw away", () => {
