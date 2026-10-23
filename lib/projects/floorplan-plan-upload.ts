@@ -151,6 +151,9 @@ export async function beginPlanUpload(input: {
     console.error("plan_upload_begin_failed", error instanceof Error ? error.message : "failed");
     return null;
   }
+}
+
+export async function putPlanUploadPart(input: {
   orgId: string;
   uploadId: string;
   index: number;
