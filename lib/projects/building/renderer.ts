@@ -36,7 +36,15 @@ export async function renderBuildingFrames(
     await flush();
     return out;
   }
-  const browser = await launchChromium({ webgl: true, viewport: { width: 900, height: 700 } });
+  const frameMs = options?.timeoutMs ?? 60_000;
+  const traced = payloads.some((p) => p.pathTrace);
+  // A stuck DevTools call otherwise waits the 180s default, and two frames
+  // of that are what the platform kills at 300s.
+  const browser = await launchChromium({
+    webgl: true,
+    viewport: { width: 900, height: 700 },
+    protocolTimeout: traced ? 1_800_000 : frameMs + 20_000,
+  });
   const cache = new Map<string, string>();
   const source = async (file: string) => {
     const hit = cache.get(file);
@@ -81,19 +89,22 @@ export async function renderBuildingFrames(
         }
         void source(file).then(
           (body) => req.respond({ status: 200, contentType: "text/javascript; charset=utf-8", body }),
-          () => req.respond({ status: 404, body: "" }),
+          () => {
+            process.stderr.write(`[page] missing ${file}\n`);
+            return req.respond({ status: 404, body: "" });
+          },
         );
       });
       try {
-        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load", timeout: 180_000 });
+        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load", timeout: Math.min(25_000, frameMs) });
         await page.waitForFunction("window.__renderDone === true || window.__renderError", {
-          timeout: options?.timeoutMs ?? 240_000,
+          timeout: payload.pathTrace ? 1_500_000 : frameMs,
         });
         const failure = (await page.evaluate("window.__renderError || null")) as string | null;
         if (failure) throw new Error(failure);
         const canvas = await page.$("canvas");
         if (!canvas) throw new Error("no canvas");
-        const shot = Buffer.from(await canvas.screenshot({ type: "png" }));
+        const shot = Buffer.from(await canvas.screenshot({ type: "jpeg", quality: 92 }));
         out.push(
           await sharp(shot)
             .resize({ width: options?.outputWidthPx ?? Math.round(payload.width / 2), withoutEnlargement: true })

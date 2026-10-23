@@ -69,6 +69,9 @@ const BUILDING_RENDERER_FILES = [
   "./node_modules/three/examples/jsm/geometries/**",
   "./node_modules/three/examples/jsm/shaders/**",
   "./node_modules/three/examples/jsm/math/**",
+  // The page imports mergeVertices from here. Left out, the browser waits on a
+  // 404 and the function is killed at 300s.
+  "./node_modules/three/examples/jsm/utils/**",
   "./node_modules/@sparticuz/chromium/**",
 ];
 const BUILDING_BOOKLET_FILES = [
