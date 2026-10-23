@@ -49,6 +49,17 @@ function extractTextFromOpenAiResponsesPayload(data: unknown): string {
   return "";
 }
 
+/** One model call. A stuck request used to hold the function until Vercel killed it at 300s. */
+const OCR_MS = 40_000;
+
+function failAfter(ms: number, label: string): { promise: Promise<never>; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const promise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} חרג מ-${Math.round(ms / 1000)} שניות`)), ms);
+  });
+  return { promise, cancel: () => clearTimeout(timer) };
+}
+
 async function extractPrintedTextWithGemini(base64: string, mimeType: string, instruction: string): Promise<string> {
   const apiKey = getGeminiApiKey();
   if (!apiKey) throw new Error("חסר מפתח Gemini");
@@ -57,18 +68,27 @@ async function extractPrintedTextWithGemini(base64: string, mimeType: string, in
   for (const modelId of getBlueprintAnalysisModelChain()) {
     try {
       const model = genAI.getGenerativeModel({ model: modelId });
-      const result = await model.generateContent({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: instruction },
-              { inlineData: { data: base64, mimeType } },
+      const limit = failAfter(OCR_MS, `Gemini OCR (${modelId})`);
+      let result;
+      try {
+        result = await Promise.race([
+          model.generateContent({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: instruction },
+                  { inlineData: { data: base64, mimeType } },
+                ],
+              },
             ],
-          },
-        ],
-        generationConfig: deterministicGenerationConfig(),
-      });
+            generationConfig: deterministicGenerationConfig(),
+          }),
+          limit.promise,
+        ]);
+      } finally {
+        limit.cancel();
+      }
       recordAiUsage(model.model, usageFromGemini(result));
       const text = result.response.text().trim();
       if (text) return text;
@@ -92,6 +112,7 @@ async function extractPrintedTextWithOpenAI(base64: string, mimeType: string, in
     for (const model of models) {
       const res = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
+        signal: AbortSignal.timeout(OCR_MS),
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
@@ -170,19 +191,24 @@ async function extractPrintedTextWithOpenAI(base64: string, mimeType: string, in
   throw lastErr ?? new Error("OpenAI OCR נכשל");
 }
 
-/** OCR טקסט מודפס — Gemini/OpenAI כש-Document AI / Mistral לא זמינים */
+/**
+ * OCR טקסט מודפס — Gemini/OpenAI כש-Document AI / Mistral לא זמינים.
+ * `first`: only the first engine is started — a lean read waits on one, and
+ * a second started beside it was paid for and never read.
+ */
 export function floorplanLlmOcrJobs(
   base64: string,
   mimeType: string,
   photo = false,
+  options?: { first?: boolean },
 ): Array<Promise<{ engine: string; text: string }>> {
   const instruction = floorplanOcrTextInstruction(photo);
-  const jobs: Array<Promise<{ engine: string; text: string }>> = [];
+  const starts: Array<() => Promise<{ engine: string; text: string }>> = [];
   if (isGeminiConfigured()) {
-    jobs.push(extractPrintedTextWithGemini(base64, mimeType, instruction).then((text) => ({ engine: "gemini-ocr", text })));
+    starts.push(() => extractPrintedTextWithGemini(base64, mimeType, instruction).then((text) => ({ engine: "gemini-ocr", text })));
   }
   if (isOpenAiConfigured()) {
-    jobs.push(extractPrintedTextWithOpenAI(base64, mimeType, instruction).then((text) => ({ engine: "openai-ocr", text })));
+    starts.push(() => extractPrintedTextWithOpenAI(base64, mimeType, instruction).then((text) => ({ engine: "openai-ocr", text })));
   }
-  return jobs;
+  return (options?.first ? starts.slice(0, 1) : starts).map((start) => start());
 }
