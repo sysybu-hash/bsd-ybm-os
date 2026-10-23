@@ -193,12 +193,22 @@ export function geometryFromDxfDocument(doc: DxfDocument): FloorplanVectorGeomet
   const walls = segments.filter(
     (seg) => seg.lineWidth >= WALL_MIN_LINE_WIDTH && (seg.x1 === seg.x2 || seg.y1 === seg.y2),
   );
+  const metres = metresPerUnit(doc.header);
+  const unitsPerMetre = metres != null && metres > 0 ? 1 / metres : undefined;
   log.info("dxf geometry read", {
     segments: segments.length,
     curves: curves.length,
     walls: walls.length,
+    unitsPerMetre,
   });
-  return { pageWidth: width, pageHeight: height, segments, walls, curves };
+  return {
+    pageWidth: width,
+    pageHeight: height,
+    segments,
+    walls,
+    curves,
+    ...(unitsPerMetre ? { unitsPerMetre } : {}),
+  };
 }
 
 /** Parse DXF text into the pipeline's geometry. Returns null for anything unreadable. */

@@ -741,18 +741,27 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
   const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: [] });
   const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
-  if (targetAreaM2 == null) {
-    log.info("cad drawing has no printed area to lock scale against");
+  const drawingUnits = geometry.unitsPerMetre;
+  if (targetAreaM2 == null && !(drawingUnits != null && drawingUnits > 0)) {
+    log.info("cad drawing has no printed area and no stated units");
     return { outcome: "skip", fallbackRaster: nativeCad.raster };
   }
   try {
     const rendered = await renderFlatFromGeometry(geometry, {
-      targetAreaM2,
+      targetAreaM2: targetAreaM2 ?? 0,
+      unitsPerMetreHint: targetAreaM2 == null ? drawingUnits : undefined,
+      unitsFromDrawing: targetAreaM2 == null,
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
     });
-    if (!rendered) return { outcome: "skip", reason: "קנה המידה לא ננעל מול שטח הדירה", fallbackRaster: nativeCad.raster };
+    if (!rendered) {
+      return {
+        outcome: "skip",
+        reason: targetAreaM2 == null ? "לא נסגרה רצפה בקנה המידה שבקובץ" : "קנה המידה לא ננעל מול שטח הדירה",
+        fallbackRaster: nativeCad.raster,
+      };
+    }
     const qualityFailure = measuredPlateQualityFailure(
       input.extractedLayout,
       rendered.rooms,

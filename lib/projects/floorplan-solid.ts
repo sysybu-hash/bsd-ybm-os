@@ -1048,7 +1048,7 @@ export class HatchField {
  */
 export function wallBodiesForSheet(
   segments: VectorSegment[],
-  options: { unitsPerMetre: number; keepOpenings?: boolean },
+  options: { unitsPerMetre: number; keepOpenings?: boolean; plottedWalls?: boolean },
 ): WallBody[] {
   const hatched = wallBodiesFromHatch(segments, options).map(
     (body): WallBody => ({ ...body, source: "hatch" }),
@@ -1059,7 +1059,11 @@ export function wallBodiesForSheet(
   // kitchen on one sheet and cost a terrace on another. A plotted sheet draws
   // everything at one weight and hatches almost nothing, which is the case
   // this reader exists for. wallInkThreshold is that test.
-  if (wallInkThreshold(segments) <= WALL_MIN_LINE_WIDTH) return hatched;
+  // A DXF names its walls by layer and draws them as pairs, while the furniture
+  // stays thin. That looks like a sales sheet to the ink test, and the pairs
+  // would be dropped. The caller that already knows which lines are walls asks
+  // for them.
+  if (!options.plottedWalls && wallInkThreshold(segments) <= WALL_MIN_LINE_WIDTH) return hatched;
   // Duplicates and all: dropping a plotted pair because a hatched band covers
   // the same wall looks tidy and loses the wall outright whenever that band
   // later fails a hatch test. The caller knows which bands survived, so the
@@ -2196,13 +2200,22 @@ export function footprintByScanFill(
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
   const pad = 8;
-  const w = Math.ceil((bounds.width + pad * 2) / step);
-  const h = Math.ceil((bounds.height + pad * 2) / step);
-  if (w <= 0 || h <= 0) return [];
+  let w = Math.ceil((bounds.width + pad * 2) / step);
+  let h = Math.ceil((bounds.height + pad * 2) / step);
+  // A drawing in millimetres is tens of thousands of units across. A cell per
+  // two units is then a multi-gigabyte grid, so the step doubles until the
+  // plate fits. A sales sheet never reaches this.
+  let used = step;
+  while (w > 0 && h > 0 && w * h > 40_000_000 && used < bounds.width) {
+    used *= 2;
+    w = Math.ceil((bounds.width + pad * 2) / used);
+    h = Math.ceil((bounds.height + pad * 2) / used);
+  }
+  if (w <= 0 || h <= 0 || w * h > 40_000_000) return [];
   const originX = bounds.x - pad;
   const originY = bounds.y - pad;
-  const gx = (x: number) => Math.floor((x - originX) / step);
-  const gy = (y: number) => Math.floor((y - originY) / step);
+  const gx = (x: number) => Math.floor((x - originX) / used);
+  const gy = (y: number) => Math.floor((y - originY) / used);
 
   const wall = new Uint8Array(w * h);
   for (const body of bodies) {
@@ -2250,11 +2263,11 @@ export function footprintByScanFill(
       const inside = x < w && rowIn[y * w + x] === 1 && colIn[y * w + x] === 1;
       if (inside && start < 0) start = x;
       else if (!inside && start >= 0) {
-        spans.push([originX + start * step, originX + x * step]);
+        spans.push([originX + start * used, originX + x * used]);
         start = -1;
       }
     }
-    if (spans.length > 0) rows.push({ y: originY + y * step, spans });
+    if (spans.length > 0) rows.push({ y: originY + y * used, spans });
   }
   return rows;
 }

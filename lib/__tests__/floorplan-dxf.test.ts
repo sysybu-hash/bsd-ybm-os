@@ -61,6 +61,7 @@ describe("dxf geometry", () => {
     // room is part of it: 3m of room plus the 0.5m the chain sits out by.
     expect(geometry!.pageWidth).toBeCloseTo(4, 5);
     expect(geometry!.pageHeight).toBeCloseTo(3.5, 5);
+    expect(geometry!.unitsPerMetre).toBe(1);
   });
 
   it("marks only the wall layer thick enough for the wall detector", () => {
@@ -94,6 +95,14 @@ describe("dxf geometry", () => {
     expect(metresPerUnit({ $INSUNITS: 5 })).toBe(0.01);
     expect(metresPerUnit({ $INSUNITS: 0 })).toBeUndefined();
     expect(metresPerUnit(undefined)).toBeUndefined();
+    const millimetres = geometryFromDxfDocument({
+      header: { $INSUNITS: 4 },
+      entities: [
+        { type: "LINE", layer: "A-WALL", vertices: [{ x: 0, y: 0 }, { x: 4000, y: 0 }] },
+        { type: "LINE", layer: "A-WALL", vertices: [{ x: 0, y: 0 }, { x: 0, y: 3000 }] },
+      ],
+    });
+    expect(millimetres?.unitsPerMetre).toBe(1000);
   });
 
   it("returns nothing for a drawing with no geometry in it", () => {

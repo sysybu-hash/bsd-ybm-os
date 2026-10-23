@@ -107,6 +107,7 @@ export function collectScaleLocks(
   printedAreaM2: number,
   search?: ScaleSearch,
   curves?: VectorSegment[],
+  options?: { acceptWithoutFurniture?: boolean; plottedWalls?: boolean },
 ): ScaleLock[] {
   if (
     !Number.isFinite(printedAreaM2) ||
@@ -131,7 +132,7 @@ export function collectScaleLocks(
     // Truncated at the boundary, not dropped: the party wall straddles it and
     // is still this flat's east wall.
     const walls = clipBodiesToBounds(
-      wallBodiesForSheet(segments, { unitsPerMetre }),
+      wallBodiesForSheet(segments, { unitsPerMetre, plottedWalls: options?.plottedWalls }),
       bounds,
       8,
       { truncate: true },
@@ -164,64 +165,71 @@ export function collectScaleLocks(
       ...doorwayBands(arcs, unitsPerMetre),
     ];
     const floor = smoothFootprint(
-      footprintByScanFill(enclosure, bounds),
+      footprintByScanFill(enclosure, bounds, {
+        resolution: unitsPerMetre >= 200 ? unitsPerMetre * 0.02 : undefined,
+      }),
       unitsPerMetre * 0.33,
     );
     if (floor.length === 0) continue;
 
     const floorM2 = spanArea(floor) / (unitsPerMetre * unitsPerMetre);
-    const rowHeight = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
-    const inside = (x: number, y: number) => {
-      const row = floor.find((r) => y >= r.y && y < r.y + rowHeight);
-      return !!row && row.spans.some(([a, b]) => x >= a && x <= b);
-    };
-    // Beds inside the flat, not beds anywhere on the sheet — the neighbour's
-    // count would otherwise vote on this flat's scale.
-    const beds = findFurniture(segments, unitsPerMetre).filter(
-      (p) => p.kind === "bed" && inside(p.x + p.w / 2, p.y + p.h / 2),
-    ).length;
-    if (beds === 0) continue;
+    if (!options?.acceptWithoutFurniture) {
+      const rowHeight = floor.length > 1 ? floor[1]!.y - floor[0]!.y : 1;
+      const inside = (x: number, y: number) => {
+        const row = floor.find((r) => y >= r.y && y < r.y + rowHeight);
+        return !!row && row.spans.some(([a, b]) => x >= a && x <= b);
+      };
+      // Beds inside the flat, not beds anywhere on the sheet — the neighbour's
+      // count would otherwise vote on this flat's scale.
+      const beds = findFurniture(segments, unitsPerMetre).filter(
+        (p) => p.kind === "bed" && inside(p.x + p.w / 2, p.y + p.h / 2),
+      ).length;
+      if (beds === 0) continue;
 
-    // A third signal, independent of both: an internal door is 75 to 110 cm.
-    // At 55 units/m this sheet's openings measure 82, 86 and 102 cm — textbook
-    // Israeli doors. At the competing 90 units/m they would be 50, 53 and 62,
-    // which no door is. Rectangles of a bed's proportion cluster at several
-    // sizes and beds alone cannot say which cluster is the beds; doors can.
-    const pieces = clipBodiesToBounds(
-      wallBodiesForSheet(segments, { unitsPerMetre, keepOpenings: true }),
-      bounds,
-      8,
-      { truncate: true },
-    );
-    const doorWidth = (o: { from: number; to: number }) => {
-      const cm = ((o.to - o.from) / unitsPerMetre) * 100;
-      return cm >= 75 && cm <= 110;
-    };
-    // Gaps between wall pieces, and the doors the sheet marks with a swing.
-    // The gap rule alone is not enough to find a scale on every sheet: on
-    // דירה 23 the area lands within 1.7% at 58 units per metre with three beds
-    // inside the flat, and no gap in that range at all, so the whole plan came
-    // back with no scale and no render. The swings find its doors. Either
-    // signal satisfies the gate — what matters is that something on the sheet
-    // measures like a door at this scale.
-    //
-    // A swing is counted by existing, not re-measured. findDoorSwings already
-    // requires a leaf of 68 to 115 cm at this scale, which is the door-width
-    // test; the opening it returns is then clipped to the wall it sits in, so
-    // measuring that instead asks a narrower question and answers none. On
-    // דירה 23 it found both doors at 58 units per metre and both were clipped
-    // under 75 cm, so the gate rejected the only scale that works.
-    const doorLike =
-      findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6).filter(
-        doorWidth,
-      ).length +
-      findDoorSwings(segments, curves ?? [], bodies, unitsPerMetre, {
-        extent: bounds,
-      }).length;
-    if (doorLike === 0) continue;
+      // A third signal, independent of both: an internal door is 75 to 110 cm.
+      // At 55 units/m this sheet's openings measure 82, 86 and 102 cm — textbook
+      // Israeli doors. At the competing 90 units/m they would be 50, 53 and 62,
+      // which no door is. Rectangles of a bed's proportion cluster at several
+      // sizes and beds alone cannot say which cluster is the beds; doors can.
+      const pieces = clipBodiesToBounds(
+        wallBodiesForSheet(segments, { unitsPerMetre, keepOpenings: true, plottedWalls: options?.plottedWalls }),
+        bounds,
+        8,
+        { truncate: true },
+      );
+      const doorWidth = (o: { from: number; to: number }) => {
+        const cm = ((o.to - o.from) / unitsPerMetre) * 100;
+        return cm >= 75 && cm <= 110;
+      };
+      // Gaps between wall pieces, and the doors the sheet marks with a swing.
+      // The gap rule alone is not enough to find a scale on every sheet: on
+      // דירה 23 the area lands within 1.7% at 58 units per metre with three beds
+      // inside the flat, and no gap in that range at all, so the whole plan came
+      // back with no scale and no render. The swings find its doors. Either
+      // signal satisfies the gate — what matters is that something on the sheet
+      // measures like a door at this scale.
+      //
+      // A swing is counted by existing, not re-measured. findDoorSwings already
+      // requires a leaf of 68 to 115 cm at this scale, which is the door-width
+      // test; the opening it returns is then clipped to the wall it sits in, so
+      // measuring that instead asks a narrower question and answers none. On
+      // דירה 23 it found both doors at 58 units per metre and both were clipped
+      // under 75 cm, so the gate rejected the only scale that works.
+      const doorLike =
+        findOpenings(pieces, unitsPerMetre * 2.4, unitsPerMetre * 0.6).filter(
+          doorWidth,
+        ).length +
+        findDoorSwings(segments, curves ?? [], bodies, unitsPerMetre, {
+          extent: bounds,
+        }).length;
+      if (doorLike === 0) continue;
+      const areaError = floorM2 / printedAreaM2 - 1;
+      candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });
+      continue;
+    }
 
     const areaError = floorM2 / printedAreaM2 - 1;
-    candidates.push({ unitsPerMetre, beds, floorM2, areaError, floor, bodies });
+    candidates.push({ unitsPerMetre, beds: 0, floorM2, areaError, floor, bodies });
   }
 
   return candidates;
@@ -278,6 +286,31 @@ export function lockScaleToHint(
   // The area the flat actually encloses at the chosen scale, so callers that
   // expect a printed target have one that is measured rather than guessed.
   return best ? { ...best, areaError: 0 } : null;
+}
+
+/**
+ * The scale the drawing itself states.
+ *
+ * $INSUNITS is not a guess to be checked against beds and doors. A shop or a
+ * whole floor has neither, and refusing it would throw away the only scale
+ * the file contains. There is no printed area, so the area error stays zero.
+ */
+export function lockScaleAtDrawingUnits(
+  segments: VectorSegment[],
+  bounds: { x: number; y: number; width: number; height: number },
+  unitsPerMetre: number,
+  curves?: VectorSegment[],
+): ScaleLock | null {
+  if (!Number.isFinite(unitsPerMetre) || unitsPerMetre <= 0 || !validBounds(bounds)) return null;
+  const [lock] = collectScaleLocks(
+    segments,
+    bounds,
+    1,
+    { from: unitsPerMetre, to: unitsPerMetre, step: 1 },
+    curves,
+    { acceptWithoutFurniture: true, plottedWalls: true },
+  );
+  return lock ? { ...lock, areaError: 0 } : null;
 }
 
 /**

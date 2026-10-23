@@ -30,7 +30,7 @@ import {
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
-import { doorwayBands, lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
+import { doorwayBands, lockScale, lockScaleAtDrawingUnits, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
   sameWall,
@@ -327,6 +327,11 @@ export async function buildFlatFromGeometry(
     unitsPerMetreHint?: number;
     /** How far from the hint the sweep may look; see lockScaleToHint. */
     unitsPerMetreHintSpread?: number;
+    /**
+     * The hint is the file's own unit, not a chain that still has to find a
+     * bed. Used for a DXF whose header states millimetres or metres.
+     */
+    unitsFromDrawing?: boolean;
     /** Set on the build the room dimensions re-scaled: it is not checked again. */
     scaledByRooms?: boolean;
   },
@@ -348,9 +353,11 @@ export async function buildFlatFromGeometry(
   const lock =
     printedAreaM2 > 0
       ? lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search, geometry.curves)
-      : hint
-        ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves, options?.unitsPerMetreHintSpread)
-        : null;
+      : hint && options?.unitsFromDrawing
+        ? lockScaleAtDrawingUnits(geometry.segments, flatExtent, hint, geometry.curves)
+        : hint
+          ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves, options?.unitsPerMetreHintSpread)
+          : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
   let floorM2 = lock.floorM2;
