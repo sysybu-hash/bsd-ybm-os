@@ -5,6 +5,7 @@ import { apiErrorResponse } from "@/lib/api-route-helpers";
 import { jsonBadRequest } from "@/lib/api-json";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { FLOORPLAN_BLOB_MAX_BYTES } from "@/lib/projects/floorplan-blob";
+import { FLOORPLAN_UPLOAD_CONTENT_TYPES } from "@/lib/projects/photo-prep/mime";
 import { createLogger } from "@/lib/logger";
 import { env } from "@/lib/env";
 
@@ -36,16 +37,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       body,
       request: req,
       onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          "application/pdf",
-          "image/jpeg",
-          "image/png",
-          "image/webp",
-          "image/heic",
-          "image/heif",
-          // A permit strip's W2D stream, cut out of the DWF in the browser.
-          "model/vnd.dwf",
-        ],
+        allowedContentTypes: FLOORPLAN_UPLOAD_CONTENT_TYPES,
         maximumSizeInBytes: FLOORPLAN_BLOB_MAX_BYTES,
         addRandomSuffix: true,
         tokenPayload: JSON.stringify({ orgId, userId }),

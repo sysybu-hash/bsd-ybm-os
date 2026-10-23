@@ -7,7 +7,11 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { fileFromDataUrl, uploadPlanToBlob } from "@/components/os/widgets/floorplan-viz/plan-source";
+import {
+  fileFromDataUrl,
+  PLAN_DIRECT_UPLOAD_MAX_BYTES,
+  stagePlanFile,
+} from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
 import type { FloorplanLayout, FloorplanRoom } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
@@ -155,9 +159,16 @@ export function useFloorplanVizRun({
           } else {
             // Keep the PDF bytes. Rasterizing here used to skip the CAD path
             // and the model invented a different apartment.
-            const blobUrl = await uploadPlanToBlob(file);
-            if (blobUrl) fd.append("blobUrl", blobUrl);
-            else fd.append("file", file);
+            const staged = await stagePlanFile(file);
+            if (staged?.blobUrl) fd.append("blobUrl", staged.blobUrl);
+            else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);
+            else if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("file", file);
+            else {
+              const message = t("workspaceWidgets.floorplanViz.planStorageUnavailable");
+              setError(message);
+              toast.error(message);
+              return;
+            }
           }
           if (projectId) fd.append("projectId", projectId);
           fd.append("styleId", styleId);

@@ -740,7 +740,8 @@
     "floorplanViz": {
       "subtitle": "Choose one whole-plan 3D still to verify the layout, or a full booklet of every room",
       "upload": "Upload plan",
-      "empty": "Upload the architect's original PDF or a permit set (DWF) to generate visuals. The visual is measured from the file's lines, so a scan or a photo of a plan is not supported.",
+      "empty": "Upload a PDF, DXF, DWG, or a DWF permit set. The visual is measured from the file's lines, so a scan or a photo of a plan is not supported.",
+      "planStorageUnavailable": "This file is too large to send directly, and temporary storage is unavailable. Try again.",
       "needFile": "Choose a plan file first",
       "dwfReading": "Reading the permit set…",
       "dwfUnit": "Apartment",
@@ -748,7 +749,7 @@
       "dwfUpper": "Apartment {unit} — upper floor",
       "dwfLower": "Apartment {unit} — lower floor",
       "dwfUnreadable": "The DWF file could not be read. Export the permit set again as DWF or PDF.",
-      "dwfNeedsStorage": "Uploading a permit set needs file storage, which is not configured here",
+      "dwfNeedsStorage": "The permit set could not be uploaded because temporary storage is unavailable. Try again.",
       "dwfNeedUnit": "Choose an apartment from the permit set",
       "bookletTitle": "Building booklet",
       "bookletHint": "A booklet for the whole building from the permit set: each floor's sheet beside its render, the elevations, aerial views and a page per apartment. About 8 minutes, no paid renders.",

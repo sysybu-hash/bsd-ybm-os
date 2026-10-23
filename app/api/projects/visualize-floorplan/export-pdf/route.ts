@@ -18,6 +18,7 @@ import { floorplanLayoutSchema, type FloorplanVizImage } from "@/lib/projects/fl
 import { bufferIfPdf, pairRastersForCompare, trimRasterWhitespace } from "@/lib/projects/floorplan-photo-prep";
 import { rasterizePdfPageJpeg } from "@/lib/projects/floorplan-raster-page";
 import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
+import { deletePlanUpload, readPlanUpload } from "@/lib/projects/floorplan-plan-upload";
 import {
   extractPdfPageText,
   extractPrintedAreas,
@@ -158,6 +159,12 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       const fetched = await fetchFloorplanBlob(sourcePdfUrl);
       if (fetched) sourcePdfBytes = bufferIfPdf(Buffer.from(fetched.base64, "base64"));
       void deleteFloorplanBlob(sourcePdfUrl);
+    }
+    const uploadId = String(form.get("uploadId") ?? "").trim();
+    if (!sourcePdfBytes && uploadId) {
+      const fetched = await readPlanUpload(orgId, uploadId);
+      if (fetched) sourcePdfBytes = bufferIfPdf(Buffer.from(fetched.base64, "base64"));
+      void deletePlanUpload(orgId, uploadId);
     }
     const runPdfBytes = run?.planBase64
       ? bufferIfPdf(Buffer.from(run.planBase64, "base64"))

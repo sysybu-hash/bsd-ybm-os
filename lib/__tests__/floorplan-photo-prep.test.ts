@@ -34,12 +34,27 @@ describe("floorplan photo prep", () => {
   it("infers jpeg from a Windows-style empty MIME using the file name", () => {
     expect(inferMimeFromFileName("דירה1.jpg", "")).toBe("image/jpeg");
     expect(inferMimeFromFileName("plan.PDF", "application/octet-stream")).toBe("application/pdf");
+    expect(inferMimeFromFileName("מרכז.dxf", "application/pdf")).toBe("image/vnd.dxf");
+    expect(inferMimeFromFileName("מרכז.dwg", "")).toBe("image/vnd.dwg");
   });
 
   it("sniffs jpeg magic when MIME is missing", () => {
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]).toString("base64");
     expect(sniffFloorplanMime(jpeg, "")).toBe("image/jpeg");
     expect(sniffFloorplanMime(Buffer.from("%PDF-1.4").toString("base64"), "")).toBe("application/pdf");
+    expect(sniffFloorplanMime(Buffer.from("%PDF-1.4").toString("base64"), "application/dxf")).toBe("application/pdf");
+    expect(
+      sniffFloorplanMime(Buffer.from("0\nSECTION\n2\nENTITIES\n").toString("base64"), "application/octet-stream"),
+    ).toBe("image/vnd.dxf");
+    expect(
+      sniffFloorplanMime(
+        Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from("0\nSECTION\n2\nHEADER\n")]).toString("base64"),
+        "",
+      ),
+    ).toBe("image/vnd.dxf");
+    expect(sniffFloorplanMime(Buffer.from("not a drawing").toString("base64"), "application/acad")).toBe(
+      "image/vnd.dwg",
+    );
   });
 
   it("knows a permit strip, whole or as the drawing cut out of it", () => {

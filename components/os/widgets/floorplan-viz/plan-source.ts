@@ -2,6 +2,7 @@
 
 import type { FloorplanBbox } from "@/lib/projects/floorplan-layout";
 import type { LocatorFocus } from "@/lib/projects/floorplan-locator";
+import { PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
 
 const PDF_SCALE = 3;
 
@@ -158,6 +159,23 @@ export async function composeLocatorStripJpeg(planSrc: string, focus: LocatorFoc
 /** Over this, a request body is refused by the platform before the route runs. */
 export const PLAN_DIRECT_UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024;
 
+/** A drawing staged for the run: Blob when it is configured, otherwise parts. */
+export type StagedPlanRef = { blobUrl?: string; uploadId?: string };
+
+function contentTypeForUpload(file: File): string {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".dxf")) return "image/vnd.dxf";
+  if (name.endsWith(".dwg")) return "image/vnd.dwg";
+  if (name.endsWith(".dwf") || name.endsWith(".w2d")) return "model/vnd.dwf";
+  if (name.endsWith(".png")) return "image/png";
+  if (name.endsWith(".webp")) return "image/webp";
+  if (name.endsWith(".heic")) return "image/heic";
+  if (name.endsWith(".heif")) return "image/heif";
+  if (file.type && file.type !== "application/octet-stream") return file.type;
+  return "application/octet-stream";
+}
+
 /**
  * Upload a plan straight to Blob and answer with its URL.
  *
@@ -174,11 +192,66 @@ export async function uploadPlanToBlob(file: File, options?: { always?: boolean 
     const blob = await upload(file.name, file, {
       access: "public",
       handleUploadUrl: "/api/projects/visualize-floorplan/upload",
-      contentType: file.type || undefined,
+      contentType: contentTypeForUpload(file),
     });
     return blob.url;
   } catch {
     // Blob may not be configured for this deployment; the caller decides.
     return null;
   }
+}
+
+async function uploadPlanInParts(file: File): Promise<string | null> {
+  const totalParts = Math.ceil(file.size / PLAN_UPLOAD_PART_BYTES);
+  const opened = await fetch("/api/projects/visualize-floorplan/upload-part", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      op: "begin",
+      fileName: file.name,
+      totalBytes: file.size,
+      totalParts,
+    }),
+  });
+  const openedJson = (await opened.json().catch(() => null)) as { uploadId?: string } | null;
+  const uploadId = opened.ok ? openedJson?.uploadId : undefined;
+  if (!uploadId) return null;
+  for (let index = 0; index < totalParts; index += 1) {
+    const slice = file.slice(index * PLAN_UPLOAD_PART_BYTES, (index + 1) * PLAN_UPLOAD_PART_BYTES);
+    const form = new FormData();
+    form.append("uploadId", uploadId);
+    form.append("index", String(index));
+    form.append("file", slice, file.name);
+    const part = await fetch("/api/projects/visualize-floorplan/upload-part", {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!part.ok) return null;
+  }
+  const finished = await fetch("/api/projects/visualize-floorplan/upload-part", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ op: "finish", uploadId }),
+  });
+  return finished.ok ? uploadId : null;
+}
+
+/**
+ * Put a plan where the run can read it.
+ *
+ * Small files stay in the request. Larger ones go to Blob, and when Blob is
+ * not configured they go up in parts through the API instead.
+ */
+export async function stagePlanFile(
+  file: File,
+  options?: { always?: boolean },
+): Promise<StagedPlanRef | null> {
+  if (!options?.always && file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) return null;
+  const blobUrl = await uploadPlanToBlob(file, options);
+  if (blobUrl) return { blobUrl };
+  const uploadId = await uploadPlanInParts(file);
+  return uploadId ? { uploadId } : null;
 }

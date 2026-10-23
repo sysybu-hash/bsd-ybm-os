@@ -5,6 +5,7 @@ import { jsonBadRequest } from "@/lib/api-json";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
+import { readPlanUpload } from "@/lib/projects/floorplan-plan-upload";
 import { listDwfUnits, readDwfStrip } from "@/lib/projects/dwf-building";
 
 export const dynamic = "force-dynamic";
@@ -25,11 +26,12 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
     const block = await guardConstructionOnlyApi(orgId, role);
     if (block) return block;
 
-    const body = (await req.json().catch(() => null)) as { blobUrl?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as { blobUrl?: unknown; uploadId?: unknown } | null;
     const blobUrl = typeof body?.blobUrl === "string" ? body.blobUrl.trim() : "";
-    if (!blobUrl) return jsonBadRequest("חסר קובץ תוכנית", "missing_fields");
+    const uploadId = typeof body?.uploadId === "string" ? body.uploadId.trim() : "";
+    if (!blobUrl && !uploadId) return jsonBadRequest("חסר קובץ תוכנית", "missing_fields");
 
-    const fetched = await fetchFloorplanBlob(blobUrl);
+    const fetched = blobUrl ? await fetchFloorplanBlob(blobUrl) : await readPlanUpload(orgId, uploadId);
     if (!fetched) return jsonBadRequest("קובץ התוכנית שהועלה אינו זמין", "blob_unavailable");
 
     const strip = readDwfStrip(Buffer.from(fetched.base64, "base64"));

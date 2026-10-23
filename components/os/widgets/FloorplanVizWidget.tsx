@@ -117,7 +117,7 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
           <input
             ref={fileRef}
             type="file"
-            accept=".pdf,.dwf"
+            accept=".pdf,.dxf,.dwg,.dwf,.w2d,.png,.jpg,.jpeg,.webp,.heic,.heif"
             className="hidden"
             onChange={(e) => {
               onFile(e.target.files?.[0] ?? null);

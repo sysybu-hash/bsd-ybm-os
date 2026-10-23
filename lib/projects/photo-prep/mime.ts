@@ -22,8 +22,10 @@ export type PreparedFloorplanSource = {
 
 /** DXF is text, and its first record opens a SECTION. */
 export function looksLikeDxf(bytes: Buffer | Uint8Array): boolean {
-  const head = Buffer.from(bytes.subarray(0, 512)).toString("latin1");
-  return /(^|\n)\s*0\s*\r?\n\s*SECTION/i.test(head) || head.includes("AutoCAD Binary DXF");
+  let head = Buffer.from(bytes.subarray(0, 4096));
+  if (head.length >= 3 && head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf) head = head.subarray(3);
+  const text = head.toString("latin1").replace(/^\uFEFF/, "");
+  return /(^|\n)\s*0\s*\r?\n\s*SECTION/i.test(text) || text.includes("AutoCAD Binary DXF");
 }
 
 /** DWG is binary, and its first bytes name the release that wrote it. */
@@ -44,6 +46,51 @@ export function isDwfFloorplanMime(mime: string): boolean {
 export function isCadFloorplanMime(mime: string): boolean {
   return mime === DXF_MIME || mime === DWG_MIME;
 }
+
+/**
+ * Names browsers and Windows attach to the same drawing.
+ *
+ * Chrome sends `application/dxf` or nothing for a DXF, and `application/acad`
+ * for a DWG. The readers only recognise the canonical types below.
+ */
+const FLOORPLAN_MIME_ALIAS: Record<string, string> = {
+  "application/pdf": "application/pdf",
+  "application/x-pdf": "application/pdf",
+  [DXF_MIME]: DXF_MIME,
+  "application/dxf": DXF_MIME,
+  "application/x-dxf": DXF_MIME,
+  "image/x-dxf": DXF_MIME,
+  [DWG_MIME]: DWG_MIME,
+  "application/acad": DWG_MIME,
+  "application/x-acad": DWG_MIME,
+  "application/autocad_dwg": DWG_MIME,
+  "application/dwg": DWG_MIME,
+  "application/x-dwg": DWG_MIME,
+  "image/x-dwg": DWG_MIME,
+  "drawing/dwg": DWG_MIME,
+  [DWF_MIME]: DWF_MIME,
+  "application/dwf": DWF_MIME,
+  "application/x-dwf": DWF_MIME,
+  "drawing/x-dwf": DWF_MIME,
+  "application/x-w2d": DWF_MIME,
+  "image/jpeg": "image/jpeg",
+  "image/jpg": "image/jpeg",
+  "image/png": "image/png",
+  "image/webp": "image/webp",
+  "image/heic": "image/heic",
+  "image/heif": "image/heif",
+};
+
+/** The type this pipeline reads, or null when the label is not a plan. */
+export function canonicalFloorplanMime(mime: string): string | null {
+  const key = mime.trim().toLowerCase().split(";")[0]!.trim();
+  return FLOORPLAN_MIME_ALIAS[key] ?? null;
+}
+
+/** What Blob, and the chunked fallback, will accept for a plan upload. */
+export const FLOORPLAN_UPLOAD_CONTENT_TYPES = [
+  ...new Set([...Object.keys(FLOORPLAN_MIME_ALIAS), "application/octet-stream"]),
+];
 
 export function isRasterFloorplanMime(mime: string): boolean {
   // A DXF's media type starts with image/ and is not a picture: sharp cannot
@@ -70,12 +117,12 @@ export function bufferIfPdf(bytes: Buffer | Uint8Array | null | undefined): Buff
   return buf.subarray(0, 4).toString("latin1") === "%PDF" ? buf : null;
 }
 
-export function sniffFloorplanMime(base64: string, mimeType: string): string {
-  const mime = mimeType.trim();
-  if (mime && mime !== "application/octet-stream") return mime;
+/** Magic bytes win over a wrong label. A PDF named `.dxf` stays a PDF. */
+export function sniffFloorplanBytes(base64: string): string | null {
   try {
-    // 512 bytes: a DXF's opening SECTION record sits further in than a magic number.
-    const buf = Buffer.from(base64.slice(0, 1024), "base64");
+    // A DXF's first SECTION can sit past a comment header. 8KB of base64 is ~6KB of text.
+    const buf = Buffer.from(base64.slice(0, 8192), "base64");
+    if (buf.length < 4) return null;
     if (buf.slice(0, 4).toString("latin1") === "%PDF") return "application/pdf";
     if (looksLikeDwg(buf)) return DWG_MIME;
     if (looksLikeDwf(buf)) return DWF_MIME;
@@ -88,6 +135,16 @@ export function sniffFloorplanMime(base64: string, mimeType: string): string {
   } catch {
     /* ignore */
   }
+  return null;
+}
+
+export function sniffFloorplanMime(base64: string, mimeType: string): string {
+  const fromBytes = sniffFloorplanBytes(base64);
+  if (fromBytes) return fromBytes;
+  const alias = canonicalFloorplanMime(mimeType);
+  if (alias) return alias;
+  const mime = mimeType.trim();
+  if (mime && mime !== "application/octet-stream") return mime;
   return mime || "application/pdf";
 }
 

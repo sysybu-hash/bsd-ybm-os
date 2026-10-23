@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { extractW2dFromDwf, isDwfFileName } from "@/components/os/widgets/floorplan-viz/dwf-extract";
-import { uploadPlanToBlob } from "@/components/os/widgets/floorplan-viz/plan-source";
+import { stagePlanFile, type StagedPlanRef } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { DwfBuildingUnit } from "@/lib/projects/dwf-building";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
@@ -26,14 +26,14 @@ export function useDwfBuilding(t: TFn) {
   const [drawing, setDrawing] = useState<File | null>(null);
   const [units, setUnits] = useState<DwfBuildingUnit[]>([]);
   const [choice, setChoice] = useState("");
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [staged, setStaged] = useState<StagedPlanRef | null>(null);
   const [reading, setReading] = useState(false);
 
   const reset = useCallback(() => {
     setDrawing(null);
     setUnits([]);
     setChoice("");
-    setBlobUrl(null);
+    setStaged(null);
   }, []);
 
   /**
@@ -52,8 +52,8 @@ export function useDwfBuilding(t: TFn) {
           toast.error(t("workspaceWidgets.floorplanViz.dwfUnreadable"));
           return null;
         }
-        const url = await uploadPlanToBlob(cut, { always: true });
-        if (!url) {
+        const stagedRef = await stagePlanFile(cut, { always: true });
+        if (!stagedRef) {
           toast.error(t("workspaceWidgets.floorplanViz.dwfNeedsStorage"));
           return null;
         }
@@ -61,7 +61,7 @@ export function useDwfBuilding(t: TFn) {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ blobUrl: url }),
+          body: JSON.stringify(stagedRef),
         });
         const json = (await res.json()) as { units?: DwfBuildingUnit[]; error?: string };
         if (!res.ok || !Array.isArray(json.units) || json.units.length === 0) {
@@ -70,7 +70,7 @@ export function useDwfBuilding(t: TFn) {
         }
         setDrawing(cut);
         setUnits(json.units);
-        setBlobUrl(url);
+        setStaged(stagedRef);
         return cut;
       } catch {
         toast.error(t("workspaceWidgets.floorplanViz.dwfUnreadable"));
@@ -90,15 +90,20 @@ export function useDwfBuilding(t: TFn) {
       toast.error(t("workspaceWidgets.floorplanViz.dwfNeedUnit"));
       return null;
     }
-    const url = blobUrl ?? (await uploadPlanToBlob(drawing, { always: true }));
-    if (!url) {
+    const ref = staged ?? (await stagePlanFile(drawing, { always: true }));
+    if (!ref) {
       toast.error(t("workspaceWidgets.floorplanViz.dwfNeedsStorage"));
       return null;
     }
     // The run deletes the upload once it has its own copy.
-    setBlobUrl(null);
-    return { blobUrl: url, unit: String(picked.unit), ...(picked.level ? { level: picked.level } : {}) };
-  }, [blobUrl, choice, drawing, t, units]);
+    setStaged(null);
+    return {
+      ...(ref.blobUrl ? { blobUrl: ref.blobUrl } : {}),
+      ...(ref.uploadId ? { uploadId: ref.uploadId } : {}),
+      unit: String(picked.unit),
+      ...(picked.level ? { level: picked.level } : {}),
+    };
+  }, [staged, choice, drawing, t, units]);
 
   return { isDwf: drawing !== null, drawing, units, choice, setChoice, reading, prepare, runFields, reset };
 }
