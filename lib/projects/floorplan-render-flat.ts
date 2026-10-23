@@ -243,6 +243,7 @@ export async function renderFlatFromGeometry(
       foundTerraces: flat.terraces.length,
       printedTerraces: flat.printedTerraceCount,
       auditHardFailures: [],
+      openPlan: options.unitsFromDrawing === true,
     }),
     spend,
   };

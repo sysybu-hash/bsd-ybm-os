@@ -263,6 +263,21 @@ describe("the floor the walls enclose", () => {
     expect(area).toBeGreaterThan(8_000_000);
     expect(area).toBeLessThan(24_000_000);
   });
+
+  it("seals a 90 cm doorway when the drawing is in millimetres", () => {
+    const room = [
+      { orientation: "h" as const, centre: 0, from: 0, to: 5000, thickness: 200 },
+      { orientation: "h" as const, centre: 4000, from: 0, to: 5000, thickness: 200 },
+      { orientation: "v" as const, centre: 0, from: 0, to: 4000, thickness: 200 },
+      { orientation: "v" as const, centre: 5000, from: 0, to: 1500, thickness: 200 },
+      { orientation: "v" as const, centre: 5000, from: 2400, to: 4000, thickness: 200 },
+    ];
+    const bounds = { x: -200, y: -200, width: 5400, height: 4400 };
+    const open = interiorSpans(room, bounds);
+    const sealed = interiorSpans(room, bounds, { unitsPerMetre: 1000 });
+    expect(spanArea(sealed)).toBeGreaterThan(12_000_000);
+    expect(spanArea(sealed)).toBeGreaterThan(spanArea(open));
+  });
 });
 
 describe("walls the thickness rules used to throw away", () => {

@@ -809,15 +809,15 @@ export function interiorSpans(
   const floorMask = options?.floorMask;
   if (floorMask && floorMask.length > 1) {
     const maskPitch = floorMask[1]!.y - floorMask[0]!.y;
-    const covered = (px: number, py: number) => {
-      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
-      return !!row && row.spans.some(([a, b]) => px >= a && px <= b);
-    };
     for (let gy = 0; gy < h; gy++) {
       const py = bounds.y + (gy - 1) * step;
+      // One row for this scanline. Searching it again at every cell made a
+      // millimetre drawing walk the mask millions of times.
+      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
       for (let gx = 0; gx < w; gx++) {
         const px = bounds.x + (gx - 1) * step;
-        if (!covered(px, py)) grid[gy * w + gx] = WALL;
+        const inside = !!row && row.spans.some(([a, b]) => px >= a && px <= b);
+        if (!inside) grid[gy * w + gx] = WALL;
       }
     }
   }

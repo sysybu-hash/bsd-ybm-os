@@ -75,6 +75,12 @@ export function assessFloorplanRun(input: {
    * its own measurements.
    */
   auditHardFailures?: string[];
+  /**
+   * A drawing measured from the units it states, with no apartment programme
+   * printed on it. A shop floor has no bedroom and no bathroom; requiring
+   * them refused the only floor the file closed. The area limit is unchanged.
+   */
+  openPlan?: boolean;
 }): ConfidenceReport {
   const hard: string[] = [];
   const soft: string[] = [];
@@ -121,17 +127,19 @@ export function assessFloorplanRun(input: {
     }
   }
 
-  const bedrooms = input.rooms.filter(
-    (room) => room.kind === "bedroom" || room.kind === "mmd",
-  ).length;
-  const bathrooms = input.rooms.filter((room) => room.kind === "bathroom").length;
-  const merged = input.rooms.filter((room) => room.mergedKinds).length;
-  if (input.rooms.length === 0) hard.push("לא זוהו חדרים כלל");
-  else {
-    if (bedrooms === 0) hard.push("לא זוהה אף חדר שינה");
-    if (bathrooms === 0 && merged === 0) hard.push("לא זוהה חדר רחצה");
-    if (merged > 0) {
-      hard.push(`${merged} חדרים לא הופרדו זה מזה (מיטה וכלי סניטרי באותו חלל)`);
+  if (!input.openPlan) {
+    const bedrooms = input.rooms.filter(
+      (room) => room.kind === "bedroom" || room.kind === "mmd",
+    ).length;
+    const bathrooms = input.rooms.filter((room) => room.kind === "bathroom").length;
+    const merged = input.rooms.filter((room) => room.mergedKinds).length;
+    if (input.rooms.length === 0) hard.push("לא זוהו חדרים כלל");
+    else {
+      if (bedrooms === 0) hard.push("לא זוהה אף חדר שינה");
+      if (bathrooms === 0 && merged === 0) hard.push("לא זוהה חדר רחצה");
+      if (merged > 0) {
+        hard.push(`${merged} חדרים לא הופרדו זה מזה (מיטה וכלי סניטרי באותו חלל)`);
+      }
     }
   }
 
