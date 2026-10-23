@@ -70,7 +70,10 @@ export function measurementCoverage(input: SceneInput): MeasurementCoverage {
     coverage.shortfall = `המדידה מצאה ${named} חדרים מתוך ${labelled} שמודפסים על הגיליון`;
     return coverage;
   }
-  if (named > 1 && openings < Math.floor(named * MIN_OPENINGS_PER_ROOM)) {
+  // Only against a sheet that names its rooms. A commercial drawing labels
+  // none, and an open floor with few doors is the measurement, not a set of
+  // sealed boxes.
+  if (labelled > 0 && named > 1 && openings < Math.floor(named * MIN_OPENINGS_PER_ROOM)) {
     coverage.shortfall = `נמצאו ${openings} פתחים ל-${named} חדרים`;
     return coverage;
   }

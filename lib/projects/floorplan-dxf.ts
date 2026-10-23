@@ -255,17 +255,22 @@ export async function renderDxfPageJpeg(
     width < 64
   ) return null;
 
-  let doc: DxfDocument | null;
-  try {
-    const { default: DxfParser } = await import("dxf-parser");
-    doc = new DxfParser().parseSync(dxfText) as DxfDocument | null;
-  } catch (err: unknown) {
-    log.warn("dxf text raster parsing failed", { error: err instanceof Error ? err.message : String(err) });
-    return null;
+  // The geometry is already parsed. Reading a drawing of tens of megabytes a
+  // second time, only to place labels on a preview, is what ran the request
+  // out of time before the measured picture.
+  let doc: DxfDocument | null = null;
+  if (dxfText.length <= 2_000_000) {
+    try {
+      const { default: DxfParser } = await import("dxf-parser");
+      doc = new DxfParser().parseSync(dxfText) as DxfDocument | null;
+    } catch (err: unknown) {
+      log.warn("dxf text raster parsing failed", { error: err instanceof Error ? err.message : String(err) });
+      return null;
+    }
+    if (!doc) return null;
   }
-  if (!doc) return null;
-  const raw = collect(doc.entities ?? []);
-  if (raw.length === 0) return null;
+  const raw = collect(doc?.entities ?? []);
+  if (raw.length === 0 && geometry.segments.length === 0 && geometry.curves.length === 0) return null;
   let minX = Infinity;
   let maxY = -Infinity;
   for (const item of raw) {
