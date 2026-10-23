@@ -2,7 +2,7 @@
 
 import type { FloorplanBbox } from "@/lib/projects/floorplan-layout";
 import type { LocatorFocus } from "@/lib/projects/floorplan-locator";
-import { PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
+import { PLAN_UPLOAD_MAX_BYTES, PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
 
 const PDF_SCALE = 3;
 
@@ -201,6 +201,10 @@ export async function uploadPlanToBlob(file: File, options?: { always?: boolean 
   }
 }
 
+export function planExceedsUploadLimit(file: File): boolean {
+  return file.size > PLAN_UPLOAD_MAX_BYTES;
+}
+
 async function uploadPlanInParts(file: File): Promise<string | null> {
   const totalParts = Math.ceil(file.size / PLAN_UPLOAD_PART_BYTES);
   const opened = await fetch("/api/projects/visualize-floorplan/upload-part", {
@@ -217,19 +221,29 @@ async function uploadPlanInParts(file: File): Promise<string | null> {
   const openedJson = (await opened.json().catch(() => null)) as { uploadId?: string } | null;
   const uploadId = opened.ok ? openedJson?.uploadId : undefined;
   if (!uploadId) return null;
-  for (let index = 0; index < totalParts; index += 1) {
-    const slice = file.slice(index * PLAN_UPLOAD_PART_BYTES, (index + 1) * PLAN_UPLOAD_PART_BYTES);
-    const form = new FormData();
-    form.append("uploadId", uploadId);
-    form.append("index", String(index));
-    form.append("file", slice, file.name);
-    const part = await fetch("/api/projects/visualize-floorplan/upload-part", {
-      method: "POST",
-      credentials: "include",
-      body: form,
-    });
-    if (!part.ok) return null;
+  const concurrency = Math.min(4, totalParts);
+  let next = 0;
+  let failed = false;
+  async function sendPart() {
+    while (!failed) {
+      const index = next;
+      next += 1;
+      if (index >= totalParts) return;
+      const slice = file.slice(index * PLAN_UPLOAD_PART_BYTES, (index + 1) * PLAN_UPLOAD_PART_BYTES);
+      const form = new FormData();
+      form.append("uploadId", uploadId!);
+      form.append("index", String(index));
+      form.append("file", slice, file.name);
+      const part = await fetch("/api/projects/visualize-floorplan/upload-part", {
+        method: "POST",
+        credentials: "include",
+        body: form,
+      });
+      if (!part.ok) failed = true;
+    }
   }
+  await Promise.all(Array.from({ length: concurrency }, () => sendPart()));
+  if (failed) return null;
   const finished = await fetch("/api/projects/visualize-floorplan/upload-part", {
     method: "POST",
     credentials: "include",

@@ -742,6 +742,7 @@
       "upload": "Upload plan",
       "empty": "Upload a PDF, DXF, DWG, or a DWF permit set. The visual is measured from the file's lines, so a scan or a photo of a plan is not supported.",
       "planStorageUnavailable": "This file is too large to send directly, and temporary storage is unavailable. Try again.",
+      "planTooLarge": "This file is larger than 100MB, so it cannot be read.",
       "needFile": "Choose a plan file first",
       "dwfReading": "Reading the permit set…",
       "dwfUnit": "Apartment",

@@ -1,18 +1,19 @@
 import { randomUUID } from "node:crypto";
 
-import { FLOORPLAN_BLOB_MAX_BYTES } from "@/lib/projects/floorplan-blob";
-import { PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
+import { PLAN_UPLOAD_MAX_BYTES, PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
 import { inferMimeFromFileName } from "@/lib/scan-mime";
 import { sniffFloorplanMime } from "@/lib/projects/photo-prep/mime";
 
-export { PLAN_UPLOAD_PART_BYTES };
+export { PLAN_UPLOAD_MAX_BYTES, PLAN_UPLOAD_PART_BYTES };
 const TTL_SEC = 20 * 60;
-const MAX_PARTS = Math.ceil(FLOORPLAN_BLOB_MAX_BYTES / PLAN_UPLOAD_PART_BYTES) + 1;
+const MAX_PARTS = Math.ceil(PLAN_UPLOAD_MAX_BYTES / PLAN_UPLOAD_PART_BYTES) + 1;
+const READ_CONCURRENCY = 6;
 
 export type PlanUploadStore = {
   set(key: string, value: string, ttlSec: number): Promise<void>;
   get(key: string): Promise<string | null>;
   del(keys: string[]): Promise<void>;
+  exists(keys: string[]): Promise<number>;
 };
 
 export type StagedPlanBytes = {
@@ -47,6 +48,9 @@ export function memoryPlanUploadStore(): PlanUploadStore {
     async del(keys) {
       for (const key of keys) rows.delete(key);
     },
+    async exists(keys) {
+      return keys.filter((key) => rows.has(key)).length;
+    },
   };
 }
 
@@ -70,6 +74,10 @@ async function store(): Promise<PlanUploadStore | null> {
     },
     async del(keys) {
       if (keys.length > 0) await redis.del(...keys);
+    },
+    async exists(keys) {
+      if (keys.length === 0) return 0;
+      return Number(await redis.exists(...keys));
     },
   };
 }
@@ -128,7 +136,7 @@ export async function beginPlanUpload(input: {
     if (
       !Number.isInteger(totalBytes) ||
       totalBytes <= 0 ||
-      totalBytes > FLOORPLAN_BLOB_MAX_BYTES ||
+      totalBytes > PLAN_UPLOAD_MAX_BYTES ||
       !Number.isInteger(totalParts) ||
       totalParts !== expected ||
       totalParts > MAX_PARTS
@@ -139,12 +147,10 @@ export async function beginPlanUpload(input: {
     const meta: UploadMeta = { fileName, totalBytes, totalParts };
     await backend.set(metaKey(input.orgId, id), JSON.stringify(meta), TTL_SEC);
     return id;
-  } catch {
+  } catch (error) {
+    console.error("plan_upload_begin_failed", error instanceof Error ? error.message : "failed");
     return null;
   }
-}
-
-export async function putPlanUploadPart(input: {
   orgId: string;
   uploadId: string;
   index: number;
@@ -166,7 +172,8 @@ export async function putPlanUploadPart(input: {
       TTL_SEC,
     );
     return true;
-  } catch {
+  } catch (error) {
+    console.error("plan_upload_part_failed", error instanceof Error ? error.message : "failed");
     return false;
   }
 }
@@ -178,14 +185,28 @@ export async function readPlanUpload(orgId: string, uploadId: string): Promise<S
     if (!backend || !isPlanUploadId(uploadId)) return null;
     const meta = readMeta(await backend.get(metaKey(orgId, uploadId)));
     if (!meta) return null;
-    const parts: Buffer[] = [];
-    for (let i = 0; i < meta.totalParts; i += 1) {
-      const raw = await backend.get(partKey(orgId, uploadId, i));
-      if (typeof raw !== "string" || !raw.startsWith(PART_PREFIX)) return null;
-      parts.push(Buffer.from(raw.slice(PART_PREFIX.length), "base64"));
-    }
-    const bytes = Buffer.concat(parts);
-    if (bytes.byteLength !== meta.totalBytes || bytes.byteLength > FLOORPLAN_BLOB_MAX_BYTES) return null;
+    const parts: Array<Buffer | null> = new Array(meta.totalParts).fill(null);
+    let cursor = 0;
+    let broken = false;
+    const workers = Math.min(READ_CONCURRENCY, meta.totalParts);
+    await Promise.all(
+      Array.from({ length: workers }, async () => {
+        while (!broken) {
+          const index = cursor;
+          cursor += 1;
+          if (index >= meta.totalParts) return;
+          const raw = await backend.get(partKey(orgId, uploadId, index));
+          if (typeof raw !== "string" || !raw.startsWith(PART_PREFIX)) {
+            broken = true;
+            return;
+          }
+          parts[index] = Buffer.from(raw.slice(PART_PREFIX.length), "base64");
+        }
+      }),
+    );
+    if (broken || parts.some((part) => part == null)) return null;
+    const bytes = Buffer.concat(parts as Buffer[]);
+    if (bytes.byteLength !== meta.totalBytes || bytes.byteLength > PLAN_UPLOAD_MAX_BYTES) return null;
     const base64 = bytes.toString("base64");
     return {
       base64,
@@ -195,6 +216,20 @@ export async function readPlanUpload(orgId: string, uploadId: string): Promise<S
     };
   } catch {
     return null;
+  }
+}
+
+/** Every part is present. Does not download the drawing. */
+export async function planUploadReady(orgId: string, uploadId: string): Promise<boolean> {
+  try {
+    const backend = await store();
+    if (!backend || !isPlanUploadId(uploadId)) return false;
+    const meta = readMeta(await backend.get(metaKey(orgId, uploadId)));
+    if (!meta || meta.totalParts <= 0) return false;
+    const keys = Array.from({ length: meta.totalParts }, (_, index) => partKey(orgId, uploadId, index));
+    return (await backend.exists(keys)) === meta.totalParts;
+  } catch {
+    return false;
   }
 }
 

@@ -2,7 +2,9 @@ import {
   __setPlanUploadStoreForTests,
   beginPlanUpload,
   memoryPlanUploadStore,
+  PLAN_UPLOAD_MAX_BYTES,
   PLAN_UPLOAD_PART_BYTES,
+  planUploadReady,
   putPlanUploadPart,
   readPlanUpload,
 } from "@/lib/projects/floorplan-plan-upload";
@@ -47,5 +49,37 @@ describe("plan upload parts", () => {
         totalParts: 1,
       }),
     ).toBeNull();
+  });
+
+  it("accepts a drawing larger than one stored object and refuses one past the cap", async () => {
+    const totalBytes = 26 * 1024 * 1024;
+    const id = await beginPlanUpload({
+      orgId: ORG,
+      fileName: "מרכז פסגה.dxf",
+      totalBytes,
+      totalParts: Math.ceil(totalBytes / PLAN_UPLOAD_PART_BYTES),
+    });
+    expect(id).toBeTruthy();
+    expect(
+      await beginPlanUpload({
+        orgId: ORG,
+        fileName: "huge.dxf",
+        totalBytes: PLAN_UPLOAD_MAX_BYTES + 1,
+        totalParts: Math.ceil((PLAN_UPLOAD_MAX_BYTES + 1) / PLAN_UPLOAD_PART_BYTES),
+      }),
+    ).toBeNull();
+  });
+
+  it("reports the upload ready only after every part is stored", async () => {
+    const head = Buffer.alloc(8, 1);
+    const id = await beginPlanUpload({
+      orgId: ORG,
+      fileName: "plan.dxf",
+      totalBytes: head.byteLength,
+      totalParts: 1,
+    });
+    expect(await planUploadReady(ORG, id!)).toBe(false);
+    expect(await putPlanUploadPart({ orgId: ORG, uploadId: id!, index: 0, bytes: head })).toBe(true);
+    expect(await planUploadReady(ORG, id!)).toBe(true);
   });
 });

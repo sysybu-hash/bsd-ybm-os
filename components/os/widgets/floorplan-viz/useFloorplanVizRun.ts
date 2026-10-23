@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import {
   fileFromDataUrl,
   PLAN_DIRECT_UPLOAD_MAX_BYTES,
+  planExceedsUploadLimit,
   stagePlanFile,
 } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
@@ -159,6 +160,12 @@ export function useFloorplanVizRun({
           } else {
             // Keep the PDF bytes. Rasterizing here used to skip the CAD path
             // and the model invented a different apartment.
+            if (planExceedsUploadLimit(file)) {
+              const message = t("workspaceWidgets.floorplanViz.planTooLarge");
+              setError(message);
+              toast.error(message);
+              return;
+            }
             const staged = await stagePlanFile(file);
             if (staged?.blobUrl) fd.append("blobUrl", staged.blobUrl);
             else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);

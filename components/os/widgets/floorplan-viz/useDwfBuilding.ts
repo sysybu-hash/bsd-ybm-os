@@ -3,7 +3,11 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { extractW2dFromDwf, isDwfFileName } from "@/components/os/widgets/floorplan-viz/dwf-extract";
-import { stagePlanFile, type StagedPlanRef } from "@/components/os/widgets/floorplan-viz/plan-source";
+import {
+  planExceedsUploadLimit,
+  stagePlanFile,
+  type StagedPlanRef,
+} from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { DwfBuildingUnit } from "@/lib/projects/dwf-building";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
@@ -54,7 +58,13 @@ export function useDwfBuilding(t: TFn) {
         }
         const stagedRef = await stagePlanFile(cut, { always: true });
         if (!stagedRef) {
-          toast.error(t("workspaceWidgets.floorplanViz.dwfNeedsStorage"));
+          toast.error(
+            t(
+              planExceedsUploadLimit(cut)
+                ? "workspaceWidgets.floorplanViz.planTooLarge"
+                : "workspaceWidgets.floorplanViz.dwfNeedsStorage",
+            ),
+          );
           return null;
         }
         const res = await fetch("/api/projects/visualize-floorplan/dwf-units", {
@@ -92,7 +102,13 @@ export function useDwfBuilding(t: TFn) {
     }
     const ref = staged ?? (await stagePlanFile(drawing, { always: true }));
     if (!ref) {
-      toast.error(t("workspaceWidgets.floorplanViz.dwfNeedsStorage"));
+      toast.error(
+        t(
+          planExceedsUploadLimit(drawing)
+            ? "workspaceWidgets.floorplanViz.planTooLarge"
+            : "workspaceWidgets.floorplanViz.dwfNeedsStorage",
+        ),
+      );
       return null;
     }
     // The run deletes the upload once it has its own copy.
