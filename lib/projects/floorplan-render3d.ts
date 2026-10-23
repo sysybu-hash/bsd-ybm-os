@@ -52,6 +52,85 @@ export type Render3dOptions = {
 
 type Box = { x: number; y: number; width: number; height: number };
 
+/**
+ * The closed floor, when the walls sprawl across a whole sheet.
+ *
+ * A commercial DXF is hundreds of metres wide. Framing every wall puts a
+ * 40 m² floor in a line of pixels, and the walls themselves disappear. A
+ * sales sheet's walls and floor are the same rectangle, so this leaves it.
+ */
+export function frameAroundFloor(
+  floor: SpanRow[] | undefined,
+  walls: Box,
+  unitsPerMetre: number,
+): Box {
+  if (!floor || floor.length < 2 || !(unitsPerMetre > 0)) return walls;
+  const pitch = Math.abs(floor[1]!.y - floor[0]!.y) || 1;
+  const cell = Math.max(pitch, unitsPerMetre * 2);
+  const cells = new Map<string, { x: number; y: number; area: number }>();
+  for (const row of floor) {
+    const gy = Math.floor(row.y / cell);
+    for (const [a, b] of row.spans) {
+      if (!(b > a)) continue;
+      const x0 = Math.floor(a / cell);
+      const x1 = Math.floor((b - 1) / cell);
+      for (let gx = x0; gx <= x1; gx++) {
+        const key = `${gx},${gy}`;
+        const prev = cells.get(key);
+        const bit = Math.min(b, (gx + 1) * cell) - Math.max(a, gx * cell);
+        if (prev) prev.area += bit * pitch;
+        else cells.set(key, { x: gx, y: gy, area: Math.max(0, bit) * pitch });
+      }
+    }
+  }
+  if (cells.size === 0) return walls;
+
+  const seen = new Set<string>();
+  let best: Array<{ x: number; y: number }> = [];
+  let bestArea = 0;
+  for (const [key, start] of cells) {
+    if (seen.has(key)) continue;
+    const stack = [start];
+    seen.add(key);
+    const group: Array<{ x: number; y: number }> = [];
+    let area = 0;
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      group.push(cur);
+      area += cur.area;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nextKey = `${cur.x + dx},${cur.y + dy}`;
+        if (seen.has(nextKey)) continue;
+        const next = cells.get(nextKey);
+        if (!next) continue;
+        seen.add(nextKey);
+        stack.push(next);
+      }
+    }
+    if (area > bestArea) {
+      bestArea = area;
+      best = group;
+    }
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const part of best) {
+    minX = Math.min(minX, part.x * cell);
+    maxX = Math.max(maxX, (part.x + 1) * cell);
+    minY = Math.min(minY, part.y * cell);
+    maxY = Math.max(maxY, (part.y + 1) * cell);
+  }
+  if (!(maxX > minX) || !(maxY > minY)) return walls;
+  const frame = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  const wallArea = walls.width * walls.height;
+  const frameArea = frame.width * frame.height;
+  if (!(wallArea > frameArea * 4) || !(frameArea > 0)) return walls;
+  return frame;
+}
+
 const PAPER = "#f4efe6";
 const RAILING = "#9a958c";
 /**
