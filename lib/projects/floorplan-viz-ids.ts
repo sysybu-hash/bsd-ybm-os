@@ -5,6 +5,12 @@ import type {
   FloorplanVizViewId,
 } from "@/lib/projects/floorplan-layout";
 
+/**
+ * The roomName that marks the CAD geometry plate among the overview images.
+ * Matched against, never shown; see geometryImageFromCad.
+ */
+export const GEOMETRY_PLATE_ROOM_NAME = "גיאומטריה";
+
 export function floorplanVizViewKey(viewId: string, roomName?: string | null): string {
   return `${viewId}:${roomName ?? ""}`;
 }

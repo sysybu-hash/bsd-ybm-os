@@ -1654,6 +1654,11 @@
   "apiErrors": {
     "bad_request": "Invalid request",
     "blob_not_configured": "File storage is not configured — plans are limited to 4MB",
+    "upload_part_rejected": "A part of the file was not accepted",
+    "upload_too_large": "The file is too large",
+    "upload_unavailable": "An upload cannot be opened for this file",
+    "upload_incomplete": "The file upload did not finish",
+    "upload_unknown": "Unknown upload request",
     "blob_unavailable": "The uploaded plan file is unavailable",
     "bundle_not_found": "Bundle not found or inactive",
     "calendar_not_connected": "Connect Google Calendar first",

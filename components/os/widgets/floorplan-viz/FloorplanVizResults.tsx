@@ -21,6 +21,7 @@ import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
 import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry-payload";
 import {
+  GEOMETRY_PLATE_ROOM_NAME,
   bookletHeroImage,
   groupFloorplanVizAttempts,
   selectedFloorplanVizImages,
@@ -110,7 +111,7 @@ export default function FloorplanVizResults({
   const groups = useMemo(
     () =>
       groupFloorplanVizAttempts(images).filter(
-        (group) => !(group.viewId === "overview" && group.roomName === "גיאומטריה"),
+        (group) => !(group.viewId === "overview" && group.roomName === GEOMETRY_PLATE_ROOM_NAME),
       ),
     [images],
   );
@@ -119,7 +120,7 @@ export default function FloorplanVizResults({
       groups.filter(
         (group) =>
           (group.viewId === "overview" || group.viewId === "isometric") &&
-          group.roomName !== "גיאומטריה",
+          group.roomName !== GEOMETRY_PLATE_ROOM_NAME,
       ),
     [groups],
   );

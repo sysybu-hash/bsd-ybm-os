@@ -1654,6 +1654,11 @@
   "apiErrors": {
     "bad_request": "בקשה לא תקינה",
     "blob_not_configured": "אחסון הקבצים אינו מוגדר — ניתן להעלות תוכנית עד 4MB בלבד",
+    "upload_part_rejected": "חלק הקובץ לא התקבל",
+    "upload_too_large": "הקובץ גדול מדי",
+    "upload_unavailable": "לא ניתן לפתוח העלאה לקובץ הזה",
+    "upload_incomplete": "העלאת הקובץ לא הושלמה",
+    "upload_unknown": "בקשת העלאה לא מוכרת",
     "blob_unavailable": "קובץ התוכנית שהועלה אינו זמין",
     "bundle_not_found": "חבילה לא נמצאה או לא פעילה",
     "calendar_not_connected": "חברו Google Calendar תחילה",

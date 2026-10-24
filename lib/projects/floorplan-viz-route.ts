@@ -6,6 +6,7 @@ import {
   type PrintedUnitTruth,
 } from "@/lib/projects/floorplan-booklet-rooms";
 import { type ConfidenceReport } from "@/lib/projects/floorplan-confidence";
+import { GEOMETRY_PLATE_ROOM_NAME } from "@/lib/projects/floorplan-viz-ids";
 import {
   atOtherLevel,
   inferRoomKind,
@@ -370,7 +371,7 @@ export function geometryImageFromCad(geometry: {
 }): FloorplanVizImage {
   return {
     viewId: "overview",
-    roomName: "גיאומטריה",
+    roomName: GEOMETRY_PLATE_ROOM_NAME,
     labelHe: "גיאומטריה מהתוכנית",
     mimeType: geometry.mimeType,
     base64: geometry.base64,
