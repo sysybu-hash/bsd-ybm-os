@@ -176,6 +176,20 @@ function contentTypeForUpload(file: File): string {
   return "application/octet-stream";
 }
 
+let blobConfiguredOnce: Promise<boolean> | null = null;
+
+/** Asked once per page: a deployment without Blob refuses every token. */
+function blobConfigured(): Promise<boolean> {
+  blobConfiguredOnce ??= fetch("/api/projects/visualize-floorplan/upload", { credentials: "include" })
+    .then(async (res) => {
+      const json = (await res.json().catch(() => null)) as { blob?: unknown } | null;
+      return res.ok && json?.blob === true;
+    })
+    // Unknown is not "no": the token request still answers for itself.
+    .catch(() => true);
+  return blobConfiguredOnce;
+}
+
 /**
  * Upload a plan straight to Blob and answer with its URL.
  *
@@ -187,6 +201,7 @@ export async function uploadPlanToBlob(file: File, options?: { always?: boolean 
   // A permit strip is read twice — once for its apartments, once for the run —
   // so it goes to Blob whatever its size.
   if (!options?.always && file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) return null;
+  if (!(await blobConfigured())) return null;
   try {
     const { upload } = await import("@vercel/blob/client");
     const blob = await upload(file.name, file, {

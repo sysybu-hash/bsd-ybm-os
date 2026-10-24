@@ -1,4 +1,5 @@
 import {
+  countDwellingLabels,
   geometryFromDxfDocument,
   isWallLayer,
   looksLikeDwg,
@@ -103,6 +104,35 @@ describe("dxf geometry", () => {
       ],
     });
     expect(millimetres?.unitsPerMetre).toBe(1000);
+  });
+
+  it("tells a flat's drawing from a shop floor by the words printed on it", () => {
+    // A flat keeps the bedroom and bathroom checks; only a floor that names no
+    // dwelling is measured as an open plan.
+    const walls = [
+      { type: "LINE", layer: "A-WALL", vertices: [{ x: 0, y: 0 }, { x: 4000, y: 0 }] },
+      { type: "LINE", layer: "A-WALL", vertices: [{ x: 0, y: 0 }, { x: 0, y: 3000 }] },
+    ];
+    const flat = geometryFromDxfDocument({
+      header: { $INSUNITS: 4 },
+      entities: [
+        ...walls,
+        { type: "TEXT", layer: "TEXT", text: "חדר שינה" },
+        { type: "MTEXT", layer: "TEXT", text: "\fArial|b0;ממ\"ד" },
+      ],
+    });
+    expect(flat?.dwellingLabels).toBe(2);
+    const shop = geometryFromDxfDocument({
+      header: { $INSUNITS: 4 },
+      entities: [
+        ...walls,
+        { type: "TEXT", layer: "TEXT", text: "חנות 3" },
+        { type: "TEXT", layer: "TEXT", text: "שירותים" },
+        { type: "TEXT", layer: "TEXT", text: "מדרגות" },
+      ],
+    });
+    expect(shop?.dwellingLabels).toBe(0);
+    expect(countDwellingLabels([{ type: "TEXT", text: "דירה 14" }, { type: "LINE" }])).toBe(1);
   });
 
   it("returns nothing for a drawing with no geometry in it", () => {

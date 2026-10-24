@@ -8,6 +8,7 @@ import { isAdmin } from "@/lib/is-admin";
 import { shouldBlockReadOnlyRole } from "@/lib/accountant-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { featureFromRequest, runWithAiRequest } from "@/lib/ai-usage";
+import { rateLimitRouteBucket } from "@/lib/rate-limit-bucket";
 
 export type WorkspaceAuthContext = {
   orgId: string;
@@ -204,7 +205,11 @@ export function withWorkspacesAuth(
     // rate limit — per authenticated user (more fair than IP-based for authed routes)
     if (options?.rateLimit !== false) {
       const { key, limit, windowMs } = options?.rateLimit ?? DEFAULT_WORKSPACE_RATE_LIMIT;
-      const rlKey = `rl:${key}:user:${gate.userId}`;
+      // A route that names its own key keeps one bucket; the default is per route.
+      const bucket = options?.rateLimit
+        ? key
+        : `${key}:${rateLimitRouteBucket(new URL(req.url).pathname)}`;
+      const rlKey = `rl:${bucket}:user:${gate.userId}`;
       const result = await checkRateLimit(rlKey, limit, windowMs);
       if (!result.success) {
         return jsonTooManyRequests("יותר מדי בקשות. נסה שוב בעוד כמה דקות.", "rate_limited", {

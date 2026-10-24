@@ -70,6 +70,13 @@ export type FloorplanVectorGeometry = {
    * A DXF has no printed area to lock against. The header is the scale.
    */
   unitsPerMetre?: number;
+  /**
+   * Text in the drawing that names a dwelling: a bedroom, a ממ"ד, "דירה 5".
+   *
+   * Counted for a DXF only. A shop floor has none, and is measured as an open
+   * floor; a flat that names its rooms keeps every check a flat gets.
+   */
+  dwellingLabels?: number;
 };
 
 type Matrix = [number, number, number, number, number, number];

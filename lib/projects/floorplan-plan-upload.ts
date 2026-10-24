@@ -3,8 +3,11 @@ import { randomUUID } from "node:crypto";
 import { PLAN_UPLOAD_MAX_BYTES, PLAN_UPLOAD_PART_BYTES } from "@/lib/projects/plan-upload-limits";
 import { inferMimeFromFileName } from "@/lib/scan-mime";
 import { sniffFloorplanMime } from "@/lib/projects/photo-prep/mime";
+import { createLogger } from "@/lib/logger";
 
 export { PLAN_UPLOAD_MAX_BYTES, PLAN_UPLOAD_PART_BYTES };
+const log = createLogger("floorplan-plan-upload");
+
 const TTL_SEC = 20 * 60;
 const MAX_PARTS = Math.ceil(PLAN_UPLOAD_MAX_BYTES / PLAN_UPLOAD_PART_BYTES) + 1;
 const READ_CONCURRENCY = 6;
@@ -147,8 +150,8 @@ export async function beginPlanUpload(input: {
     const meta: UploadMeta = { fileName, totalBytes, totalParts };
     await backend.set(metaKey(input.orgId, id), JSON.stringify(meta), TTL_SEC);
     return id;
-  } catch (error) {
-    console.error("plan_upload_begin_failed", error instanceof Error ? error.message : "failed");
+  } catch (error: unknown) {
+    log.error("plan upload begin failed", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -175,8 +178,8 @@ export async function putPlanUploadPart(input: {
       TTL_SEC,
     );
     return true;
-  } catch (error) {
-    console.error("plan_upload_part_failed", error instanceof Error ? error.message : "failed");
+  } catch (error: unknown) {
+    log.error("plan upload part failed", { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }

@@ -107,7 +107,12 @@ export { mergeFloorplanVizImages, parseFloorplanVizScope };
 
 const log = createLogger("floorplan-viz");
 
-/** Leaves the route about a minute to extract, persist and respond. */
+/**
+ * Counted from when the request arrived (startedAtMs), not from when the
+ * plan was read: the route is killed at 300 seconds, and reading a large
+ * upload back from its parts comes out of the same five minutes. What is left
+ * is for persisting and responding.
+ */
 const FLOORPLAN_VIZ_BUDGET_MS = 270_000;
 
 export type FloorplanVizResult = {
@@ -213,6 +218,8 @@ type VisualizeFloorplanOptions = {
   renderMode?: "ai" | "render3d" | "both" | "finish";
   /** On a permit strip (DWF), the apartment to draw; the strip draws a building. */
   dwfUnit?: DwfUnitChoice;
+  /** When the request arrived; the time budget runs from here. */
+  startedAtMs?: number;
 };
 
 /**
@@ -258,7 +265,7 @@ async function visualizeWithSpend(
   // The route is capped at 300 seconds and a timeout returns nothing — not
   // even the frames already paid for. Everything downstream stops re-rolling
   // once this passes and ships the best frame it has.
-  const deadlineMs = Date.now() + FLOORPLAN_VIZ_BUDGET_MS;
+  const deadlineMs = (options?.startedAtMs ?? Date.now()) + FLOORPLAN_VIZ_BUDGET_MS;
   const styleKit = resolveFloorplanVizStyle(options?.styleId, options?.customKit);
   const scope = options?.scope ?? "full";
   const forceDrawing = options?.planKind === "sales-sheet";
@@ -273,13 +280,16 @@ async function visualizeWithSpend(
   const dwf = isDwfFloorplanMime(prepared.mimeType);
   // Measured or nothing (see below): the sheet-drawn route is there only when asked for by name.
   const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
-  // A DXF that states its units has nothing for a model to read off the
-  // raster, and that read was spending the time the measured picture needs.
+  // A DXF that states its units and names no dwelling (a shop floor) has
+  // nothing for a model to read off the raster, and that read was spending the
+  // time the measured picture needs. A DXF of a flat is still read: its room
+  // names and printed area are what its measurement is checked against.
   const metricCad =
     measuredOnly &&
     nativeCad != null &&
     nativeCad.geometry.unitsPerMetre != null &&
-    nativeCad.geometry.unitsPerMetre > 0;
+    nativeCad.geometry.unitsPerMetre > 0 &&
+    (nativeCad.geometry.dwellingLabels ?? 0) === 0;
   // A picture of a sheet is never measured (tryCadOverview: "not a PDF"), and
   // a measured run refuses it — once its reading, up to nine paid calls, was
   // made. It is refused before any.
@@ -392,7 +402,12 @@ async function visualizeWithSpend(
             selected: renderMode === "render3d",
           })
         : null;
-    const measuredImage: FloorplanVizImage | null = measured ? (({ plain: _plain, ...img }) => img)(measured) : null;
+    const measuredBase: FloorplanVizImage | null = measured ? (({ plain: _plain, ...img }) => img)(measured) : null;
+    // A plate framed on part of the drawing says so in its caption.
+    const measuredImage: FloorplanVizImage | null =
+      measuredBase && cadResult.outcome === "ok" && cadResult.framedPart
+        ? { ...measuredBase, labelHe: framedPartLabel(cadResult.framedPart) }
+        : measuredBase;
     if (measured) {
       recordFloorplanSpend(cadResult.spend, "image", "render3d");
       enginesUsed.push("render3d");
@@ -433,7 +448,16 @@ async function visualizeWithSpend(
       // does not fall back to an invented drawing.
       if (cadResult.geometry?.base64) {
         log.warn("measured still unavailable; shipping the measured plate");
-        images = [{ ...overviewImageFromCad(cadResult.geometry), selected: true }];
+        const plate = overviewImageFromCad(cadResult.geometry);
+        images = [
+          {
+            ...plate,
+            ...(cadResult.outcome === "ok" && cadResult.framedPart
+              ? { labelHe: framedPartLabel(cadResult.framedPart) }
+              : {}),
+            selected: true,
+          },
+        ];
       } else {
         throw new Error(`לא ניתן היה לרנדר את התוכנית המדודה — לא הופקה הדמיה מומצאת, ולא שולם על ציור. ${MEASURED_SOURCES}`);
       }
@@ -701,6 +725,8 @@ export type CadOverviewAttempt =
       openings?: PlacedOpening[];
       /** Kitchen sink basins measured off the drawing; see kitchenSinkBasins. */
       sinkBasins?: number;
+      /** The plate shows only this part of the drawing; see BuiltFlat.framedPart. */
+      framedPart?: { floorM2: number; drawingWidthM: number; drawingHeightM: number };
     }
   | {
       outcome: "skip";
@@ -757,6 +783,11 @@ function labelledRoomsOf(
     }));
 }
 
+/** The caption of a plate that shows only the floor that closed. */
+function framedPartLabel(part: { floorM2: number; drawingWidthM: number; drawingHeightM: number }): string {
+  return `רק החלק שנסגר — ${Math.round(part.floorM2)} מ״ר מתוך שרטוט של ${Math.round(part.drawingWidthM)} × ${Math.round(part.drawingHeightM)} מ׳`;
+}
+
 async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
   const nativeCad = input.nativeCad;
   if (!nativeCad) return { outcome: "locked" };
@@ -776,6 +807,9 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       targetAreaM2: targetAreaM2 ?? 0,
       unitsPerMetreHint: targetAreaM2 == null ? drawingUnits : undefined,
       unitsFromDrawing: targetAreaM2 == null,
+      // Only a drawing that names no dwelling. A flat drawn in millimetres
+      // with no printed area keeps the bedroom and bathroom checks.
+      openPlan: targetAreaM2 == null && (geometry.dwellingLabels ?? 0) === 0,
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
@@ -809,7 +843,14 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
         }),
       ),
       geometry: { mimeType: "image/jpeg", base64: rendered.geometry.toString("base64") },
-      confidence: { ...rendered.confidence, tier: "cad" },
+      confidence: rendered.flat.framedPart
+        ? {
+            ...rendered.confidence,
+            tier: "cad",
+            soft: [...rendered.confidence.soft, framedPartLabel(rendered.flat.framedPart)],
+          }
+        : { ...rendered.confidence, tier: "cad" },
+      ...(rendered.flat.framedPart ? { framedPart: rendered.flat.framedPart } : {}),
       sourceRaster: nativeCad.raster,
       truth,
       spend: rendered.spend,

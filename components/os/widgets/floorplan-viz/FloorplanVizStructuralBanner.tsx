@@ -7,11 +7,6 @@ import { structuralAuditFailures } from "@/lib/projects/floorplan-viz-structural
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
-function label(t: TFn, key: string, fallback: string): string {
-  const value = t(key);
-  return value && value !== key ? value : fallback;
-}
-
 /**
  * A still of a different flat, said so plainly.
  *
@@ -36,14 +31,10 @@ export default function FloorplanVizStructuralBanner({
     >
       <p className="mb-1 flex items-center gap-1.5 font-bold">
         <TriangleAlert size={14} aria-hidden />
-        {label(t, "workspaceWidgets.floorplanViz.structuralTitle", "ההדמיה לא תואמת את התוכנית")}
+        {t("workspaceWidgets.floorplanViz.structuralTitle")}
       </p>
       <p className="mb-1.5 text-[10px]">
-        {label(
-          t,
-          "workspaceWidgets.floorplanViz.structuralBody",
-          "הבקרה מצאה שהתמונה מציגה דירה אחרת. אין למסור אותה ללקוח.",
-        )}
+        {t("workspaceWidgets.floorplanViz.structuralBody")}
       </p>
       <ul className="list-disc space-y-0.5 ps-4">
         {structural.map((issue) => (

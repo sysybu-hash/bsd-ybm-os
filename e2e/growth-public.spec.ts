@@ -44,10 +44,17 @@ test.describe("Growth — public blog & contact", () => {
     await expect(page.getByLabel(/שם מלא/i)).toBeVisible({ timeout: 30_000 });
 
     const email = `e2e-contact-${Date.now()}@example.invalid`;
-    await page.getByLabel(/שם מלא/i).fill("E2E Contact");
-    await page.getByLabel(/אימייל/i).fill(email);
-    await page.getByLabel(/הודעה/i).fill("בדיקת E2E");
-    await expect(page.getByLabel(/אימייל/i)).toHaveValue(email);
+    // Filled before the form hydrates, the values are wiped by React and the
+    // form posts empty fields: /api/leads answers 400 (nightly, 22-24.10.2026).
+    // Fill until all three hold.
+    await expect(async () => {
+      await page.getByLabel(/שם מלא/i).fill("E2E Contact");
+      await page.getByLabel(/אימייל/i).fill(email);
+      await page.getByLabel(/הודעה/i).fill("בדיקת E2E");
+      await expect(page.getByLabel(/שם מלא/i)).toHaveValue("E2E Contact", { timeout: 1_000 });
+      await expect(page.getByLabel(/אימייל/i)).toHaveValue(email, { timeout: 1_000 });
+      await expect(page.getByLabel(/הודעה/i)).toHaveValue("בדיקת E2E", { timeout: 1_000 });
+    }).toPass({ timeout: 30_000 });
 
     const postDone = page
       .waitForResponse(
