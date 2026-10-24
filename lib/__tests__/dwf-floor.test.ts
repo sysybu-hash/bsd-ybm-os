@@ -1,5 +1,5 @@
 import type { DwfArc, DwfGeometry, PlacedText } from "@/lib/projects/floorplan-dwf";
-import { readDwfFloor } from "@/lib/projects/dwf-floor";
+import { printedRooms, readDwfFloor } from "@/lib/projects/dwf-floor";
 import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
 /** 1:100 in points: a metre is 28.35 units. */
@@ -98,6 +98,52 @@ describe("what does not join two rooms into one flat", () => {
 
   it("a name set over a wall names the room beside it", () => {
     expect(floor.rooms.filter((r) => r.kind != null).map((r) => r.kind).sort()).toEqual(["bedroom", "living"]);
+  });
+});
+
+describe("a room size printed in pieces", () => {
+  it("reads \"2.\" then \"83\" then \"*4.70\" on one baseline as one size", () => {
+    const h = 8;
+    const pieces = [
+      { x: 100, y: 200, text: "2.", height: h },
+      { x: 100 + 2 * h * 0.55, y: 200, text: "83", height: h },
+      { x: 100 + 4 * h * 0.55 + 2, y: 200, text: "*4.70", height: h },
+    ];
+    expect(printedRooms(pieces).map((r) => [r.w, r.h])).toEqual([[2.83, 4.7]]);
+  });
+});
+
+describe("an opening beside a wall that turns a corner", () => {
+  /**
+   * A 1.4 m passage between the west wall and a wall that comes down from the
+   * north wall and turns east to the east wall; the passage runs on past the
+   * corner into the room south of it, with no door between.
+   */
+  function corner(): DwfGeometry {
+    return {
+      pageWidth: m(10.5),
+      pageHeight: m(7.5),
+      segments: [
+        ...hatchedWall(1, 1, 9.2, 1.2),
+        ...hatchedWall(1, 6.2, 9.2, 6.4),
+        ...hatchedWall(1, 1, 1.2, 6.4),
+        ...hatchedWall(9, 1, 9.2, 6.4),
+        ...hatchedWall(2.6, 1, 2.8, 3),
+        ...hatchedWall(2.6, 2.8, 9.2, 3),
+      ],
+      curves: [],
+      walls: [],
+      fills: [],
+      arcs: [],
+      texts: [],
+    };
+  }
+
+  it("is not shut: the passage and the room past the corner are one room", () => {
+    const areas = readDwfFloor(corner(), { unitsPerMetre: UPM }).rooms.map((r) => r.areaM2);
+    // 1.4 × 1.8 of passage and 7.8 × 3.2 of room; the closed box north-east is 6.2 × 1.6.
+    expect(areas.some((a) => a > 26 && a < 29)).toBe(true);
+    expect(areas.some((a) => a > 2 && a < 3)).toBe(false);
   });
 });
 

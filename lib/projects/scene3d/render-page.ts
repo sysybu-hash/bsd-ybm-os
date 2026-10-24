@@ -125,7 +125,7 @@ try {
 
   // Which surface each material wears, and how big one tile of it is in metres.
   const SURFACE = {
-    floorWood: ["wood", 1.2], timber: ["wood", 0.9], joinery: ["plaster", 1.0],
+    floorWood: ["wood", 1.2], timber: ["wood", 0.9], joinery: ["plaster", 1.0], stoneFrame: ["tile", 0.6],
     floorTile: ["tile", 1.2], floorStone: ["tile", 1.4], worktop: ["tile", 2.0],
     wall: ["plaster", 2.0], wallCut: ["plaster", 2.0], skirting: ["plaster", 1.0],
     linen: ["weave", 0.6], upholstery: ["weave", 0.5], neutral: ["plaster", 1.0],
@@ -159,6 +159,15 @@ try {
   for (const group of byMaterial.values()) {
     const geometries = [];
     for (const box of group.boxes) {
+      if (box.g) {
+        // A form the server built: its triangles are already in scene space; the normals are smoothed here.
+        const g = new THREE.BufferGeometry();
+        g.setAttribute("position", new THREE.Float32BufferAttribute(box.g.p, 3));
+        g.setIndex(box.g.i);
+        g.computeVertexNormals();
+        geometries.push(g.toNonIndexed());
+        continue;
+      }
       const geo = new THREE.BoxGeometry(box.s[0], box.s[1], box.s[2]);
       geo.translate(box.c[0], box.c[1], box.c[2]);
       geometries.push(geo.toNonIndexed());

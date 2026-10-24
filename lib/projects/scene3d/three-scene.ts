@@ -3,6 +3,7 @@ import type * as ThreeNS from "three";
 import type { CameraRig } from "@/lib/projects/scene3d/cameras";
 import { sunDirection, type MaterialSpec, type SceneStyle } from "@/lib/projects/scene3d/style";
 import type { QualityProfile } from "@/lib/projects/scene3d/quality";
+import { meshGeometry } from "@/lib/projects/scene3d/geometry";
 import type { FlatScene, MaterialId, SceneBox, SceneMeshKind } from "@/lib/projects/scene3d/types";
 
 /**
@@ -37,6 +38,7 @@ export const DEFAULT_MATERIALS: Record<MaterialId, MaterialSpec> = {
   skirting: { color: 0xf6f1e8, roughness: 0.6, metalness: 0 },
   glass: { color: 0xbcd8e4, roughness: 0.08, metalness: 0, opacity: 0.35 },
   joinery: { color: 0xeae6df, roughness: 0.5, metalness: 0 },
+  stoneFrame: { color: 0xd7c4a4, roughness: 0.9, metalness: 0 },
   metal: { color: 0x9a958c, roughness: 0.35, metalness: 0.8 },
   linen: { color: 0xf3efe6, roughness: 0.85, metalness: 0 },
   upholstery: { color: 0xd8cdba, roughness: 0.9, metalness: 0 },
@@ -67,6 +69,8 @@ export function cutBox(mesh: SceneBox, cutawayM: number): SceneBox | null {
   if (top <= cutawayM) return mesh;
   if (bottom >= cutawayM) return null;
   const height = cutawayM - bottom;
+  // A form is not sliced, it is squashed to the plane: its own extents are kept in `local` and the geometry is scaled to the cut height about its middle.
+  if (mesh.shape || mesh.tiltX || mesh.tiltZ) return { ...mesh, centre: { ...mesh.centre, y: bottom + height / 2 }, size: { ...mesh.size, y: height }, local: mesh.local ?? mesh.size };
   return { ...mesh, centre: { ...mesh.centre, y: bottom + height / 2 }, size: { ...mesh.size, y: height } };
 }
 
@@ -115,9 +119,7 @@ export function buildThreeScene(
     // One geometry per material: the boxes are baked into it by position.
     const geometries: ThreeNS.BufferGeometry[] = [];
     for (const box of boxes) {
-      const geo = new THREE.BoxGeometry(box.size.x, box.size.y, box.size.z);
-      geo.translate(box.centre.x, box.centre.y, box.centre.z);
-      geometries.push(geo);
+      geometries.push(meshGeometry(THREE, box));
     }
     const merged = mergeGeometries(THREE, geometries);
     const mesh = new THREE.Mesh(merged, material);

@@ -170,7 +170,8 @@ async function main() {
   scene.environmentIntensity = inside ? 0.38 : P.camera.cutAboveM != null ? 0.45 : studioRaster ? 0.22 : houseOut ? 0.2 : 0.45;
   // A house's street views in the golden hour the client chose: the sun low
   // and warm, the sky deepening to amber at the horizon, the distance hazed.
-  const golden = houseOut && P.camera.orthoHalfWidth == null && P.sun.elevationDeg <= 18;
+  const goldenModel = !!(P.model.palette && P.model.palette.golden) && !inside && P.camera.cutAboveM == null && !P.camera.studio && !P.camera.section;
+  const golden = (houseOut || goldenModel) && P.camera.orthoHalfWidth == null && P.sun.elevationDeg <= 18;
   if (golden) {
     su.turbidity.value = 6.5; su.rayleigh.value = 2.6; su.mieCoefficient.value = 0.007; su.mieDirectionalG.value = 0.86;
     scene.environment = pmrem.fromScene(skyScene, 0.02).texture;
@@ -198,7 +199,7 @@ async function main() {
   // light, and stood in the studio's grey fill (13/10/2026).
   const fromAbove = P.camera.cutAboveM != null || (P.camera.studio === true && P.camera.orthoHalfWidth != null && P.camera.position.y - P.camera.target.y > 10);
   const housePlan = fromAbove && !inside && (P.camera.planStyle === true || P.model.primitives.some((p) => p.material === "renderBrown" || p.material === "renderGray"));
-  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? 0xffc58c : houseOut ? 0xffe8cc : 0xfff1dc, housePlan ? 2.05 : golden ? 3.4 : houseFlat ? 1.9 : 3.1);
+  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? (goldenModel ? 0xffd9b4 : 0xffc58c) : houseOut ? 0xffe8cc : 0xfff1dc, housePlan ? 2.05 : golden ? (goldenModel ? 2.8 : 3.4) : houseFlat ? 1.9 : 3.1);
   sun.position.set(cx + sunDir.x * span * 1.5, sunDir.y * span * 1.5, cz + sunDir.z * span * 1.5);
   sun.target.position.set(cx, 8, cz);
   // House plan: no cast sun — wall bands washed the floors (13/10/2026). AO only.
@@ -220,6 +221,17 @@ async function main() {
   sun.shadow.radius = houseOut && !housePlan ? 6 : 3;
   if (houseOut && !housePlan) { renderer.shadowMap.type = THREE.PCFShadowMap; sun.shadow.blurSamples = 16; }
   scene.add(sun, sun.target);
+  // The golden hour's exterior lamps, lit: a warm light over the nearest of the wall lamps the model carries.
+  if (golden && goldenModel) {
+    const lamps = P.model.primitives.filter((q) => q.type === "box" && /:lamp:lens$/.test(q.tag || ""))
+      .map((q) => ({ q, d: Math.hypot(q.centre.x - P.camera.position.x, q.centre.z - P.camera.position.z) }))
+      .filter((e) => e.d < 60).sort((a, b) => a.d - b.d).slice(0, 14);
+    for (const { q } of lamps) {
+      const l = new THREE.PointLight(0xffc98a, 9, 7, 1.6);
+      l.position.set(q.centre.x, q.centre.y - 0.1, q.centre.z);
+      scene.add(l);
+    }
+  }
   scene.add(new THREE.HemisphereLight(housePlan ? 0xffffff : inside ? 0xfff3e2 : studioRaster || houseOut ? 0xf6efe4 : 0xdfe9f5, housePlan ? 0xb9b3aa : 0x8a7a66, housePlan ? 1.05 : inside ? 0.18 : studioRaster ? 0.22 : houseFlat ? 1.1 : houseOut ? 0.55 : 0.35));
   // Inside, the ceiling's panels light the room: a warm light over each.
   // A room photographed lit as a home is in the evening: warm downlights let
@@ -562,6 +574,56 @@ async function main() {
     houseGlass: new THREE.MeshPhysicalMaterial({ color: 0x1d2428, metalness: 0.3, roughness: 0.05, transparent: true, opacity: 0.88, envMapIntensity: 1.5, depthWrite: false }),
     roofing: new THREE.MeshStandardMaterial({ map: plainTex("#8f8d89", 10, 2), roughness: 0.9 }),
   };
+  // A building's own look (model.palette): the stone, the pavers and the colours of the site, over the defaults.
+  {
+    const PAL = (P.model && P.model.palette) || {};
+    if (PAL.limestone) {
+      // Honed limestone as the Wolf seminar is clad: courses 36 cm, stones 50–120 cm, sand-cream, thin dark joints.
+      const limestone = canvasTex(1024, 1024, (g, w, h) => {
+        g.fillStyle = "#5f5748"; g.fillRect(0, 0, w, h);
+        const rows = 11, ch = h / rows;
+        for (let r = 0; r < rows; r++) {
+          let x = -rnd() * 300;
+          while (x < w) {
+            const len = 130 + rnd() * 190;
+            const l = 178 + rnd() * 18, warm = rnd() * 8;
+            g.fillStyle = "rgb(" + (l + 14 + warm) + "," + (l * 0.92 + 2) + "," + (l * 0.68 - warm) + ")";
+            g.fillRect(x + 1, r * ch + 1, len - 2, ch - 2);
+            for (let k = 0; k < 40; k++) {
+              g.fillStyle = "rgba(120,104,78," + (rnd() * 0.07) + ")";
+              g.fillRect(x + 1 + rnd() * (len - 2), r * ch + 1 + rnd() * (ch - 2), 3 + rnd() * 9, 1 + rnd() * 2);
+            }
+            x += len;
+          }
+        }
+        noise(g, w, h, 8);
+      }, 4.0);
+      MAT.stone.map = limestone; MAT.jerusalemStone.map = limestone; MAT.stoneDeep.map = limestone;
+      MAT.stoneDeep.color = new THREE.Color(0xc9bfa8);
+    }
+    if (PAL.redPavers) {
+      // Interlocking pavers, red-brown, 20 × 10 cm in running bond, laid in swept fields: each paver its own tone, a soft sheen, and slow patches of lighter and darker laying so the 6 m tile never reads as a repeat.
+      const red = canvasTex(1024, 1024, (g, w, h) => {
+        g.fillStyle = "#6a554a"; g.fillRect(0, 0, w, h);
+        const rows = 60, cols = 30, bw = w / cols, bh = h / rows;
+        const patch = (x, y) => 1 + 0.025 * Math.sin(x * 0.011 + 1.3) * Math.cos(y * 0.009) + 0.015 * Math.sin((x + y) * 0.0053);
+        for (let y = 0; y < rows; y++) for (let x = -1; x < cols + 1; x++) {
+          const l = rnd(), px0 = x * bw + (y % 2) * (bw / 2), py0 = y * bh, k = patch(px0, py0);
+          g.fillStyle = "rgb(" + Math.min(255, (176 + l * 26) * k) + "," + Math.min(255, (96 + l * 14) * k) + "," + Math.min(255, (78 + l * 12) * k) + ")";
+          g.fillRect(px0 + 0.6, py0 + 0.6, bw - 1.2, bh - 1.2);
+        }
+        noise(g, w, h, 7);
+      }, 6.0);
+      MAT.paving.map = red;
+    }
+    for (const [name, hex] of Object.entries(PAL.colors || {})) {
+      const m = MAT[name];
+      if (!m) continue;
+      if (m.map) { m.map = plainTex(hex, 6, 3); m.color = new THREE.Color(0xffffff); } else m.color = new THREE.Color(hex);
+      // Painted aluminium, not bare metal: it must not take the sky's colour.
+      if (name === "frame") { m.metalness = 0.12; m.roughness = 0.55; }
+    }
+  }
   // A house's plan as a drawing is read: every kind of floor and of furniture its own colour. In the one warm beige of a photograph's
   // light, the oak, the porcelain, the tiles and the sofas ran into each other (17/10/2026). Walls solid charcoal, the living floors a
   // light stone, the wet rooms and the kitchen a blue-grey tile, the bedrooms honey oak, the upholstery deep teal, the joinery walnut.

@@ -131,3 +131,32 @@ export function headFacing(piece: Rect, facing: Facing, walls: Rect[] = []): Fac
   if (b < a) return ends[1];
   return ends[0];
 }
+
+/**
+ * A sofa's back goes along a long side, as a bed's head goes at a short end.
+ * Turned with its back to a short end, Gottlieb C's 2.00 m sofa was built a
+ * single seat two metres deep, its back cushion a pillow at one end: a bed
+ * (15/10/2026). Only for a seat long enough to be a sofa, and clearly long.
+ */
+export function backFacing(piece: Rect, facing: Facing, walls: Rect[], roomCentre: { x: number; y: number }, unitsPerMetre: number): Facing {
+  const long = Math.max(piece.w, piece.h);
+  const short = Math.min(piece.w, piece.h);
+  if (long < 1.2 * unitsPerMetre || long < 1.6 * short) return facing;
+  const down = runsDownThePage(piece);
+  const onLongSide = down ? facing === "east" || facing === "west" : facing === "north" || facing === "south";
+  if (onLongSide) return facing;
+  const sides: [Facing, Facing] = down ? ["west", "east"] : ["north", "south"];
+  const distance = (side: Facing) => {
+    let best = Infinity;
+    for (const wall of walls) {
+      const gap = gapTo(piece, wall, side);
+      if (gap != null && gap > -(down ? piece.w : piece.h) / 2) best = Math.min(best, Math.max(0, gap));
+    }
+    return best;
+  };
+  const [a, b] = [distance(sides[0]), distance(sides[1])];
+  if (a !== b) return a < b ? sides[0] : sides[1];
+  // No wall decides: the back away from the room's middle.
+  const away = down ? piece.x + piece.w / 2 - roomCentre.x : piece.y + piece.h / 2 - roomCentre.y;
+  return away > 0 ? sides[1] : sides[0];
+}

@@ -25,7 +25,14 @@ export type RoomKind =
   | "store"
   | "void";
 
-export type RoomLabel = { x: number; y: number; name: string; kind: RoomKind };
+export type RoomLabel = {
+  x: number;
+  y: number;
+  name: string;
+  kind: RoomKind;
+  /** The area the sheet prints for the room, m²: an open plan's rooms are grown to it. */
+  areaM2?: number;
+};
 
 export type PlanRoom = {
   name: string;
@@ -56,24 +63,64 @@ export function readPlanRooms(walls: PlanWalls, openings: PlanOpening[], outline
   const regions = label(blocked, 0);
   // An open plan — a movable partition, a counter, a wide opening — is one
   // region under several names. It is shared out by walking distance: each
-  // pixel to the name nearest it through the room.
-  const owner = new Int32Array(cols * rows);
-  const queue: number[] = [];
-  labels.forEach((l, i) => {
-    const k = Math.round(l.y / m) * cols + Math.round(l.x / m);
-    if (regions.ids[k] && !owner[k]) {
+  // pixel to the name nearest it through the room. Where the sheet prints a
+  // room's area, a name's reach is lengthened or shortened until the room
+  // is the area printed (the open plan draws no outline of its own).
+  const assign = (reachPx: number[]): Int32Array => {
+    const owner = new Int32Array(cols * rows);
+    const time = new Int32Array(cols * rows).fill(0x7fffffff);
+    const maxReach = Math.max(0, ...reachPx);
+    const buckets: number[][] = [];
+    const push = (t: number, c: number) => (buckets[t] ??= []).push(c);
+    labels.forEach((l, i) => {
+      const k = Math.round(l.y / m) * cols + Math.round(l.x / m);
+      if (!regions.ids[k] || owner[k]) return;
+      const t0 = Math.round(maxReach - reachPx[i]!);
       owner[k] = i + 1;
-      queue.push(k);
+      time[k] = t0;
+      push(t0, k);
+    });
+    for (let t = 0; t < buckets.length; t++) {
+      const list = buckets[t];
+      if (!list) continue;
+      for (let h = 0; h < list.length; h++) {
+        const c = list[h]!;
+        if (time[c] !== t) continue;
+        const x = c % cols;
+        const y = (c - x) / cols;
+        for (const n of [x > 0 ? c - 1 : -1, x < cols - 1 ? c + 1 : -1, y > 0 ? c - cols : -1, y < rows - 1 ? c + cols : -1]) {
+          if (n < 0 || regions.ids[n] !== regions.ids[c] || time[n]! <= t + 1) continue;
+          time[n] = t + 1;
+          owner[n] = owner[c]!;
+          push(t + 1, n);
+        }
+      }
     }
-  });
-  for (let head = 0; head < queue.length; head++) {
-    const c = queue[head]!;
-    const x = c % cols;
-    const y = (c - x) / cols;
-    for (const n of [x > 0 ? c - 1 : -1, x < cols - 1 ? c + 1 : -1, y > 0 ? c - cols : -1, y < rows - 1 ? c + cols : -1]) {
-      if (n < 0 || owner[n] || regions.ids[n] !== regions.ids[c]) continue;
-      owner[n] = owner[c]!;
-      queue.push(n);
+    return owner;
+  };
+  const reach = labels.map(() => 0);
+  let owner = assign(reach);
+  if (labels.some((l) => l.areaM2)) {
+    for (let round = 0; round < 24; round++) {
+      const area = new Float64Array(labels.length + 1);
+      for (let i = 0; i < owner.length; i++) if (owner[i]) area[owner[i]!]! += m * m;
+      // Only rooms of an open plan can move: a region with one name is what its walls make it.
+      const share = new Map<number, number>();
+      labels.forEach((l, i) => {
+        const at = Math.round(l.y / m) * cols + Math.round(l.x / m);
+        const r = regions.ids[at];
+        if (r) share.set(r, (share.get(r) ?? 0) + 1);
+      });
+      let worst = 0;
+      labels.forEach((l, i) => {
+        const at = Math.round(l.y / m) * cols + Math.round(l.x / m);
+        if (!l.areaM2 || (share.get(regions.ids[at]!) ?? 0) < 2) return;
+        const have = area[i + 1]!;
+        worst = Math.max(worst, Math.abs(have - l.areaM2) / l.areaM2);
+        reach[i] = reach[i]! + ((Math.sqrt(l.areaM2) - Math.sqrt(have)) * 0.7) / m;
+      });
+      if (worst < 0.03) break;
+      owner = assign(reach);
     }
   }
   const out: PlanRoom[] = [];

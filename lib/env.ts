@@ -64,7 +64,7 @@ const serverSchema = z.object({
   GEMINI_ADMIN_ASSISTANT_MODEL: optStr,
   GEMINI_BLUEPRINT_MODEL: optStr,
   GEMINI_BLUEPRINT_PRIMARY_MODEL: optStr,
-  /** מודל יצירת תמונה להדמיות מתוכנית (ברירת מחדל: Nano Banana Pro → Flash Image) */
+  /** מודל יצירת תמונה להדמיות מתוכנית (ברירת מחדל: Nano Banana 2.1 → Flash Image. Pro רק כשמוגדר כאן) */
   GEMINI_IMAGE_MODEL: optStr,
   /**
    * Path-trace a flat's measured still with this many samples a pixel. Local
@@ -124,6 +124,8 @@ const serverSchema = z.object({
   MISTRAL_API_KEY: optStr,
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
+  /** Replicate (FLUX Kontext / Canny) — server only */
+  REPLICATE_API_TOKEN: optStr,
 
   // --- CAD conversion ---
   // DWG is a closed format; the only open reader is GPL. A DWG upload is
@@ -220,6 +222,8 @@ const serverSchema = z.object({
   // --- Admin / Tenant ---
   OS_ADMIN_EMAIL: optStr,
   OS_ADMIN_EMAILS: optStr,
+  /** Extra logins that may paint a visualisation, comma-separated. sysybu@gmail.com is always included. */
+  VIZ_PAINT_EMAILS: optStr,
   ALLOWED_LOGIN_EMAILS: optStr,
   LOGIN_ALLOWLIST_EMAILS: optStr,
   LOGIN_BLOCKED_EMAILS: optStr,

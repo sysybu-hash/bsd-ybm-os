@@ -210,10 +210,18 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
     const view = dollhouseView(scene);
     // Traced on a machine that has the tracer (a development dependency);
     // rasterised on the platform.
-    const samples = Number(env.FLOORPLAN_TRACE_SAMPLES ?? 0);
+    const samples = env.NODE_ENV === "production" ? 0 : Number(env.FLOORPLAN_TRACE_SAMPLES ?? 0);
+    // Ambient occlusion is a full-screen pass. On the platform it runs in
+    // SwiftShader and does not finish inside the function, so the request
+    // is killed at 300s. The raster without it still shows the measured flat.
     const [frame, wallsFrame] = await renderBuildingFrames(
       [
-        { ...view.payload, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }), ...(samples > 0 ? { pathTrace: { samples } } : {}) },
+        {
+          ...view.payload,
+          ao: env.VERCEL ? false : view.payload.ao,
+          model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }),
+          ...(samples > 0 ? { pathTrace: { samples } } : {}),
+        },
         { ...view.payload, ao: false, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM, wallsOnly: true }), camera: { ...view.payload.camera, mask: true } },
       ],
       { outputWidthPx: OUTPUT_WIDTH_PX, timeoutMs: FRAME_MS },

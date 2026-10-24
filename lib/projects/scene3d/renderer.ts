@@ -70,7 +70,7 @@ export const chromiumSceneRenderer: FlatSceneRenderer = async (req) => {
         log.warn("out of time for a render", { view: req.view.id });
         return null;
       }
-      const payload = buildRenderPayload(req.scene, req.style, req.view, quality);
+      const payload = buildRenderPayload(req.scene, req.style, req.view, quality, await import("three"));
       const page = await openScenePage(browser, renderPageHtml(payload));
       try {
         await page.waitForFunction("window.__renderDone === true || window.__renderError", {

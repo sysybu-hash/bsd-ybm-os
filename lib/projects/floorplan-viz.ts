@@ -230,6 +230,9 @@ export async function visualizeFloorplanFromDrawing(
   return runWithFloorplanSpend(spend, () => visualizeWithSpend(base64, mimeType, spend, options));
 }
 
+/** What a measured run can be given, as the upload offers it. */
+const MEASURED_SOURCES = "העלו PDF, DXF, DWG או גרמושקת DWF.";
+
 async function rasterizeNativeCadReference(
   prepared: { base64: string; mimeType: string },
 ): Promise<NativeCadReference> {
@@ -268,6 +271,14 @@ async function visualizeWithSpend(
   // A permit strip names its rooms in text the reader has already read, so
   // there is nothing for a model to read off it: the run starts from nothing.
   const dwf = isDwfFloorplanMime(prepared.mimeType);
+  // Measured or nothing (see below): the sheet-drawn route is there only when asked for by name.
+  const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
+  // A picture of a sheet is never measured (tryCadOverview: "not a PDF"), and
+  // a measured run refuses it — once its reading, up to nine paid calls, was
+  // made. It is refused before any.
+  if (measuredOnly && !nativeCad && !dwf && prepared.mimeType !== "application/pdf") {
+    throw new Error(`לא ניתן למדוד את התוכנית מתמונה — לא הופקה הדמיה מומצאת, ולא בוצעה קריאה בתשלום. ${MEASURED_SOURCES}`);
+  }
 
   const reused =
     options?.existingLayout && typeof options.existingLayout === "object"
@@ -367,8 +378,11 @@ async function visualizeWithSpend(
       enginesUsed.push("render3d");
     }
     if (!alreadyHasOverview && measured && measuredImage && (renderMode === "finish" || renderMode === "render3d")) {
+      // A painting nobody can check does not ship (finishJudge: "no judge"):
+      // without the judge's key it is not paid for at all, and the render ships.
+      if (renderMode === "finish" && !isAnthropicConfigured()) log.warn("no judge configured (ANTHROPIC_API_KEY); the measured still is not painted");
       const finished =
-        renderMode === "finish"
+        renderMode === "finish" && isAnthropicConfigured()
           ? await runWithFloorplanSpend(cadResult.spend, () =>
               finishMeasuredStill(measured, {
                 styleKit,
@@ -393,6 +407,11 @@ async function visualizeWithSpend(
       } else {
         images = [{ ...measuredImage, selected: true }];
       }
+    } else if (!alreadyHasOverview && measuredOnly) {
+      // The measured render did not come (short measurement, empty scene, the
+      // deadline): a measured run does not fall back to the sheet-drawn route,
+      // up to seventeen paid image calls nothing checks against a measurement.
+      throw new Error(`לא ניתן היה לרנדר את התוכנית המדודה — לא הופקה הדמיה מומצאת, ולא שולם על ציור. ${MEASURED_SOURCES}`);
     } else if (!alreadyHasOverview) {
       const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth, {
         terraces: cadResult.measuredTerraces,
@@ -525,12 +544,9 @@ async function visualizeWithSpend(
   // swapped places and a roof terrace was furnished. The measured modes ship
   // no such drawing; the sheet-drawn route is there only when asked for by
   // name ("ai", "both").
-  const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
   if (measuredOnly) {
     const why = cadResult.outcome === "skip" && cadResult.reason ? ` (${cadResult.reason})` : "";
-    throw new Error(
-      `לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. העלו את קובץ ה-PDF המקורי של האדריכל, או DWG / DXF / DWF.`,
-    );
+    throw new Error(`לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. ${MEASURED_SOURCES}`);
   }
 
   const fallbackSource = cadResult.outcome === "skip" ? cadResult.fallbackRaster ?? prepared : prepared;

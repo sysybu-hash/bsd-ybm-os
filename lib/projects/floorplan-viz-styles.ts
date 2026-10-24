@@ -89,7 +89,7 @@ PLAN TRACE (every style, every view — non-negotiable):
 - מרפסת שירות / שטח שרות is a SERVICE balcony, not a leisure one: washing machine, dryer, a drying rack, shelves, a utility sink if drawn. It never gets lounge chairs or decorative planters, and it is never merged into the terrace beside it.
 - A leisure מרפסת (not labeled שירות) never gets a washing machine — laundry stays indoors or on the service balcony only.
 - A cupboard, boiler housing or air-conditioning unit on a terrace is FINISHED: flush millwork in the apartment's own warm timber, or a cleanly rendered panel with a slim shadow gap, sitting tight against the wall. Never a bare grey slab, never an unpainted box, never a raw appliance standing in the open. If the plan draws no such cupboard, do not add one.
-- Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
+- Output photograph: ZERO letters, digits, room names, north arrows, dimension ticks, or 2D hatch on floors or walls. The only mark that stays is the small black entrance triangle outside the front door.
 `.trim();
 
 export const KITCHEN_SINK_LOCK = `
@@ -274,7 +274,7 @@ GEOMETRY TRACE (every style, every view — non-negotiable):
 - Do not add a room, a wing, a stair or an open space that is not in the render. An Israeli flat on one level has no internal stairs; the building's stairwell and lift are outside it.
 - A paved area with a railing is a TERRACE: open floor and open sky, at exactly the size and in exactly the place the render draws it. Never roof it, never merge two of them, never widen one to fill a corner.
 - The entrance and the circulation strips carry nothing standing on the floor. Bare floor. A mirror or coat hooks on the wall are the only things allowed there.
-- Output photograph: ZERO letters, digits, room names, CAD arrows, or 2D hatch on floors or walls.
+- Output photograph: ZERO letters, digits, room names, north arrows, dimension ticks, or 2D hatch on floors or walls. The only mark that stays is the small black entrance triangle outside the front door.
 `.trim();
 
 export const GEOMETRY_CONTENTS_LOCK = `
@@ -557,6 +557,34 @@ export function designStyleBlock(kit: FloorplanVizStyleKit): string {
   // The developer handover stays cool, as it does on every other route.
   if (kit.id !== "developer_white") parts.push(WARM_LIGHT_DESIGN);
   return parts.join("\n\n");
+}
+
+/**
+ * The style as told to a painter that only finishes a furnished render — a
+ * private house's rooms and storeys: its materials, palette and light, and
+ * nothing placed. The presets' blocks ask for a sefarim cabinet, a fruit
+ * bowl and every lamp lit; beside "add nothing" each was refused by the
+ * checks and painted again, paid for twice.
+ */
+const MATERIALS_LOOK: Record<FloorplanVizPresetId, string> = {
+  contemporary: "STYLE — contemporary Israeli home: light oak parquet, white plaster walls, cream stone kitchen counters, matte nickel hardware. Warm and calm.",
+  luxury: "STYLE — luxury Israeli home: large-format porcelain or marble floors, fluted wood fronts, slim black or brass profiles, rich upholstery. Refined, soft evening-neutral light.",
+  scandi: "STYLE — Scandinavian minimal: white walls, pale birch wood, linen upholstery. Airy and calm; no gold.",
+  jerusalem_stone: "STYLE — Jerusalem stone: warm limestone floors, oak wood, terracotta and stone tones.",
+  developer_white: "STYLE — Israeli developer handover: plain white walls, light grey porcelain tile, plain white kitchen cabinets. Cool neutral daylight.",
+  haredi_classic: "STYLE — contemporary haredi family home, warm oak, NOT antique: 2020s Israeli millwork, honey parquet or warm large-format tile, slim profiles. No carved, baroque or period finishes.",
+  haredi_modern: "STYLE — minimal contemporary haredi home, NOT antique: pale oak, warm off-white walls, slim profiles, plenty of daylight. No carved wood, no baroque.",
+};
+
+export const PAINT_ONLY_SURFACES =
+  "Whatever the style names, paint only surfaces and light: add no prop, lamp, plant, pot, rug, cushion, throw, cloth, candle, book, bowl, picture, mezuzah or decoration the render does not have, and finish every piece the render has as the piece it is.";
+
+export function materialsStyleBlock(kit: FloorplanVizStyleKit): string {
+  const look = isFloorplanVizPresetId(kit.id)
+    ? MATERIALS_LOOK[kit.id]
+    : kit.promptBlock.replace(/\n\n(MODESTY \(global|AESTHETIC \(haredi)[\s\S]*$/, "").trim();
+  const modesty = kit.audience === "haredi" ? ["No people, no television, screen, laptop or glowing display anywhere, and no readable text."] : [];
+  return [look, PAINT_ONLY_SURFACES, ...modesty].join("\n\n");
 }
 
 export function isFloorplanVizPresetId(value: string): value is FloorplanVizPresetId {

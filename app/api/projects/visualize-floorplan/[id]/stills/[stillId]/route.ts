@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuthDynamic } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest, jsonNotFound, jsonTooManyRequests } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden, jsonNotFound, jsonTooManyRequests } from "@/lib/api-json";
 import { assertProviderConfigured } from "@/lib/ai-providers";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-limit";
@@ -35,6 +35,7 @@ import {
 import { unpackFloorplanVizStillMeta } from "@/lib/projects/floorplan-viz-ids";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
+import { vizAccessForUser } from "@/lib/projects/viz-access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -107,6 +108,11 @@ export const PATCH = withWorkspacesAuthDynamic<
         const image = run.images.find((row) => row.id === stillId);
         if (!image) return jsonNotFound("התמונה לא נמצאה", "viz_still_not_found");
         return NextResponse.json({ success: true, image, images: run.images });
+      }
+
+      const access = await vizAccessForUser(userId, orgId);
+      if (!access.paint) {
+        return jsonForbidden("הצביעה פתוחה לבעל המערכת. פנו אליו בדף יצירת הקשר.");
       }
 
       const geminiErr = assertProviderConfigured("gemini");

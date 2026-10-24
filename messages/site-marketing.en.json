@@ -55,43 +55,65 @@
   },
   "marketingPricing": {
     "metaTitle": "Pricing",
-    "metaDescription": "Subscription paths for construction businesses and trades — from small teams to multi-site organizations.",
+    "metaDescription": "BSD-YBM plans: Free, Household, Licensed dealer, Company and Corporate — the prices and quotas the system enforces.",
     "eyebrow": "Pricing",
-    "title": "Pricing by workload — from solo pro to construction company.",
-    "description": "Technical plans map to subscription tiers (including scan quotas). This is the marketing frame for construction; exact numbers appear after sign-in.",
+    "title": "Five plans. The price and the quotas are what the system gives.",
+    "description": "A free plan waits for an admin. A paid plan opens after PayPal. The measured visualisation is included in an active plan.",
     "cta": "Request a tailored quote",
     "tiers": [
       {
-        "name": "Starter",
-        "price": "Small team · single site",
-        "body": "For a pro or lean team that wants order across documents, clients and invoices without scattered spreadsheets.",
+        "name": "Free",
+        "price": "₪0",
+        "body": "A trial. The account waits for an admin before it opens.",
         "points": [
-          "Documents & AI scans",
-          "Project CRM",
-          "Basic billing",
-          "Profession profile (construction)"
+          "10 standard scans",
+          "0 premium scans",
+          "One company",
+          "Measured visualisation after approval"
         ]
       },
       {
-        "name": "Growth",
-        "price": "Field + office",
-        "body": "For an active company with parallel projects — cash flow, roles and supplier tracking.",
+        "name": "Household",
+        "price": "₪59.90 / month",
+        "body": "Home use, on the same system.",
         "points": [
-          "Roles & permissions",
-          "More AI engines",
-          "Collections & billing flows",
-          "Management insights"
+          "50 standard scans",
+          "5 premium scans",
+          "One company",
+          "Measured visualisation included"
         ]
       },
       {
-        "name": "Enterprise",
-        "price": "Custom",
-        "body": "For groups with multiple companies/sites, integrations and hands-on onboarding.",
+        "name": "Licensed dealer",
+        "price": "₪99.90 / month",
+        "body": "The recommended plan for a one-person business.",
         "points": [
-          "High scan volumes",
-          "Complex org structure",
-          "Support & onboarding",
-          "Deep customization"
+          "100 standard scans",
+          "15 premium scans",
+          "One company",
+          "Measured visualisation included"
+        ]
+      },
+      {
+        "name": "Company",
+        "price": "₪159.90 / month",
+        "body": "For a team with two companies.",
+        "points": [
+          "200 standard scans",
+          "40 premium scans",
+          "Up to 2 companies",
+          "Measured visualisation included"
+        ]
+      },
+      {
+        "name": "Corporate",
+        "price": "₪299.90 / month",
+        "body": "For a structure of several companies.",
+        "points": [
+          "500 standard scans",
+          "100 premium scans",
+          "No practical company cap",
+          "Measured visualisation included"
         ]
       }
     ]

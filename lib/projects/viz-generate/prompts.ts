@@ -245,7 +245,7 @@ function internalStairHint(layout: FloorplanLayout): string {
 }
 
 export const ONE_FRAME =
-  "Output ONE photorealistic sales-brochure bird's-eye cutaway of this apartment only. Forbidden: collage, grid, triptych, stacked panels (exterior over plan), porch/street elevation of a different house, labeled schematic, CAD arrows, empty tiled bathrooms, open closet rails, dollhouse with room names painted on floors.";
+  "Output ONE photorealistic sales-brochure bird's-eye cutaway of this apartment only. Forbidden: collage, grid, triptych, stacked panels (exterior over plan), porch/street elevation of a different house, labeled schematic, north arrows and dimension marks, empty tiled bathrooms, open closet rails, dollhouse with room names painted on floors.";
 
 /**
  * First instruction the model reads. Later locks fill details; this settles
@@ -278,7 +278,7 @@ GEOMETRY — the sales drawing is the only floor plate:
  * Using that JPEG as the only "plan" made the model invent a different unit.
  */
 export const CAD_MASSING_LOCK =
-  "Attachment order when CAD massing is present: (1) CAD 3D massing of THIS apartment — photograph these walls, rooms, doors and furniture positions at golden hour; (2) original sales sheet — furniture symbols, wet fixtures, and printed terrace pockets; (3) wall tracing if present. The FIRST image is the apartment. Do not invent a different unit. If CAD and the sales sheet disagree on what a space is, the sheet wins: brick-hatched מרפסת stays outdoor even when CAD shows indoor floor there; a toilet/tub/basin the sheet draws is a bathroom even if CAD dropped the wet room; a terrace whose ⊕ differs from the unit's is a roof terrace, not a furnished room on this floor. Do not open a terrace where the CAD shows indoor floor and a front door. The outer-wall door next to the stair/lift core is the entrance hall (מבואה): indoor floor and a door, never paving or planters. Do not copy the CAD colouring-page look or 2D marks (entrance triangles, ticks, hatch).";
+  "Attachment order when CAD massing is present: (1) CAD 3D massing of THIS apartment — photograph these walls, rooms, doors and furniture positions at golden hour; (2) original sales sheet — furniture symbols, wet fixtures, and printed terrace pockets; (3) wall tracing if present. The FIRST image is the apartment. Do not invent a different unit. If CAD and the sales sheet disagree on what a space is, the sheet wins: brick-hatched מרפסת stays outdoor even when CAD shows indoor floor there; a toilet/tub/basin the sheet draws is a bathroom even if CAD dropped the wet room; a terrace whose ⊕ differs from the unit's is a roof terrace, not a furnished room on this floor. Do not open a terrace where the CAD shows indoor floor and a front door. The outer-wall door next to the stair/lift core is the entrance hall (מבואה): indoor floor and a door, never paving or planters. Do not copy the CAD colouring-page look or 2D marks (ticks, hatch); the one entrance triangle outside the front door is the only mark that stays.";
 
 /**
  * The front door is indoor. These sheets keep getting a fake terrace there.

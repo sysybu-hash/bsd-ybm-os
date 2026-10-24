@@ -28,6 +28,12 @@ const BOXES = [
 /** A handle stands proud of its door; nothing else may leave the footprint. */
 const PROUD_M = 0.02;
 
+/** A part's half-extents on the page's axes: a part turned by the renderer (a shape, a leaning cushion) keeps its own w and d and is turned by rotY. */
+const reach = (p: { w: number; d: number; rotY?: number }) => {
+  const c = Math.abs(Math.cos(p.rotY ?? 0)), s = Math.abs(Math.sin(p.rotY ?? 0));
+  return { x: (p.w * c + p.d * s) / 2, z: (p.w * s + p.d * c) / 2 };
+};
+
 describe("every piece fits the box it was measured in", () => {
   for (const kind of KINDS) {
     it(`${kind} stays inside its footprint, whichever way it faces`, () => {
@@ -37,8 +43,8 @@ describe("every piece fits the box it was measured in", () => {
           const parts = partsFor(kind, { ...box, hM, facing });
           expect(parts.length).toBeGreaterThan(0);
           for (const p of parts) {
-            expect(Math.abs(p.x) + p.w / 2).toBeLessThanOrEqual(box.wM / 2 + PROUD_M + 1e-9);
-            expect(Math.abs(p.z) + p.d / 2).toBeLessThanOrEqual(box.dM / 2 + PROUD_M + 1e-9);
+            expect(Math.abs(p.x) + reach(p).x).toBeLessThanOrEqual(box.wM / 2 + PROUD_M + 1e-9);
+            expect(Math.abs(p.z) + reach(p).z).toBeLessThanOrEqual(box.dM / 2 + PROUD_M + 1e-9);
             // Nothing sinks through the floor, and nothing reaches the ceiling.
             expect(p.y - p.h / 2).toBeGreaterThanOrEqual(-1e-9);
             expect(p.y + p.h / 2).toBeLessThan(2.7);
@@ -56,8 +62,8 @@ describe("every piece fits the box it was measured in", () => {
       for (const facing of FACINGS) {
         for (const box of [...BOXES, { wM: 0.36, dM: 0.54 }, { wM: 0.8, dM: 0.8 }]) {
           for (const p of partsFor("fixture", { ...box, hM: FURNITURE_HEIGHT_M.fixture ?? 0.5, facing, fixture })) {
-            expect(Math.abs(p.x) + p.w / 2).toBeLessThanOrEqual(box.wM / 2 + PROUD_M + 1e-9);
-            expect(Math.abs(p.z) + p.d / 2).toBeLessThanOrEqual(box.dM / 2 + PROUD_M + 1e-9);
+            expect(Math.abs(p.x) + reach(p).x).toBeLessThanOrEqual(box.wM / 2 + PROUD_M + 1e-9);
+            expect(Math.abs(p.z) + reach(p).z).toBeLessThanOrEqual(box.dM / 2 + PROUD_M + 1e-9);
             expect(p.y - p.h / 2).toBeGreaterThanOrEqual(-1e-9);
             expect(p.y + p.h / 2).toBeLessThan(2.7);
             expect(p.w).toBeGreaterThan(0);

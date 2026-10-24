@@ -15,7 +15,7 @@ import FloorplanVizLightbox, { fileNameOf, srcOf } from "@/components/os/widgets
 import {
   PLAN_DIRECT_UPLOAD_MAX_BYTES,
   rasterizePlanFile,
-  uploadPlanToBlob,
+  stagePlanFile,
 } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import type { FloorplanVizEditRegion } from "@/lib/projects/floorplan-viz-edit-region";
@@ -242,8 +242,9 @@ export default function FloorplanVizResults({
         // The booklet re-measures the rooms off the sheet's own vectors, so the
         // PDF has to reach the route. Over the platform's body limit it goes up
         // through Blob and only its URL rides in the request.
-        const uploaded = await uploadPlanToBlob(sourceFile);
-        if (uploaded) fd.append("sourcePdfUrl", uploaded);
+        const staged = await stagePlanFile(sourceFile);
+        if (staged?.blobUrl) fd.append("sourcePdfUrl", staged.blobUrl);
+        else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);
         else if (sourceFile.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("sourcePdf", sourceFile);
       }
       let sheet = planSrc;

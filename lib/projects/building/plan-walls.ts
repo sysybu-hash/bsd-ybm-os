@@ -40,7 +40,7 @@ export type WallPens = {
 export function readPlanWalls(
   page: PdfPage,
   region: { x: number; y: number; width: number; height: number },
-  options: { unitsPerMetre: number; pens: WallPens; cm?: number },
+  options: { unitsPerMetre: number; pens: WallPens; cm?: number; /** Pixels the strokes are closed by: a PDF's hatch is 3–8 cm apart (2 px), a CAD wall drawn as two faces is up to 30 cm. */ closePx?: number },
 ): PlanWalls {
   const cm = options.cm ?? 2;
   const k = 100 / options.unitsPerMetre / cm;
@@ -61,7 +61,8 @@ export function readPlanWalls(
   }
 
   // The hatch closed into a solid band: strokes 3 to 8 cm apart.
-  const closed = erode(dilate(ink, 2), 2);
+  const closePx = options.closePx ?? 2;
+  const closed = erode(dilate(ink, closePx), closePx);
   // A partition's core: a narrow space its two outlines enclose. Only spaces
   // under 0.4 m² and no wider than a thick wall are filled — a shaft or a
   // store left open is a room.

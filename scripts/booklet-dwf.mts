@@ -47,6 +47,8 @@ const say = (step: string) => console.log(`${((Date.now() - t0) / 1000).toFixed(
  */
 const finishViews = args.has("finish")
   ? async (pictures: { get(name: string): Buffer | undefined; set(name: string, data: Buffer): void }) => {
+      const { paidAiAllowed } = await import("@/lib/projects/building/house-cost");
+      if (!paidAiAllowed()) throw new Error("--finish makes paid image calls: run it with ALLOW_PAID_AI=1");
       const { GoogleGenAI } = await import("@google/genai");
       const { getGeminiApiKey } = await import("@/lib/gemini-api-key");
       const { finishPass, finishPrompt, massMatch, structuralMatch } = await import("@/lib/projects/building/finish");

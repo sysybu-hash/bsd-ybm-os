@@ -7,7 +7,12 @@ import {
   useState,
 } from "react";
 import { toast } from "sonner";
-import { fileFromDataUrl, uploadPlanToBlob } from "@/components/os/widgets/floorplan-viz/plan-source";
+import {
+  fileFromDataUrl,
+  PLAN_DIRECT_UPLOAD_MAX_BYTES,
+  planExceedsUploadLimit,
+  stagePlanFile,
+} from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
 import type { FloorplanLayout, FloorplanRoom } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
@@ -26,6 +31,8 @@ import {
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
 type ProjectListItem = { id: string; name: string };
+
+export type VizAccess = { subscriber: boolean; paint: boolean; contactEmail: string };
 
 /**
  * A floor-plan run and everything that can be done to it: upload, generate,
@@ -52,6 +59,7 @@ export function useFloorplanVizRun({
   const [customKit, setCustomKit] = useState<FloorplanVizStyleKit | null>(null);
   const [scope, setScope] = useState<FloorplanVizScope>("overview");
   const [runs, setRuns] = useState<FloorplanVizRunSummary[]>([]);
+  const [access, setAccess] = useState<VizAccess | null>(null);
   const [titleDraft, setTitleDraft] = useState("");
   const dwf = useDwfBuilding(t);
   const prepareDwf = dwf.prepare;
@@ -74,8 +82,9 @@ export function useFloorplanVizRun({
   const refreshRuns = useCallback(async () => {
     try {
       const res = await fetch("/api/projects/visualize-floorplan", { credentials: "include" });
-      const json = (await res.json()) as { runs?: FloorplanVizRunSummary[] };
+      const json = (await res.json()) as { runs?: FloorplanVizRunSummary[]; access?: VizAccess };
       if (res.ok && Array.isArray(json.runs)) setRuns(json.runs);
+      if (res.ok && json.access) setAccess(json.access);
     } catch {
       /* library is optional if list fails */
     }
@@ -123,7 +132,7 @@ export function useFloorplanVizRun({
   }, []);
 
   const generate = useCallback(
-    async (nextScope: FloorplanVizScope) => {
+    async (nextScope: FloorplanVizScope, renderMode: "render3d" | "finish" = "render3d") => {
       const appending = Boolean(result?.runId);
       if (!appending && !file) {
         toast.error(t("workspaceWidgets.floorplanViz.needFile"));
@@ -141,6 +150,7 @@ export function useFloorplanVizRun({
         if (appending && result?.runId) {
           fd.append("runId", result.runId);
           fd.append("scope", nextScope);
+          fd.append("renderMode", renderMode);
         } else if (file) {
           const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
           const dwfFields = dwf.isDwf ? await dwf.runFields() : null;
@@ -150,14 +160,28 @@ export function useFloorplanVizRun({
           } else {
             // Keep the PDF bytes. Rasterizing here used to skip the CAD path
             // and the model invented a different apartment.
-            const blobUrl = await uploadPlanToBlob(file);
-            if (blobUrl) fd.append("blobUrl", blobUrl);
-            else fd.append("file", file);
+            if (planExceedsUploadLimit(file)) {
+              const message = t("workspaceWidgets.floorplanViz.planTooLarge");
+              setError(message);
+              toast.error(message);
+              return;
+            }
+            const staged = await stagePlanFile(file);
+            if (staged?.blobUrl) fd.append("blobUrl", staged.blobUrl);
+            else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);
+            else if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("file", file);
+            else {
+              const message = t("workspaceWidgets.floorplanViz.planStorageUnavailable");
+              setError(message);
+              toast.error(message);
+              return;
+            }
           }
           if (projectId) fd.append("projectId", projectId);
           fd.append("styleId", styleId);
           fd.append("planKind", isPdf ? "sales-sheet" : "auto");
           fd.append("scope", nextScope);
+          fd.append("renderMode", renderMode);
           if (customKit) fd.append("styleKit", JSON.stringify(customKit));
         }
         const res = await fetch("/api/projects/visualize-floorplan", {
@@ -321,6 +345,7 @@ export function useFloorplanVizRun({
     scope,
     setScope,
     runs,
+    access,
     editingKey,
     titleDraft,
     setTitleDraft,

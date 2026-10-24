@@ -14,6 +14,7 @@ import { getFloorplanLayoutModelChain } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
 import { geminiMultimodal } from "@/lib/tri-engine-extract";
 import { floorplanLlmOcrJobs } from "@/lib/projects/floorplan-ocr-text";
+import { extractPdfPageText } from "@/lib/projects/floorplan-vector";
 import { floorplanSourceFileName } from "@/lib/projects/floorplan-photo-prep";
 import { FLOORPLAN_PHOTO_LAYOUT_RULES } from "@/lib/projects/floorplan-photo-instructions";
 import {
@@ -323,7 +324,6 @@ async function extractFloorplanLayoutLean(
   photo: boolean,
   spend?: FloorplanSpend,
 ): Promise<FloorplanLayoutExtractResult> {
-  if (spend) recordFloorplanSpend(spend, "extract", "layout-lean");
   let grounding: OcrGrounding = {
     engine: "none",
     text: "",
@@ -331,16 +331,23 @@ async function extractFloorplanLayoutLean(
     roomNameHits: [],
   };
   try {
-    if (isMistralConfigured()) {
-      const text = await extractTextWithMistralOCR(base64, mimeType);
-      grounding = groundingFromText("mistral-ocr", text);
-    } else if (isDocAiConfigured()) {
-      grounding = await runDocAiOcr(base64, mimeType);
-    } else {
-      const jobs = floorplanLlmOcrJobs(base64, mimeType, photo);
-      if (jobs[0]) {
-        const row = await jobs[0];
-        grounding = groundingFromText(row.engine, row.text);
+    if (mimeType === "application/pdf") {
+      const text = await extractPdfPageText(Buffer.from(base64, "base64"));
+      if (text) grounding = groundingFromText("pdf-text", text);
+    }
+    if (grounding.engine === "none") {
+      if (spend) recordFloorplanSpend(spend, "extract", "layout-lean");
+      if (isMistralConfigured()) {
+        const text = await extractTextWithMistralOCR(base64, mimeType);
+        grounding = groundingFromText("mistral-ocr", text);
+      } else if (isDocAiConfigured()) {
+        grounding = await runDocAiOcr(base64, mimeType);
+      } else {
+        const jobs = floorplanLlmOcrJobs(base64, mimeType, photo, { first: true });
+        if (jobs[0]) {
+          const row = await jobs[0];
+          grounding = groundingFromText(row.engine, row.text);
+        }
       }
     }
   } catch (err: unknown) {

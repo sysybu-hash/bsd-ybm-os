@@ -208,7 +208,7 @@ export function floorplanGeometryPayload(
     // Against the flat's own rooms: a region on someone else's roof is not one,
     // and 21's roof lettering stood in it as two fixtures.
     furniture: flat.furniture
-      .filter((piece) => standsInARoom(piece, rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])), flat.unitsPerMetre))
+      .filter((piece) => piece.drawn || standsInARoom(piece, rooms.filter((room) => !mostlyForeign(room.rows, flat.foreign ?? [])), flat.unitsPerMetre))
       .map((piece) => ({
       x: piece.x,
       y: piece.y,
@@ -219,6 +219,7 @@ export function floorplanGeometryPayload(
       depthCm: piece.depthCm,
       ...(piece.fixture ? { fixture: piece.fixture } : {}),
       ...(piece.head ? { head: piece.head } : {}),
+      ...(piece.drawn ? { drawn: true } : {}),
     })),
     // Page fractions become page units, which is what the geometry speaks.
     labelledRooms:

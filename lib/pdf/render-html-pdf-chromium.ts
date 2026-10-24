@@ -1,3 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { PDFArray, PDFName, PDFString, type PDFPage } from "pdf-lib";
 
 import { launchChromium } from "@/lib/pdf/chromium-launch";
@@ -93,7 +99,7 @@ export async function renderHtmlPdfChromium(
 
     return new Uint8Array(pdf);
   } finally {
-    await browser.close();
+    await closeQuietly(browser);
   }
 }
 
@@ -106,14 +112,18 @@ export async function renderHtmlSectionsPdf(
   options: RenderHtmlPdfOptions = {},
 ): Promise<Uint8Array> {
   const browser = await launchChromium();
+  // Loaded from a file: setContent sends the page in one protocol message, and
+  // a booklet of embedded paintings (100 MB and more) closes the connection.
+  const file = path.join(tmpdir(), `sections-${randomUUID()}.html`);
   try {
+    await writeFile(file, html, "utf8");
     const page = await browser.newPage();
     const timeout = options.timeoutMs ?? 45_000;
     const cssW = options.sheet?.cssWidth ?? 794;
     const cssH = options.sheet?.cssHeight ?? 1123;
     await page.setViewport({ width: cssW, height: cssH, deviceScaleFactor: 2 });
     await page.emulateMediaType("screen");
-    await page.setContent(html, { waitUntil: "load", timeout });
+    await page.goto(pathToFileURL(file).href, { waitUntil: "load", timeout });
     await page.evaluate(() => document.fonts.ready);
     if (options.waitForImages) {
       await page.evaluate(async () => {
@@ -150,7 +160,14 @@ export async function renderHtmlSectionsPdf(
     const a4w = options.sheet?.ptWidth ?? 595.28;
     const a4h = options.sheet?.ptHeight ?? 841.89;
     const inset = 0;
-    for (const handle of handles) {
+    for (const [index, handle] of handles.entries()) {
+      // Only the sheet being shot is laid out: a booklet of full-page
+      // paintings at twice the pixels ran Chrome out of memory midway.
+      await page.evaluate((i) => {
+        document.querySelectorAll<HTMLElement>(".cover, .plate").forEach((el, k) => {
+          el.style.display = k === i ? "" : "none";
+        });
+      }, index);
       // Clip against the page viewport reused the first sheet four times.
       // Screenshot the section node itself — each cover/plate is one page.
       await handle.evaluate((el) => {
@@ -203,6 +220,16 @@ export async function renderHtmlSectionsPdf(
     }
     return await doc.save();
   } finally {
-    await browser.close();
+    await closeQuietly(browser);
+    await rm(file, { force: true }).catch(() => undefined);
   }
+}
+
+/**
+ * On Windows, Chrome may still hold a file of its temporary profile when
+ * Puppeteer deletes it on close (EBUSY). The PDF is made by then; a profile
+ * left in the temp folder is not worth losing it for.
+ */
+async function closeQuietly(browser: { close(): Promise<void> }): Promise<void> {
+  await browser.close().catch(() => undefined);
 }

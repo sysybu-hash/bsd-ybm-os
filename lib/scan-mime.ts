@@ -30,6 +30,8 @@ const GEMINI_FILE_LIKE = new Set([
 
 const EXT_TO_MIME: [RegExp, string][] = [
   [/\.pdf$/i, PDF],
+  [/\.dxf$/i, "image/vnd.dxf"],
+  [/\.dwg$/i, "image/vnd.dwg"],
   [/\.png$/i, "image/png"],
   [/\.(jpe?g)$/i, "image/jpeg"],
   [/\.gif$/i, "image/gif"],
@@ -59,13 +61,22 @@ const EXT_TO_MIME: [RegExp, string][] = [
   [/\.markdown$/i, "text/markdown"],
 ];
 
-export function inferMimeFromFileName(fileName: string, mimeFromBrowser: string): string {
-  const trimmed = mimeFromBrowser?.trim();
-  if (trimmed && trimmed !== "application/octet-stream") return trimmed;
+function mimeFromExtension(fileName: string): string | undefined {
   const lower = fileName.toLowerCase();
   for (const [re, mime] of EXT_TO_MIME) {
     if (re.test(lower)) return mime;
   }
+  return undefined;
+}
+
+export function inferMimeFromFileName(fileName: string, mimeFromBrowser: string): string {
+  const fromExt = mimeFromExtension(fileName);
+  // A drawing's extension is the type. Browsers label the same DXF as
+  // application/pdf, application/acad, or nothing at all.
+  if (fromExt && /\.(dxf|dwg|dwf|w2d)$/i.test(fileName)) return fromExt;
+  const trimmed = mimeFromBrowser?.trim();
+  if (trimmed && trimmed !== "application/octet-stream") return trimmed;
+  if (fromExt) return fromExt;
   return trimmed || "application/octet-stream";
 }
 

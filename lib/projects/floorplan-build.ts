@@ -49,6 +49,7 @@ import {
   findSwingArcs,
   openingsInWalls,
   hatchedWallsMissed,
+  widenToHatch,
   narrowWallsAroundLeaves,
   wallsBesideFlatFloor,
   findCrossedBoxes,
@@ -516,7 +517,10 @@ export async function buildFlatFromGeometry(
     });
   });
   // And the hatched pieces no pair of faces gave; see hatchedWallsMissed.
-  let bodies = [...faced, ...hatchedWallsMissed(faced, geometry.segments, unitsPerMetre, flatExtent).filter((body) => !inMark(body))];
+  // Widened to their hatch first (widenToHatch), then the hatched pieces no
+  // pair of faces gave (hatchedWallsMissed).
+  const widened = widenToHatch(faced, geometry.segments, unitsPerMetre, flatExtent);
+  let bodies = [...widened, ...hatchedWallsMissed(widened, geometry.segments, unitsPerMetre, flatExtent).filter((body) => !inMark(body))];
   if (bodies.length === 0) return null;
 
   let minX = Infinity;

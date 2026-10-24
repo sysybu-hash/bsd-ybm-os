@@ -3,15 +3,15 @@ import type { GenerationConfig } from "@google/generative-ai";
 import { env } from "@/lib/env";
 
 /**
- * קטלוג מודלי Gemini — עודכן 03/09/2026.
+ * קטלוג מודלי Gemini — עודכן 23/10/2026.
  * @see https://ai.google.dev/gemini-api/docs/models
  * @see https://ai.google.dev/gemini-api/docs/deprecations
  */
 
-export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-09-03";
+export const AI_ENGINE_CATALOG_UPDATED_AT = "2026-10-23";
 
-/** GA — אוגוסט 2026 */
-export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.7-flash";
+/** GA — ספטמבר 2026. gemini-3.7-flash מנותב אוטומטית לכאן. */
+export const GEMINI_STABLE_TEXT_MODEL = "gemini-3.8-flash";
 
 /** GA — יולי 2026; סיווג / throughput */
 export const GEMINI_LITE_MODEL = "gemini-3.5-flash-lite";
@@ -62,6 +62,7 @@ const LEGACY_MODEL_ALIASES: Record<string, string> = {
   "gemini-1.5-flash-latest": GEMINI_STABLE_TEXT_MODEL,
   "gemini-1.5-pro": GEMINI_PREMIUM_TEXT_MODEL,
   "gemini-3-flash-preview": GEMINI_STABLE_TEXT_MODEL,
+  "gemini-3.7-flash": GEMINI_STABLE_TEXT_MODEL,
   "gemini-3.1-pro": GEMINI_PREMIUM_TEXT_MODEL,
   "gemini-3.1-pro-stable": GEMINI_PREMIUM_TEXT_MODEL,
   "gemini-3.1-flash": GEMINI_STABLE_TEXT_MODEL,
@@ -136,8 +137,12 @@ export const GEMINI_IMAGE_PRIMARY_MODEL = "gemini-3.1-flash-image";
 /** Nano Banana 2 Lite — גיבוי מהיר/זול */
 export const GEMINI_IMAGE_LITE_MODEL = "gemini-3.1-flash-lite-image";
 
+/** Nano Banana 2.1 — GA 6/10/2026, חצי ממחיר Nano Banana 2 לתמונה */
+export const GEMINI_IMAGE_NANO_BANANA_21_MODEL = "gemini-nano-banana-2.1";
+
+/** Pro (~4× the price) is never a silent fallback: only GEMINI_IMAGE_MODEL puts it in front. */
 export const GEMINI_IMAGE_FALLBACK_CHAIN: readonly string[] = [
-  GEMINI_IMAGE_PRO_MODEL,
+  GEMINI_IMAGE_NANO_BANANA_21_MODEL,
   GEMINI_IMAGE_PRIMARY_MODEL,
   GEMINI_IMAGE_LITE_MODEL,
 ] as const;
@@ -155,7 +160,6 @@ export function resolveGeminiImageModelId(raw: string): string {
 }
 
 export function getFloorplanVizModelChain(): string[] {
-  // Pro first — photoreal sales stills need max fidelity; Flash/Lite are fallback only.
   const fromEnv = env.GEMINI_IMAGE_MODEL?.trim();
   return dedupeModels([
     ...(fromEnv ? [resolveGeminiImageModelId(fromEnv)] : []),

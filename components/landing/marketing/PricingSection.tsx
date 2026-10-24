@@ -3,7 +3,7 @@
 import ScrollReveal from "@/components/landing/marketing/ScrollReveal";
 import { useI18n } from "@/components/os/system/I18nProvider";
 
-const TIER_INDICES = [0, 1, 2, 3] as const;
+const TIER_INDICES = [0, 1, 2, 3, 4] as const;
 const POINTS_PER_TIER = 4;
 
 type Props = Readonly<{
@@ -35,9 +35,9 @@ export default function PricingSection({ onRegister, embedded = false, inPanel =
           </ScrollReveal>
         )}
 
-        <div className="grid items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {TIER_INDICES.map((tierIndex, index) => {
-            const featured = tierIndex === 1;
+            const featured = tierIndex === 2;
             return (
               <ScrollReveal key={tierIndex} delay={0.06 * index} className="h-full">
                 <article

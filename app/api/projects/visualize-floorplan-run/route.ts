@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest, jsonNotFound, jsonTooManyRequests } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden, jsonNotFound, jsonTooManyRequests } from "@/lib/api-json";
 import { assertProviderConfigured } from "@/lib/ai-providers";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
@@ -23,9 +23,12 @@ import {
   type FloorplanVizRunDetail,
 } from "@/lib/projects/floorplan-viz-store";
 import { inferMimeFromFileName } from "@/lib/scan-mime";
+import { sniffFloorplanMime } from "@/lib/projects/photo-prep/mime";
 import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
+import { deletePlanUpload, readPlanUpload } from "@/lib/projects/floorplan-plan-upload";
 import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-limit";
 import { createLogger } from "@/lib/logger";
+import { vizAccessForUser } from "@/lib/projects/viz-access";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -45,6 +48,7 @@ async function generateAndAppendToRun(input: {
   orgId: string;
   existing: FloorplanVizRunDetail;
   scope: ReturnType<typeof parseFloorplanVizScope>;
+  renderMode: "render3d" | "finish";
 }) {
   const result = await visualizeFloorplanFromDrawing(input.existing.planBase64, input.existing.planMimeType, {
     customKit: input.existing.styleKit,
@@ -53,6 +57,7 @@ async function generateAndAppendToRun(input: {
     existingLayout: input.existing.layout,
     existingImages: existingImagesForAppend(input.existing.images, input.scope),
     sourceName: input.existing.title,
+    renderMode: input.renderMode,
   });
   return appendFloorplanVizStills(
     input.orgId,
@@ -87,12 +92,15 @@ function clientPayload(run: FloorplanVizRunDetail, includePlan: boolean) {
 }
 
 export const GET = withWorkspacesAuth(
-  async (req, { orgId, role }) => {
+  async (req, { orgId, userId, role }) => {
     const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
     const projectId = new URL(req.url).searchParams.get("projectId")?.trim() || undefined;
-    const runs = await listFloorplanVizRunsForOrg(orgId, projectId);
-    return NextResponse.json({ runs });
+    const [runs, access] = await Promise.all([
+      listFloorplanVizRunsForOrg(orgId, projectId),
+      vizAccessForUser(userId, orgId),
+    ]);
+    return NextResponse.json({ runs, access });
   },
   { parseTarget: "query" },
 );
@@ -117,6 +125,15 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     const industryBlock = await guardConstructionOnlyApi(orgId, role);
     if (industryBlock) return industryBlock;
 
+    const access = await vizAccessForUser(userId, orgId);
+    if (!access.subscriber) {
+      return jsonForbidden("ההדמיה המדודה פתוחה למנויים פעילים");
+    }
+    const renderMode = String(formData.get("renderMode") ?? "render3d") === "finish" ? "finish" : "render3d";
+    if (renderMode === "finish" && !access.paint) {
+      return jsonForbidden("הצביעה פתוחה לבעל המערכת. פנו אליו בדף יצירת הקשר.");
+    }
+
     if (projectId) {
       const gate = await requireProjectForOrg(projectId, orgId);
       if (!gate.ok) return gate.response;
@@ -130,7 +147,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       const existing = await getFloorplanVizRunForOrg(orgId, runId);
       if (!existing) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       const scope = parseFloorplanVizScope(String(formData.get("scope") ?? "rooms"));
-      const saved = await generateAndAppendToRun({ orgId, existing, scope });
+      const saved = await generateAndAppendToRun({ orgId, existing, scope, renderMode });
       if (!saved) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       return NextResponse.json(clientPayload(saved, false));
     }
@@ -138,18 +155,21 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     // A sheet over the platform's body limit is uploaded straight to Blob by the
     // browser, and only its URL reaches this route.
     const blobUrl = String(formData.get("blobUrl") ?? "").trim();
+    const uploadId = String(formData.get("uploadId") ?? "").trim();
     const file = formData.get("file");
     let base64: string;
     let mimeType: string;
     let fileName: string;
-    if (blobUrl) {
-      const fetched = await fetchFloorplanBlob(blobUrl);
+    if (blobUrl || uploadId) {
+      const fetched = blobUrl
+        ? await fetchFloorplanBlob(blobUrl)
+        : await readPlanUpload(orgId, uploadId);
       if (!fetched) {
         return jsonBadRequest("קובץ התוכנית שהועלה אינו זמין", "blob_unavailable");
       }
       base64 = fetched.base64;
-      fileName = fetched.fileName ?? "plan.pdf";
-      mimeType = inferMimeFromFileName(fileName, fetched.mimeType);
+      fileName = fetched.fileName ?? "plan";
+      mimeType = sniffFloorplanMime(base64, inferMimeFromFileName(fileName, fetched.mimeType));
     } else {
       if (!(file instanceof File)) {
         return jsonBadRequest("חסר קובץ תוכנית", "missing_fields");
@@ -159,7 +179,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       }
       base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
       fileName = file.name;
-      mimeType = inferMimeFromFileName(file.name, file.type);
+      mimeType = sniffFloorplanMime(base64, inferMimeFromFileName(file.name, file.type));
     }
     const sourceName = fileName.replace(/\.[^.]+$/u, "");
 
@@ -257,6 +277,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       styleId,
       customKit,
       planKind,
+      renderMode,
       scope,
       existingLayout: scope === "rooms" ? existingLayout : existingLayout ?? cachedLayout ?? undefined,
       existingImages: scope === "rooms" ? existingImages : undefined,
@@ -289,6 +310,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       });
       // The run holds its own copy of the plan now; the upload is rubbish.
       if (blobUrl) void deleteFloorplanBlob(blobUrl);
+      if (uploadId) void deletePlanUpload(orgId, uploadId);
       return NextResponse.json(clientPayload(saved, false));
     } catch (persistErr) {
       log.warn("persist viz run failed", {

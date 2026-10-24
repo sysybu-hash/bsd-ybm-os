@@ -57,6 +57,8 @@ export type ChromiumLaunchOptions = {
    */
   webgl?: boolean;
   viewport?: { width: number; height: number };
+  /** How long one DevTools call may wait. A stuck frame otherwise holds the default 180s, twice. */
+  protocolTimeout?: number;
 };
 
 /** A headless Chromium: @sparticuz's on Vercel, the machine's own locally. */
@@ -74,6 +76,7 @@ export async function launchChromium(options?: ChromiumLaunchOptions) {
       defaultViewport,
       executablePath: await chromium.executablePath(),
       headless: true,
+      ...(options?.protocolTimeout ? { protocolTimeout: options.protocolTimeout } : {}),
     });
   }
 
@@ -88,5 +91,6 @@ export async function launchChromium(options?: ChromiumLaunchOptions) {
     headless: true,
     args: options?.webgl ? [...LAUNCH_ARGS, ...LOCAL_WEBGL_ARGS] : LAUNCH_ARGS,
     defaultViewport,
+    ...(options?.protocolTimeout ? { protocolTimeout: options.protocolTimeout } : {}),
   });
 }

@@ -1,3 +1,6 @@
+import type * as ThreeNS from "three";
+
+import { meshArrays } from "@/lib/projects/scene3d/geometry";
 import { cameraFor, type CameraRig, type ViewSpec } from "@/lib/projects/scene3d/cameras";
 import type { QualityProfile } from "@/lib/projects/scene3d/quality";
 import { sunDirection, type MaterialSpec, type SceneStyle } from "@/lib/projects/scene3d/style";
@@ -20,6 +23,8 @@ export type RenderMesh = {
   c: [number, number, number];
   s: [number, number, number];
   m: MaterialId;
+  /** Set when the mesh is not a plain box (rounded, sloped, turned, or a shape): its triangles, indexed, positions in scene space. `c` and `s` then only describe its bounds. */
+  g?: { p: number[]; i: number[] };
   /** Whether this box casts a shadow — a floor slab does not. */
   sh: boolean;
 };
@@ -73,8 +78,12 @@ export function buildRenderPayload(
   style: SceneStyle,
   view: ViewSpec,
   quality: QualityProfile,
+  /** three, passed in by a caller that has it (the server's renderer does): forms, rounded edges and slopes are built here as triangles. Without it they are drawn as their boxes. */
+  three?: typeof ThreeNS,
 ): RenderPayload {
-  const { width, height } = frameFor(scene, quality.renderWidthPx);
+  const framed = frameFor(scene, quality.renderWidthPx);
+  const width = framed.width;
+  const height = view.aspect ? Math.round(width / view.aspect / 2) * 2 : framed.height;
   const aspect = width / height;
   const camera = cameraFor(scene, view, aspect);
   const span = Math.max(scene.extent.width, scene.extent.depth);
@@ -87,6 +96,10 @@ export function buildRenderPayload(
       c: [mesh.centre.x, mesh.centre.y, mesh.centre.z],
       s: [mesh.size.x, mesh.size.y, mesh.size.z],
       m: mesh.material,
+      ...((): { g?: { p: number[]; i: number[] } } => {
+        const g = three ? meshArrays(three, mesh) : null;
+        return g ? { g } : {};
+      })(),
       sh: quality.shadows && !NEVER_CASTS.has(mesh.kind),
     })),
     materials: style.materials,
