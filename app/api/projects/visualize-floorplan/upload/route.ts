@@ -52,3 +52,12 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     return apiErrorResponse(error, "floorplan viz upload token failed");
   }
 });
+
+/**
+ * Whether Blob is configured, so the browser can go straight to the upload
+ * in parts instead of asking for a token it will be refused (a 400 in the
+ * console on every large plan).
+ */
+export const GET = withWorkspacesAuth(async () => {
+  return NextResponse.json({ blob: Boolean(env.BLOB_READ_WRITE_TOKEN) });
+});

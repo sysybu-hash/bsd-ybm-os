@@ -10,7 +10,7 @@
 
 | Layer | Library / tool |
 |-------|---------------|
-| Framework | Next.js 15.5 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | React | 18, RSC + Client Components |
 | DB | Neon serverless PostgreSQL via Prisma 6 |
 | Auth | NextAuth v4 + SimpleWebAuthn (passkeys) |

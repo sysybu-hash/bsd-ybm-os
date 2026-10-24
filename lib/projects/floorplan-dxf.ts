@@ -34,6 +34,8 @@ type DxfEntity = {
   endAngle?: number;
   shape?: boolean;
   closed?: boolean;
+  /** TEXT / MTEXT content. */
+  text?: string;
 };
 
 type DxfDocument = {
@@ -98,6 +100,30 @@ function arcChord(entity: DxfEntity): [Point, Point] | null {
 }
 
 type RawSegment = { a: Point; b: Point; layer?: string; curved: boolean };
+
+/**
+ * Words only a dwelling prints. A commercial floor has toilets and stairs as
+ * well, so a bathroom or a staircase says nothing; a bedroom, a ממ"ד or a
+ * numbered flat does.
+ */
+const DWELLING_LABEL_RE = /שינה|הורים|ממ["״']?ד|דירה\s*\d|bed\s*room|master/iu;
+
+function entityText(entity: DxfEntity): string {
+  const type = (entity.type ?? "").toUpperCase();
+  if (type !== "TEXT" && type !== "MTEXT" && type !== "ATTRIB" && type !== "ATTDEF") return "";
+  const text = entity.text;
+  if (typeof text !== "string") return "";
+  return text.replace(/\\P/g, " ").replace(/\\[A-Za-z][^;]*;/g, "").trim();
+}
+
+/** How many text entities name a dwelling. See DWELLING_LABEL_RE. */
+export function countDwellingLabels(entities: DxfEntity[]): number {
+  let count = 0;
+  for (const entity of entities) {
+    if (DWELLING_LABEL_RE.test(entityText(entity))) count += 1;
+  }
+  return count;
+}
 
 function collect(entities: DxfEntity[]): RawSegment[] {
   const out: RawSegment[] = [];
@@ -195,11 +221,13 @@ export function geometryFromDxfDocument(doc: DxfDocument): FloorplanVectorGeomet
   );
   const metres = metresPerUnit(doc.header);
   const unitsPerMetre = metres != null && metres > 0 ? 1 / metres : undefined;
+  const dwellingLabels = countDwellingLabels(doc.entities ?? []);
   log.info("dxf geometry read", {
     segments: segments.length,
     curves: curves.length,
     walls: walls.length,
     unitsPerMetre,
+    dwellingLabels,
   });
   return {
     pageWidth: width,
@@ -208,6 +236,7 @@ export function geometryFromDxfDocument(doc: DxfDocument): FloorplanVectorGeomet
     walls,
     curves,
     ...(unitsPerMetre ? { unitsPerMetre } : {}),
+    dwellingLabels,
   };
 }
 
@@ -282,7 +311,16 @@ export async function renderDxfPageJpeg(
   const scale = width / geometry.pageWidth;
   const thin = Math.max(0.45, Math.min(1.1, Math.min(width, height) * 0.00055));
   const thick = Math.max(1.1, Math.min(2.4, Math.min(width, height) * 0.0014));
-  const lines = [...geometry.segments, ...geometry.curves].map((segment) => {
+  // A whole-site drawing is millions of lines, most shorter than a pixel at
+  // this width. Writing every one into the SVG is what fills the memory; a line
+  // under half a pixel draws nothing anyway.
+  const all = [...geometry.segments, ...geometry.curves];
+  const minLength = all.length > 200_000 ? 0.5 / scale : 0;
+  const visible =
+    minLength > 0
+      ? all.filter((segment) => Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) >= minLength)
+      : all;
+  const lines = visible.map((segment) => {
     const wall = segment.lineWidth >= WALL_MIN_LINE_WIDTH;
     const color = wall ? "#20252b" : "#555d66";
     const strokeWidth = wall ? thick : thin;

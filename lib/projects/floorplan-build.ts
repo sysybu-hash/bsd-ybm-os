@@ -128,6 +128,12 @@ export type BuiltFlat = {
   colouredDoorways?: WallBody[];
   /** Where the sheet prints the ממ"ד's raised threshold; see extractShelterMarks. */
   shelterMarks?: Array<{ x: number; y: number }>;
+  /**
+   * Set when the plate shows only part of the drawing (see frameAroundFloor):
+   * the floor inside the frame, and the whole drawing's size. A picture of
+   * 40 m² out of a 122 × 25 m centre must not be captioned as the whole plan.
+   */
+  framedPart?: { floorM2: number; drawingWidthM: number; drawingHeightM: number };
 };
 
 /**
@@ -1525,6 +1531,25 @@ export async function buildFlatFromGeometry(
       r.x + r.w > frame.x - margin &&
       r.y < frame.y + frame.height + margin &&
       r.y + r.h > frame.y - margin);
+  const framedPart =
+    frame === bounds
+      ? undefined
+      : {
+          floorM2:
+            spanArea(
+              flatFloor
+                .filter((row) => row.y >= frame.y && row.y < frame.y + frame.height)
+                .map((row) => ({
+                  ...row,
+                  spans: row.spans
+                    .map(([a, b]): [number, number] => [Math.max(a, frame.x), Math.min(b, frame.x + frame.width)])
+                    .filter(([a, b]) => b > a),
+                })),
+            ) /
+            (unitsPerMetre * unitsPerMetre),
+          drawingWidthM: bounds.width / unitsPerMetre,
+          drawingHeightM: bounds.height / unitsPerMetre,
+        };
 
   const built: BuiltFlat = {
     unitsPerMetre,
@@ -1540,6 +1565,7 @@ export async function buildFlatFromGeometry(
     bounds,
     floorM2,
     areaError,
+    ...(framedPart ? { framedPart } : {}),
     svg: renderFlatSvg(
       frame === bounds ? bodies : bodies.filter((body) => hitsFrame(bodyRect(body))),
       frame,

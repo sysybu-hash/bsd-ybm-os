@@ -91,6 +91,11 @@ export type RenderFlatOptions = {
   unitsPerMetreHint?: number;
   /** The hint is the drawing file's own unit. See lockScaleAtDrawingUnits. */
   unitsFromDrawing?: boolean;
+  /**
+   * A floor with no apartment programme (a shop, a whole commercial level):
+   * no bedroom or bathroom is required. See assessFloorplanRun.
+   */
+  openPlan?: boolean;
   /** The sheet's own programme, so the plate can draw a desk as a desk. */
   programme?: FloorplanLayout;
   /** The flat's extent, when the sheet carries more than one apartment. */
@@ -244,7 +249,7 @@ export async function renderFlatFromGeometry(
       foundTerraces: flat.terraces.length,
       printedTerraces: flat.printedTerraceCount,
       auditHardFailures: [],
-      openPlan: options.unitsFromDrawing === true,
+      openPlan: options.openPlan === true,
     }),
     spend,
   };

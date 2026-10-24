@@ -49,6 +49,7 @@ async function generateAndAppendToRun(input: {
   existing: FloorplanVizRunDetail;
   scope: ReturnType<typeof parseFloorplanVizScope>;
   renderMode: "render3d" | "finish";
+  startedAtMs: number;
 }) {
   const result = await visualizeFloorplanFromDrawing(input.existing.planBase64, input.existing.planMimeType, {
     customKit: input.existing.styleKit,
@@ -58,6 +59,7 @@ async function generateAndAppendToRun(input: {
     existingImages: existingImagesForAppend(input.existing.images, input.scope),
     sourceName: input.existing.title,
     renderMode: input.renderMode,
+    startedAtMs: input.startedAtMs,
   });
   return appendFloorplanVizStills(
     input.orgId,
@@ -106,6 +108,8 @@ export const GET = withWorkspacesAuth(
 );
 
 export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
+  // maxDuration counts from here; the pipeline's time budget does too.
+  const startedAtMs = Date.now();
   try {
     const geminiErr = assertProviderConfigured("gemini");
     if (geminiErr) return jsonBadRequest(geminiErr, "gemini_not_configured");
@@ -147,7 +151,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       const existing = await getFloorplanVizRunForOrg(orgId, runId);
       if (!existing) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       const scope = parseFloorplanVizScope(String(formData.get("scope") ?? "rooms"));
-      const saved = await generateAndAppendToRun({ orgId, existing, scope, renderMode });
+      const saved = await generateAndAppendToRun({ orgId, existing, scope, renderMode, startedAtMs });
       if (!saved) return jsonNotFound("ההדמיה לא נמצאה", "viz_run_not_found");
       return NextResponse.json(clientPayload(saved, false));
     }
@@ -283,6 +287,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       existingImages: scope === "rooms" ? existingImages : undefined,
       sourceName: dwfUnit ? `${sourceName} — דירה ${dwfUnit.unit}` : sourceName,
       dwfUnit,
+      startedAtMs,
     });
 
     try {
