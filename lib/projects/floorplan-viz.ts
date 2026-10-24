@@ -108,7 +108,7 @@ export { mergeFloorplanVizImages, parseFloorplanVizScope };
 const log = createLogger("floorplan-viz");
 
 /** Leaves the route about a minute to extract, persist and respond. */
-const FLOORPLAN_VIZ_BUDGET_MS = 225_000;
+const FLOORPLAN_VIZ_BUDGET_MS = 270_000;
 
 export type FloorplanVizResult = {
   runId?: string;
@@ -273,6 +273,13 @@ async function visualizeWithSpend(
   const dwf = isDwfFloorplanMime(prepared.mimeType);
   // Measured or nothing (see below): the sheet-drawn route is there only when asked for by name.
   const measuredOnly = (options?.renderMode ?? "finish") === "finish" || options?.renderMode === "render3d";
+  // A DXF that states its units has nothing for a model to read off the
+  // raster, and that read was spending the time the measured picture needs.
+  const metricCad =
+    measuredOnly &&
+    nativeCad != null &&
+    nativeCad.geometry.unitsPerMetre != null &&
+    nativeCad.geometry.unitsPerMetre > 0;
   // A picture of a sheet is never measured (tryCadOverview: "not a PDF"), and
   // a measured run refuses it — once its reading, up to nine paid calls, was
   // made. It is refused before any.
@@ -299,11 +306,24 @@ async function visualizeWithSpend(
         ocrEngines: [] as string[],
         visionEngines: [] as string[],
       }
-    : await extractFloorplanLayout(extractionSource.base64, extractionSource.mimeType, {
-        photo,
-        lean: !photo && extractionSource.mimeType === "application/pdf",
-        spend,
-      });
+    : metricCad
+      ? {
+          layout: parseFloorplanLayout({}),
+          grounding: {
+            engine: "drawing-units",
+            text: "",
+            dimensionStrings: [],
+            roomNameHits: [],
+          } satisfies OcrGrounding,
+          enginesUsed: [] as string[],
+          ocrEngines: [] as string[],
+          visionEngines: [] as string[],
+        }
+      : await extractFloorplanLayout(extractionSource.base64, extractionSource.mimeType, {
+          photo,
+          lean: !photo && extractionSource.mimeType === "application/pdf",
+          spend,
+        });
 
   // The lean extract reads printed text only. A sheet whose room names are
   // drawn as outlines has no such text, and then neither route has anything to
@@ -312,7 +332,7 @@ async function visualizeWithSpend(
   // the rooms it measures — which is why a measured run listed "חלל 1" for a
   // flat whose sheet says ממ"ד. One vision read of the drawn labels, before
   // the routes part, serves both.
-  if (!reused && extracted.layout.rooms.length === 0) {
+  if (!reused && !metricCad && extracted.layout.rooms.length === 0) {
     log.info("lean extract found no rooms; reading them with one vision engine");
     try {
       const seen = await extractFloorplanRoomsWithVision(extractionSource.base64, extractionSource.mimeType, {
@@ -408,10 +428,15 @@ async function visualizeWithSpend(
         images = [{ ...measuredImage, selected: true }];
       }
     } else if (!alreadyHasOverview && measuredOnly) {
-      // The measured render did not come (short measurement, empty scene, the
-      // deadline): a measured run does not fall back to the sheet-drawn route,
-      // up to seventeen paid image calls nothing checks against a measurement.
-      throw new Error(`לא ניתן היה לרנדר את התוכנית המדודה — לא הופקה הדמיה מומצאת, ולא שולם על ציור. ${MEASURED_SOURCES}`);
+      // The dollhouse did not come (short measurement, empty scene, the
+      // deadline). The plate already measured is the picture: a measured run
+      // does not fall back to an invented drawing.
+      if (cadResult.geometry?.base64) {
+        log.warn("measured still unavailable; shipping the measured plate");
+        images = [{ ...overviewImageFromCad(cadResult.geometry), selected: true }];
+      } else {
+        throw new Error(`לא ניתן היה לרנדר את התוכנית המדודה — לא הופקה הדמיה מומצאת, ולא שולם על ציור. ${MEASURED_SOURCES}`);
+      }
     } else if (!alreadyHasOverview) {
       const lockCad = cadMassingSafeToPhotograph(cadResult.layout, cadResult.truth, {
         terraces: cadResult.measuredTerraces,
@@ -741,18 +766,27 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
   const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: [] });
   const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
-  if (targetAreaM2 == null) {
-    log.info("cad drawing has no printed area to lock scale against");
+  const drawingUnits = geometry.unitsPerMetre;
+  if (targetAreaM2 == null && !(drawingUnits != null && drawingUnits > 0)) {
+    log.info("cad drawing has no printed area and no stated units");
     return { outcome: "skip", fallbackRaster: nativeCad.raster };
   }
   try {
     const rendered = await renderFlatFromGeometry(geometry, {
-      targetAreaM2,
+      targetAreaM2: targetAreaM2 ?? 0,
+      unitsPerMetreHint: targetAreaM2 == null ? drawingUnits : undefined,
+      unitsFromDrawing: targetAreaM2 == null,
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,
     });
-    if (!rendered) return { outcome: "skip", reason: "קנה המידה לא ננעל מול שטח הדירה", fallbackRaster: nativeCad.raster };
+    if (!rendered) {
+      return {
+        outcome: "skip",
+        reason: targetAreaM2 == null ? "לא נסגרה רצפה בקנה המידה שבקובץ" : "קנה המידה לא ננעל מול שטח הדירה",
+        fallbackRaster: nativeCad.raster,
+      };
+    }
     const qualityFailure = measuredPlateQualityFailure(
       input.extractedLayout,
       rendered.rooms,

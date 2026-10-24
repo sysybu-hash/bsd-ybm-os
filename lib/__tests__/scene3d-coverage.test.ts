@@ -69,6 +69,10 @@ describe("how much of the flat the measurement found", () => {
     const unlabelled = input(3, 0, 4);
     unlabelled.labelledRooms = [];
     expect(measurementIsCompleteEnough(unlabelled)).toBe(true);
+    // A commercial floor names no rooms and may have few doors.
+    const openFloor = input(8, 0, 1);
+    openFloor.labelledRooms = [];
+    expect(measurementIsCompleteEnough(openFloor)).toBe(true);
   });
 
   it("counts only the labels that fall on measured floor, not the neighbour's", () => {

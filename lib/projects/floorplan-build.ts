@@ -29,8 +29,8 @@ import {
   stoolsAlongRun,
   type FurniturePiece,
 } from "@/lib/projects/floorplan-furniture";
-import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
-import { doorwayBands, lockScale, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
+import { frameAroundFloor, renderFlatSvg } from "@/lib/projects/floorplan-render3d";
+import { doorwayBands, lockScale, lockScaleAtDrawingUnits, lockScaleToHint, type ScaleSearch } from "@/lib/projects/floorplan-scale";
 import {
   bodyRect,
   sameWall,
@@ -58,6 +58,7 @@ import {
   trimToHatchAlong,
   findHatchGaps,
   findOpenings,
+  openingRect,
   stubsInsideCrossingWalls,
   trimThinToFaces,
   floorWithoutLanding,
@@ -328,6 +329,11 @@ export async function buildFlatFromGeometry(
     unitsPerMetreHint?: number;
     /** How far from the hint the sweep may look; see lockScaleToHint. */
     unitsPerMetreHintSpread?: number;
+    /**
+     * The hint is the file's own unit, not a chain that still has to find a
+     * bed. Used for a DXF whose header states millimetres or metres.
+     */
+    unitsFromDrawing?: boolean;
     /** Set on the build the room dimensions re-scaled: it is not checked again. */
     scaledByRooms?: boolean;
   },
@@ -349,9 +355,11 @@ export async function buildFlatFromGeometry(
   const lock =
     printedAreaM2 > 0
       ? lockScale(geometry.segments, flatExtent, printedAreaM2, options?.search, geometry.curves)
-      : hint
-        ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves, options?.unitsPerMetreHintSpread)
-        : null;
+      : hint && options?.unitsFromDrawing
+        ? lockScaleAtDrawingUnits(geometry.segments, flatExtent, hint, geometry.curves)
+        : hint
+          ? lockScaleToHint(geometry.segments, flatExtent, hint, geometry.curves, options?.unitsPerMetreHintSpread)
+          : null;
   if (!lock) return null;
   const { unitsPerMetre, floor } = lock;
   let floorM2 = lock.floorM2;
@@ -1509,6 +1517,15 @@ export async function buildFlatFromGeometry(
     return !terraces.some((rows) => spansContain(rows, cx, cy)) && !onMark(piece);
   });
 
+  const frame = frameAroundFloor(flatFloor, bounds, unitsPerMetre);
+  const margin = unitsPerMetre * 1.5;
+  const hitsFrame = (r: { x: number; y: number; w: number; h: number }) =>
+    frame === bounds ||
+    (r.x < frame.x + frame.width + margin &&
+      r.x + r.w > frame.x - margin &&
+      r.y < frame.y + frame.height + margin &&
+      r.y + r.h > frame.y - margin);
+
   const built: BuiltFlat = {
     unitsPerMetre,
     bodies,
@@ -1523,14 +1540,22 @@ export async function buildFlatFromGeometry(
     bounds,
     floorM2,
     areaError,
-    svg: renderFlatSvg(bodies, bounds, {
-      unitsPerMetre,
-      floor: flatFloor,
-      furniture: furnishings,
-      openings,
-      terraces,
-      width: options?.width,
-    }),
+    svg: renderFlatSvg(
+      frame === bounds ? bodies : bodies.filter((body) => hitsFrame(bodyRect(body))),
+      frame,
+      {
+        unitsPerMetre,
+        floor: flatFloor,
+        furniture:
+          frame === bounds
+            ? furnishings
+            : furnishings.filter((piece) => hitsFrame({ x: piece.x, y: piece.y, w: piece.w, h: piece.h })),
+        openings: frame === bounds ? openings : openings.filter((opening) => hitsFrame(openingRect(opening))),
+        terraces,
+        width: options?.width,
+        padding: frame === bounds ? undefined : unitsPerMetre * 1.2,
+      },
+    ),
   };
 
   // The scale the area locked, checked against the rooms' printed sizes: the

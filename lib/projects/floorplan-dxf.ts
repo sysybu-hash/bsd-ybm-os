@@ -193,12 +193,22 @@ export function geometryFromDxfDocument(doc: DxfDocument): FloorplanVectorGeomet
   const walls = segments.filter(
     (seg) => seg.lineWidth >= WALL_MIN_LINE_WIDTH && (seg.x1 === seg.x2 || seg.y1 === seg.y2),
   );
+  const metres = metresPerUnit(doc.header);
+  const unitsPerMetre = metres != null && metres > 0 ? 1 / metres : undefined;
   log.info("dxf geometry read", {
     segments: segments.length,
     curves: curves.length,
     walls: walls.length,
+    unitsPerMetre,
   });
-  return { pageWidth: width, pageHeight: height, segments, walls, curves };
+  return {
+    pageWidth: width,
+    pageHeight: height,
+    segments,
+    walls,
+    curves,
+    ...(unitsPerMetre ? { unitsPerMetre } : {}),
+  };
 }
 
 /** Parse DXF text into the pipeline's geometry. Returns null for anything unreadable. */
@@ -245,17 +255,22 @@ export async function renderDxfPageJpeg(
     width < 64
   ) return null;
 
-  let doc: DxfDocument | null;
-  try {
-    const { default: DxfParser } = await import("dxf-parser");
-    doc = new DxfParser().parseSync(dxfText) as DxfDocument | null;
-  } catch (err: unknown) {
-    log.warn("dxf text raster parsing failed", { error: err instanceof Error ? err.message : String(err) });
-    return null;
+  // The geometry is already parsed. Reading a drawing of tens of megabytes a
+  // second time, only to place labels on a preview, is what ran the request
+  // out of time before the measured picture.
+  let doc: DxfDocument | null = null;
+  if (dxfText.length <= 2_000_000) {
+    try {
+      const { default: DxfParser } = await import("dxf-parser");
+      doc = new DxfParser().parseSync(dxfText) as DxfDocument | null;
+    } catch (err: unknown) {
+      log.warn("dxf text raster parsing failed", { error: err instanceof Error ? err.message : String(err) });
+      return null;
+    }
+    if (!doc) return null;
   }
-  if (!doc) return null;
-  const raw = collect(doc.entities ?? []);
-  if (raw.length === 0) return null;
+  const raw = collect(doc?.entities ?? []);
+  if (raw.length === 0 && geometry.segments.length === 0 && geometry.curves.length === 0) return null;
   let minX = Infinity;
   let maxY = -Infinity;
   for (const item of raw) {

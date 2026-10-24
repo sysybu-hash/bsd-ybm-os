@@ -75,6 +75,24 @@ describe("assessFloorplanRun", () => {
     ).toMatch(/חדר שינה/);
   });
 
+  it("accepts a stated-unit floor that has no apartment rooms", () => {
+    const report = assessFloorplanRun({ ...good, rooms: [], openPlan: true });
+    expect(report.ok).toBe(true);
+    expect(report.hard.join(" ")).not.toMatch(/חדר/);
+  });
+
+  it("still refuses a stated-unit floor that misses a printed area or a bed", () => {
+    expect(assessFloorplanRun({ ...good, rooms: [], openPlan: true, areaError: 0.06 }).hard.join(" ")).toMatch(/שגיאת שטח/);
+    expect(
+      assessFloorplanRun({
+        ...good,
+        rooms: [],
+        openPlan: true,
+        furniture: [{ ...bed, depthCm: 300 }],
+      }).ok,
+    ).toBe(false);
+  });
+
   it("stops a frame that lost a fifth of its furniture", () => {
     const report = assessFloorplanRun({
       ...good,

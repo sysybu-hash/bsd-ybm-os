@@ -1,4 +1,4 @@
-import { PIECE_COLOURS, renderFlatSvg } from "@/lib/projects/floorplan-render3d";
+import { frameAroundFloor, PIECE_COLOURS, renderFlatSvg } from "@/lib/projects/floorplan-render3d";
 
 /** Channel distance between two "#rrggbb" values, worst channel. */
 function apart(a: string, b: string): number {
@@ -17,6 +17,27 @@ describe("the brochure plate", () => {
     expect(svg).toContain('id="fp-oak"');
     expect(svg).toContain("url(#fp-oak)");
     expect(svg).toContain('id="fp-stone"');
+  });
+});
+
+describe("a floor lost in a long drawing", () => {
+  it("frames the closed floor instead of the whole sheet", () => {
+    const floor = [];
+    for (let y = 0; y < 6000; y += 200) floor.push({ y, spans: [[1000, 7000] as [number, number]] });
+    const walls = { x: 0, y: 0, width: 400_000, height: 30_000 };
+    const frame = frameAroundFloor(floor, walls, 1000);
+    expect(frame.width).toBeLessThan(20_000);
+    expect(frame.height).toBeLessThan(20_000);
+    const svg = renderFlatSvg([], frame, { unitsPerMetre: 1000, floor, padding: 1200 });
+    const box = svg.match(/viewBox="([^"]+)"/)?.[1]?.split(" ").map(Number) ?? [];
+    expect((box[2] ?? 0) / (box[3] ?? 1)).toBeLessThan(3);
+  });
+
+  it("leaves a sales sheet framed on its walls", () => {
+    const floor = [];
+    for (let y = 0; y < 600; y += 4) floor.push({ y, spans: [[0, 800] as [number, number]] });
+    const walls = { x: -10, y: -10, width: 820, height: 620 };
+    expect(frameAroundFloor(floor, walls, 56)).toBe(walls);
   });
 });
 

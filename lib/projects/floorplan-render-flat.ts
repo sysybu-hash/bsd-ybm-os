@@ -89,6 +89,8 @@ export type RenderFlatOptions = {
   targetAreaM2: number;
   /** Scale read off the dimension chains, when no area is printed. */
   unitsPerMetreHint?: number;
+  /** The hint is the drawing file's own unit. See lockScaleAtDrawingUnits. */
+  unitsFromDrawing?: boolean;
   /** The sheet's own programme, so the plate can draw a desk as a desk. */
   programme?: FloorplanLayout;
   /** The flat's extent, when the sheet carries more than one apartment. */
@@ -188,6 +190,8 @@ export async function renderFlatFromGeometry(
     extent: options.extent,
     printedAreas: options.printedAreas,
     programme: options.programme,
+    unitsPerMetreHint: options.unitsPerMetreHint,
+    unitsFromDrawing: options.unitsFromDrawing,
   });
   if (!flat) {
     log.warn("no scale reproduces the printed area", {
@@ -240,6 +244,7 @@ export async function renderFlatFromGeometry(
       foundTerraces: flat.terraces.length,
       printedTerraces: flat.printedTerraceCount,
       auditHardFailures: [],
+      openPlan: options.unitsFromDrawing === true,
     }),
     spend,
   };

@@ -764,7 +764,7 @@ export function interiorSpans(
     unitsPerMetre?: number;
   },
 ): SpanRow[] {
-  const step = options?.resolution ?? 2;
+  let step = options?.resolution ?? 2;
   // A terrace slider is the widest opening on these sheets at about 2.4 m.
   const upm = options?.unitsPerMetre;
   const maxOpening =
@@ -779,9 +779,18 @@ export function interiorSpans(
   const reach =
     options?.cornerReachUnits ?? (upm && upm > 0 ? CORNER_REACH_M * upm : maxOpening / 2);
   const sealed = bridgeOpenings(closeCorners(bodies, reach), maxOpening);
-  const w = Math.ceil(bounds.width / step) + 2;
-  const h = Math.ceil(bounds.height / step) + 2;
-  if (w <= 2 || h <= 2) return [];
+  let w = Math.ceil(bounds.width / step) + 2;
+  let h = Math.ceil(bounds.height / step) + 2;
+  // A drawing in millimetres is tens of thousands of units across. A cell per
+  // two units is then most of a gigabyte, and the process is killed before the
+  // flood starts. The step doubles until the plate fits. A sales sheet never
+  // reaches this: its flat is a few hundred cells on a side.
+  while (w > 2 && h > 2 && w * h > 8_000_000 && step < bounds.width) {
+    step *= 2;
+    w = Math.ceil(bounds.width / step) + 2;
+    h = Math.ceil(bounds.height / step) + 2;
+  }
+  if (w <= 2 || h <= 2 || w * h > 8_000_000) return [];
 
   const WALL = 1;
   const OUTSIDE = 2;
@@ -800,15 +809,15 @@ export function interiorSpans(
   const floorMask = options?.floorMask;
   if (floorMask && floorMask.length > 1) {
     const maskPitch = floorMask[1]!.y - floorMask[0]!.y;
-    const covered = (px: number, py: number) => {
-      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
-      return !!row && row.spans.some(([a, b]) => px >= a && px <= b);
-    };
     for (let gy = 0; gy < h; gy++) {
       const py = bounds.y + (gy - 1) * step;
+      // One row for this scanline. Searching it again at every cell made a
+      // millimetre drawing walk the mask millions of times.
+      const row = floorMask.find((r) => py >= r.y && py < r.y + maskPitch);
       for (let gx = 0; gx < w; gx++) {
         const px = bounds.x + (gx - 1) * step;
-        if (!covered(px, py)) grid[gy * w + gx] = WALL;
+        const inside = !!row && row.spans.some(([a, b]) => px >= a && px <= b);
+        if (!inside) grid[gy * w + gx] = WALL;
       }
     }
   }
@@ -1048,7 +1057,7 @@ export class HatchField {
  */
 export function wallBodiesForSheet(
   segments: VectorSegment[],
-  options: { unitsPerMetre: number; keepOpenings?: boolean },
+  options: { unitsPerMetre: number; keepOpenings?: boolean; plottedWalls?: boolean },
 ): WallBody[] {
   const hatched = wallBodiesFromHatch(segments, options).map(
     (body): WallBody => ({ ...body, source: "hatch" }),
@@ -1059,7 +1068,11 @@ export function wallBodiesForSheet(
   // kitchen on one sheet and cost a terrace on another. A plotted sheet draws
   // everything at one weight and hatches almost nothing, which is the case
   // this reader exists for. wallInkThreshold is that test.
-  if (wallInkThreshold(segments) <= WALL_MIN_LINE_WIDTH) return hatched;
+  // A DXF names its walls by layer and draws them as pairs, while the furniture
+  // stays thin. That looks like a sales sheet to the ink test, and the pairs
+  // would be dropped. The caller that already knows which lines are walls asks
+  // for them.
+  if (!options.plottedWalls && wallInkThreshold(segments) <= WALL_MIN_LINE_WIDTH) return hatched;
   // Duplicates and all: dropping a plotted pair because a hatched band covers
   // the same wall looks tidy and loses the wall outright whenever that band
   // later fails a hatch test. The caller knows which bands survived, so the
@@ -2196,13 +2209,22 @@ export function footprintByScanFill(
 ): SpanRow[] {
   const step = options?.resolution ?? 2;
   const pad = 8;
-  const w = Math.ceil((bounds.width + pad * 2) / step);
-  const h = Math.ceil((bounds.height + pad * 2) / step);
-  if (w <= 0 || h <= 0) return [];
+  let w = Math.ceil((bounds.width + pad * 2) / step);
+  let h = Math.ceil((bounds.height + pad * 2) / step);
+  // A drawing in millimetres is tens of thousands of units across. A cell per
+  // two units is then a multi-gigabyte grid, so the step doubles until the
+  // plate fits. A sales sheet never reaches this.
+  let used = step;
+  while (w > 0 && h > 0 && w * h > 40_000_000 && used < bounds.width) {
+    used *= 2;
+    w = Math.ceil((bounds.width + pad * 2) / used);
+    h = Math.ceil((bounds.height + pad * 2) / used);
+  }
+  if (w <= 0 || h <= 0 || w * h > 40_000_000) return [];
   const originX = bounds.x - pad;
   const originY = bounds.y - pad;
-  const gx = (x: number) => Math.floor((x - originX) / step);
-  const gy = (y: number) => Math.floor((y - originY) / step);
+  const gx = (x: number) => Math.floor((x - originX) / used);
+  const gy = (y: number) => Math.floor((y - originY) / used);
 
   const wall = new Uint8Array(w * h);
   for (const body of bodies) {
@@ -2250,11 +2272,11 @@ export function footprintByScanFill(
       const inside = x < w && rowIn[y * w + x] === 1 && colIn[y * w + x] === 1;
       if (inside && start < 0) start = x;
       else if (!inside && start >= 0) {
-        spans.push([originX + start * step, originX + x * step]);
+        spans.push([originX + start * used, originX + x * used]);
         start = -1;
       }
     }
-    if (spans.length > 0) rows.push({ y: originY + y * step, spans });
+    if (spans.length > 0) rows.push({ y: originY + y * used, spans });
   }
   return rows;
 }

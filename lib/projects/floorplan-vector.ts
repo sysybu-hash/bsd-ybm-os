@@ -64,6 +64,12 @@ export type FloorplanVectorGeometry = {
    * no use for them and would have to filter them out again.
    */
   curves: VectorSegment[];
+  /**
+   * Drawing units per metre, when the file states them ($INSUNITS).
+   *
+   * A DXF has no printed area to lock against. The header is the scale.
+   */
+  unitsPerMetre?: number;
 };
 
 type Matrix = [number, number, number, number, number, number];

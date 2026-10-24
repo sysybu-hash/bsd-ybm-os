@@ -482,14 +482,16 @@ export function segmentRooms(input: {
   // from hatch and lintels, and correct on that sheet — is the better boundary.
   // Only there: handing it to the sales sheets moved rooms on six of the ten.
   const plottedSheet = inkCut > WALL_MIN_LINE_WIDTH;
+  // A drawing in millimetres states 1000 units to the metre. The page-unit
+  // door (120 units) is then 12 cm, the flood walks through every opening,
+  // and the closed floor comes back with no rooms. Sales sheets stay on the
+  // page-unit constants: they were swept there, and metres moved their rooms.
+  const statedMetric = unitsPerMetre >= 200;
   const rawComponents = interiorComponents(barriers, bounds, {
     excludeWalls: true,
     sealingSegments: ink.length > 0 ? ink : undefined,
-    floorMask: plottedSheet && floor.length > 1 ? floor : undefined,
-    // Only where the page-unit constants are wrong: the sales sheets were swept
-    // at their own scale and reproduce it exactly, and a sheet at half that
-    // scale is the one they mean something different on.
-    unitsPerMetre: plottedSheet ? unitsPerMetre : undefined,
+    floorMask: (plottedSheet || statedMetric) && floor.length > 1 ? floor : undefined,
+    unitsPerMetre: plottedSheet || statedMetric ? unitsPerMetre : undefined,
     // Rooms are not joined across a measured wall; see interiorComponents.
     separateAcrossWalls: true,
     walls: bodies,
