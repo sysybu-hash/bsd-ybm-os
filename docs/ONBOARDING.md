@@ -90,6 +90,10 @@ CRON_SECRET="local-dev-secret"
 # Without it, a DWG upload is refused with a message telling the user to export
 # the drawing as DXF from their CAD program.
 # CLOUDCONVERT_API_KEY="..."
+
+# Set by Vercel on every deploy; leave it unset locally. A visualisation run is
+# reused for the same file only within one deploy, so a fix reaches a re-upload.
+# VERCEL_GIT_COMMIT_SHA="..."
 ```
 
 Run the audit to see what else you might need:

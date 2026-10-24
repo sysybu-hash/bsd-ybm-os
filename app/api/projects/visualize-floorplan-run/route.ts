@@ -28,6 +28,7 @@ import { deleteFloorplanBlob, fetchFloorplanBlob } from "@/lib/projects/floorpla
 import { deletePlanUpload, readPlanUpload } from "@/lib/projects/floorplan-plan-upload";
 import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-limit";
 import { createLogger } from "@/lib/logger";
+import { env } from "@/lib/env";
 import { vizAccessForUser } from "@/lib/projects/viz-access";
 
 export const dynamic = "force-dynamic";
@@ -258,6 +259,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       unit: unitKey,
       scope,
       styleKit,
+      codeVersion: env.VERCEL_GIT_COMMIT_SHA,
     });
 
     if (!forceNew) {

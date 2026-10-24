@@ -133,10 +133,20 @@ export function floorplanVizInputFingerprint(input: {
   unit?: string;
   scope: string;
   styleKit: { id: string; audience: string; promptBlock: string };
+  /**
+   * The deployed code (the commit). FLOORPLAN_VIZ_LOCK_VERSION is bumped by
+   * hand and went unbumped from 30.09 through every change to the measured
+   * route, so re-uploading a plan returned the run the old code made: the
+   * Pisga DXF came back as the strip it was rendered as on 23.10, after the
+   * fix had shipped. The plan's reading is cached apart (the extract
+   * fingerprint) and survives a deploy; only the picture is made again.
+   */
+  codeVersion?: string;
 }): string {
   return sha256Utf8(
     [
       FLOORPLAN_VIZ_LOCK_VERSION,
+      input.codeVersion?.trim() ?? "",
       floorplanExtractFingerprint(input),
       input.scope.trim() || "full",
       input.styleKit.id,
