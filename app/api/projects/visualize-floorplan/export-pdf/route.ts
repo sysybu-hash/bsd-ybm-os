@@ -206,7 +206,11 @@ export const POST = withWorkspacesAuth(async (req, { orgId, role }) => {
       return jsonBadRequest(heroCheck.message, heroCheck.code);
     }
     let found: string[];
-    if (heroCheck.outcome === "stored") {
+    // Read from the stored run, never from the request, so a painted still
+    // cannot be passed off as the measured plate.
+    if (heroCheck.outcome === "measured") {
+      found = [];
+    } else if (heroCheck.outcome === "stored") {
       found = heroCheck.issues;
     } else {
       if (!planImage) {

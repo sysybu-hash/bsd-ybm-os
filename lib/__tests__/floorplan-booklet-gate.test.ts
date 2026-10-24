@@ -128,3 +128,13 @@ describe("the issues that count against a still", () => {
     expect(shipBlockingIssues(null, ["room moved: kitchen"])).toEqual(["room moved: kitchen"]);
   });
 });
+
+describe("checkBookletHero on the measured plate", () => {
+  it("sends the plate drawn from the drawing to no audit, but still refuses one not chosen", () => {
+    expect(checkBookletHero({ images: [still({ origin: "cad" })] }, "s1")).toEqual({ outcome: "measured" });
+    expect(checkBookletHero({ images: [still({ origin: "cad", selected: false })] }, "s1").outcome).toBe("refuse");
+    expect(checkBookletHero({ images: [still({ origin: "generate" })] }, "s1").outcome).toBe("audit");
+    expect(checkBookletHero({ images: [still({ origin: "finish" })] }, "s1").outcome).toBe("audit");
+  });
+});
+
