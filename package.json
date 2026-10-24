@@ -188,7 +188,7 @@
     "pdfmake": "^0.3.8",
     "posthog-js": "^1.373.5",
     "posthog-node": "^5.34.2",
-    "puppeteer-core": "^25.0.4",
+    "puppeteer-core": "^25.16.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-dropzone": "^15.0.0",
@@ -219,7 +219,10 @@
     "qs": "6.16.0",
     "dompurify": ">=3.4.17",
     "source-map-js": ">=1.2.2",
-    "undici@6": ">=6.29.1 <7"
+    "undici@6": ">=6.29.1 <7",
+    "@vercel/cli-config": {
+      "zod": "^4.6.7"
+    }
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
@@ -259,7 +262,7 @@
     "pg": "^8.21.0",
     "postcss": "^8.5.10",
     "prisma": "^6.19.3",
-    "puppeteer": "^25.0.4",
+    "puppeteer": "^25.16.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^3.4.14",
     "tailwindcss-animate": "^1.0.7",
