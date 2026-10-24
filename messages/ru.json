@@ -1654,6 +1654,11 @@
   "apiErrors": {
     "bad_request": "Некорректный запрос",
     "blob_not_configured": "Хранилище файлов не настроено — план ограничен 4 МБ",
+    "upload_part_rejected": "Часть файла не принята",
+    "upload_too_large": "Файл слишком большой",
+    "upload_unavailable": "Невозможно начать загрузку этого файла",
+    "upload_incomplete": "Загрузка файла не завершена",
+    "upload_unknown": "Неизвестный запрос загрузки",
     "blob_unavailable": "Загруженный файл плана недоступен",
     "bundle_not_found": "Пакет не найден или неактивен",
     "calendar_not_connected": "Сначала подключите Google Calendar",
