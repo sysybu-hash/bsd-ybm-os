@@ -452,6 +452,10 @@ async function visualizeWithSpend(
         images = [
           {
             ...plate,
+            // Drawn from the drawing's own lines, no model involved. Left
+            // unmarked it was stored as "generate", and the booklet export sent
+            // it to the paid audit meant for paintings (503 on Pisga).
+            origin: "cad" as const,
             ...(cadResult.outcome === "ok" && cadResult.framedPart
               ? { labelHe: framedPartLabel(cadResult.framedPart) }
               : {}),

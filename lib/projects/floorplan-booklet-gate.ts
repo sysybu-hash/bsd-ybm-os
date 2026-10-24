@@ -18,7 +18,14 @@ import { openAuditIssues } from "@/lib/projects/floorplan-viz-review";
 export type BookletHeroCheck =
   | { outcome: "refuse"; code: "viz_still_not_in_run" | "viz_still_not_selected"; message: string }
   | { outcome: "stored"; issues: string[] }
-  | { outcome: "audit"; dismissed: string[] };
+  | { outcome: "audit"; dismissed: string[] }
+  /**
+   * The plate drawn from the drawing's own lines (origin "cad"). No model
+   * touched it, so the audit, which compares a painting with the plan, has
+   * nothing to find; asking it cost a paid call and, when it failed, the
+   * booklet (503 on the Pisga DXF).
+   */
+  | { outcome: "measured" };
 
 export function checkBookletHero(
   run: { images: FloorplanVizImage[] } | null | undefined,
@@ -40,6 +47,7 @@ export function checkBookletHero(
       message: "ההדמיה שנשלחה לחוברת אינה הגרסה הנבחרת",
     };
   }
+  if (stored.origin === "cad") return { outcome: "measured" };
   const dismissed = (stored.auditDismissed ?? []).map((row) => row.issue);
   if (!stored.auditStatus || !stored.auditMeta) return { outcome: "audit", dismissed };
   return { outcome: "stored", issues: openAuditIssues(stored.auditIssues, stored.auditDismissed) };
