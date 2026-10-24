@@ -263,6 +263,8 @@ const serverSchema = z.object({
   VERCEL: optStr,
   VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
   VERCEL_URL: optStr,
+  /** Set by Vercel on every deploy. The viz result cache is keyed by it; see floorplanVizInputFingerprint. */
+  VERCEL_GIT_COMMIT_SHA: optStr,
 });
 
 const clientSchema = z.object({

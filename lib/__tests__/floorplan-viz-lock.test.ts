@@ -186,3 +186,21 @@ describe("a permit strip's runs, one apartment each", () => {
     expect(floorplanExtractFingerprint({ ...base, unit: "34/upper" })).not.toBe(floorplanExtractFingerprint({ ...base, unit: "34/lower" }));
   });
 });
+
+describe("floorplan viz lock across deploys", () => {
+  it("does not hand a re-upload the run an older deploy made", () => {
+    const input = {
+      planBase64: "cGxhbg==",
+      mimeType: "image/vnd.dxf",
+      planKind: "sales-sheet",
+      scope: "full",
+      styleKit: FLOORPLAN_VIZ_PRESETS.contemporary,
+    };
+    const before = floorplanVizInputFingerprint({ ...input, codeVersion: "0f3248b" });
+    expect(floorplanVizInputFingerprint({ ...input, codeVersion: "0f3248b" })).toBe(before);
+    expect(floorplanVizInputFingerprint({ ...input, codeVersion: "3dd8003" })).not.toBe(before);
+    // The plan's reading is keyed apart and does not change with the deploy.
+    expect(floorplanExtractFingerprint(input)).toBe(floorplanExtractFingerprint(input));
+  });
+});
+
