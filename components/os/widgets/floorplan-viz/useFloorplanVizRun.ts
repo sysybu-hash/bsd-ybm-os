@@ -40,6 +40,8 @@ export type VizAccess = { subscriber: boolean; paint: boolean; contactEmail: str
  * not uploaded twice) and the structure and plan the person confirmed.
  */
 export type ConfirmedRunFields = {
+  /** The file the chosen plan is in, when several were uploaded together. */
+  file?: File | null;
   staged?: StagedPlanRef | null;
   fields?: Record<string, string>;
 };
@@ -148,7 +150,8 @@ export function useFloorplanVizRun({
       confirmed?: ConfirmedRunFields,
     ) => {
       const appending = Boolean(result?.runId);
-      if (!appending && !file) {
+      const runFile = confirmed?.file ?? file;
+      if (!appending && !runFile) {
         toast.error(t("workspaceWidgets.floorplanViz.needFile"));
         return;
       }
@@ -165,8 +168,8 @@ export function useFloorplanVizRun({
           fd.append("runId", result.runId);
           fd.append("scope", nextScope);
           fd.append("renderMode", renderMode);
-        } else if (file) {
-          const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+        } else if (runFile) {
+          const isPdf = runFile.type === "application/pdf" || runFile.name.toLowerCase().endsWith(".pdf");
           const dwfFields = dwf.isDwf ? await dwf.runFields() : null;
           if (dwf.isDwf && !dwfFields) return;
           if (dwfFields) {
@@ -174,16 +177,16 @@ export function useFloorplanVizRun({
           } else {
             // Keep the PDF bytes. Rasterizing here used to skip the CAD path
             // and the model invented a different apartment.
-            if (planExceedsUploadLimit(file)) {
+            if (planExceedsUploadLimit(runFile)) {
               const message = t("workspaceWidgets.floorplanViz.planTooLarge");
               setError(message);
               toast.error(message);
               return;
             }
-            const staged = confirmed?.staged ?? (await stagePlanFile(file));
+            const staged = confirmed?.staged ?? (await stagePlanFile(runFile));
             if (staged?.blobUrl) fd.append("blobUrl", staged.blobUrl);
             else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);
-            else if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("file", file);
+            else if (runFile.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("file", runFile);
             else {
               const message = t("workspaceWidgets.floorplanViz.planStorageUnavailable");
               setError(message);
