@@ -39,6 +39,9 @@ const FLOOR: Record<FloorplanRoomKind, string> = {
   balcony: "#d6cfc2",
   utility: "#d3cfc6",
   circulation: "#c89a62",
+  shop: "#d4c9b4",
+  office: "#cbbfa6",
+  hall: "#c9b28c",
   other: "#c6b79b",
 };
 

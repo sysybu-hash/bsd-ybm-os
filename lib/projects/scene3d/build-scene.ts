@@ -27,6 +27,7 @@ import type {
   SceneRoom,
   SceneRoomKind,
 } from "@/lib/projects/scene3d/types";
+import { sceneRoomKindOf } from "@/lib/projects/scene3d/types";
 import { partsFor, type PieceSpec } from "@/lib/projects/scene3d/furniture";
 import { rulesFor, type AudienceRules } from "@/lib/projects/scene3d/rules";
 import { mezuzot, stageScene } from "@/lib/projects/scene3d/staging";
@@ -564,7 +565,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     laid.push(...entry.rects);
   }
   const sceneRooms: SceneRoom[] = roomRects.map(({ room, rects, index }) => {
-    const kind = room.kind as SceneRoomKind;
+    const kind = sceneRoomKindOf(room.kind);
     const material = FLOOR_MATERIAL[kind] ?? "floorWood";
     const id = `room:${index}`;
     for (const rect of floorOwner.get(index) ?? rects) {

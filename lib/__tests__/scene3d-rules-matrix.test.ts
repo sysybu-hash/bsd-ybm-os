@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import {
-  FLOORPLAN_VIZ_PRESET_IDS,
+  floorplanVizPresetsFor,
   FLOORPLAN_VIZ_PRESETS,
   buildCustomStyleKitFromAnswers,
 } from "@/lib/projects/floorplan-viz-styles";
@@ -38,7 +38,8 @@ const PLANS = fs
 
 /** The seven presets, plus a custom kit of each audience. */
 const KITS = [
-  ...FLOORPLAN_VIZ_PRESET_IDS.map((id) => ({ id: id as string, kit: FLOORPLAN_VIZ_PRESETS[id] })),
+  // A flat's rules, in a flat's styles; the commercial ones dress a shop floor.
+  ...floorplanVizPresetsFor("apartment").map((id) => ({ id: id as string, kit: FLOORPLAN_VIZ_PRESETS[id] })),
   { id: "custom-general", kit: buildCustomStyleKitFromAnswers({ audience: "general", mood: "light" }) },
   { id: "custom-haredi", kit: buildCustomStyleKitFromAnswers({ audience: "haredi", mood: "light" }) },
 ];

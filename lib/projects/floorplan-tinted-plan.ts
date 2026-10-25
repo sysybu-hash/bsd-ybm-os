@@ -52,6 +52,9 @@ const TINT: Record<FloorplanRoomKind, string> = {
   balcony: "rgba(150,190,120,0.20)",
   utility: "rgba(190,150,110,0.20)",
   circulation: "rgba(210,190,150,0.16)",
+  shop: "rgba(220,120,90,0.20)",
+  office: "rgba(100,140,200,0.20)",
+  hall: "rgba(200,180,90,0.20)",
   other: "rgba(200,170,120,0.18)",
 };
 

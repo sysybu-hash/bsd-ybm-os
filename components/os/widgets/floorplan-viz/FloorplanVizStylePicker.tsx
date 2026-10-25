@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { OsButton } from "@/components/os/ui";
@@ -24,6 +24,8 @@ export type FloorplanVizStylePickerProps = {
   customKit: FloorplanVizStyleKit | null;
   onCustomKit: (kit: FloorplanVizStyleKit | null) => void;
   disabled?: boolean;
+  /** The confirmed structure: a commercial floor is offered its own styles, a home the homes'. */
+  structure?: string | null;
 };
 
 export default function FloorplanVizStylePicker({
@@ -33,6 +35,7 @@ export default function FloorplanVizStylePicker({
   customKit,
   onCustomKit,
   disabled,
+  structure,
 }: FloorplanVizStylePickerProps) {
   const [customOpen, setCustomOpen] = useState(styleId === "custom");
   const [freeText, setFreeText] = useState("");
@@ -83,7 +86,12 @@ export default function FloorplanVizStylePicker({
     }
   }, [audience, dominantColor, freeText, mood, mustHave, mustNot, onCustomKit, onStyleId, t]);
 
-  const presets = listFloorplanVizPresets();
+  const presets = listFloorplanVizPresets(structure);
+  // A style that does not fit the structure (a flat's, on a shop floor) gives way to the first that does.
+  useEffect(() => {
+    if (structure === undefined || styleId === "custom") return;
+    if (!presets.some((kit) => kit.id === styleId) && presets[0]) onStyleId(presets[0].id);
+  }, [onStyleId, presets, structure, styleId]);
   const preview = styleId === "custom" ? customKit : presets.find((p) => p.id === styleId) ?? null;
   const previewThumb = preview ? floorplanVizStyleThumbSrc(preview.id) : null;
 

@@ -13,6 +13,10 @@ export const FLOORPLAN_VIZ_PRESET_IDS = [
   "developer_white",
   "haredi_classic",
   "haredi_modern",
+  // A commercial or public floor's (the identify step's "commercial").
+  "retail",
+  "office",
+  "public_space",
 ] as const;
 
 export type FloorplanVizPresetId = (typeof FLOORPLAN_VIZ_PRESET_IDS)[number];
@@ -127,6 +131,12 @@ const HAREDI_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
   circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
   utility:
     "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
+  shop:
+    "STAGING (shop only): an empty retail unit as handed over — plain floor and walls, the shopfront glazing as drawn. No stock, no shelving, no signage unless drawn. No dwelling furniture.",
+  office:
+    "STAGING (office only): desks and chairs only where drawn; otherwise the empty room. No beds, no kitchen, no screens.",
+  hall:
+    "STAGING (hall / public space only): the open volume as drawn — seating or tables only if the plan draws them. No dwelling furniture, no beds, no kitchen.",
   other: "STAGING: furniture that matches this enclosed room only. Office = desks, never a kitchen, never beds. Do not import another room's furniture.",
 };
 
@@ -148,6 +158,12 @@ const GENERAL_STAGING: Record<"overview" | FloorplanRoomKind, string> = {
   circulation: "STAGING (circulation): stair/core only. No dining table, no bed.",
   utility:
     "STAGING (utility): storage/laundry / חדר שירות only — washer or shelves. NEVER a toilet, basin, or bathtub. This is not שירותים. No dining table, no kitchen, no beds.",
+  shop:
+    "STAGING (shop only): an empty retail unit as handed over — plain floor and walls, the shopfront glazing as drawn. No stock, no shelving, no signage unless drawn. No dwelling furniture.",
+  office:
+    "STAGING (office only): desks and chairs only where drawn; otherwise the empty room. No beds, no kitchen, no screens.",
+  hall:
+    "STAGING (hall / public space only): the open volume as drawn — seating or tables only if the plan draws them. No dwelling furniture, no beds, no kitchen.",
   other: "STAGING: furniture that matches this enclosed room only. Office = desks, never a kitchen. Do not import another room's furniture.",
 };
 
@@ -491,7 +507,63 @@ export const FLOORPLAN_VIZ_PRESETS: Record<FloorplanVizPresetId, FloorplanVizSty
       NO_LAYOUT_CHANGE,
     ].join(" "),
   }),
+  retail: kit({
+    id: "retail",
+    audience: "general",
+    labelHe: "מסחר",
+    labelEn: "Retail",
+    labelRu: "Торговля",
+    summaryHe: "יחידות מסחר במסירה, חזיתות זכוכית, מעבר מואר",
+    colors: ["#f2f0ec", "#c9c4ba", "#7d8a90", "#2c3236"],
+    materialsHe: "פורצלן בהיר במעברים · חזיתות זכוכית · תקרה אקוסטית · תאורה לינארית",
+    promptBlock: [
+      "STYLE KIT — commercial floor, retail units as handed over:",
+      "Light large-format porcelain in the public walkways, full-height glazed shopfronts where drawn, acoustic ceiling, linear LED lighting. Each shop an empty unit: plain screed floor and white walls.",
+      "No stock, no shelving, no signage, no people. No dwelling furniture anywhere.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  }),
+  office: kit({
+    id: "office",
+    audience: "general",
+    labelHe: "משרדים",
+    labelEn: "Offices",
+    labelRu: "Офисы",
+    summaryHe: "קומת משרדים נקייה, אור יום, מחיצות זכוכית",
+    colors: ["#f4f4f2", "#c7ccd1", "#5f7a8c", "#22303a"],
+    materialsHe: "שטיח מקטעים אפור · מחיצות זכוכית · תקרה מונמכת · אור יום",
+    promptBlock: [
+      "STYLE KIT — office floor:",
+      "Grey carpet tiles in the rooms, light porcelain in the corridors, glass partitions where drawn, suspended ceiling with flush lighting, even daylight.",
+      "Desks and chairs only where the plan draws them; otherwise empty rooms. No screens lit, no people, no beds, no dwelling kitchen.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  }),
+  public_space: kit({
+    id: "public_space",
+    audience: "general",
+    labelHe: "מבנה ציבור",
+    labelEn: "Public building",
+    labelRu: "Общественное здание",
+    summaryHe: "אולמות, כיתות ומבואות — עמיד, בהיר ומסודר",
+    colors: ["#f3efe7", "#d2c6ad", "#8b7d5f", "#3a3428"],
+    materialsHe: "טרצו בהיר · חיפוי עץ בגובה המעקה · תקרה אקוסטית · אור טבעי",
+    promptBlock: [
+      "STYLE KIT — public building (halls, classrooms, foyers):",
+      "Light terrazzo floors, timber wall cladding to dado height, acoustic ceilings, generous daylight. Durable, calm, institutional — not a home.",
+      "Seating or tables only where the plan draws them. No dwelling furniture, no beds, no people.",
+      NO_LAYOUT_CHANGE,
+    ].join(" "),
+  }),
 };
+
+/** The styles that fit a structure: a flat's homes, or a commercial floor's. */
+const COMMERCIAL_PRESETS: readonly FloorplanVizPresetId[] = ["retail", "office", "public_space"];
+
+export function floorplanVizPresetsFor(structure?: string | null): FloorplanVizPresetId[] {
+  const commercial = structure === "commercial";
+  return FLOORPLAN_VIZ_PRESET_IDS.filter((id) => COMMERCIAL_PRESETS.includes(id) === commercial);
+}
 
 /**
  * The style as told to the model that designs the measured layout.
@@ -521,6 +593,12 @@ const DESIGN_LOOK: Record<FloorplanVizPresetId, string> = {
     "STYLE — contemporary haredi family home, warm oak, NOT antique: 2020s Israeli millwork, honey parquet or warm large-format tile, warm recessed lighting, slim profiles. The layout's dining table is a simple modern Shabbat table with a white cloth and candles. Where the layout has a cabinet on a living-room wall, finish it as a flush sefarim cabinet with unmarked spines; never add one. No carved, baroque or period furniture, no heavy velvet drapes.",
   haredi_modern:
     "STYLE — minimal contemporary haredi home, NOT antique: pale oak, warm off-white walls, slim profiles, plenty of daylight; a linen throw and a plant on the seating the layout has. No carved wood, no baroque, no heavy drapes, no museum Judaica.",
+  retail:
+    "STYLE — commercial floor: light large-format porcelain in the walkways, glazed shopfronts where drawn, acoustic ceiling, linear lighting; each shop an empty handed-over unit. No stock, no signage, no people.",
+  office:
+    "STYLE — office floor: grey carpet tiles in the rooms, light porcelain corridors, glass partitions where drawn, suspended ceiling with flush lights, even daylight. Desks only where drawn.",
+  public_space:
+    "STYLE — public building: light terrazzo, timber cladding to dado height, acoustic ceilings, generous daylight. Durable and calm — not a home."
 };
 
 /** What every style yields to: the layout. */
@@ -574,6 +652,9 @@ const MATERIALS_LOOK: Record<FloorplanVizPresetId, string> = {
   developer_white: "STYLE — Israeli developer handover: plain white walls, light grey porcelain tile, plain white kitchen cabinets. Cool neutral daylight.",
   haredi_classic: "STYLE — contemporary haredi family home, warm oak, NOT antique: 2020s Israeli millwork, honey parquet or warm large-format tile, slim profiles. No carved, baroque or period finishes.",
   haredi_modern: "STYLE — minimal contemporary haredi home, NOT antique: pale oak, warm off-white walls, slim profiles, plenty of daylight. No carved wood, no baroque.",
+  retail: "STYLE — commercial floor: light porcelain walkways, glazed shopfronts, acoustic ceiling, linear lighting; each shop an empty handed-over unit.",
+  office: "STYLE — office floor: grey carpet tiles, glass partitions, suspended ceiling, even daylight.",
+  public_space: "STYLE — public building: light terrazzo, timber dado cladding, acoustic ceilings, generous daylight. Not a home.",
 };
 
 export const PAINT_ONLY_SURFACES =
@@ -591,8 +672,10 @@ export function isFloorplanVizPresetId(value: string): value is FloorplanVizPres
   return (FLOORPLAN_VIZ_PRESET_IDS as readonly string[]).includes(value);
 }
 
-export function listFloorplanVizPresets(): FloorplanVizStyleKit[] {
-  return FLOORPLAN_VIZ_PRESET_IDS.map((id) => FLOORPLAN_VIZ_PRESETS[id]);
+/** The presets a picker offers; with a structure, only those that fit it (floorplanVizPresetsFor). */
+export function listFloorplanVizPresets(structure?: string | null): FloorplanVizStyleKit[] {
+  const ids = structure === undefined ? FLOORPLAN_VIZ_PRESET_IDS : floorplanVizPresetsFor(structure);
+  return ids.map((id) => FLOORPLAN_VIZ_PRESETS[id]);
 }
 
 export function floorplanVizStyleThumbSrc(id: FloorplanVizStyleId): string | null {

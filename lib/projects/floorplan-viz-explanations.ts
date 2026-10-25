@@ -10,6 +10,9 @@ export const KIND_LABEL_HE: Record<FloorplanRoomKind, string> = {
   balcony: "מרפסת",
   circulation: "גרעין / תנועה",
   utility: "שירות",
+  shop: "חנות",
+  office: "משרד",
+  hall: "אולם / חלל ציבורי",
   other: "חלל אחר",
 };
 
