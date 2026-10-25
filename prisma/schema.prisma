@@ -1479,6 +1479,10 @@ model FloorplanVizRun {
   photo          Boolean            @default(false)
   extractFingerprint String?
   inputFingerprint   String?
+  /** The structure confirmed at the identify step (apartment, building, commercial…); null for runs made before it. */
+  structure      String?
+  /** The plan within the file the run drew ("dxf:2", "pdf:0"); null when the file holds one. */
+  planRef        String?
   enginesJson    Json
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt

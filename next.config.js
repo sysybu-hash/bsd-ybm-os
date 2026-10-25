@@ -256,6 +256,8 @@ const nextConfig = {
       ...PDF_READER_FILES,
     ],
     "/api/projects/visualize-floorplan/inspect": [...PDF_READER_FILES],
+    // The identify step reads every page of a PDF and draws a preview of each.
+    "/api/projects/visualize-floorplan/identify": [...PDF_READER_FILES],
     // A building booklet's steps draw the building in Chromium with three and
     // the add-ons its page imports (environment, post-processing, sky, rounded
     // boxes, and the shaders and noise those import), each apartment with the
