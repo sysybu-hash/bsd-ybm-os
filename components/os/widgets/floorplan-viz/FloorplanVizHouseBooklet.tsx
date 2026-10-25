@@ -5,6 +5,7 @@ import { Download, Home, RotateCcw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { OsButton } from "@/components/os/ui";
 import FloorplanVizPaintContact from "@/components/os/widgets/floorplan-viz/FloorplanVizPaintContact";
+import { PLAN_DIRECT_UPLOAD_MAX_BYTES, stagePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
@@ -107,10 +108,30 @@ export default function FloorplanVizHouseBooklet({
   const start = useCallback(async () => {
     setBusy(true);
     try {
-      const form = new FormData();
-      for (const f of files) form.append("file", f);
-      form.append("name", name.trim());
-      const res = await fetch(API, { method: "POST", credentials: "include", body: form });
+      let res: Response;
+      if (files.reduce((n, f) => n + f.size, 0) <= PLAN_DIRECT_UPLOAD_MAX_BYTES) {
+        const form = new FormData();
+        for (const f of files) form.append("file", f);
+        form.append("name", name.trim());
+        res = await fetch(API, { method: "POST", credentials: "include", body: form });
+      } else {
+        // Past what one request may carry (a building's DXFs are tens of MB): each sheet goes up first, the job is made from them.
+        const staged = [];
+        for (const f of files) {
+          const ref = await stagePlanFile(f, { always: true });
+          if (!ref) {
+            toast.error(t("workspaceWidgets.floorplanViz.houseFailed"));
+            return;
+          }
+          staged.push({ name: f.name, ...ref });
+        }
+        res = await fetch(API, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "create", name: name.trim(), files: staged }),
+        });
+      }
       const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !json.id) {
         toast.error(json.error ?? t("workspaceWidgets.floorplanViz.houseFailed"));

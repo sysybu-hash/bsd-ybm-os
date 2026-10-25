@@ -99,7 +99,24 @@ export const GOTTLIEB_HOUSE: HouseProject = {
 };
 
 const SHEET_FILE = /\.(dwf|dxf)$/i;
-const FACADE_WORDS = /facade|elevation|חזית|חזיתות/i;
+const FACADE_WORDS = /facade|elevation|חזית|חזיתות|chazit|hazit/i;
+/**
+ * The words that say whether a sheet draws what stands or what is added
+ * ("kayam" / "tosefet", קיים / תוספת): one building either way, not two
+ * models (the Wolf seminary's ground and first floors are existing, its second
+ * and third added).
+ */
+const PHASE_WORDS = /^(kayam|kayemet|kaiam|tosefet|tosafot|existing|addition|proposed|mutza|קיים|קיימת|קיימות|תוספת|תוספות|מוצע|מוצעת)$/i;
+
+/** The model a sheet belongs to: its name less its storey, its copy number, and whether it is existing or added. */
+function modelKey(name: string): string {
+  return modelOf(name)
+    .replace(SHEET_FILE, "")
+    .split(/\s+/)
+    .filter((w) => w && !PHASE_WORDS.test(w))
+    .join(" ")
+    .trim();
+}
 
 /**
  * Which uploaded sheet is which, from the files' names — "A-ground.dwf",
@@ -114,7 +131,7 @@ export function projectFromSheets(sheets: Array<HouseSheetRef & { name: string }
     if (s === facades) continue;
     const storey = storeyOf(s.name);
     if (typeof storey !== "number" || storey < 0) continue;
-    const model = modelOf(s.name).replace(SHEET_FILE, "").trim() || "A";
+    const model = modelKey(s.name) || "A";
     const list = byModel.get(model) ?? [];
     if (list.some((f) => f.storey === storey)) problems.push(`שני גיליונות לאותה קומה: ${s.name}`);
     else list.push({ storey, ref: { file: s.file, ...(s.sheet ? { sheet: s.sheet } : {}), ...(s.whole ? { whole: true } : {}) } });
@@ -204,7 +221,11 @@ export function sheetsOfFiles(files: Map<string, Buffer>, options?: { whole?: (f
     if (options?.whole?.(file)) return [{ file, name: file, whole: true }];
     const drawing = readDxfDrawing(bytes);
     const tabs = drawing ? dxfSheets(drawing).filter((s) => s.storey != null || FACADE_WORDS.test(s.name)) : [];
-    return tabs.length > 1 ? tabs.map((s) => ({ file, sheet: s.name, name: s.name })) : [{ file, name: file }];
+    if (tabs.length > 1) return tabs.map((s) => ({ file, sheet: s.name, name: s.name }));
+    // A file that is one storey, by its name, and whose tabs name none: that storey drawn whole in model space. Its
+    // one layout tab, read instead, framed some other drawing (Wolf: "no floor sheet with a level mark").
+    const storey = storeyOf(file);
+    return typeof storey === "number" && !FACADE_WORDS.test(file) ? [{ file, name: file, whole: true }] : [{ file, name: file }];
   });
 }
 

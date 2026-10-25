@@ -38,6 +38,19 @@ describe("which uploaded sheet is which", () => {
     expect(project!.models).toEqual([{ id: "B", name: "דגם B", floors: [{ file: "plans.dxf", sheet: "B_קומת קרקע" }, { file: "plans.dxf", sheet: "B_קומה א" }] }]);
   });
 
+  it("keeps a building's existing and added storeys one model, and reads its facades by their transliterated name", () => {
+    // As the Wolf seminary's files are named: the ground and first floors existing, the second added.
+    const { project, problems } = projectFromSheets(
+      ["ground_kayam_seminar volf.dxf", "floor1_kayam_seminar volf.dxf", "floor2_tosefet_seminar volf.dxf", "chazitot_seminar volf.dxf"].map((n) => sheet(n)),
+    );
+    expect(problems).toEqual([]);
+    expect(project!.facades).toEqual({ file: "chazitot_seminar volf.dxf" });
+    expect(project!.models).toEqual([
+      { id: "seminar volf", name: "seminar volf", floors: [{ file: "ground_kayam_seminar volf.dxf" }, { file: "floor1_kayam_seminar volf.dxf" }, { file: "floor2_tosefet_seminar volf.dxf" }] },
+    ]);
+    expect(projectFromSheets([sheet("A-ground_קיים.dwf"), sheet("A-floor1_תוספת.dwf"), sheet("facades.dwf")]).project!.models).toHaveLength(1);
+  });
+
   it("says what is missing", () => {
     expect(projectFromSheets([sheet("A-floor1.dwf")]).problems).toEqual(expect.arrayContaining([expect.stringMatching(/חזיתות/), expect.stringMatching(/אין קומת קרקע/)]));
     expect(projectFromSheets([sheet("A-ground.dwf"), sheet("A-floor2.dwf"), sheet("facades.dwf")]).problems).toEqual([expect.stringMatching(/חסרה קומה 1/)]);

@@ -19,6 +19,8 @@ import {
   scheduleHouseStep,
 } from "@/lib/projects/building/house-booklet-job";
 import { houseFileStore } from "@/lib/projects/building/house-store";
+import { fetchFloorplanBlob } from "@/lib/projects/floorplan-blob";
+import { isPlanUploadId, readPlanUpload } from "@/lib/projects/floorplan-plan-upload";
 import { vizAccessForUser } from "@/lib/projects/viz-access";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +34,9 @@ const MAX_DXF_BYTES = 40 * 1024 * 1024;
  * with a layout tab a sheet, and optionally house.json with what the hand
  * knows — `name`, and `ai=0` to read the sheets by their lines alone, no
  * vision call made): it is measured, in steps (house-booklet-steps.ts), and
- * waits for approval. Or act on a job
+ * waits for approval. Sheets past what one request carries are uploaded
+ * first (Blob, or in parts) and named in JSON: `{ action: "create", name,
+ * files: [{ name, blobUrl | uploadId }] }`. Or act on a job
  * (JSON): `{ action: "approve", id, paint, budgetIls? }` paints the reviewed
  * renders within the ceiling (₪50 unless the server sets another) or, with
  * `paint: false`, puts the measured booklet together for free — and, after a
@@ -48,10 +52,41 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     const access = await vizAccessForUser(userId, orgId);
     if (!access.subscriber) return jsonForbidden("ההדמיה המדודה פתוחה למנויים פעילים");
     if (!access.paint) return jsonForbidden("חוברת הבית הפרטי פתוחה לבעל המערכת.");
+    const create = async (files: Map<string, Buffer>, rawName: string, ai: boolean) => {
+      const { project, problems } = houseProjectFromFiles(files);
+      if (!project) return jsonBadRequest(problems.join(" · ") || "לא נמצאו תוכניות", "missing_fields");
+      const name = rawName.trim().slice(0, 120) || "בית פרטי";
+      const job = await createHouseBookletJob({ orgId, userId, name, files, project, ai, notes: problems.length ? [`files: ${problems.join(" · ")}`] : [] });
+      const queued = await scheduleHouseStep(job.id);
+      return NextResponse.json({ id: job.id, status: job.status, queued });
+    };
     if ((req.headers.get("content-type") ?? "").includes("application/json")) {
+      const body = (await req.json().catch(() => ({}))) as {
+        action?: string;
+        id?: string;
+        paint?: boolean;
+        budgetIls?: number | string | null;
+        name?: string;
+        ai?: boolean;
+        files?: Array<{ name?: string; blobUrl?: string; uploadId?: string }>;
+      };
+      if (body.action === "create") {
+        const limited = await applyRateLimit(req, "building-booklet:house", 5, 3_600_000);
+        if (limited) return limited;
+        // The sheets already uploaded, each to Blob or in parts: a building's DXFs are past what one request carries.
+        const files = new Map<string, Buffer>();
+        for (const f of (body.files ?? []).slice(0, 20)) {
+          const fileName = String(f.name ?? "").trim().slice(0, 180);
+          if (!fileName) continue;
+          const max = /\.dxf$/i.test(fileName) ? MAX_DXF_BYTES : MAX_BYTES;
+          const read = f.blobUrl ? await fetchFloorplanBlob(f.blobUrl, max) : f.uploadId && isPlanUploadId(f.uploadId) ? await readPlanUpload(orgId, f.uploadId) : null;
+          if (!read || read.bytes > max) return jsonBadRequest(`הקובץ ${fileName} לא התקבל או גדול מדי (מקסימום ${max / 1024 / 1024}MB)`, "file_unavailable");
+          files.set(fileName, Buffer.from(read.base64, "base64"));
+        }
+        return create(files, String(body.name ?? ""), body.ai !== false);
+      }
       const limited = await applyRateLimit(req, "building-booklet:house-action", 20, 3_600_000);
       if (limited) return limited;
-      const body = (await req.json().catch(() => ({}))) as { action?: string; id?: string; paint?: boolean; budgetIls?: number | string | null };
       const job = await getHouseBookletJob(orgId, String(body.id ?? ""));
       if (!job) return jsonNotFound("החוברת לא נמצאה", "booklet_not_found");
       try {
@@ -84,13 +119,8 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       if (entry.size > max) return jsonBadRequest(`הקובץ ${entry.name} גדול מדי (מקסימום ${max / 1024 / 1024}MB)`, "file_too_large");
       files.set(entry.name, Buffer.from(await entry.arrayBuffer()));
     }
-    const { project, problems } = houseProjectFromFiles(files);
-    if (!project) return jsonBadRequest(problems.join(" · ") || "לא נמצאו תוכניות", "missing_fields");
-    const name = String(form.get("name") ?? "").trim().slice(0, 120) || "בית פרטי";
-    const ai = String(form.get("ai") ?? "1") !== "0";
-    const job = await createHouseBookletJob({ orgId, userId, name, files, project, ai, notes: problems.length ? [`files: ${problems.join(" · ")}`] : [] });
-    const queued = await scheduleHouseStep(job.id);
-    return NextResponse.json({ id: job.id, status: job.status, queued });
+    return create(files, String(form.get("name") ?? ""), String(form.get("ai") ?? "1") !== "0");
+
   } catch (error) {
     return apiErrorResponse(error, "house booklet create");
   }
