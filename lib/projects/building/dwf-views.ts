@@ -6,6 +6,7 @@ import { housePlanPadMetres } from "@/lib/projects/building/plan-geometry-gate";
 import type { ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import type { BuildingRenderPayload } from "@/lib/projects/building/render-page";
 import { houseKnob } from "@/lib/projects/building/house-knobs";
+import { publicRoomKind } from "@/lib/projects/floorplan-segment";
 
 /** A view of the building: what the booklet calls it, and the frame to draw. */
 /** The views from above: how far out (spans), how high (spans) and the lens — AERIAL_VIEW="far,up,fov" tries another while choosing one. */
@@ -34,7 +35,7 @@ export function dwfBuildingViews(
   /** Each elevation's frame as its sheet draws it, by view id: the render is drawn in the same one. */
   elevationFrames: Record<string, Pick<ElevationFrame, "widthM" | "bottomM" | "topM">> = {},
   /** A house is wider than it is tall: the cover stands back to take it all in, and its yard. */
-  options: { house?: boolean; north?: North; street?: "north" | "south" | "east" | "west"; plot?: { x0: number; z0: number; x1: number; z1: number } } = {},
+  options: { house?: boolean; north?: North; street?: "north" | "south" | "east" | "west"; plot?: { x0: number; z0: number; x1: number; z1: number }; /** A public building: its classrooms and halls seen inside, not a home's rooms. */ public?: boolean } = {},
 ): BuildingView[] {
   const north = options.north ?? PLAN_NORTH;
   const pts = building.floors.flatMap((f) => f.outline);
@@ -251,7 +252,7 @@ export function dwfBuildingViews(
       payload: planPayload(f, frame.width, options.house, options.house ? building.model.primitives : undefined),
     });
   }
-  if (options.house) views.push(...houseRoomViews(building.floors, { x: cx, z: cz }, tallPieces(building.model.primitives ?? []), blocksOf(building.model.primitives ?? [])));
+  if (options.house) views.push(...houseRoomViews(building.floors, { x: cx, z: cz }, tallPieces(building.model.primitives ?? []), blocksOf(building.model.primitives ?? []), options.public));
   return views;
 }
 
@@ -261,6 +262,12 @@ const ROOM_VIEWS: Array<{ kind: string; storey: number; title: string }> = [
   { kind: "kitchen", storey: 0, title: "המטבח" },
   { kind: "bedroom", storey: 1, title: "חדר השינה" },
   // No bathroom: 1.5 by 2.1 m, a camera inside it saw its door leaf and a corner.
+];
+
+/** A public building's rooms seen inside: the largest classroom or hall of its two lowest storeys, titled as its sheet names it. */
+const PUBLIC_ROOM_VIEWS: Array<{ kind: string; storey: number; title: string }> = [
+  { kind: "hall", storey: 0, title: "" },
+  { kind: "hall", storey: 1, title: "" },
 ];
 
 /**
@@ -375,12 +382,15 @@ export function chooseRoomCamera(input: {
   return best ? { eye: best.eye, at: best.at, seen: best.seen, ahead: best.ahead } : null;
 }
 
-export function houseRoomViews(floors: BuildingFloorMeta[], centre: { x: number; z: number }, tall: TallPiece[] = [], blocks: Block[] = []): BuildingView[] {
+export function houseRoomViews(floors: BuildingFloorMeta[], centre: { x: number; z: number }, tall: TallPiece[] = [], blocks: Block[] = [], isPublic = false): BuildingView[] {
   const storeys = floors.filter((f) => !f.roof);
   const out: BuildingView[] = [];
-  for (const want of ROOM_VIEWS) {
+  // A public building is no pair of mirrored homes: its rooms are taken from the whole storey, by the kind their printed name gives.
+  const ofKind = (r: { kind: string; name: string; x: number; w: number }, kind: string) =>
+    isPublic ? publicRoomKind(r.name) === kind : r.kind === kind && r.x + r.w / 2 < centre.x;
+  for (const want of isPublic ? PUBLIC_ROOM_VIEWS : ROOM_VIEWS) {
     const f = storeys[want.storey];
-    const rooms = (f?.rooms ?? []).filter((r) => r.kind === want.kind && r.x + r.w / 2 < centre.x && Math.min(r.w, r.d) >= 1.4);
+    const rooms = (f?.rooms ?? []).filter((r) => ofKind(r, want.kind) && Math.min(r.w, r.d) >= 1.4);
     // The largest of its kind — but a bathroom the smallest full one: the
     // largest, split by its WC's partitions, showed walls and a passage.
     const room = want.kind === "bathroom" ? rooms.filter((r) => r.areaM2 >= 2.5).sort((a, b) => a.areaM2 - b.areaM2)[0] : rooms.sort((a, b) => b.areaM2 - a.areaM2)[0];
@@ -443,8 +453,8 @@ export function houseRoomViews(floors: BuildingFloorMeta[], centre: { x: number;
     const chosen = !diag && storeyBlocks.length ? chooseRoomCamera({ room, level: f.level, blocks: storeyBlocks, fovDeg: fov, aspect: 2000 / 1334, keep: want.kind === "kitchen" ? top : null }) : null;
     const [eyeAt, lookAt] = diag ? [diag.eye, diag.at] : chosen ? [chosen.eye, chosen.at] : [stand, far];
     out.push({
-      id: `room-${want.kind}`,
-      title: want.title,
+      id: isPublic ? `room-${want.kind}-${want.storey}` : `room-${want.kind}`,
+      title: want.title || room.name.replace(/ \d+$/, ""),
       payload: {
         width: 2000,
         height: 1334,

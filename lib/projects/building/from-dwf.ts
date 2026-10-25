@@ -9,7 +9,7 @@ import { readDwfTerraces } from "@/lib/projects/dwf-terrace";
 import { drawnSideFlight, paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
 import { laundryScreens } from "@/lib/projects/building/laundry-screens";
 import { furnishedFlats, railing, railingOfBars, register, topLevel, type ReadFloor } from "@/lib/projects/building/from-dwf-parts";
-import { clipUnder, faceTheWeather, flushFacade, parapetOnWalls, readFloorSheet, sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
+import { clipUnder, faceTheWeather, flushFacade, parapetOnWalls, readFloorSheet, settleStoreyLevels, sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
 export { sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
 import { HOUSE_FRAME_M, HOUSE_PLASTER_BODY, HOUSE_WINDOW_FRAME, houseSite, outdoorLights, paintByVolume, plasterInside, softenHouse } from "@/lib/projects/building/house-finish";
 import { closeFenceEnds, houseYard, pavingAround, stripInventStoneAtBins, type HouseSiteLevels, type YardHint } from "@/lib/projects/building/house-yard";
@@ -229,6 +229,8 @@ export function buildingFromDwf(
     top?: { roof: number; parapet: number };
     /** The furniture built to the haredi rules (HouseProject.haredi). */
     haredi?: boolean;
+    /** A public building (a school, a clinic): its rooms named as its sheets print them, none guessed into a home's by size. */
+    public?: boolean;
   },
 ): DwfBuilding {
   const house = options?.finish === "house";
@@ -241,11 +243,12 @@ export function buildingFromDwf(
     const housePlan = house && s.kind === "other" && printedRooms(sheetGeometry(strip, s.box).texts).length >= 4;
     if (!plan && !housePlan) continue;
     const marked = sheetLevel(sheetGeometry(strip, s.box));
-    const f = readFloorSheet(strip, s.box, s.units, roof, house && marked == null ? autoLevel : undefined, house);
+    const f = readFloorSheet(strip, s.box, s.units, roof, house && marked == null ? autoLevel : undefined, house, options?.public);
     if (!f) continue;
     if (house && marked == null) autoLevel += DWF_BUILDING_STANDARDS.storey;
     read.push(f);
   }
+  if (house) settleStoreyLevels(read);
   read.sort((a, b) => a.level - b.level);
   // One sheet a level: where two claim it, the one with more wall.
   const byLevel = new Map<number, ReadFloor>();
@@ -389,7 +392,7 @@ export function buildingFromDwf(
     const moved: PlanWalls = { ...f.walls, bands: f.walls.bands.map((b) => ({ ...b, x: b.x + shift.x, y: b.y + shift.y })) };
     const terraces = readDwfTerraces(f.floor, f.sheet);
     const furnishedRooms: FurnishedRoom[] = [];
-    prims.push(...furnishedFlats(f, terraces, shift, id, house ? outline : undefined, house ? furnishedRooms : undefined, options?.haredi));
+    prims.push(...furnishedFlats(f, terraces, shift, id, house ? outline : undefined, house ? furnishedRooms : undefined, options?.haredi, options?.public));
     // A house's own stair, where its sheet draws it: rising from a storey with one over it, its treads on the storey it arrives at.
     if (house && !f.roof) {
       const over = floors.slice(i + 1).some((g) => !g.roof);

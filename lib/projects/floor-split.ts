@@ -1,6 +1,6 @@
 import type { PlacedText } from "@/lib/projects/floorplan-dwf";
 import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
-import { roomLabelKind } from "@/lib/projects/floorplan-segment";
+import { publicRoomKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
 
 /** Words of one line of text, joined in reading order (right to left), with where the line sits. */
 export type TextLine = { x: number; y: number; height: number; text: string };
@@ -41,10 +41,10 @@ export function textLines(texts: PlacedText[]): TextLine[] {
   });
 }
 
-/** The room names written on a floor plan, as points with the kind each names. */
-export function roomLabels(texts: PlacedText[]): Array<{ x: number; y: number; kind: FloorplanRoomKind; text: string }> {
+/** The room names written on a floor plan, as points with the kind each names; a public building's (`public`) its classrooms and offices too. */
+export function roomLabels(texts: PlacedText[], options?: { public?: boolean }): Array<{ x: number; y: number; kind: FloorplanRoomKind; text: string }> {
   return textLines(texts)
-    .map((line) => ({ x: line.x, y: line.y, kind: roomLabelKind(line.text), text: line.text }))
+    .map((line) => ({ x: line.x, y: line.y, kind: roomLabelKind(line.text) ?? (options?.public ? publicRoomKind(line.text) : null), text: line.text }))
     .filter((label): label is { x: number; y: number; kind: FloorplanRoomKind; text: string } => label.kind != null);
 }
 

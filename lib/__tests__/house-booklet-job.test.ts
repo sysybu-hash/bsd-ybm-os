@@ -104,6 +104,7 @@ jest.mock("@/lib/projects/building/house-booklet", () => ({
   houseStageInput: () => ({ projectName: "x", source: async () => Buffer.alloc(0) }),
   houseSubject: (name: string) => `subject ${name}`,
   houseSubtitle: () => "subtitle",
+  houseStyleId: (project: { style: string }) => project.style,
   auditHouseModel: () => mockAudit(),
   paintMeasuredModel: (model: MeasuredHouseModel, input: Parameters<typeof mockPaint>[1]) => mockPaint(model, input),
   finishMeasuredHouse: (input: { models: MeasuredHouseModel[]; paint: boolean }) => mockFinish(input),

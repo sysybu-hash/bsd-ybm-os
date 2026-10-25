@@ -331,6 +331,24 @@ export function labelledKind(kinds: FloorplanRoomKind[]): FloorplanRoomKind | nu
   return kinds[0]!;
 }
 
+/**
+ * The kind a public building's room is named by — a school's, a clinic's, an
+ * office floor's — or null. Read only where the building is one (a flat's sheet
+ * that prints "משרד" prints the building's office, not the flat's room): the
+ * Wolf seminary's sheets name every classroom, and read as a home's they were
+ * all named by size, as living rooms and bedrooms (26/10/2026).
+ */
+export function publicRoomKind(text: string): FloorplanRoomKind | null {
+  const t = text.replace(/\s+/g, " ").trim();
+  if (/חנות|חנויות|קיוסק|בית מרקחת/.test(t)) return "shop";
+  if (/משרד|מזכירות|מנהל|מורים|מורה|יועץ|יועצת|צוות|פסיכולוג|רווחה|טיפול|קלינאית|אחות|רופא|אב בית|שרת|עבודה פרטנית|ישיבות|הנהלה/.test(t)) return "office";
+  if (/כיתה|כתה|כיתות|אולם|ספריה|ספרייה|טכנולוגיה|סדנ|מחשבים|מוזיקה|תעסוקה|קריאה|התרגעות|אומנות|הקבצה|מעבדה|בית כנסת|בית מדרש|גן ילדים|למידה|ספורט/.test(t)) {
+    // The furniture a classroom is drawn with is not a room: "לוח כתה", the board.
+    return /^לוח/.test(t) ? null : "hall";
+  }
+  return null;
+}
+
 /** The kind a room's written name gives it, or null for a word that is no room. */
 export function roomLabelKind(text: string): FloorplanRoomKind | null {
   const t = text.replace(/\s+/g, "");

@@ -9,6 +9,7 @@ import {
   GOTTLIEB_HOUSE,
   houseNotesFrom,
   houseProjectFromFiles,
+  isPublicBuilding,
   levelsFromMarks,
   northFromAnswer,
   northOfDegrees,
@@ -51,6 +52,22 @@ describe("which uploaded sheet is which", () => {
     expect(projectFromSheets([sheet("A-ground_קיים.dwf"), sheet("A-floor1_תוספת.dwf"), sheet("facades.dwf")]).project!.models).toHaveLength(1);
   });
 
+  it("takes the Wolf seminary's six files as one building of four storeys and its roof", () => {
+    // As its office names them: tochnit karka / 1 / 2 / 3 / gag, existing (kayam) and added (tosefet), and the facades.
+    const names = ["tochnit karka_kayam_seminar volf.dxf", "tochnit 1_kayam_seminar volf.dxf", "tochnit 2_tosefet_seminar volf.dxf", "tochnit 3_tosefet_seminar volf.dxf", "tochnit gag_tosefet_seminar volf.dxf", "chazitot_seminar volf.dxf"];
+    const { project, problems } = projectFromSheets(names.map((n) => ({ ...sheet(n), whole: !/chazitot/.test(n) })));
+    expect(problems).toEqual([]);
+    expect(project!.facades).toEqual({ file: "chazitot_seminar volf.dxf" });
+    expect(project!.models).toEqual([
+      {
+        id: "seminar volf",
+        name: "seminar volf",
+        floors: names.slice(0, 4).map((file) => ({ file, whole: true })),
+        roof: { file: "tochnit gag_tosefet_seminar volf.dxf", whole: true },
+      },
+    ]);
+  });
+
   it("says what is missing", () => {
     expect(projectFromSheets([sheet("A-floor1.dwf")]).problems).toEqual(expect.arrayContaining([expect.stringMatching(/חזיתות/), expect.stringMatching(/אין קומת קרקע/)]));
     expect(projectFromSheets([sheet("A-ground.dwf"), sheet("A-floor2.dwf"), sheet("facades.dwf")]).problems).toEqual([expect.stringMatching(/חסרה קומה 1/)]);
@@ -65,6 +82,23 @@ describe("which uploaded sheet is which", () => {
     const { project, problems } = houseProjectFromFiles(files);
     expect(problems).toEqual([]);
     expect(project).toEqual(GOTTLIEB_HOUSE);
+  });
+});
+
+describe("a public building, by the rooms its sheets name", () => {
+  const sheetOf = (names: string[]) =>
+    ({ pageWidth: 1000, pageHeight: 1000, segments: [], curves: [], fills: [], arcs: [], walls: [], texts: names.map((text, i) => ({ x: 100 + (i % 5) * 150, y: 100 + Math.floor(i / 5) * 100, text, height: 8 })) }) as unknown as DwfGeometry;
+
+  it("is one where a school's rooms outnumber a home's", () => {
+    expect(isPublicBuilding([sheetOf(["כיתה", "כיתה", "חדר מורים", "מזכירות", "שירותים"])])).toBe(true);
+    expect(isPublicBuilding([sheetOf(["סלון", "מטבח", "ח. שינה", "ח. שינה", "רחצה"])])).toBe(false);
+    // A home's study or one office is still a home.
+    expect(isPublicBuilding([sheetOf(["סלון", "מטבח", "משרד", "ח. שינה"])])).toBe(false);
+  });
+
+  it("is set by hand in the notes too", () => {
+    expect(houseNotesFrom({ use: "public" }).notes.use).toBe("public");
+    expect(houseNotesFrom({ use: "school" }).problems).toHaveLength(1);
   });
 });
 

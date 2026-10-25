@@ -10,6 +10,7 @@ import {
   houseFacadesBack,
   houseNorth,
   houseStageInput,
+  houseStyleId,
   houseSubject,
   houseSubtitle,
   paintMeasuredModel,
@@ -37,6 +38,7 @@ import {
 import { costLines, costReport, defaultHouseBudgetIls, estimateHousePainting, formatCost, houseSpend, runWithTextBudget, spentSoFar, type HouseSpend } from "@/lib/projects/building/house-cost";
 import { paintingPlan } from "@/lib/projects/building/house-photoreal";
 import { houseSheetReader } from "@/lib/projects/building/house-project";
+import { packHouseReading, unpackHouseReading } from "@/lib/projects/building/house-reading-pack";
 import { answerMemo, houseFileStore, paintingCache, type HouseFileStore } from "@/lib/projects/building/house-store";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
 
@@ -100,6 +102,12 @@ async function readJson<T>(store: HouseFileStore, ref: string | undefined, what:
   const data = ref ? await store.get(ref) : null;
   if (!data) throw new Error(`חסר הקובץ השמור ${what}`);
   return JSON.parse(data.toString("utf8")) as T;
+}
+
+async function readReading(store: HouseFileStore, ref: string | undefined): Promise<HouseModelReading> {
+  const data = ref ? await store.get(ref) : null;
+  if (!data) throw new Error("חסר הקובץ השמור reading.json");
+  return unpackHouseReading<HouseModelReading>(data);
 }
 
 /** The record with the step in hand's spend counted in. */
@@ -174,8 +182,8 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
     say(model.name);
     const facades = houseFacadesBack(await readJson<StoredHouseFacades>(store, record.facadesRef, "facades.json"), project);
     const read = await measuring(ctx, () => readHouseModelSheets({ model, project, sheets: sheetsOf(ctx), facades, ai: record.ai, say }));
-    const readingRef = await store.put(houseJobPath(record.id, `models/${safeId(model.id)}/reading.json`), Buffer.from(JSON.stringify(read.reading)), "application/json");
-    const style = resolveFloorplanVizStyle(project.style);
+    const readingRef = await store.put(houseJobPath(record.id, `models/${safeId(model.id)}/reading.json`), packHouseReading(read.reading), "application/json");
+    const style = resolveFloorplanVizStyle(houseStyleId(project, read.reading));
     record.work = {
       readingRef,
       levels: read.levels,
@@ -191,7 +199,7 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
   if (at.kind === "build") {
     const model = project.models[at.model]!;
     const work = record.work!;
-    const reading = await readJson<HouseModelReading>(store, work.readingRef, "reading.json");
+    const reading = await readReading(store, work.readingRef);
     const result = await measuring(ctx, () =>
       runBookletStage({
         ...houseStageInput({
@@ -221,7 +229,7 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
   if (at.kind === "review") {
     const model = project.models[at.model]!;
     const work = record.work!;
-    const reading = await readJson<HouseModelReading>(store, work.readingRef, "reading.json");
+    const reading = await readReading(store, work.readingRef);
     const refs = work.state.artefacts ?? {};
     const artefacts: Record<string, string> = Object.fromEntries(Object.values(refs).map((r) => [r, r]));
     const measured = await loadModel(store, { id: model.id, name: model.name, projectName: `${record.name} — ${model.name}`, styleId: project.style, state: work.state, artefacts });

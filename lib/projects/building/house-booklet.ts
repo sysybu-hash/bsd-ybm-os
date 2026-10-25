@@ -27,6 +27,7 @@ import {
   FLAT_SITE,
   GOTTLIEB_HOUSE,
   HOUSE_STYLE,
+  isPublicBuilding,
   houseSheetReader,
   levelsFromMarks,
   readNorthArrow,
@@ -130,6 +131,8 @@ export type HouseModelReading = {
   built: Record<string, number>;
   /** What the plan stood up holds, storey by storey from the ground (house-truth.ts); null where it was not stood up. */
   counts: ModelCounts[] | null;
+  /** A public building's (HouseProject.use): its rooms named as printed, no home's rooms, cars or haredi furniture. */
+  public?: boolean;
 };
 
 /**
@@ -225,9 +228,18 @@ export async function readHouseModelSheets(input: {
   const floors = [];
   for (let i = 0; i < model.floors.length; i++) floors.push({ geometry: await sheets.geometry(model.floors[i]!), levelM: levels.floors[i] ?? i * 3 });
   const fromCad = model.floors.some((f) => /\.dxf$/i.test(f.file));
-  const reading = await readHouseModel({ name: model.name, floors, facades, say, site: project.site, count: fromCad });
+  // The roof's plan stands what it draws on the roof — stair heads, a technical room — at the roof's level.
+  const roof = model.roof ? [{ geometry: await sheets.geometry(model.roof), levelM: levels.roof, roof: true }] : [];
+  const isPublic = project.use ? project.use === "public" : isPublicBuilding(floors.map((f) => f.geometry));
+  if (isPublic) say(`${model.name}: a public building${project.use ? "" : " by the rooms its sheets name"} — rooms as printed, none guessed into a home's`);
+  const reading = await readHouseModel({ name: model.name, floors: [...floors, ...roof], facades, say, site: project.site, count: fromCad, public: isPublic });
   const { findings: truth, openings, lawnM2 } = await checkModelTruth({ model, floors, reading, sheets, ai: input.ai, say });
   return { levels, reading, truth, openings, lawnM2 };
+}
+
+/** The style a model is finished in: a public building is not dressed as a haredi home, and the house's default gives way to the public building's. */
+export function houseStyleId(project: HouseProject, reading: Pick<HouseModelReading, "public">): string {
+  return reading.public && project.style === HOUSE_STYLE ? "public_space" : project.style;
 }
 
 /** What a model's booklet stages are run with: its strip, plot, north and top, and the vision model's naming of its rooms. */
@@ -245,14 +257,17 @@ export function houseStageInput(input: {
   say: (step: string) => void;
 }): Omit<StageInput, "stage" | "state" | "store" | "deadline"> {
   const { model, project, reading, levels, say } = input;
-  const style = resolveFloorplanVizStyle(project.style);
+  const styleId = houseStyleId(project, reading);
+  const style = resolveFloorplanVizStyle(styleId);
   return {
     projectName: input.projectName,
     source: async () => Buffer.alloc(0),
     geometry: async () => reading.strip,
-    styleId: project.style,
-    haredi: project.haredi ?? style.audience === "haredi",
-    requireCars: input.requireCars,
+    styleId,
+    haredi: reading.public ? false : (project.haredi ?? style.audience === "haredi"),
+    // A school's yard is drawn without its cars: the parking gate does not ask for them.
+    requireCars: reading.public ? false : input.requireCars,
+    ...(reading.public ? { public: true } : {}),
     finish: "house",
     site: reading.site,
     yard: reading.yard,
@@ -304,19 +319,21 @@ export async function auditHouseModel(
  */
 export async function readHouseModel(input: {
   name: string;
-  floors: Array<{ geometry: DwfGeometry; levelM: number }>;
+  floors: Array<{ geometry: DwfGeometry; levelM: number; roof?: boolean }>;
   facades: HouseFacades;
   say: (step: string) => void;
   /** The plot's levels the hand set; the land flat round the house where none is set. */
   site?: HouseSiteLevels;
   /** Stand the plan up to count it against the truth even without the vision model. */
   count?: boolean;
+  /** A public building's sheets (HouseProject.use). */
+  public?: boolean;
 }): Promise<HouseModelReading> {
   const { name, floors, facades, say } = input;
   const { read, frames, facts, proposal, north } = facades;
 
   // The plan alone, stood up once: its width, depth and street side, its plot's unnamed parts, and what it holds.
-  const plain = facades.ai || input.count ? buildingFromDwf(stackHouseGeometries(floors), { name, finish: "house", north }) : null;
+  const plain = facades.ai || input.count ? buildingFromDwf(stackHouseGeometries(floors), { name, finish: "house", north, public: input.public }) : null;
   const storeys = plain?.floors.filter((f) => !f.roof) ?? [];
   const plan = plain ? planFacts(storeys.map((f) => f.outline), plain.model.primitives) : null;
   const hand: FaceProposal[] = facades.hand.map((face) => ({ face }));
@@ -384,6 +401,7 @@ export async function readHouseModel(input: {
     parking: plain?.model.primitives.filter((p) => p.tag === "yard:car").length ?? 0,
     built: { fence: plain?.model.primitives.filter((p) => p.tag === "yard:fence").length ?? 0, gate: plain?.model.primitives.filter((p) => p.tag === "yard:gate").length ?? 0 },
     counts: plain ? countsFromBuilding(plain).map((f) => f.counts) : null,
+    ...(input.public ? { public: true } : {}),
   };
 }
 

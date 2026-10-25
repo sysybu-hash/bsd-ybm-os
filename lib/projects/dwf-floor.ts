@@ -50,7 +50,14 @@ const HATCH_ANGLE_TOLERANCE = 8;
 
 export function readDwfFloor(
   sheet: DwfGeometry,
-  options: { unitsPerMetre: number; cm?: number; units?: Array<{ unit: number; x: number; y: number }>; sealOpenings?: boolean },
+  options: {
+    unitsPerMetre: number;
+    cm?: number;
+    units?: Array<{ unit: number; x: number; y: number }>;
+    sealOpenings?: boolean;
+    /** A public building's sheet: its classrooms, offices and halls are named rooms too (publicRoomKind). */
+    public?: boolean;
+  },
 ): DwfFloor {
   const upm = options.unitsPerMetre;
   const cm = options.cm ?? 2;
@@ -255,7 +262,7 @@ export function readDwfFloor(
     const py = Math.round(y * pxPerUnit);
     return px >= 0 && py >= 0 && px < cols && py < rows ? room[py * cols + px]! : 0;
   };
-  const labels = roomLabels(sheet.texts);
+  const labels = roomLabels(sheet.texts, { public: options.public });
   // A region holding both the stair core's name and a flat's rooms is the
   // lobby run on into a flat through a doorway drawn with no swing — דירה 3's
   // entrance hall on the reference floor. It is divided between the names,

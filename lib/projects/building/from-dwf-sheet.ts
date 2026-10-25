@@ -29,6 +29,31 @@ export function sheetLevel(sheet: DwfGeometry): number | null {
 }
 
 /**
+ * A house's storeys, each at least a storey's least height under the next.
+ * A sheet's level is the mark it prints most, and a storey whose stair has
+ * its landings marked prints them too: the Wolf seminary's ground floor marks
+ * ±0.00 twice and its landing, +1.76, three times, and stood 0.89 m under the
+ * first floor (+2.65). Where a storey's level comes that close to the next,
+ * it is the mark it prints most of those a storey's height under it.
+ */
+export function settleStoreyLevels<F extends { level: number; roof: boolean; sheet: DwfGeometry }>(floors: F[], least = 2): F[] {
+  const sorted = [...floors].sort((a, b) => a.level - b.level);
+  for (let i = sorted.length - 2; i >= 0; i--) {
+    const f = sorted[i]!;
+    const next = sorted[i + 1]!;
+    if (f.roof || next.level - f.level >= least) continue;
+    const counts = new Map<number, number>();
+    for (const mark of levelMarks(f.sheet.texts)) {
+      const v = Math.round(mark.value * 100) / 100;
+      if (Math.abs(v) <= 200 && v <= next.level - least) counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    const best = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
+    if (best) f.level = best[0];
+  }
+  return sorted.sort((a, b) => a.level - b.level);
+}
+
+/**
  * Whatever plaster a floor's assembly left facing out — a lining on the wrong
  * face of a wall the outline turns round, a reveal's side — is clad: a face
  * that looks out past the outline is facade, whichever rule laid it.
@@ -317,6 +342,8 @@ export function readFloorSheet(
    * furnished in the building's own plan as each house is in its own.
    */
   house?: boolean,
+  /** A public building's sheet: its classrooms and offices are its rooms' names (publicRoomKind). */
+  isPublic?: boolean,
 ): ReadFloor | null {
   const sheet = sheetGeometry(strip, box);
   const level = sheetLevel(sheet) ?? fallbackLevel ?? null;
@@ -324,9 +351,9 @@ export function readFloorSheet(
   // A house prints no apartment numbers: a number there is a dimension — the
   // DXF's bays' "270" was taken for two flats, and the storey went unfurnished.
   const printed = unitMarks(sheet.texts).filter((u) => !house || u.unit < 100);
-  const floor = readDwfFloor(sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: printed });
+  const floor = readDwfFloor(sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: printed, public: isPublic });
   const houseMarks = house && !printed.length && !roof ? houseUnitMarks(sheet) : [];
-  const furnishFloor = houseMarks.length ? readDwfFloor(sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: houseMarks }) : null;
+  const furnishFloor = houseMarks.length ? readDwfFloor(sheet, { unitsPerMetre: DWF_FLOOR_UNITS_PER_METRE, units: houseMarks, public: isPublic }) : null;
   if (furnishFloor) adoptOrphanRooms(furnishFloor, houseMarks);
   // A pair of homes drawn mirrored, its furniture named by the file: each
   // room belongs to the home on its side of the furniture's mirror line, as
