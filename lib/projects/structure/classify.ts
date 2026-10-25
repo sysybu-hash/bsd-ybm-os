@@ -176,6 +176,14 @@ export function classifyStructure(e: FileEvidence): Classification {
     if (dominant(commercial, dwelling)) rest = rest.filter((k) => k !== "apartment");
     else if (dominant(dwelling, commercial)) rest = rest.filter((k) => k !== "commercial");
   }
+  // Sheets or files named for the storeys of one building make that building,
+  // whatever its rooms are called: Wolf's five files are a seminary's ground
+  // floor, three floors and roof, its classrooms printing "כיתה". The words
+  // name the rooms; the storeys name the structure.
+  if (namedStoreys && e.storeySheets >= 2 && rest.includes("house")) {
+    rest = ["house"];
+    reasons.push("הקבצים הם קומות של בניין אחד — ההדמיה נבנית מכל הקומות יחד");
+  }
   // Numbers on a strip with shop words and not one dwelling word are room or
   // shop numbers, not flats (the Pisga permit strip).
   if (rest.includes("building") && rest.includes("commercial") && dwelling === 0) {
