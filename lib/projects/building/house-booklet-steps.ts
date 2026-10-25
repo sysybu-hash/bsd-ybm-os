@@ -351,6 +351,17 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
     const pdf = Buffer.from(await renderHtmlSectionsPdf(html, { waitForImages: true, timeoutMs: 200_000, sheet: BUILDING_BOOKLET_PAGE, jpegQuality: 86 }));
     record.pdfRef = await store.put(houseJobPath(record.id, "booklet.pdf"), pdf, "application/pdf");
     record.bytes = pdf.length;
+    // The booklet is all that is kept: the sheets, the model, its renders and
+    // paintings go once the PDF is. The cache of paintings and answers, kept
+    // apart from the job, stays, so the same sheets are not paid for twice.
+    try {
+      const removed = await store.removeUnder(houseJobPath(record.id, ""), [record.pdfRef]);
+      record.files = {};
+      record.cleaned = true;
+      say(`removed ${removed} working files`);
+    } catch (err: unknown) {
+      log.warn("house booklet working files not removed", { id: record.id, error: err instanceof Error ? err.message : String(err) });
+    }
     record.status = "done";
     record.at = { kind: "done" };
     record.finishedAt = Date.now();

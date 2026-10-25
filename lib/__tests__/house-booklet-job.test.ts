@@ -114,6 +114,7 @@ import {
   approveHouseBookletJob,
   createHouseBookletJob,
   getHouseBookletJob,
+  houseBookletView,
   houseReviewPictureRef,
   retryHouseBookletJob,
   type HouseBookletRecord,
@@ -224,6 +225,10 @@ describe("a private-house booklet, a step a call, that waits for the user's word
     expect(model.state.painted).toHaveLength(6);
     expect(record.unpainted).toEqual([]);
     expect(store.files.get(`jobs/${job.id}/booklet.pdf`)?.toString()).toContain("%PDF");
+    // Only the booklet is kept: the sheets, renders and paintings are gone.
+    expect([...store.files.keys()].filter((p) => p.startsWith(`jobs/${job.id}/`))).toEqual([`jobs/${job.id}/booklet.pdf`]);
+    expect(record.cleaned).toBe(true);
+    expect(houseBookletView(record).review).toBeNull();
     await expect(approveHouseBookletJob(record, { paint: true })).rejects.toThrow(/אינה ממתינה/);
   });
 

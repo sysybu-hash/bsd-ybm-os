@@ -151,6 +151,8 @@ export type HouseBookletRecord = {
   report?: HouseCostReport;
   /** The pictures the painting did not hold, "model: picture": the booklet shows them as measured renders. */
   unpainted?: string[];
+  /** The working files are gone, the PDF made: only the booklet is kept. */
+  cleaned?: boolean;
 };
 
 export const ZERO_COST: HouseCost = { calls: 0, images: 0, usd: 0, ils: 0 };
@@ -238,7 +240,7 @@ export function houseBookletView(job: HouseBookletRecord) {
     resumable: job.resumable ?? false,
     seconds: Math.round(((job.finishedAt ?? Date.now()) - job.startedAt) / 1000),
     bytes: job.bytes ?? 0,
-    review: job.review ?? null,
+    review: job.cleaned ? null : (job.review ?? null),
     approval: job.approval ?? null,
     cost: houseBookletCost(job),
     report: job.report ?? null,
@@ -248,6 +250,7 @@ export function houseBookletView(job: HouseBookletRecord) {
 
 /** The store's reference of a measured render the review shows, by its model and name. */
 export function houseReviewPictureRef(job: HouseBookletRecord, modelId: string, name: string): string | null {
+  if (job.cleaned) return null;
   const model = job.models?.find((m) => m.id === modelId);
   const review = job.review?.models.find((m) => m.id === modelId);
   if (!model || !review?.pictures.includes(name)) return null;

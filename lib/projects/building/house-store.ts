@@ -21,6 +21,8 @@ export type HouseFileStore = {
   /** The bytes at a reference `put` gave, or at `path`; null when there are none. */
   get(refOrPath: string): Promise<Buffer | null>;
   remove(refs: string[]): Promise<void>;
+  /** Removes everything kept under `prefix` but the references in `keep`; answers how many went. */
+  removeUnder(prefix: string, keep: string[]): Promise<number>;
 };
 
 function blobStore(): HouseFileStore {
@@ -55,6 +57,19 @@ function blobStore(): HouseFileStore {
         log.warn("house files not deleted; they will age out", { error: err instanceof Error ? err.message : String(err) });
       }
     },
+    async removeUnder(prefix, keep) {
+      const { del, list } = await import("@vercel/blob");
+      let removed = 0;
+      let cursor: string | undefined;
+      do {
+        const page = await list({ prefix: `house-booklets/${prefix}`, cursor, limit: 1000 });
+        const gone = page.blobs.map((b) => b.url).filter((url) => !keep.includes(url));
+        if (gone.length) await del(gone);
+        removed += gone.length;
+        cursor = page.hasMore ? page.cursor : undefined;
+      } while (cursor);
+      return removed;
+    },
   };
 }
 
@@ -86,6 +101,15 @@ function diskStore(root: string): HouseFileStore {
     async remove(refs) {
       const { rm } = await import("node:fs/promises");
       await Promise.all(refs.map(async (r) => rm(await pathOf(r), { force: true }).catch(() => undefined)));
+    },
+    async removeUnder(prefix, keep) {
+      const [{ readdir, rm }, path] = await Promise.all([import("node:fs/promises"), import("node:path")]);
+      const dir = await pathOf(prefix);
+      const kept = new Set(await Promise.all(keep.map(pathOf)));
+      const entries = await readdir(dir, { recursive: true, withFileTypes: true }).catch(() => []);
+      const gone = entries.map((e) => path.join(e.parentPath, e.name)).filter((f, i) => entries[i]!.isFile() && !kept.has(f));
+      await Promise.all(gone.map((f) => rm(f, { force: true })));
+      return gone.length;
     },
   };
 }
@@ -120,6 +144,12 @@ export function memoryHouseStore(): HouseFileStore & { files: Map<string, Buffer
     },
     async remove(refs) {
       for (const r of refs) files.delete(r.replace(/^file:/, ""));
+    },
+    async removeUnder(prefix, keep) {
+      const kept = new Set(keep.map((r) => r.replace(/^file:/, "")));
+      const gone = [...files.keys()].filter((p) => p.startsWith(prefix) && !kept.has(p));
+      for (const p of gone) files.delete(p);
+      return gone.length;
     },
   };
 }
