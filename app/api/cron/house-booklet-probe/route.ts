@@ -21,9 +21,8 @@ function authorised(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   if (!authorised(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const form = await req.formData();
-  const files = new Map<string, Buffer>();
-  for (const entry of form.getAll("file")) if (entry instanceof File) files.set(entry.name, Buffer.from(await entry.arrayBuffer()));
+  const body = (await req.json()) as { files: Record<string, string> };
+  const files = new Map<string, Buffer>(Object.entries(body.files).map(([n, b64]) => [n, Buffer.from(b64, "base64")]));
   const { project, problems } = houseProjectFromFiles(files);
   if (!project) return NextResponse.json({ problems }, { status: 400 });
   const job = await createHouseBookletJob({ orgId: ORG, userId: "probe", name: "גוטליב probe", files, project, ai: false });
