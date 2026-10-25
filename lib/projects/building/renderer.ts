@@ -109,7 +109,9 @@ export async function renderBuildingFrames(
         );
       });
       try {
-        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load", timeout: Math.min(25_000, frameMs) });
+        // The page draws as it loads: on the website's software GL (no GPU)
+        // a room took past 25 s to load where this machine's GPU takes 3.
+        await page.goto(`${BUILDING_ORIGIN}/index.html`, { waitUntil: "load", timeout: frameMs });
         await page.waitForFunction("window.__renderDone === true || window.__renderError", {
           timeout: payload.pathTrace ? 1_500_000 : frameMs,
         });
