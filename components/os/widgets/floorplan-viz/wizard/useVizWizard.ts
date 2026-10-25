@@ -20,6 +20,18 @@ type TFn = (key: string, vars?: Record<string, string>) => string;
 
 export type WizardStep = "upload" | "identify" | "options" | "result";
 
+/**
+ * The file a plan is in, and its id within that file. Several files read
+ * together are one upload (a house's sheets, a building's storeys), and the
+ * report names each plan "file:<name>:<id>"; a run is made from one file.
+ */
+export function planInFile(planId: string, files: File[]): { file: File; planRef: string } | null {
+  const m = /^file:(.+):((?:dxf|dwf|pdf):\d+)$/.exec(planId);
+  if (!m) return null;
+  const file = files.find((f) => f.name === m[1]);
+  return file ? { file, planRef: m[2]! } : null;
+}
+
 /** The plan to offer first: the largest floor the walls close, not blocked. */
 export function defaultPlanId(report: StructureReport): string | null {
   const open = report.plans.filter((p) => p.kind === "floor" && !p.blocked);
@@ -134,6 +146,12 @@ export function useVizWizard({
   /** What a run of this choice carries: the upload, and the confirmed structure and plan. */
   const runFields = useCallback((): ConfirmedRunFields => {
     if (!structure) return {};
+    // A plan chosen out of several files is run from its own file; the server
+    // reads that file again to check the choice, since the fingerprint was of all of them.
+    const inFile = files.length > 1 && planId ? planInFile(planId, files) : null;
+    if (inFile) {
+      return { file: inFile.file, staged: null, fields: { structure, planRef: inFile.planRef } };
+    }
     return {
       staged,
       fields: {
@@ -142,7 +160,7 @@ export function useVizWizard({
         ...(fingerprint ? { structureFingerprint: fingerprint } : {}),
       },
     };
-  }, [fingerprint, planId, staged, structure]);
+  }, [files, fingerprint, planId, staged, structure]);
 
   const canContinue =
     report != null &&
