@@ -562,14 +562,26 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
 export function planGeometriesFromDxf(input: string | Uint8Array): FloorplanVectorGeometry[] {
   const drawing = readDxfDrawing(input);
   if (!drawing) return [];
+  return readDxfPlans(drawing).geometries;
+}
+
+/**
+ * The drawing's plans, at most `limit` of them, and every text it prints: the
+ * identify step reads what a drawing is from both, on one pass over it.
+ */
+export function readDxfPlans(
+  drawing: DxfDrawing,
+  limit = Infinity,
+): { geometries: FloorplanVectorGeometry[]; texts: string[] } {
   const read = readPieces(drawing);
-  const count = Math.max(1, read.plans.length);
-  const out: FloorplanVectorGeometry[] = [];
+  const count = Math.min(limit, Math.max(1, read.plans.length));
+  const geometries: FloorplanVectorGeometry[] = [];
   for (let i = 0; i < count; i++) {
     const geometry = planGeometry(read, read.plans.length ? i : -1);
-    if (geometry) out.push(geometry);
+    if (geometry) geometries.push(geometry);
   }
-  return out;
+  const texts = read.pieces.flatMap((row) => (row.p.text && !row.p.dimension ? [row.p.text] : []));
+  return { geometries, texts };
 }
 
 /**

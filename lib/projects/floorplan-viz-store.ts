@@ -280,6 +280,9 @@ export async function createFloorplanVizRun(input: {
   spend?: FloorplanSpend;
   geometry?: FloorplanGeometryPayload;
   images: FloorplanVizImage[];
+  /** As confirmed at the identify step. */
+  structure?: string | null;
+  planRef?: string | null;
 }): Promise<FloorplanVizRunDetail> {
   const created = await prisma.floorplanVizRun.create({
     data: {
@@ -298,6 +301,8 @@ export async function createFloorplanVizRun(input: {
       photo: input.photo === true,
       extractFingerprint: input.extractFingerprint ?? null,
       inputFingerprint: input.inputFingerprint ?? null,
+      structure: input.structure ?? null,
+      planRef: input.planRef ?? null,
       enginesJson: {
         enginesUsed: input.enginesUsed,
         ocrEngines: input.ocrEngines,

@@ -68,8 +68,11 @@ import {
   FloorplanCadUnreadableError,
   dxfReportLines,
   geometryFromDxf,
+  readDxfPlans,
   renderDxfPageJpeg,
 } from "@/lib/projects/floorplan-dxf";
+import { readDxfDrawing } from "@/lib/projects/dxf-drawing";
+import type { StructureKind } from "@/lib/validation/schemas/floorplan-structure";
 import { dwgToDxf } from "@/lib/projects/floorplan-dwg-convert";
 import { DWG_MIME, isCadFloorplanMime, isDwfFloorplanMime } from "@/lib/projects/photo-prep/mime";
 import { tryDwfOverview, type DwfUnitChoice } from "@/lib/projects/floorplan-viz-dwf";
@@ -221,6 +224,14 @@ type VisualizeFloorplanOptions = {
   dwfUnit?: DwfUnitChoice;
   /** When the request arrived; the time budget runs from here. */
   startedAtMs?: number;
+  /**
+   * The structure the person confirmed at the identify step. It replaces the
+   * guesses: a commercial floor is measured open, with no bedroom asked of it;
+   * a flat keeps every check a flat gets, whatever its text says.
+   */
+  structure?: StructureKind;
+  /** Which of a DXF's plans to draw (readDxfPlans order); the largest when absent. */
+  planIndex?: number;
 };
 
 /**
@@ -241,15 +252,23 @@ export async function visualizeFloorplanFromDrawing(
 /** What a measured run can be given, as the upload offers it. */
 const MEASURED_SOURCES = "העלו PDF, DXF, DWG או גרמושקת DWF.";
 
+/** One of a DXF's plans, as the identify step listed them. */
+function dxfPlanAt(dxf: string | Uint8Array, planIndex: number) {
+  const drawing = readDxfDrawing(dxf);
+  if (!drawing) return null;
+  return readDxfPlans(drawing, planIndex + 1).geometries[planIndex] ?? null;
+}
+
 async function rasterizeNativeCadReference(
   prepared: { base64: string; mimeType: string },
+  planIndex = 0,
 ): Promise<NativeCadReference> {
   const bytes = Buffer.from(prepared.base64, "base64");
   // A DXF goes in as its bytes: before AutoCAD 2007 its text is in the code
   // page its header names (ANSI_1255 in a Hebrew office), not UTF-8.
   const dxf = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : new Uint8Array(bytes);
   if (!dxf) throw new FloorplanCadUnreadableError("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
-  const geometry = await geometryFromDxf(dxf);
+  const geometry = planIndex > 0 ? dxfPlanAt(dxf, planIndex) : await geometryFromDxf(dxf);
   if (!geometry) throw new FloorplanCadUnreadableError("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
   const raster = await renderDxfPageJpeg(geometry);
   if (!raster) throw new FloorplanCadUnreadableError("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
@@ -275,7 +294,7 @@ async function visualizeWithSpend(
   const prepared = await prepareFloorplanSource(base64, mimeType, { forceDrawing });
   const photo = options?.planKind === "photo" ? true : prepared.sourceKind === "photo";
   const nativeCad = isCadFloorplanMime(prepared.mimeType)
-    ? await rasterizeNativeCadReference(prepared)
+    ? await rasterizeNativeCadReference(prepared, options?.planIndex ?? 0)
     : null;
   const extractionSource = nativeCad?.raster ?? prepared;
   // A permit strip names its rooms in text the reader has already read, so
@@ -287,12 +306,13 @@ async function visualizeWithSpend(
   // nothing for a model to read off the raster, and that read was spending the
   // time the measured picture needs. A DXF of a flat is still read: its room
   // names and printed area are what its measurement is checked against.
+  const statesUnits =
+    measuredOnly && nativeCad != null && nativeCad.geometry.unitsPerMetre != null && nativeCad.geometry.unitsPerMetre > 0;
   const metricCad =
-    measuredOnly &&
-    nativeCad != null &&
-    nativeCad.geometry.unitsPerMetre != null &&
-    nativeCad.geometry.unitsPerMetre > 0 &&
-    (nativeCad.geometry.dwellingLabels ?? 0) === 0;
+    statesUnits &&
+    (options?.structure
+      ? options.structure === "commercial"
+      : (nativeCad?.geometry.dwellingLabels ?? 0) === 0);
   // A picture of a sheet is never measured (tryCadOverview: "not a PDF"), and
   // a measured run refuses it — once its reading, up to nine paid calls, was
   // made. It is refused before any.
@@ -378,6 +398,7 @@ async function visualizeWithSpend(
     sourceName: options?.sourceName,
     spend,
     deadlineMs,
+    structure: options?.structure,
   });
   if (cadResult.outcome === "ok") {
     const layout = layoutForCadBooklet(extracted.layout, cadResult.layout);
@@ -761,6 +782,8 @@ type CadOverviewInput = {
   spend?: FloorplanSpend;
   /** Epoch ms the whole run must be finished by. */
   deadlineMs?: number;
+  /** As confirmed at the identify step; see VisualizeFloorplanOptions.structure. */
+  structure?: StructureKind;
 };
 
 /**
@@ -816,7 +839,9 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       unitsFromDrawing: targetAreaM2 == null,
       // Only a drawing that names no dwelling. A flat drawn in millimetres
       // with no printed area keeps the bedroom and bathroom checks.
-      openPlan: targetAreaM2 == null && (geometry.dwellingLabels ?? 0) === 0,
+      openPlan:
+        targetAreaM2 == null &&
+        (input.structure ? input.structure === "commercial" : (geometry.dwellingLabels ?? 0) === 0),
       styleKit: input.styleKit,
       haredi: input.styleKit.audience === "haredi",
       label: input.sourceName,

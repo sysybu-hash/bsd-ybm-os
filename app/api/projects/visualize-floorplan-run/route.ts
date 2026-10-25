@@ -30,6 +30,7 @@ import { enforceFloorplanVizRateLimit } from "@/lib/projects/floorplan-viz-rate-
 import { createLogger } from "@/lib/logger";
 import { env } from "@/lib/env";
 import { vizAccessForUser } from "@/lib/projects/viz-access";
+import { resolveConfirmedChoice } from "@/lib/projects/structure/run-choice";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -188,6 +189,20 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     }
     const sourceName = fileName.replace(/\.[^.]+$/u, "");
 
+    // The structure and plan the person confirmed at the identify step,
+    // checked against the file itself (structure/run-choice.ts).
+    const confirmed = await resolveConfirmedChoice({
+      orgId,
+      fileName,
+      bytes: Buffer.from(base64, "base64"),
+      structure: String(formData.get("structure") ?? "").trim(),
+      planRef: String(formData.get("planRef") ?? "").trim(),
+      fingerprint: String(formData.get("structureFingerprint") ?? "").trim(),
+    });
+    if (!confirmed.ok) return jsonBadRequest(confirmed.message, confirmed.code);
+    const choice = confirmed.choice;
+    if (choice?.pdfPage != null) base64 = confirmed.bytes.toString("base64");
+
     const styleId = String(formData.get("styleId") ?? "").trim();
     const planKindRaw = String(formData.get("planKind") ?? "auto").trim();
     const planKind =
@@ -200,7 +215,15 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       Number.isInteger(unitRaw) && unitRaw > 0
         ? { unit: unitRaw, level: levelRaw === "upper" || levelRaw === "lower" ? levelRaw : null }
         : undefined;
-    const unitKey = dwfUnit ? `${dwfUnit.unit}${dwfUnit.level ? `/${dwfUnit.level}` : ""}` : undefined;
+    // Which drawing in the file: a strip's flat, or the plan and structure
+    // the person confirmed. Part of both fingerprints, so a choice is its run.
+    const unitKey =
+      [
+        dwfUnit ? `${dwfUnit.unit}${dwfUnit.level ? `/${dwfUnit.level}` : ""}` : "",
+        choice ? `${choice.structure}:${choice.planRef ?? ""}` : "",
+      ]
+        .filter(Boolean)
+        .join("|") || undefined;
     let customKit: unknown;
     const kitRaw = String(formData.get("styleKit") ?? "").trim();
     if (kitRaw) {
@@ -290,6 +313,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       sourceName: dwfUnit ? `${sourceName} — דירה ${dwfUnit.unit}` : sourceName,
       dwfUnit,
       startedAtMs,
+      ...(choice ? { structure: choice.structure, planIndex: choice.planIndex } : {}),
     });
 
     try {
@@ -314,6 +338,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
         spend: result.spend,
         geometry: result.geometry,
         images: result.images,
+        ...(choice ? { structure: choice.structure, planRef: choice.planRef ?? null } : {}),
       });
       // The run holds its own copy of the plan now; the upload is rubbish.
       if (blobUrl) void deleteFloorplanBlob(blobUrl);
