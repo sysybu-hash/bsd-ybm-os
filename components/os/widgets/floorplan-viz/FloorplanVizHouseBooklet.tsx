@@ -53,13 +53,16 @@ export default function FloorplanVizHouseBooklet({
   paint,
   contactEmail,
   subscriber,
+  initialFiles,
 }: {
   t: TFn;
   paint: boolean;
   contactEmail: string;
   subscriber: boolean;
+  /** The sheets already uploaded at the identify step. */
+  initialFiles?: File[];
 }) {
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>(initialFiles ?? []);
   const [name, setName] = useState("");
   const [job, setJob] = useState<JobView | null>(null);
   const [budget, setBudget] = useState("");
