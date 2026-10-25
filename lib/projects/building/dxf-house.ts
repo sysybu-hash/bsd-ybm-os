@@ -106,24 +106,40 @@ export type HouseInventory = {
   };
 };
 
+/**
+ * A storey's name, as offices write it: in Hebrew, in English, or in Hebrew
+ * written in Latin letters (Wolf's files are "tochnit karka", "tochnit 1",
+ * "tochnit gag"). A transliterated word counts only as a word of its own, so
+ * "gag" in a longer word is not a roof.
+ */
+const WORD = (alternatives: string) => new RegExp(String.raw`(?:^|[\s_\-.])(?:${alternatives})(?=[\s_\-.]|$)`, "i");
 const STOREY_WORDS: Array<[RegExp, number | "roof"]> = [
   [/קומת\s*קרקע|קרקע|ground/i, 0],
+  [WORD("karka|qarqa|karqa"), 0],
   [/קומה\s*א'?|קומהא|first|floor\s*1|level\s*1/i, 1],
   [/קומה\s*ב'?|קומהב|second|floor\s*2|level\s*2/i, 2],
+  [/קומה\s*ג'?|קומהג|third|floor\s*3|level\s*3/i, 3],
   [/מרתף|basement/i, -1],
+  [WORD("martef"), -1],
   [/גג|roof/i, "roof"],
+  [WORD("gag"), "roof"],
 ];
+/** "tochnit 2", "koma 3", "floor 4", "קומה 5": the storey by its number. */
+const NUMBERED_STOREY = /(?:tochnit|toknit|komat|koma|floor|level|קומה)[\s_\-]*(\d{1,2})(?!\d)/i;
 
 export function storeyOf(name: string): number | "roof" | null {
   for (const [re, storey] of STOREY_WORDS) if (re.test(name)) return storey;
-  return null;
+  const numbered = NUMBERED_STOREY.exec(name);
+  return numbered ? Number(numbered[1]) : null;
 }
 
 /** The model a sheet's name belongs to: the name without its storey and trailing copy number. */
 export function modelOf(name: string): string {
   let rest = name;
-  for (const [re] of STOREY_WORDS) rest = rest.replace(re, " ");
-  rest = rest.replace(/[_\-–—]+/g, " ").replace(/\d+\s*$/, "").trim();
+  for (const [re] of [...STOREY_WORDS, [NUMBERED_STOREY] as const]) rest = rest.replace(re, " ");
+  // "tochnit karka" leaves "tochnit" ("plan"), which names no model.
+  rest = rest.replace(/(?:^|[\s_\-])(?:tochnit|toknit|komat|koma)(?=[\s_\-]|$)/gi, " ");
+  rest = rest.replace(/[_\-–—]+/g, " ").replace(/\d+\s*$/, "").replace(/\s+/g, " ").trim();
   return rest || name.trim();
 }
 
