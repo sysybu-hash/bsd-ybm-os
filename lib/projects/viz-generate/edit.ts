@@ -271,46 +271,22 @@ export async function editFloorplanStill(params: {
 }
 
 /** "שפר תמונה" — surgical fix of residual audit issues on the existing frame. */
-/** Failures that mean walls/openings must change — not a paint-over. */
-function isStructuralFloorplanFailure(failure: string): boolean {
-  return /front door missing|door\(s\) the plan draws sealed|stair flight|invented outside|terrace\(s\) invented|terrace\(s\) grown|outdoor paving|indoor room\(s\) rendered|turned into a terrace|entrance turned|roomsOutside|mirrored|turned \d+ degrees|CAD block massing|footprint/i.test(
-    failure,
-  );
-}
-
 function mergeImproveFailures(
   stored: string[],
   fresh: string[],
-  layout: FloorplanLayout,
+  _layout: FloorplanLayout,
 ): string[] {
+  // A new scan replaces that still's findings. Unioning the previous list,
+  // or inventing a missing door and a stair the scan did not report, is how
+  // one apartment collected contradictory audits.
+  const source = fresh.length > 0 ? fresh : stored;
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const f of [...fresh, ...stored]) {
+  for (const f of source) {
     const key = f.trim().toLowerCase();
     if (!key || seen.has(key)) continue;
     seen.add(key);
     out.push(f);
-  }
-  const hasStructural = out.some(isStructuralFloorplanFailure);
-  const onlyModesty =
-    out.length > 0 && out.every((f) => /screen|double bed/i.test(f));
-  // When the UI only packed a screen (דירה 21), still force entrance + stairs.
-  if (!hasStructural || onlyModesty) {
-    if (!out.some((f) => /front door missing/i.test(f))) {
-      out.push("front door missing where the plan draws the entrance");
-    }
-    if (!out.some((f) => /stair flight/i.test(f))) {
-      out.push("1 stair flight(s) inside a flat the plan draws on one level");
-    }
-  }
-  // Do not auto-inject "delete terrace" here. On דירה 21 it competed with
-  // invented-room fixes; on דירה 22 the sheet prints 3.3+8.0 m² pockets that
-  // truth tags as a higher ⊕ — forcing delete wiped a real balcony.
-  if (out.length === 0) {
-    out.push(
-      "front door missing where the plan draws the entrance",
-      "1 stair flight(s) inside a flat the plan draws on one level",
-    );
   }
   return prioritizeImproveFailures(out);
 }

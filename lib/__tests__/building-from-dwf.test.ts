@@ -76,4 +76,18 @@ describe("an opening onto a terrace", () => {
     expect(glassBottom(false)).toBeCloseTo(10.9, 5);
     expect(glassBottom(true)).toBeCloseTo(10, 5);
   });
+
+  it("frames a private-house window in Jerusalem stone", () => {
+    const house: FloorSpec = {
+      ...spec,
+      facade: "renderBrown",
+      window: { sill: 0.9, head: 2.2, surround: 0.16 },
+      surroundMaterial: "jerusalemStone",
+      frameMaterial: "jerusalemStone",
+    };
+    const prims = floorPrimitives(walls, [gap], house);
+    const stone = prims.filter((p) => p.type === "box" && p.material === "jerusalemStone");
+    expect(stone.some((p) => p.type === "box" && p.tag?.endsWith(":surround") && p.size.x > 0.1)).toBe(true);
+    expect(stone.some((p) => p.type === "box" && p.tag?.endsWith(":window"))).toBe(true);
+  });
 });

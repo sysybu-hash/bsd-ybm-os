@@ -10,7 +10,7 @@ import type { BuildingRenderPayload } from "@/lib/projects/building/render-page"
  * shows its section solid, as a plan draws a wall — the poche the reader
  * reads the rooms by.
  */
-const WALLS = new Set<BuildingMaterial>(["plaster", "stone", "stoneDeep", "render", "concrete", "stoneDark"]);
+const WALLS = new Set<BuildingMaterial>(["plaster", "stone", "stoneDeep", "render", "renderGray", "renderBrown", "jerusalemStone", "concrete", "stoneDark"]);
 
 export function cutModel(model: BuildingModel, cutM: number): BuildingModel {
   const out: Primitive[] = [];
@@ -26,7 +26,7 @@ export function cutModel(model: BuildingModel, cutM: number): BuildingModel {
       const h = cutM - bottom;
       out.push({ ...p, centre: { ...p.centre, y: bottom + h / 2 }, size: { ...p.size, y: h } });
       const wall = WALLS.has(p.material) && !(p.tag ?? "").includes(":inside:") && Math.min(p.size.x, p.size.z) < 0.6 && p.size.y > 1;
-      if (wall) out.push({ type: "box", centre: { ...p.centre, y: cutM + 0.004 }, size: { x: p.size.x + 0.002, y: 0.008, z: p.size.z + 0.002 }, material: "poche", tag: `${p.tag ?? ""}:poche`, ...(p.rotY ? { rotY: p.rotY } : {}) });
+      if (wall) out.push({ type: "box", centre: { ...p.centre, y: cutM + 0.004 }, size: { x: p.size.x + 0.002, y: 0.03, z: p.size.z + 0.002 }, material: "poche", tag: `${p.tag ?? ""}:poche`, ...(p.rotY ? { rotY: p.rotY } : {}) });
     } else if (p.type === "prism") {
       if (p.y0 >= cutM) continue;
       out.push(p.y1 <= cutM ? p : { ...p, y1: cutM });
@@ -75,6 +75,9 @@ export function forTracing(payload: BuildingRenderPayload): BuildingRenderPayloa
   // From outside, the apartments' furnishings are a glimpse through dark
   // glass, and with them in the scene the tracer lost its sky — every
   // elevation came back on black. They are left out of an outside view.
+  // From inside, they ARE the picture: dropped there too, a room came back empty — no furniture, no rug, and
+  // with the inside finish gone the slab over it showed as the ceiling (17/10/2026).
+  if (payload.camera.interior === true) return payload;
   return { ...payload, model: { ...payload.model, primitives: payload.model.primitives.filter((p) => !(p.tag ?? "").includes(":inside:")) } };
 }
 
@@ -87,9 +90,24 @@ export function asCutPlan(payload: BuildingRenderPayload): BuildingRenderPayload
   // and the tower's shadow over the ground below was the darkest thing on it.
   const level = cut - PLAN_CUT_M;
   const cutAway = cutModel(payload.model, cut);
-  const storey = cutAway.primitives.filter((p) => topOf(p) > level - 0.45);
+  // A house's ground floor sheet draws its yard, a parking bay below the floor among it.
+  // Keep site:sidewalk + site:road even when sunk below the floor — dropping them
+  // left parked cars on the white sheet and they read as cut (16/10/2026).
+  const storey = cutAway.primitives.filter((p) => {
+    const tag = p.tag ?? "";
+    if (tag.startsWith("yard")) return true;
+    if (tag === "site:sidewalk" || tag === "site:road") return true;
+    return topOf(p) > level - 0.45;
+  });
   const { x, z, width, depth } = payload.model.extent;
   const span = Math.max(width, depth) * 4;
-  storey.push({ type: "box", centre: { x: x + width / 2, y: level - 0.6, z: z + depth / 2 }, size: { x: span, y: 0.02, z: span }, material: "ceiling", tag: "sheet" });
+  // The sheet lies under the yard's deepest part: laid 0.6 m under the floor,
+  // it covered a parking bay the facades sink 2.07 m, cars and all, and the
+  // terrace beside the house (Gottlieb A, 10/10/2026).
+  const yardFloor = Math.min(
+    level,
+    ...storey.filter((p) => (p.tag ?? "").startsWith("yard")).map((p) => (p.type === "car" ? p.at.y : p.type === "box" ? p.centre.y + p.size.y / 2 : p.type === "prism" ? p.y1 : level)),
+  );
+  storey.push({ type: "box", centre: { x: x + width / 2, y: Math.min(level - 0.6, yardFloor - 0.3), z: z + depth / 2 }, size: { x: span, y: 0.02, z: span }, material: "ceiling", tag: "sheet" });
   return { ...payload, model: { ...cutAway, primitives: storey }, camera: { ...camera, studio: true } };
 }

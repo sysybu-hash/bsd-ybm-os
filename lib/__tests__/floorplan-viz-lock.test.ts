@@ -87,7 +87,7 @@ describe("floorplan viz lock", () => {
 
   it("forbids CAD overlays and empty wet rooms in the presentation lock", () => {
     expect(PRESENTATION_LOCK).toMatch(/PRESENTATION LOCK/);
-    expect(PRESENTATION_LOCK).toMatch(/entrance triangles/i);
+    expect(PRESENTATION_LOCK).toMatch(/entrance triangle OUTSIDE the front door/i);
     expect(PRESENTATION_LOCK).toMatch(/CLOSED doors/);
     expect(PRESENTATION_LOCK).toMatch(/empty tiled void/i);
     expect(PRESENTATION_LOCK).toMatch(/U-kitchen/);

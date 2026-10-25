@@ -1,5 +1,5 @@
 import type { Facing } from "@/lib/projects/scene3d/orientation";
-import type { MaterialId } from "@/lib/projects/scene3d/types";
+import type { MaterialId, SceneShape } from "@/lib/projects/scene3d/types";
 
 /**
  * A piece of furniture, built from the box that was measured.
@@ -24,6 +24,10 @@ export type PieceSpec = {
   haredi?: boolean;
   /** Which sanitary fixture, where the reading knows; otherwise told by shape. */
   fixture?: "bath" | "shower" | "toilet" | "basin" | "washer";
+  /** Openings cut through a counter's top and carcass (its sinks'), in the piece's own frame: x, z of the centre and the width and depth, metres. */
+  holes?: Array<{ x: number; z: number; w: number; d: number }>;
+  /** A kitchen sink of two bowls: a haredi kitchen's one drawn sink (sinks.ts). */
+  double?: boolean;
 };
 
 export type PiecePart = {
@@ -36,9 +40,19 @@ export type PiecePart = {
   w: number;
   h: number;
   d: number;
-  /** Edges rounded to this radius, metres, where the renderer can: a cushion is soft. */
+  /** Edges rounded to this radius, metres: a cushion is soft. */
   round?: number;
+  /** Any other form (SceneShape): w, h, d are then its bounding box in the piece's own frame, before the piece is turned. */
+  shape?: SceneShape;
+  /** Turns about the vertical axis, radians, in the piece's own frame. */
+  rotY?: number;
+  /** Slopes about the x and z axes (a leaning back, a raked headboard), radians. */
+  tiltX?: number;
+  tiltZ?: number;
 };
+
+/** A part that is not an axis-aligned box: it keeps its own extents and is turned by the renderer, not by swapping w and d. */
+const free = (p: PiecePart): boolean => p.shape != null || p.rotY != null || p.tiltX != null || p.tiltZ != null;
 
 export function part(
   tag: string,
@@ -51,6 +65,13 @@ export function part(
 
 /** Rotate a part from "facing north" into the facing the piece actually has. */
 export function rotatePart(p: PiecePart, facing: Facing): PiecePart {
+  // The turn a facing is, about the vertical axis (three's convention: x' = x cos + z sin, z' = −x sin + z cos).
+  const turn = facing === "north" ? 0 : facing === "south" ? Math.PI : facing === "east" ? -Math.PI / 2 : Math.PI / 2;
+  if (free(p)) {
+    if (facing === "north") return p;
+    const c = Math.cos(turn), s = Math.sin(turn);
+    return { ...p, x: p.x * c + p.z * s, z: -p.x * s + p.z * c, rotY: (p.rotY ?? 0) + turn };
+  }
   switch (facing) {
     case "north":
       return p;

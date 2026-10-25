@@ -29,6 +29,8 @@ function meshKey(mesh: SceneBox): string {
     n(mesh.size.x),
     n(mesh.size.y),
     n(mesh.size.z),
+    // A form, a turn or a slope joins the key only when the mesh has one, so every scene made of plain boxes keeps the hash it had.
+    ...(mesh.shape || mesh.rotY || mesh.tiltX || mesh.tiltZ ? [mesh.shape ? JSON.stringify(mesh.shape).length : 0, n(mesh.rotY ?? 0), n(mesh.tiltX ?? 0), n(mesh.tiltZ ?? 0)] : []),
   ].join("|");
 }
 

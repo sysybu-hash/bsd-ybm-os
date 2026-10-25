@@ -124,6 +124,8 @@ const serverSchema = z.object({
   MISTRAL_API_KEY: optStr,
   MISTRAL_MODEL: optStr,        // default: mistral-small-latest (text chat)
   MISTRAL_VISION_MODEL: optStr, // default: mistral-medium-3-5 (vision/scan)
+  /** Replicate (FLUX Kontext / Canny) — server only */
+  REPLICATE_API_TOKEN: optStr,
 
   // --- CAD conversion ---
   // DWG is a closed format; the only open reader is GPL. A DWG upload is

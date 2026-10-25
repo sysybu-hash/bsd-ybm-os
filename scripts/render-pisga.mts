@@ -5,6 +5,7 @@
  *   npx tsx --conditions=react-server scripts/render-pisga.mts "<booklet.pdf>" <out dir> [view…]
  */
 import fs from "node:fs";
+import sharp from "sharp";
 import path from "node:path";
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -14,15 +15,29 @@ const { renderBuildingFrames } = await import("@/lib/projects/building/renderer"
 type Payload = import("@/lib/projects/building/render-page").BuildingRenderPayload;
 
 const [file, outDir, ...only] = process.argv.slice(2);
-if (!file || !outDir) throw new Error("usage: <booklet.pdf> <out dir> [view…]");
+if ((!file && !process.env.DXF) || !outDir) throw new Error("usage: <booklet.pdf> <out dir> [view…]  (or DXF=<file> with any first argument)");
 fs.mkdirSync(outDir, { recursive: true });
 const t = Date.now();
 // FUTURE=1: sheet 7's future plan for floor −1, written as pisga-future-*.
 const future = process.env.FUTURE === "1";
-const model = await buildPisga(new Uint8Array(fs.readFileSync(file)), { future });
+// DXF=<file>: the architect's DXF in place of the permit booklet's PDF (no future plan there).
+const dxfFile = process.env.DXF;
+const dxf = dxfFile ? (await import("@/lib/projects/dxf-drawing")).readDxfDrawing(fs.readFileSync(dxfFile)) : null;
+if (dxfFile && !dxf) throw new Error(`unreadable DXF: ${dxfFile}`);
+// PHOTO=<png/jpg path>: the plot's aerial photograph on the ground, a draft fit.
+const groundPhoto = process.env.PHOTO ? `data:image/jpeg;base64,${(await sharp(fs.readFileSync(process.env.PHOTO)).jpeg({ quality: 88 }).toBuffer()).toString("base64")}` : undefined;
+const model = await buildPisga(dxf ? null : new Uint8Array(fs.readFileSync(file)), { future, dxf: dxf ?? undefined, groundPhoto });
+// No figures in any frame (the user's rule, 2026-10-20): the model's people for scale are left out unless PEOPLE=1.
+if (process.env.PEOPLE !== "1") model.primitives = model.primitives.filter((p) => p.type !== "person");
 console.log(`model: ${model.primitives.length} primitives in ${Date.now() - t}ms`);
 
-const W = 2400, H = 1500;
+// Traced by default, at the most the GPU holds without spoiling the frame (measured 2026-10-19 on aerial-ne: 1024 samples at 2400 px is clean in ~2 min;
+// 2048 samples comes back white, 1024 at 3600 px loses walls and scrambles the ground). PT=0 rasterises instead; SIZE=<width> scales the frame
+// (a traced frame is held to 2400 px); PT is held to 1024.
+const PT_MAX = 1024, TRACED_MAX_PX = 2400;
+const PT = Math.min(PT_MAX, Number(process.env.PT ?? PT_MAX));
+const W = Math.min(Number(process.env.SIZE ?? 2400), PT ? TRACED_MAX_PX : Infinity), H = Math.round((W * 1500) / 2400);
+if (Number(process.env.PT ?? 0) > PT_MAX || Number(process.env.SIZE ?? 0) > W) console.warn(`held to PT=${PT}, SIZE=${W}: past that the traced frame is spoiled`);
 const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "aerial-ne": { camera: { position: { x: 88, y: 46, z: -48 }, target: { x: 27, y: 7, z: 8 }, fovDeg: 32 }, sun: { azimuthDeg: 250, elevationDeg: 38 }, exposure: 0.62, ao: true },
   "north-facade": { camera: { position: { x: 27.4, y: 6, z: -48 }, target: { x: 27.4, y: 10.5, z: 6 }, fovDeg: 38 }, sun: { azimuthDeg: 292, elevationDeg: 22 }, exposure: 0.66, ao: true },
@@ -45,18 +60,38 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "section-bb": { camera: { position: { x: 140, y: 12, z: 6 }, target: { x: 0, y: 12, z: 6 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 49.3, keep: -1 }, interior: true, hideTags: ["tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "section-dd": { camera: { position: { x: 140, y: 12, z: 8 }, target: { x: 0, y: 12, z: 8 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 28.4, keep: -1 }, interior: true, hideTags: ["tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "event-hall": { camera: { position: { x: 21.5, y: 12.77 + 1.7, z: 10.2 }, target: { x: 6, y: 12.77 + 0.9, z: 3.5 }, fovDeg: 66, interior: true }, sun: { azimuthDeg: 290, elevationDeg: 25 }, exposure: 0.62, ao: true },
+  "north-high": { camera: { position: { x: 27, y: 30, z: -34 }, target: { x: 27, y: 8, z: -2 }, fovDeg: 40 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "west-stair": { camera: { position: { x: -13, y: 15, z: 24 }, target: { x: -1, y: 9.5, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
+  "ne-corner": { camera: { position: { x: 76, y: 18, z: -15 }, target: { x: 55, y: 8.5, z: 3 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "north-terrace": { camera: { position: { x: 27, y: 17, z: -22 }, target: { x: 27, y: 8, z: -3 }, fovDeg: 45 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "end-e": { camera: { position: { x: 70, y: 22, z: -14 }, target: { x: 55, y: 5, z: 1 }, fovDeg: 40 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "end-w": { camera: { position: { x: -22, y: 22, z: -14 }, target: { x: -2, y: 5, z: 1 }, fovDeg: 40 }, sun: { azimuthDeg: 120, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "east-side": { camera: { position: { x: 84, y: 20, z: -6 }, target: { x: 60, y: 6.5, z: 9 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
+  "west-side": { camera: { position: { x: -32, y: 20, z: 28 }, target: { x: -1, y: 9, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
   courtyard: { camera: { position: { x: 2.2, y: 9.9, z: 19.2 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
 };
 const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.includes(id));
 // NOSIGN=1: the same frames with the lettering left off, for the photographic
 // finish — the system draws the lettering back, never the model.
 const nosign = process.env.NOSIGN === "1";
-const frames = await renderBuildingFrames(
-  chosen.map(([, v]) => ({ ...v, camera: nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera, model, width: W, height: H })),
-  { outputWidthPx: 1600 },
-);
-chosen.forEach(([id], i) => {
-  const out = path.join(outDir, `pisga-${future ? "future-" : ""}${id}${nosign ? "-nosign" : ""}.jpg`);
-  fs.writeFileSync(out, frames[i]!);
+// Each frame goes down a ladder of sample counts until it comes back neither blank nor too dark to be a frame (an interior needs the longest to settle and
+// the GPU gives up first): the most the GPU holds without spoiling it is what is kept. A cut or a section is rasterised by the page whatever PT says.
+const ladder = [PT, 512, 256, 128, 0].filter((n, k, all) => n <= PT && all.indexOf(n) === k);
+for (const [id, v] of chosen) {
+  const camera = nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera;
+  let done: { buf: Buffer; pt: number } | null = null;
+  for (const pt of ladder) {
+    const [buf] = await renderBuildingFrames([{ ...v, camera, model, width: W, height: H, ...(pt ? { pathTrace: { samples: pt } } : {}) }], { outputWidthPx: Number(process.env.OUT ?? 1600), timeoutMs: pt ? 1_800_000 : undefined });
+    const st = await sharp(buf!).stats();
+    if (st.channels[0]!.stdev < 2) {
+      console.warn(`${id}: blank at PT=${pt}, trying fewer samples`);
+      continue;
+    }
+    done = { buf: buf!, pt };
+    break;
+  }
+  if (!done) throw new Error(`frame ${id}: blank at every sample count`);
+  const out = path.join(outDir, `pisga-${future ? "future-" : ""}${done.pt ? `pt${done.pt}-` : ""}${id}${nosign ? "-nosign" : ""}.jpg`);
+  fs.writeFileSync(out, done.buf);
   console.log(out);
-});
+}

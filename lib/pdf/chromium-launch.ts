@@ -91,5 +91,6 @@ export async function launchChromium(options?: ChromiumLaunchOptions) {
     headless: true,
     args: options?.webgl ? [...LAUNCH_ARGS, ...LOCAL_WEBGL_ARGS] : LAUNCH_ARGS,
     defaultViewport,
+    ...(options?.protocolTimeout ? { protocolTimeout: options.protocolTimeout } : {}),
   });
 }

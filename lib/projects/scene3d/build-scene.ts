@@ -31,7 +31,8 @@ import { partsFor, type PieceSpec } from "@/lib/projects/scene3d/furniture";
 import { rulesFor, type AudienceRules } from "@/lib/projects/scene3d/rules";
 import { mezuzot, stageScene } from "@/lib/projects/scene3d/staging";
 import { openingHeights } from "@/lib/projects/scene3d/openings";
-import { facingFor, headFacing } from "@/lib/projects/scene3d/orientation";
+import { backFacing, facingFor, headFacing } from "@/lib/projects/scene3d/orientation";
+import { doubleSinks } from "@/lib/projects/scene3d/furniture/sinks";
 import { bandRect, wallBands, type Band, type WallHole } from "@/lib/projects/scene3d/walls";
 
 /**
@@ -173,7 +174,7 @@ export type SceneInput = {
   /** The walkable region, already merged into rectangles. */
   floorRects: Rect[];
   terraceRects: Rect[][];
-  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"]; head?: "north" | "south" | "east" | "west" }>;
+  furniture: Array<{ x: number; y: number; w: number; h: number; kind: string; fixture?: PieceSpec["fixture"]; head?: "north" | "south" | "east" | "west"; drawn?: boolean }>;
   rooms: Array<{ name: string; kind: string; areaM2: number; rects: Rect[] }>;
   /**
    * The rooms as the sheet labels them, in page units.
@@ -382,8 +383,11 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
   // too, and it stretched the frame the same way.
   // Sanitary ware within a hand of it: a pan's own ink stops the floor's
   // flood, and 21's WC pan stood on no floor of its own and was dropped.
+  // A piece the drawing names (a CAD block) stands where it is drawn: the
+  // guards below are against lines misread as furniture, and they dropped
+  // Gottlieb A's beds, baths and basins where its DXF's hatch broke the rooms up.
   const grounded = input.furniture.filter((piece) =>
-    touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, piece.kind === "fixture" ? 0.3 * upm : 0),
+    piece.drawn || touchesGround({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }, piece.kind === "fixture" ? 0.3 * upm : 0),
   );
   // One drawn object is one piece. The detector can find a rectangle twice a
   // few millimetres apart, and דירה 15 got two beds in one place.
@@ -542,8 +546,9 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         },
       );
     }
+    const frameMaterial = openings[index]?.exterior ? "stoneFrame" : "joinery";
     for (const frame of frames) {
-      meshes.push(boxFrom(p, frame.rect, frame.y0, frame.y1, "frame", "joinery", `${id}/frame`));
+      meshes.push(boxFrom(p, frame.rect, frame.y0, frame.y1, "frame", frameMaterial, `${id}/frame`));
     }
   });
 
@@ -637,6 +642,13 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     .filter((piece) => piece.kind === "counter" || piece.kind === "table")
     .map((piece) => ({ x: piece.x, y: piece.y, w: piece.w, h: piece.h }));
 
+  const sinks = furniture.filter((piece) => piece.kind === "sink");
+  const asDouble = doubleSinks(sinks, (options?.rules?.audience ?? (options?.haredi ? "haredi" : "general")) === "haredi", upm);
+  const doubled = new Set(sinks.filter((_, i) => asDouble[i]));
+
+  // The openings a counter's sinks sit in: a sink whose middle is inside a counter's rectangle cuts the counter's top and carcass (page frame, units).
+  const sinkBoxes = sinks.map((q) => ({ x: q.x, y: q.y, w: q.w, h: q.h }));
+
   furniture.forEach((piece, index) => {
     const box: Rect = { x: piece.x, y: piece.y, w: piece.w, h: piece.h };
     const host = roomAt(rectCentre(box), roomRects);
@@ -654,7 +666,15 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
     const inSleeping =
       piece.kind === "bed" &&
       roomRects.some(
-        (room) => SLEEPING.has(room.room.kind) && overlapArea(box, room.rects) >= 0.25 * box.w * box.h,
+        (room) =>
+          SLEEPING.has(room.room.kind) &&
+          // Or against it: a bed drawn whole along a bedroom's wall closes a strip
+          // of its own the segmenter gives no kind (Gottlieb's upper bedrooms).
+          (overlapArea(box, room.rects) >= 0.25 * box.w * box.h ||
+            (host != null &&
+              (host.room.kind === "circulation" || host.room.kind == null) &&
+              host.rects.reduce((n, r) => n + r.w * r.h, 0) <= 2.5 * box.w * box.h &&
+              room.rects.some((r) => Math.max(r.x - (box.x + box.w), box.x - (r.x + r.w), 0) <= 0.3 * input.unitsPerMetre && Math.max(r.y - (box.y + box.h), box.y - (r.y + r.h), 0) <= 0.3 * input.unitsPerMetre))),
       );
     // A pan beside a bathroom whose measured region stops short of it — the
     // label's region covered half of דירה 14's main bathroom, and its WC and
@@ -664,7 +684,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       roomRects.some(
         (room) => isWetRoom(room.room.kind as SceneRoomKind) && distanceToRects(rectCentre(box), room.rects) <= input.unitsPerMetre * 1.2,
       );
-    if (!inSleeping && !besideWet && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
+    if (!piece.drawn && !inSleeping && !besideWet && !pieceBelongsIn(piece.kind, host?.room.kind)) return;
     const hostBounds = host ? rectsBounds(host.rects) : null;
     const decided = facingFor({
       piece: box,
@@ -683,8 +703,29 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         ? (piece.head ?? headFacing(box, decided, wallRectsAll))
         : piece.kind === "fixture" && piece.fixture === "toilet" && piece.head
           ? piece.head
-          : decided;
+          : piece.kind === "seat" || piece.kind === "storage"
+            // A wardrobe, like a sofa, has its back on a long side: its doors on the long face, not at an end the nearest wall happened to be.
+            ? backFacing(box, decided, wallRectsAll, hostBounds ? { x: hostBounds.x + hostBounds.w / 2, y: hostBounds.y + hostBounds.h / 2 } : rectCentre(box), upm)
+            : decided;
     const centre = project(p, box.x + box.w / 2, box.y + box.h / 2);
+    // A tall cabinet in a kitchen is its fridge or an appliance column,
+    // painted with the kitchen's joinery: a wardrobe is wood, a fridge is not.
+    // So is one as deep as it is wide: a wardrobe is 60 deep, a fridge 70 and more.
+    const kitchenColumn = kind === "storage" && (host?.room.kind === "kitchen" || Math.min(box.w, box.h) / upm >= 0.7);
+    // Openings in this counter, turned into the piece's own frame (the inverse of the turn rotatePart makes).
+    const holes =
+      kind === "counter"
+        ? sinkBoxes
+            .filter((q) => q.x + q.w / 2 > box.x && q.x + q.w / 2 < box.x + box.w && q.y + q.h / 2 > box.y && q.y + q.h / 2 < box.y + box.h)
+            .map((q) => {
+              const X = (q.x + q.w / 2 - (box.x + box.w / 2)) / upm;
+              const Z = (q.y + q.h / 2 - (box.y + box.h / 2)) / upm;
+              const [qw, qd] = [q.w / upm, q.h / upm];
+              const w2 = Math.max(0.1, qw - 0.06), d2 = Math.max(0.1, qd - 0.08);
+              const [x, z] = facing === "north" ? [X, Z] : facing === "south" ? [-X, -Z] : facing === "east" ? [Z, -X] : [-Z, X];
+              return facing === "east" || facing === "west" ? { x, z, w: d2, d: w2 } : { x, z, w: w2, d: d2 };
+            })
+        : [];
     for (const built of partsFor(kind, {
       wM: box.w / upm,
       dM: box.h / upm,
@@ -692,14 +733,23 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       facing,
       haredi: options?.rules?.singleBeds ?? options?.haredi,
       ...(piece.fixture ? { fixture: piece.fixture } : {}),
+      ...(doubled.has(piece) ? { double: true } : {}),
+      ...(holes.length ? { holes } : {}),
     })) {
+      const painted = kitchenColumn && (built.material === "timber" || built.material === "joinery");
       meshes.push({
         kind: "furniture",
-        material: built.material,
+        material: painted ? "joinery" : built.material,
         centre: { x: centre.x + built.x, y: built.y, z: centre.z + built.z },
-        size: { x: built.w, y: built.h, z: built.d },
-        sourceId: `furniture:${index}/${built.tag}`,
+        // A form turned a quarter by its facing: `size` is its footprint on the page's axes, the geometry keeps its own extents.
+        size: built.rotY && Math.abs(Math.sin(built.rotY)) > 0.999 ? { x: built.d, y: built.h, z: built.w } : { x: built.w, y: built.h, z: built.d },
+        ...(built.rotY && Math.abs(Math.sin(built.rotY)) > 0.999 ? { local: { x: built.w, y: built.h, z: built.d } } : {}),
+        sourceId: `furniture:${index}/${painted && built.tag === "door" ? "front" : built.tag}`,
         ...(built.round ? { round: built.round } : {}),
+        ...(built.shape ? { shape: built.shape } : {}),
+        ...(built.rotY ? { rotY: built.rotY } : {}),
+        ...(built.tiltX ? { tiltX: built.tiltX } : {}),
+        ...(built.tiltZ ? { tiltZ: built.tiltZ } : {}),
       });
     }
   });
@@ -828,8 +878,18 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
   // Terrace first: the flat's floor runs on under its terraces, and a stub
   // with terrace on both sides — 17's level mark's leader, read as a wall in
   // the middle of its terrace — stood on that floor.
+  // Furniture stands on the flat's floor: the floor is flooded round a bed
+  // or a wardrobe drawn against a wall, and 17's shelter lost its west wall
+  // behind its bed.
+  const furnished = meshes.filter((m) => m.kind === "furniture" && m.size.y > 0.15).map(rectOf);
   const side = (x: number, z: number) =>
-    inAny(terraces, x, z) ? "terrace" : inAny(floors, x, z) ? "floor" : inAny(walls, x, z) ? "wall" : "none";
+    inAny(terraces, x, z)
+      ? "terrace"
+      : inAny(floors, x, z) || inAny(furnished, x, z)
+        ? "floor"
+        : inAny(walls, x, z)
+          ? "wall"
+          : "none";
   const STEP = 0.2;
   const out: SceneBox[] = [];
   for (const m of meshes) {

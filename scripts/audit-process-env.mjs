@@ -20,6 +20,8 @@ const ALLOW_FILES = new Set([
   "lib/core/site-url.ts",
   "lib/normalize-nextauth-url-env.ts",
   "lib/prisma.ts",
+  // Knobs flipped while a booklet run is under way; env parses once. See the file.
+  "lib/projects/building/house-knobs.ts",
 ]);
 
 const RE = /process\.env\.[A-Z0-9_]+/g;

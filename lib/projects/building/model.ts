@@ -154,4 +154,11 @@ export type BuildingModel = {
   street?: "north" | "south" | "east" | "west";
   /** A house's plot, its boundary's box: where its elevations cut the ground. */
   plot?: { x0: number; z0: number; x1: number; z1: number };
+  /**
+   * A building's own look where the defaults (white-ish stone, grey paving) are not the site's: `colors` replaces a material's
+   * colour (its texture becomes a plain one of that colour), `limestone` swaps the stone for honed sand-cream courses with dark
+   * joints, `redPavers` the paving for red-brown pavers in running bond, `golden` the golden hour (a low warm sun, an amber sky,
+   * the exterior lamps lit) for the perspective views.
+   */
+  palette?: { colors?: Partial<Record<BuildingMaterial, string>>; limestone?: boolean; redPavers?: boolean; golden?: boolean };
 };

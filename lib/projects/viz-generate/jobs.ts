@@ -232,7 +232,7 @@ export function remedyFor(failure: string): string {
     return "Furnish every enclosed room. An empty floor with bare walls is not acceptable unless the plan draws the room empty.";
   }
   if (/CAD annotation/i.test(failure)) {
-    return "Drop every 2D drawing mark: no black entrance triangle, no north arrow, no dimension ticks, no flat hatch on a floor.";
+    return "Drop every 2D drawing mark: no north arrow, no black triangle inside the apartment or on a terrace (the one outside the front door stays), no dimension ticks, no flat hatch on a floor.";
   }
   if (/letters or digits/i.test(failure)) {
     return "Remove every readable letter and digit from the photograph — room names, dimensions, captions. Leave book spines BLANK (no letters). Do not restage furniture.";

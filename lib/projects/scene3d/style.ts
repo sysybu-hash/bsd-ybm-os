@@ -49,6 +49,7 @@ const BASE: Record<MaterialId, MaterialSpec> = {
   skirting: { color: 0xf8f4ec, roughness: 0.5, metalness: 0 },
   glass: { color: 0xcfe4ec, roughness: 0.06, metalness: 0, opacity: 0.3 },
   joinery: { color: 0xece7de, roughness: 0.45, metalness: 0 },
+  stoneFrame: { color: 0xd7c4a4, roughness: 0.9, metalness: 0 },
   metal: { color: 0x9a958c, roughness: 0.3, metalness: 0.85 },
   linen: { color: 0xf6f2e9, roughness: 0.9, metalness: 0 },
   upholstery: { color: 0xd6c9b2, roughness: 0.95, metalness: 0 },

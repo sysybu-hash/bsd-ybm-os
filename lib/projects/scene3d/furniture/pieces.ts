@@ -1,4 +1,5 @@
 import { fixtureKind } from "@/lib/projects/scene3d/furniture/fixture-kind";
+import { cushion, ellipse, hollow, pillow, rrect, shell, slab, taperedLeg, tube, turned } from "@/lib/projects/scene3d/furniture/forms";
 import { facingBox, part, type PiecePart, type PieceSpec } from "@/lib/projects/scene3d/furniture/types";
 import {
   DOUBLE_BED_MIN_M,
@@ -36,28 +37,29 @@ export function bed(spec: PieceSpec): PiecePart[] {
   const mattressH = h - baseH;
   const back = offsetZ - mattressD / 2;
   const parts: PiecePart[] = [
-    part("base", "timber", { x: offsetX, y: baseH / 2, z: offsetZ, w: mattressW, h: baseH, d: mattressD }, 0.01),
-    part("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.03, w: mattressW * 0.98, h: mattressH, d: mattressD - 0.08 }, 0.05),
-    // A timber headboard behind the mattress. Upholstered in the sofas'
-    // fabric it made a bed read from above as a sofa, and the painting
-    // repainted it as one.
-    part("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.04, w: mattressW, h: h * 2.1, d: 0.08 }, 0.02),
+    // A frame with a shadow gap under it, on short feet: the base is set in from the mattress's edge.
+    slab("base", "timber", { x: offsetX, y: 0.06 + (baseH - 0.06) / 2, z: offsetZ, w: mattressW, h: baseH - 0.06, d: mattressD }, 0.035, 0.012),
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => taperedLeg("foot", "timber", { x: offsetX + sx * (mattressW / 2 - 0.08), z: offsetZ + sz * (mattressD / 2 - 0.08), h: 0.06 }, 0.025, 0.018))),
+    cushion("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.01, w: mattressW, h: mattressH, d: mattressD - 0.04 }, { corner: 0.07 }),
+    // A timber headboard, raked back a touch, with a bevelled top: not a board stood on its edge.
+    { ...slab("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.05, w: mattressW, h: h * 2.1, d: 0.08 }, 0.03, 0.012), shape: { kind: "extrude" as const, outline: rrect(mattressW, 0.08, 0.03, 6), bevel: 0.012 } },
   ];
   const pillows = !spec.haredi && mattressW >= DOUBLE_BED_MIN_M ? 2 : 1;
   const pillowW = Math.min(0.62, (mattressW / pillows) * 0.82);
   const pillowD = Math.min(0.36, mattressD * 0.3);
   for (let i = 0; i < pillows; i++) {
     const spread = pillows === 1 ? 0 : (i - 0.5) * (mattressW / 2);
-    parts.push(part("pillow", "linen", { x: offsetX + spread, y: h + 0.06, z: back + 0.1 + pillowD / 2, w: pillowW, h: 0.12, d: pillowD }, 0.055));
+    // Pillows lean on the headboard and are plump in the middle.
+    parts.push(pillow("pillow", "linen", { x: offsetX + spread, y: h + 0.085, z: back + 0.12 + pillowD / 2, w: pillowW, h: 0.17, d: pillowD }, -0.16));
   }
-  // The duvet over the lower two-thirds, its top edge turned down.
+  // The duvet over the lower two-thirds, as a soft loft that droops over the mattress's sides; its top edge turned down.
   const duvetD = mattressD * 0.66;
   const duvetZ = offsetZ + mattressD / 2 - duvetD / 2 - 0.02;
   parts.push(
-    part("duvet", "linen", { x: offsetX, y: h + 0.03, z: duvetZ, w: mattressW, h: 0.07, d: duvetD }, 0.03),
-    part("fold", "linen", { x: offsetX, y: h + 0.075, z: duvetZ - duvetD / 2 + 0.12, w: mattressW * 0.99, h: 0.03, d: 0.22 }, 0.014),
+    cushion("duvet", "linen", { x: offsetX, y: h + 0.04, z: duvetZ, w: mattressW, h: 0.1, d: duvetD }, { corner: 0.08 }),
+    cushion("fold", "linen", { x: offsetX, y: h + 0.1, z: duvetZ - duvetD / 2 + 0.14, w: mattressW * 0.99, h: 0.05, d: 0.26 }, { corner: 0.05 }),
     // A throw across the foot, the one colour on the bed.
-    part("throw", "upholstery", { x: offsetX, y: h + 0.075, z: offsetZ + mattressD / 2 - Math.min(0.5, mattressD * 0.25) / 2 - 0.03, w: mattressW * 0.99, h: 0.02, d: Math.min(0.5, mattressD * 0.25) }, 0.01),
+    cushion("throw", "upholstery", { x: offsetX, y: h + 0.105, z: offsetZ + mattressD / 2 - Math.min(0.5, mattressD * 0.25) / 2 - 0.04, w: mattressW * 0.99, h: 0.035, d: Math.min(0.5, mattressD * 0.25) }, { corner: 0.04 }),
   );
   return parts;
 }
@@ -66,31 +68,15 @@ export function bed(spec: PieceSpec): PiecePart[] {
 export function table(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   const topH = 0.04;
-  const legW = Math.min(0.07, w * 0.12, d * 0.12);
-  const inset = Math.min(0.09, w * 0.15, d * 0.15);
+  const legR = Math.min(0.04, w * 0.07, d * 0.07);
+  const inset = Math.min(0.1, w * 0.15, d * 0.15);
   const parts = [
-    part("top", "timber", { x: 0, y: h - topH / 2, z: 0, w, h: topH, d }),
-    part("apron", "timber", {
-      x: 0,
-      y: h - topH - 0.03,
-      z: 0,
-      w: w - inset,
-      h: 0.06,
-      d: d - inset,
-    }),
+    slab("top", "timber", { x: 0, y: h - topH / 2, z: 0, w, h: topH, d }, Math.min(0.08, d * 0.25), 0.012),
+    part("apron", "timber", { x: 0, y: h - topH - 0.03, z: 0, w: w - inset - 0.02, h: 0.06, d: d - inset - 0.02 }, 0.01),
   ];
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      parts.push(
-        part("leg", "timber", {
-          x: sx * (w / 2 - inset / 2 - legW / 2),
-          y: (h - topH) / 2,
-          z: sz * (d / 2 - inset / 2 - legW / 2),
-          w: legW,
-          h: h - topH,
-          d: legW,
-        }),
-      );
+      parts.push(taperedLeg("leg", "timber", { x: sx * (w / 2 - inset / 2 - legR), z: sz * (d / 2 - inset / 2 - legR), h: h - topH }, legR, legR * 0.62));
     }
   }
   return parts;
@@ -112,24 +98,29 @@ export function desk(spec: PieceSpec): PiecePart[] {
  * from above as a board.
  */
 function sofa(w: number, d: number, h: number): PiecePart[] {
-  const armW = Math.min(0.18, w * 0.1);
-  const backD = Math.min(0.22, d * 0.26);
+  const armW = Math.min(0.2, w * 0.11);
+  const backD = Math.min(0.24, d * 0.28);
   const plinthH = Math.max(0.12, h - 0.2);
   const seats = Math.max(1, Math.round((w - 2 * armW) / 0.7));
   const seatW = (w - 2 * armW) / seats;
   const seatD = d - backD - 0.02;
   const parts: PiecePart[] = [
-    part("base", "upholstery", { x: 0, y: plinthH / 2, z: 0, w, h: plinthH, d }, 0.03),
-    part("back", "upholstery", { x: 0, y: (h + 0.32) / 2, z: -d / 2 + backD / 2, w, h: h + 0.32, d: backD }, 0.05),
+    // A plinth set in from the edge: the sofa stands on a shadow, not on the floor.
+    slab("base", "upholstery", { x: 0, y: 0.05 + (plinthH - 0.05) / 2, z: 0, w: w * 0.98, h: plinthH - 0.05, d: d * 0.98 }, 0.07, 0.03),
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => taperedLeg("foot", "timber", { x: sx * (w / 2 - 0.1), z: sz * (d / 2 - 0.1), h: 0.05 }, 0.025, 0.016))),
+    // The back: tall, soft, raked a few degrees back.
+    { ...cushion("back", "upholstery", { x: 0, y: (h + 0.32) / 2 + 0.02, z: -d / 2 + backD / 2 + 0.01, w, h: h + 0.28, d: backD }, { corner: 0.1 }), tiltX: -0.09 },
   ];
   for (const sx of [-1, 1]) {
-    parts.push(part("arm", "upholstery", { x: sx * (w / 2 - armW / 2), y: (h + 0.16) / 2, z: 0, w: armW, h: h + 0.16, d }, 0.06));
+    // Arms: rolled, wider at the top than the foot.
+    parts.push(cushion("arm", "upholstery", { x: sx * (w / 2 - armW / 2), y: (h + 0.14) / 2, z: 0.01, w: armW, h: h + 0.14, d: d * 0.99 }, { corner: armW * 0.45 }));
   }
   for (let i = 0; i < seats; i++) {
     const x = -w / 2 + armW + seatW * (i + 0.5);
     parts.push(
-      part("seat", "upholstery", { x, y: plinthH + (h - plinthH) / 2, z: d / 2 - seatD / 2, w: seatW - 0.015, h: h - plinthH, d: seatD }, 0.06),
-      part("cushion", "linen", { x, y: h + 0.2, z: -d / 2 + backD + 0.09, w: seatW - 0.05, h: 0.38, d: 0.16 }, 0.07),
+      cushion("seat", "upholstery", { x, y: plinthH + (h - plinthH) / 2 + 0.01, z: d / 2 - seatD / 2, w: seatW - 0.02, h: h - plinthH + 0.03, d: seatD }, { corner: 0.08 }),
+      // A scatter cushion leaning on the back, in the sofa's woven fabric, set a little askew.
+      { ...cushion("cushion", "upholstery", { x: x + (i % 2 ? 0.05 : -0.05), y: h + 0.17, z: -d / 2 + backD + 0.12, w: Math.min(seatW - 0.08, 0.5), h: 0.2, d: 0.42 }, { corner: 0.1 }), tiltX: -0.95, rotY: i % 2 ? 0.12 : -0.1 },
     );
   }
   return parts;
@@ -141,24 +132,19 @@ export function seat(spec: PieceSpec): PiecePart[] {
   if (w > 1.0) return sofa(w, d, h);
   // An armchair: a sofa of one place. דירה 14's is 77 × 67 cm.
   if (w > 0.7 && d > 0.6) return sofa(w, d, h);
-  const padH = 0.07;
-  const legW = Math.min(0.035, w * 0.1);
-  const parts = [
-    part("pad", "upholstery", { x: 0, y: h - padH / 2, z: 0.01, w: w * 0.96, h: padH, d: d * 0.94 }, 0.025),
-    part("back", "upholstery", { x: 0, y: h + 0.22, z: -d / 2 + 0.035, w: w * 0.92, h: 0.42, d: 0.06 }, 0.025),
+  const padH = 0.06;
+  const legR = Math.min(0.022, w * 0.06);
+  const parts: PiecePart[] = [
+    // A seat pan dished a little, upholstered, its corners soft.
+    cushion("pad", "upholstery", { x: 0, y: h - padH / 2, z: 0.015, w: w * 0.96, h: padH + 0.02, d: d * 0.92 }, { corner: 0.07 }),
+    // The back rest: a curved slat, raked back, rounded like a hand-made dining chair.
+    { ...cushion("back", "upholstery", { x: 0, y: h + 0.23, z: -d / 2 + 0.05, w: w * 0.9, h: 0.4, d: 0.05 }, { corner: 0.03 }), tiltX: -0.12 },
   ];
+  // Back uprights and the four legs: round, tapering to the foot, the rear pair running up to carry the back.
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      parts.push(
-        part("leg", "timber", {
-          x: sx * (w / 2 - legW * 1.5),
-          y: (h - padH) / 2,
-          z: sz * (d / 2 - legW * 1.5),
-          w: legW,
-          h: h - padH,
-          d: legW,
-        }),
-      );
+      const rear = sz < 0;
+      parts.push(taperedLeg("leg", "timber", { x: sx * (w / 2 - legR * 2.2), z: sz * (d / 2 - legR * 2.2), h: rear ? h + 0.42 : h - padH }, legR, legR * 0.65));
     }
   }
   return parts;
@@ -169,26 +155,17 @@ export function storage(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   const doors = Math.max(1, Math.ceil(w / WARDROBE_DOOR_W_M));
   const doorW = w / doors;
-  const parts = [part("carcass", "timber", { x: 0, y: h / 2, z: 0, w, h, d })];
+  const parts = [
+    slab("carcass", "timber", { x: 0, y: h / 2, z: 0, w, h, d }, 0.012, 0.008),
+  ];
+  const hh = Math.min(0.15, h * 0.125);
   for (let i = 0; i < doors; i++) {
     const x = -w / 2 + doorW * (i + 0.5);
     parts.push(
-      part("door", "joinery", {
-        x,
-        y: h / 2,
-        z: d / 2 - 0.01,
-        w: doorW - 0.006,
-        h: h - 0.02,
-        d: 0.02,
-      }),
-      part("handle", "metal", {
-        x: x + doorW / 2 - 0.05,
-        y: h * 0.52,
-        z: d / 2 + 0.005,
-        w: 0.015,
-        h: Math.min(0.3, h * 0.25),
-        d: 0.015,
-      }),
+      // A flat door with an eased edge, proud of the carcass by a hair.
+      slab("door", "joinery", { x, y: h / 2, z: d / 2 - 0.008, w: doorW - 0.006, h: h - 0.03, d: 0.024 }, 0.006, 0.004),
+      // A slim bar handle, its ends turned back to the door, on the door's free edge.
+      tube("handle", "metal", { x: x + doorW / 2 - 0.05, y: h * 0.52, z: d / 2 + 0.01, w: 0.02, h: 2 * hh, d: 0.02 }, [[0, -hh, -0.004], [0, -hh, 0.004], [0, hh, 0.004], [0, hh, -0.004]], 0.005),
     );
   }
   return parts;
@@ -199,65 +176,65 @@ export function counter(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
   const topH = 0.04;
   const kickH = 0.1;
+  const holes = (spec.holes ?? []).map((q) => rrect(q.w, q.d, 0.04, 5).map(([x, z]) => [x + q.x, z + q.z] as [number, number]));
+  // A stone top with a softly eased edge, and the openings its sinks sit in; the carcass below is open there too, so the bowl has depth to go down into.
+  const cut = (p: PiecePart, outline: Array<[number, number]>, bevel: number): PiecePart =>
+    holes.length ? { ...p, shape: { kind: "extrude" as const, outline, bevel, holes } } : p;
   const parts = [
-    part("kick", "joinery", { x: 0, y: kickH / 2, z: 0.05, w, h: kickH, d: Math.max(0.05, d - 0.1) }),
-    part("carcass", "joinery", { x: 0, y: kickH + (h - kickH - topH) / 2, z: 0, w, h: h - kickH - topH, d }),
-    part("worktop", "worktop", { x: 0, y: h - topH / 2, z: 0, w, h: topH, d }),
+    part("kick", "skirting", { x: 0, y: kickH / 2, z: 0.05, w: w * 0.99, h: kickH, d: Math.max(0.05, d - 0.1) }),
+    cut(part("carcass", "joinery", { x: 0, y: kickH + (h - kickH - topH) / 2, z: 0, w, h: h - kickH - topH, d }, 0.004), rrect(w, d, 0.004, 3), 0.002),
+    cut(slab("worktop", "worktop", { x: 0, y: h - topH / 2, z: 0, w, h: topH, d }, 0.012, 0.01), rrect(w, d, 0.012, 6), 0.01),
   ];
   const drawers = Math.max(1, Math.round(w / 0.6));
   for (let i = 1; i < drawers; i++) {
     parts.push(
-      part("reveal", "worktop", {
-        x: -w / 2 + (w / drawers) * i,
-        y: kickH + (h - kickH - topH) / 2,
-        z: d / 2 - 0.004,
-        w: 0.006,
-        h: h - kickH - topH,
-        d: 0.01,
-      }),
+      part("reveal", "worktop", { x: -w / 2 + (w / drawers) * i, y: kickH + (h - kickH - topH) / 2, z: d / 2 - 0.004, w: 0.006, h: h - kickH - topH, d: 0.01 }),
     );
   }
+  // A finger-pull groove under the top: the handleless kitchen's one detail.
+  parts.push(part("pull", "steel", { x: 0, y: h - topH - 0.02, z: d / 2 - 0.002, w: w * 0.97, h: 0.014, d: 0.01 }));
   return parts;
 }
 
 /** A hob: a plate flush with the worktop and four rings on the plate's grid. */
 export function hob(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
-  const parts = [part("plate", "steel", { x: 0, y: h - 0.01, z: 0, w, h: 0.02, d })];
+  const parts = [slab("plate", "steel", { x: 0, y: h - 0.01, z: 0, w, h: 0.02, d }, 0.02, 0.004)];
   for (const sx of [-1, 1]) {
     for (const sz of [-1, 1]) {
-      parts.push(
-        part("ring", "steel", {
-          x: sx * w * 0.22,
-          y: h + 0.008,
-          z: sz * d * 0.22,
-          w: Math.min(0.18, w * 0.3),
-          h: 0.016,
-          d: Math.min(0.18, d * 0.3),
-        }),
-      );
+      const r = Math.min(0.09, w * 0.15, d * 0.15);
+      // A burner: a cap on a crown, turned; the ring a lathe, not a flat square.
+      parts.push(turned("ring", "steel", { x: sx * w * 0.22, y: h + 0.017, z: sz * d * 0.22 }, r, 0.034, [[0, -0.017], [r * 0.9, -0.017], [r * 0.9, -0.004], [r * 0.55, 0.004], [r * 0.5, 0.017], [0, 0.017]]));
     }
   }
   return parts;
 }
 
-/** A sink: rim, a basin sunk into it, and a tap at the back edge. */
+/** A sink: bowls sunk into the worktop (the counter's top is open where they go), a drain in each floor, a gooseneck tap. */
 export function sink(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
-  const rimH = 0.02;
-  return [
-    part("rim", "steel", { x: 0, y: h - rimH / 2, z: 0, w, h: rimH, d }),
-    part("basin", "steel", {
-      x: 0,
-      y: h - rimH - 0.08,
-      z: 0.02,
-      w: Math.max(0.1, w - 0.12),
-      h: 0.16,
-      d: Math.max(0.1, d - 0.12),
-    }),
-    part("tap", "metal", { x: 0, y: h + 0.12, z: -d / 2 + 0.06, w: 0.04, h: 0.24, d: 0.04 }),
-    part("spout", "metal", { x: 0, y: h + 0.22, z: -d / 2 + 0.16, w: 0.03, h: 0.03, d: Math.min(0.2, d) }),
+  const openW = Math.max(0.1, w - 0.06);
+  const openD = Math.max(0.1, d - 0.08);
+  const bowls = spec.double ? 2 : 1;
+  const gap = spec.double ? 0.04 : 0;
+  const bowlW = (openW - gap * (bowls - 1)) / bowls;
+  const parts: PiecePart[] = [
+    // One rim for every bowl, inset from the drawn box so a single sink reads narrower than its outline.
+    part("rim", "steel", { x: 0, y: h + 0.008, z: 0.02, w: openW, h: 0.012, d: openD }),
   ];
+  for (let i = 0; i < bowls; i++) {
+    const x = -openW / 2 + bowlW / 2 + i * (bowlW + gap);
+    parts.push(
+      // The lip lies on the worktop; the walls go down 18 cm to a floor with its drain.
+      hollow("basin", "steel", { x, z: 0.02, top: h + 0.004 }, { w: bowlW + 0.04, d: openD + 0.04 }, { w: bowlW, d: openD }, 0.18, 0.04),
+      turned("drain", "steel", { x, y: h - 0.17, z: 0.02 }, 0.03, 0.01, [[0, -0.005], [0.03, -0.005], [0.03, 0.005], [0, 0.005]]),
+    );
+  }
+  if (spec.double) parts.push(part("divider", "steel", { x: 0, y: h + 0.004, z: 0.02, w: gap + 0.02, h: 0.008, d: openD + 0.04 }));
+  parts.push(
+    tube("tap", "metal", { x: 0, y: h + 0.15, z: -d / 2 + 0.14, w: 0.04, h: 0.3, d: 0.3 }, [[0, -0.15, -0.1], [0, 0.05, -0.1], [0, 0.14, -0.06], [0, 0.14, 0.04], [0, 0.04, 0.1]], 0.012),
+  );
+  return parts;
 }
 
 /**
@@ -272,10 +249,16 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   // A washing machine: a white box with its round door on top, as a sheet
   // draws it — a square with a drum. 21's, unnamed, was built as a basin.
   if (spec.fixture === "washer") {
-    const drum = Math.min(w, d) * 0.62;
+    // An appliance from above: a white top, a dark control strip with its dial
+    // along the back, a pale steel drum lid. A plain white box with a grey
+    // square was painted as a toilet (13/10/2026), and a dark round door in a
+    // white square as a toilet's bowl (15/10/2026).
+    const drum = Math.min(w, d - 0.14) * 0.62;
     return [
-      part("washer", "ceramic", { x: 0, y: 0.425, z: 0, w, h: 0.85, d }, 0.03),
-      part("drum", "metal", { x: 0, y: 0.855, z: 0, w: drum, h: 0.01, d: drum }),
+      part("washer", "ceramic", { x: 0, y: 0.425, z: 0, w, h: 0.85, d }, 0.02),
+      part("plate", "metal", { x: 0, y: 0.856, z: -d / 2 + 0.07, w: w * 0.92, h: 0.012, d: 0.11 }),
+      part("dial", "metal", { x: w * 0.24, y: 0.866, z: -d / 2 + 0.07, w: 0.06, h: 0.014, d: 0.06 }, 0.03),
+      part("drum", "metal", { x: 0, y: 0.858, z: 0.06, w: drum, h: 0.012, d: drum }, drum / 2),
     ];
   }
   if (spec.fixture === "basin" && Math.max(w, d) >= 0.5) return vanity(w, d);
@@ -286,16 +269,11 @@ export function fixture(spec: PieceSpec): PiecePart[] {
     // solid with a plate on top, from above it read as a white box, and the
     // designs drew a cabinet there.
     const rim = Math.min(0.08, Math.min(w, d) * 0.12);
-    const inner = { w: Math.max(0.1, w - 2 * rim), d: Math.max(0.1, d - 2 * rim) };
     return [
-      // Its basin a hand below the rim, not at the floor: sunk to the floor it
-      // lay in its own shadow, a dark slab the designs painted as a shower.
-      part("tub", "ceramic", { x: 0, y: (h - 0.12) / 2, z: 0, w, h: h - 0.12, d }, 0.03),
-      part("rim", "ceramic", { x: 0, y: h / 2, z: -d / 2 + rim / 2, w, h, d: rim }, 0.02),
-      part("rim", "ceramic", { x: 0, y: h / 2, z: d / 2 - rim / 2, w, h, d: rim }, 0.02),
-      part("rim", "ceramic", { x: -w / 2 + rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
-      part("rim", "ceramic", { x: w / 2 - rim / 2, y: h / 2, z: 0, w: rim, h, d: inner.d }, 0.02),
-      part("tap", "metal", { x: 0, y: h + 0.08, z: -d / 2 + rim / 2, w: 0.04, h: 0.16, d: 0.04 }),
+      // The tub: an outer shell with softly rounded corners and a dark well dropped into it, a tap on its end.
+      // The tub: a hollow shell, rim round an opening, walls going down to a floor a hand above the bottom: a bath with a bather's depth in it.
+      shell("tub", "ceramic", { x: 0, y0: 0, z: 0, w, h, d }, rim, Math.min(w, d) * 0.35, 0.12),
+      tube("tap", "metal", { x: 0, y: h + 0.1, z: -d / 2 + rim / 2, w: 0.04, h: 0.2, d: 0.04 + rim - 0.004 }, [[0, -0.1, -(0.02 + rim / 2 - 0.016)], [0, 0.04, -(0.02 + rim / 2 - 0.016)], [0, 0.1, -(0.02 + rim / 2 - 0.016) + 0.02], [0, 0.1, 0.02 + rim / 2 - 0.016]], 0.012),
     ];
   }
   // Unnamed and not a bath: a pan runs out from its wall, a basin along it.
@@ -308,9 +286,9 @@ export function fixture(spec: PieceSpec): PiecePart[] {
   // pair of loose lines), so a pan is built at a pan's size round it.
   if (!spec.fixture && d >= w * 1.05 && d >= 0.3 && w <= 0.6 && d <= 0.85) return toilet(Math.max(w, 0.38), Math.max(d, 0.6));
   return [
-    part("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0, w: w * 0.45, h: h * 0.8, d: d * 0.45 }),
-    part("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }),
-    part("tap", "metal", { x: 0, y: h + 0.06, z: -d / 2 + 0.05, w: 0.035, h: 0.12, d: 0.035 }),
+    turned("pedestal", "ceramic", { x: 0, y: h * 0.4, z: 0 }, Math.min(w, d) * 0.24, h * 0.8, [[0.7, -h * 0.4], [1, -h * 0.4], [0.8, 0], [1.1, h * 0.4]].map(([r, y]) => [r! * Math.min(w, d) * 0.22, y!] as [number, number])),
+    { ...slab("bowl", "ceramic", { x: 0, y: h - 0.06, z: 0, w, h: 0.12, d }, Math.min(w, d) / 2, 0.04), shape: { kind: "extrude" as const, outline: ellipse(w / 2, d / 2, 28), bevel: 0.04 } },
+    tube("tap", "metal", { x: 0, y: h + 0.1, z: -d / 2 + 0.06, w: 0.035, h: 0.16, d: 0.14 }, [[0, -0.08, -0.04], [0, 0.04, -0.04], [0, 0.08, 0], [0, 0.06, 0.05]], 0.01),
   ];
 }
 
@@ -318,10 +296,12 @@ export function fixture(spec: PieceSpec): PiecePart[] {
 function toilet(w: number, d: number): PiecePart[] {
   const cisternD = Math.min(0.16, d * 0.3);
   const bowlD = d - cisternD;
+  const bw = Math.min(w * 0.82, 0.4);
   return [
-    part("cistern", "ceramic", { x: 0, y: 0.38, z: -d / 2 + cisternD / 2, w: w * 0.95, h: 0.76, d: cisternD }, 0.03),
-    part("bowl", "ceramic", { x: 0, y: 0.19, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.8, h: 0.38, d: bowlD }, Math.min(w, bowlD) * 0.38),
-    part("seat", "ceramic", { x: 0, y: 0.395, z: -d / 2 + cisternD + bowlD / 2, w: w * 0.9, h: 0.03, d: bowlD * 0.95 }, Math.min(w, bowlD) * 0.4),
+    slab("cistern", "ceramic", { x: 0, y: 0.38, z: -d / 2 + cisternD / 2, w: w * 0.95, h: 0.76, d: cisternD }, 0.04, 0.02),
+    // The bowl: an oval pan narrowing at the front, with its seat in the same line.
+    { ...slab("bowl", "ceramic", { x: 0, y: 0.19, z: -d / 2 + cisternD + bowlD / 2, w: bw, h: 0.38, d: bowlD }, 0.1, 0.03), shape: { kind: "extrude" as const, outline: ellipse(bw / 2, bowlD / 2, 24), bevel: 0.03 } },
+    { ...slab("seat", "ceramic", { x: 0, y: 0.4, z: -d / 2 + cisternD + bowlD / 2, w: bw * 1.04, h: 0.035, d: bowlD * 0.98 }, 0.1, 0.012), shape: { kind: "extrude" as const, outline: ellipse((bw * 1.04) / 2, (bowlD * 0.98) / 2, 24), bevel: 0.012 } },
   ];
 }
 
@@ -337,11 +317,15 @@ function shower(w: number, d: number): PiecePart[] {
 /** A basin on its vanity: the cabinet, the top, the bowl sunk in it and the tap. */
 function vanity(w: number, d: number): PiecePart[] {
   const top = 0.85;
+  const bw = Math.min(w - 0.08, 0.5);
+  const bd = Math.min(d - 0.12, 0.38);
   return [
-    part("cabinet", "joinery", { x: 0, y: (top - 0.04 + 0.15) / 2, z: 0, w, h: top - 0.04 - 0.15, d: d * 0.95 }),
-    part("top", "worktop", { x: 0, y: top - 0.02, z: 0, w, h: 0.04, d }),
-    part("bowl", "ceramic", { x: 0, y: top + 0.04, z: 0.02, w: Math.min(w - 0.08, 0.5), h: 0.08, d: Math.min(d - 0.12, 0.38) }, 0.04),
-    part("tap", "metal", { x: 0, y: top + 0.1, z: -d / 2 + 0.05, w: 0.035, h: 0.2, d: 0.035 }),
+    slab("cabinet", "joinery", { x: 0, y: (top - 0.04 + 0.15) / 2, z: 0, w, h: top - 0.04 - 0.15, d: d * 0.95 }, 0.01, 0.006),
+    slab("top", "worktop", { x: 0, y: top - 0.02, z: 0, w, h: 0.04, d }, 0.015, 0.01),
+    // An oval bowl on the top with a dark well, and a swan-neck tap.
+    // A vessel basin standing on the top: a hollow shell with its opening and a real depth.
+    shell("bowl", "ceramic", { x: 0, y0: top, z: 0.02, w: bw, h: 0.13, d: bd }, 0.018, bd / 2, 0.03),
+    tube("tap", "metal", { x: 0, y: top + 0.19, z: -d / 2 + 0.1, w: 0.04, h: 0.2, d: 0.2 }, [[0, -0.1, -0.06], [0, 0.04, -0.06], [0, 0.1, -0.02], [0, 0.1, 0.05], [0, 0.04, 0.09]], 0.01),
   ];
 }
 
