@@ -7,6 +7,8 @@ import { readDwfStrip } from "@/lib/projects/dwf-building";
 import { readDxfDrawing } from "@/lib/projects/dxf-drawing";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { dwfSheetJpeg } from "@/lib/projects/floorplan-render-dwf";
+import { textLines } from "@/lib/projects/floor-split";
+import { publicRoomKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
 
 /** One sheet of the house: a DWF file, or a layout tab of a DXF file. */
 export type HouseSheetRef = { file: string; sheet?: string; /** A DXF that is one floor in model space: read whole, not by layout tab. */ whole?: boolean };
@@ -21,7 +23,8 @@ export type HouseLevels = { floors: number[]; roof: number; parapet: number };
  * level marks, the faces — and falls back to the standard where they do not.
  */
 export type HouseProject = {
-  models: Array<{ id: string; name: string; floors: HouseSheetRef[] }>;
+  /** Each model's storeys from the ground up, and the plan of its roof where one is drawn: what stands on it. */
+  models: Array<{ id: string; name: string; floors: HouseSheetRef[]; roof?: HouseSheetRef }>;
   facades: HouseSheetRef;
   style: string;
   /**
@@ -30,6 +33,13 @@ export type HouseProject = {
    * as the style's audience says.
    */
   haredi?: boolean;
+  /**
+   * What the building is for, set by hand: a home's rooms, or a public
+   * building's — a school, a clinic — named as its sheets print them, with
+   * none guessed into a living room or a bedroom. Absent: as its sheets'
+   * printed names say (isPublicBuilding).
+   */
+  use?: "dwelling" | "public";
   /** True north on the plans, set by hand. */
   north?: North;
   /** The facade sheet's drawings, top to bottom, by the plan's side each is seen from (compass.ts), where the sheet titles none and the vision model's is not verified. */
@@ -99,7 +109,24 @@ export const GOTTLIEB_HOUSE: HouseProject = {
 };
 
 const SHEET_FILE = /\.(dwf|dxf)$/i;
-const FACADE_WORDS = /facade|elevation|חזית|חזיתות/i;
+const FACADE_WORDS = /facade|elevation|חזית|חזיתות|chazit|hazit/i;
+/**
+ * The words that say whether a sheet draws what stands or what is added
+ * ("kayam" / "tosefet", קיים / תוספת): one building either way, not two
+ * models (the Wolf seminary's ground and first floors are existing, its second
+ * and third added).
+ */
+const PHASE_WORDS = /^(kayam|kayemet|kaiam|tosefet|tosafot|existing|addition|proposed|mutza|קיים|קיימת|קיימות|תוספת|תוספות|מוצע|מוצעת)$/i;
+
+/** The model a sheet belongs to: its name less its storey, its copy number, and whether it is existing or added. */
+function modelKey(name: string): string {
+  return modelOf(name)
+    .replace(SHEET_FILE, "")
+    .split(/\s+/)
+    .filter((w) => w && !PHASE_WORDS.test(w))
+    .join(" ")
+    .trim();
+}
 
 /**
  * Which uploaded sheet is which, from the files' names — "A-ground.dwf",
@@ -110,14 +137,22 @@ export function projectFromSheets(sheets: Array<HouseSheetRef & { name: string }
   const problems: string[] = [];
   const facades = sheets.find((s) => FACADE_WORDS.test(s.name));
   const byModel = new Map<string, Array<{ storey: number; ref: HouseSheetRef }>>();
+  const roofs = new Map<string, HouseSheetRef>();
+  const refOf = (s: HouseSheetRef): HouseSheetRef => ({ file: s.file, ...(s.sheet ? { sheet: s.sheet } : {}), ...(s.whole ? { whole: true } : {}) });
   for (const s of sheets) {
     if (s === facades) continue;
     const storey = storeyOf(s.name);
+    const model = modelKey(s.name) || "A";
+    if (storey === "roof") {
+      if (roofs.has(model)) problems.push(`שני גיליונות גג: ${s.name}`);
+      else roofs.set(model, refOf(s));
+      continue;
+    }
+    // A basement is not stood up: the house is read from its ground floor up.
     if (typeof storey !== "number" || storey < 0) continue;
-    const model = modelOf(s.name).replace(SHEET_FILE, "").trim() || "A";
     const list = byModel.get(model) ?? [];
     if (list.some((f) => f.storey === storey)) problems.push(`שני גיליונות לאותה קומה: ${s.name}`);
-    else list.push({ storey, ref: { file: s.file, ...(s.sheet ? { sheet: s.sheet } : {}), ...(s.whole ? { whole: true } : {}) } });
+    else list.push({ storey, ref: refOf(s) });
     byModel.set(model, list);
   }
   if (!facades) problems.push("לא נמצא גיליון חזיתות (שם הקובץ או הלשונית צריך לכלול facades או חזיתות)");
@@ -132,14 +167,15 @@ export function projectFromSheets(sheets: Array<HouseSheetRef & { name: string }
       const gap = floors.findIndex((f, i) => f.storey !== i);
       if (gap > 0) problems.push(`לדגם ${id} חסרה קומה ${gap}`);
       const kept = gap > 0 ? floors.slice(0, gap) : floors;
-      return [{ id, name: id.length <= 3 ? `דגם ${id}` : id, floors: kept.map((f) => f.ref) }];
+      const roof = roofs.get(id);
+      return [{ id, name: id.length <= 3 ? `דגם ${id}` : id, floors: kept.map((f) => f.ref), ...(roof ? { roof } : {}) }];
     });
   if (!models.length) problems.push("לא נמצאו תוכניות קומה (למשל A-ground.dwf, A-floor1.dwf)");
   return { project: facades && models.length ? { models, facades: { file: facades.file, ...(facades.sheet ? { sheet: facades.sheet } : {}), ...(facades.whole ? { whole: true } : {}) }, style } : null, problems };
 }
 
 /** What the hand knows of a house, uploaded beside its sheets as `house.json`. */
-export type HouseNotes = Pick<HouseProject, "north" | "faces" | "site" | "levels" | "haredi"> & { style?: string };
+export type HouseNotes = Pick<HouseProject, "north" | "faces" | "site" | "levels" | "haredi" | "use"> & { style?: string };
 
 export const HOUSE_NOTES_FILE = /(^|[-_.])house\.json$/i;
 
@@ -150,8 +186,8 @@ const finite = (v: unknown): v is number => typeof v === "number" && Number.isFi
  * A house's notes, each field checked: `north` the degrees the plans' north
  * arrow points clockwise from the sheet's up (or a vector), `faces` the facade
  * sheet's drawings by the plan's side each is seen from, `site` the plot's
- * levels, `levels` the storeys', `haredi` the haredi switch (true / false).
- * A field that does not hold is left out and named.
+ * levels, `levels` the storeys', `haredi` the haredi switch (true / false),
+ * `use` "dwelling" or "public". A field that does not hold is left out and named.
  */
 export function houseNotesFrom(raw: unknown): { notes: HouseNotes; problems: string[] } {
   const problems: string[] = [];
@@ -193,7 +229,29 @@ export function houseNotesFrom(raw: unknown): { notes: HouseNotes; problems: str
   if (typeof r.style === "string" && r.style.trim()) notes.style = r.style.trim();
   if (typeof r.haredi === "boolean") notes.haredi = r.haredi;
   else if (r.haredi !== undefined) problems.push("haredi: true או false");
+  if (r.use === "dwelling" || r.use === "public") notes.use = r.use;
+  else if (r.use !== undefined) problems.push("use: dwelling או public");
   return { notes, problems };
+}
+
+/**
+ * Whether a building's storey sheets are a public building's: more of the
+ * room names they print are a school's, a clinic's or an office's —
+ * "כיתה", "חדר מורים", "מזכירות" — than a home's, and at least a few. The
+ * Wolf seminary prints 40 such names and two "שירותים"; Gottlieb's houses
+ * none.
+ */
+export function isPublicBuilding(sheets: DwfGeometry[]): boolean {
+  let publicNames = 0;
+  let homeNames = 0;
+  for (const g of sheets) {
+    for (const line of textLines(g.texts)) {
+      const home = roomLabelKind(line.text);
+      if (home === "living" || home === "kitchen" || home === "bedroom" || home === "mmd") homeNames++;
+      else if (!home && publicRoomKind(line.text)) publicNames++;
+    }
+  }
+  return publicNames >= 3 && publicNames > homeNames;
 }
 
 /** The uploaded files' sheets: a DWF is one, named by its file; a DXF one per layout tab, or one named by its file. */
@@ -204,7 +262,11 @@ export function sheetsOfFiles(files: Map<string, Buffer>, options?: { whole?: (f
     if (options?.whole?.(file)) return [{ file, name: file, whole: true }];
     const drawing = readDxfDrawing(bytes);
     const tabs = drawing ? dxfSheets(drawing).filter((s) => s.storey != null || FACADE_WORDS.test(s.name)) : [];
-    return tabs.length > 1 ? tabs.map((s) => ({ file, sheet: s.name, name: s.name })) : [{ file, name: file }];
+    if (tabs.length > 1) return tabs.map((s) => ({ file, sheet: s.name, name: s.name }));
+    // A file that is one storey, by its name, and whose tabs name none: that storey drawn whole in model space. Its
+    // one layout tab, read instead, framed some other drawing (Wolf: "no floor sheet with a level mark").
+    const storey = storeyOf(file);
+    return storey != null && !FACADE_WORDS.test(file) ? [{ file, name: file, whole: true }] : [{ file, name: file }];
   });
 }
 

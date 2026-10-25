@@ -98,6 +98,10 @@ export type BookletState = {
   openings?: Array<{ storey: number; doors: Record<string, number>; windows: number }>;
   /** The lawn its ground floor sheet hatches, m². */
   lawnM2?: number;
+  /** A public building (a school, a clinic): rooms as its sheets name them, its classrooms seen inside. */
+  public?: boolean;
+  /** The rooms seen inside, by view id: a public building's are titled as its sheets name them. */
+  roomTitles?: Record<string, string>;
   /** A house plan's padding round its sheet's frame, metres, by floor id: where a room's label stands in the picture. */
   planPadM?: Record<string, number>;
 };
@@ -147,6 +151,8 @@ export type StageInput = {
   haredi?: boolean;
   /** False where the drawing has no parking (not a private house): the cars gate then passes with none. Default true. */
   requireCars?: boolean;
+  /** A public building: its rooms named as its sheets print them, none guessed into a home's by size. */
+  public?: boolean;
   /** Absent: a house when the strip names no apartments, a permit building when it does. */
   finish?: BuildingFinish;
   /** The strip already read. Absent: `source` is read as a DWF. */
@@ -166,6 +172,8 @@ export type StageInput = {
   say?: (step: string) => void;
   /** Path-trace the outside views with this many samples a pixel: local only, the tracer is a dev dependency. */
   traceSamples?: number;
+  /** Views drawn by one browser between deadline checks; 3 where not given. A house's 4000 px views on the platform go one at a time. */
+  viewBatch?: number;
 };
 
 /** Where the job stands after a call, and the booklet's page once it is assembled. */
@@ -190,7 +198,8 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
     const permit = splitStrip(s).some((d) => d.kind === "floor" && d.units.length > 0);
     const finish = input.finish ?? (permit ? "permit" : "house");
     state.finish = finish;
-    const building = buildingFromDwf(s, { name: input.projectName, finish, site: input.site, yard: input.yard, north: input.north, top: input.top, haredi: input.haredi });
+    const building = buildingFromDwf(s, { name: input.projectName, finish, site: input.site, yard: input.yard, north: input.north, top: input.top, haredi: input.haredi, public: input.public });
+    if (input.public) state.public = true;
     state.parking = building.model.primitives.filter((p) => p.tag === "yard:car").length;
     state.north = building.model.north;
     if (input.site) state.site = input.site;
@@ -232,17 +241,19 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
 
   if (input.stage === "views") {
     const model = JSON.parse((await input.store.get(state.artefacts!["model.json"]!)).toString("utf8")) as BuildingModel;
-    const views = dwfBuildingViews({ floors: state.floors ?? [], model: { extent: state.extent!, primitives: model.primitives } }, undefined, state.elevationFrames ?? {}, { house: state.finish === "house", north: state.north, street: state.street, plot: state.plot });
+    const views = dwfBuildingViews({ floors: state.floors ?? [], model: { extent: state.extent!, primitives: model.primitives } }, undefined, state.elevationFrames ?? {}, { house: state.finish === "house", north: state.north, street: state.street, plot: state.plot, public: state.public });
     if (state.finish === "house") {
       state.planPadM = Object.fromEntries(
         (state.floors ?? []).filter((f) => !f.roof).map((f) => [f.id, housePlanPadMetres({ id: f.id, sheetWidth: f.sheetWidth, sheetHeight: f.sheetHeight, shift: f.shift }, model.primitives)]),
       );
     }
+    if (state.public) state.roomTitles = Object.fromEntries(views.filter((v) => v.id.startsWith("room-")).map((v) => [v.id, v.title]));
     const pending = views.filter((v) => !(state.viewsDone ?? []).includes(v.id));
     // A few at a time: one browser for each batch, and the deadline checked between them.
-    for (let i = 0; i < pending.length; i += 3) {
+    const size = Math.max(1, input.viewBatch ?? 3);
+    for (let i = 0; i < pending.length; i += size) {
       if (Date.now() > input.deadline) return { stage: "views", state };
-      const batch = pending.slice(i, i + 3);
+      const batch = pending.slice(i, i + size);
       say(`drawing ${batch.map((v) => v.id).join(", ")}`);
       // A plan is traced too: its cut is made in the geometry (cut-model.ts).
       const traced = (_v: (typeof batch)[number]) => (input.traceSamples ? { pathTrace: { samples: input.traceSamples } } : {});

@@ -280,6 +280,9 @@ export function planKeyOf(input: {
 async function bookletContent(projectName: string, state: BookletState, store: ArtefactStore): Promise<BookletContent> {
   const a = state.artefacts ?? {};
   const house = state.finish === "house";
+  // A public building (a school): its rooms as its sheets name them, furnished only as drawn, no pair of homes.
+  const pub = house && state.public === true;
+  const decor = pub ? "הריהוט — כפי שמשורטט בתוכנית." : "פריטי עיצוב (שטיחים, שולחן קפה, שידות לילה, עציצים וקערות פירות) נוספו להמחשה ואינם חלק מהתשריט.";
   // A house's facade without the band of earth under it: the section's cut
   // ground stood a flat brown slab across a third of every facade
   // (12/10/2026). Cut just under the garden, a strip of ground kept.
@@ -320,8 +323,8 @@ async function bookletContent(projectName: string, state: BookletState, store: A
       no: ++no,
       title: f.units.length ? `קומה ${levelText(f.level)} — דירות ${f.units.join(", ")}` : house ? `${storeyName(i)} · ${levelText(f.level)}` : `קומה ${levelText(f.level)}`,
       caption: key
-        ? `תכנית הקומה מלמעלה, באותה מסגרת ובאותו קנה מידה כמו הגיליון. החללים ממוספרים, והמקרא בצד: שם, מידות ושטח כפי שכתב האדריכל. פריטי עיצוב (שטיחים, שולחן קפה, שידות לילה, עציצים וקערות פירות) נוספו להמחשה ואינם חלק מהתשריט.${how(`view-plan-${f.id}.jpg`)}`
-        : `תכנית הקומה והקומה בהדמיה, מלמעלה, באותה מסגרת ובאותו קנה מידה${named ? "; שמות החדרים ושטחם — בגיליון שלצד ההדמיה ובטבלת השטחים" : ""}. פריטי עיצוב (שטיחים, שולחן קפה, שידות לילה, עציצים וקערות פירות) נוספו להמחשה ואינם חלק מהתשריט.${how(`view-plan-${f.id}.jpg`)}`,
+        ? `תכנית הקומה מלמעלה, באותה מסגרת ובאותו קנה מידה כמו הגיליון. החללים ממוספרים, והמקרא בצד: שם, מידות ושטח כפי שכתב האדריכל. ${decor}${how(`view-plan-${f.id}.jpg`)}`
+        : `תכנית הקומה והקומה בהדמיה, מלמעלה, באותה מסגרת ובאותו קנה מידה${named ? "; שמות החדרים ושטחם — בגיליון שלצד ההדמיה ובטבלת השטחים" : ""}. ${decor}${how(`view-plan-${f.id}.jpg`)}`,
       sheet,
       render,
       ...(key ? { key } : {}),
@@ -353,26 +356,35 @@ async function bookletContent(projectName: string, state: BookletState, store: A
     const img = await image(`view-${id}.jpg`);
     const caption =
       id === "aerial-top"
-        ? "המגרש במבט ישר מלמעלה, באותה מסגרת כמו גיליון קומת הקרקע: הגגות, הגינות, החניות עם הרכבים, השבילים, גדרות האבן, השער, פחי האשפה והרחוב — כל אחד במקומו בגיליון."
-        : house
+        ? pub
+          ? "הבניין והמגרש במבט ישר מלמעלה, באותה מסגרת כמו גיליון קומת הקרקע: הגגות, החצרות והשבילים — כל אחד במקומו בגיליון."
+          : "המגרש במבט ישר מלמעלה, באותה מסגרת כמו גיליון קומת הקרקע: הגגות, הגינות, החניות עם הרכבים, השבילים, גדרות האבן, השער, פחי האשפה והרחוב — כל אחד במקומו בגיליון."
+        : pub
+          ? "הבניין מהמדרכה שמעבר לרחוב, בגובה העין — כפי שנבנה מתוכניות הקומות, המפלסים והחזיתות."
+          : house
           ? "זוג הבתים הצמודים מהמדרכה שמעבר לרחוב, בגובה העין — כפי שעובר אורח רואה אותם: החניות, השער, גדרות האבן ופחי האשפה במקומם בגיליון."
           : "הבניין כולו, כפי שנבנה מתוכניות הקומות, המפלסים והחתכים שבגרמושקה.";
     if (img) plates.push({ kicker: "מבט חוץ", title, caption: `${caption}${how(`view-${id}.jpg`)}`, image: img });
   }
   // A house's main rooms from eye height (dwf-views houseRoomViews), furnished as its sheets draw them.
   if (house) {
-    const rooms: Array<[string, string]> = [
-      ["room-living", "הסלון ופינת האוכל"],
-      ["room-kitchen", "המטבח"],
-      ["room-bedroom", "חדר השינה"],
-    ];
+    // A public building's are its largest classrooms or halls, titled as its sheets name them (dwf-views PUBLIC_ROOM_VIEWS).
+    const rooms: Array<[string, string]> = pub
+      ? Object.entries(state.roomTitles ?? {})
+      : [
+          ["room-living", "הסלון ופינת האוכל"],
+          ["room-kitchen", "המטבח"],
+          ["room-bedroom", "חדר השינה"],
+        ];
     for (const [id, title] of rooms) {
       const img = await image(`view-${id}.jpg`);
       if (img)
         plates.push({
           kicker: "הדמיית פנים",
           title,
-          caption: `מבט מגובה העין בבית הראשון שבזוג (השני — תמונת ראי שלו). הריהוט מוצב כפי שהתשריט משרטט אותו — כל פריט במקומו ובמספרו; פריטי עיצוב (שטיחים, שולחן קפה, שידות לילה, עציצים וקערות פירות) נוספו להמחשה.${how(`view-${id}.jpg`)}`,
+          caption: pub
+            ? `מבט מגובה העין. הריהוט מוצב כפי שהתוכנית משרטטת אותו — כל פריט במקומו ובמספרו.${how(`view-${id}.jpg`)}`
+            : `מבט מגובה העין בבית הראשון שבזוג (השני — תמונת ראי שלו). הריהוט מוצב כפי שהתשריט משרטט אותו — כל פריט במקומו ובמספרו; פריטי עיצוב (שטיחים, שולחן קפה, שידות לילה, עציצים וקערות פירות) נוספו להמחשה.${how(`view-${id}.jpg`)}`,
           image: img,
         });
     }
@@ -408,7 +420,7 @@ async function bookletContent(projectName: string, state: BookletState, store: A
     hero,
     kpis: [
       { label: "קומות", value: String(floors.length) },
-      house ? { label: "חניות", value: String(state.parking ?? 0) } : { label: "דירות", value: String(new Set(apartments.map((x) => x.key.replace(/-.*$/, ""))).size) },
+      pub ? { label: "חללים", value: String(storeys.reduce((n, s) => n + s.rooms.length, 0)) } : house ? { label: "חניות", value: String(state.parking ?? 0) } : { label: "דירות", value: String(new Set(apartments.map((x) => x.key.replace(/-.*$/, ""))).size) },
       { label: "גובה", value: `<span dir="ltr">${levelText(top)}</span>` },
       ...(area > 0 ? [{ label: storeys.some((s) => s.pair) ? "שטח חללים לבית" : "שטח חללים", value: `${areaText(area)} מ"ר` }] : []),
       { label: "גיליונות", value: String(sheets.length) },
@@ -480,7 +492,7 @@ function houseBrief(state: BookletState, storeys: StoreyRooms[]): string[] {
     state.openings?.length ? "הדלתות והחלונות — מבלוקי הקובץ" : "",
   ].filter(Boolean);
   const lines = [
-    `${pair ? "זוג בתים צמודים (דו־משפחתי)" : "בית פרטי"} ב־${storeys.length} קומות, שנבנה בתלת־ממד ישירות מגיליונות האדריכל בקנ"מ 1:100${slope ? `; ${slope}` : ""}.`,
+    `${state.public ? "מבנה ציבורי" : pair ? "זוג בתים צמודים (דו־משפחתי)" : "בית פרטי"} ב־${storeys.length} קומות, שנבנה בתלת־ממד ישירות מגיליונות האדריכל בקנ"מ 1:100${slope ? `; ${slope}` : ""}.`,
     `${sources.join("; ")}. הריהוט והצמחייה בהדמיות — להמחשה.`,
   ];
   if (!state.painted) lines.push("טיוטה: ההדמיות מדודות ואינן צבועות.");

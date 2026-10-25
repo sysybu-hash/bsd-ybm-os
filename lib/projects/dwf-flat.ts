@@ -9,7 +9,7 @@ import { readDwfSanitary } from "@/lib/projects/dwf-sanitary";
 import { type DwfTerrace, readDwfTerraces } from "@/lib/projects/dwf-terrace";
 import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import { renderFlatSvg } from "@/lib/projects/floorplan-render3d";
-import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
+import { publicRoomKind, type SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import type { Opening, SpanRow, WallBody } from "@/lib/projects/floorplan-solid";
 import type { OpeningKind } from "@/lib/projects/floorplan-wall-openings";
 
@@ -48,7 +48,15 @@ export function flatFromDwfFloor(
    * sheet (house-photoreal SHEET_FURNISHING): an open kitchen made up beside
    * a party wall the sheet leaves bare was a guess the painting then had to undo.
    */
-  options?: { drawnOnly?: boolean },
+  options?: {
+    drawnOnly?: boolean;
+    /**
+     * A public building's: a room is named as its sheet prints it — "כיתה",
+     * "חדר מורים" — and one it leaves unnamed is not guessed into a living
+     * room, a kitchen or a bedroom by its size.
+     */
+    public?: boolean;
+  },
 ): DwfFlat | null {
   const apartment = floor.apartments.find((a) => a.unit === unit);
   if (!apartment || apartment.rooms.length === 0) return null;
@@ -198,7 +206,7 @@ export function flatFromDwfFloor(
       for (const id of loose) splitWetChambers(floor, apartment.rooms, id, fixtures);
     }
   }
-  nameUnlabelledHouse(floor, apartment.rooms, sheet, upm, kindAt, inside, readHere);
+  nameUnlabelledHouse(floor, apartment.rooms, sheet, upm, kindAt, inside, readHere || options?.public === true);
   const furniture = readDwfFurniture(sheet, upm, kindAt, inside, wallAt);
   // The drawing's own blocks need no twin's fixtures copied over: a phantom vanity stood by a bathroom door.
   if (!sheet.furniture?.length) mirrorTwinFixtures(floor, sheet, unit, furniture, upm, unitsPerPx);
@@ -253,7 +261,8 @@ export function flatFromDwfFloor(
             : info.kind !== "kitchen" && info.kind !== "living" && contents.some((p) => p.kind === "hob") && info.areaM2 >= 4
               ? "kitchen"
           : (info.kind ?? (info.areaM2 < 6 ? "circulation" : "other"));
-    const base = NAME[kind];
+    const printed = options?.public ? info.names.find((name) => publicRoomKind(name) != null) : undefined;
+    const base = printed ?? NAME[kind];
     const seen = (counts.get(base) ?? 0) + 1;
     counts.set(base, seen);
     segmentedIds.push(id);

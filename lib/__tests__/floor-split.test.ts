@@ -1,6 +1,6 @@
 import type { PlacedText } from "@/lib/projects/floorplan-dwf";
 import { levelMarks, roomLabels, terraceAreas, textLines } from "@/lib/projects/floor-split";
-import { labelledKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
+import { labelledKind, publicRoomKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
 
 const word = (x: number, y: number, text: string, height = 8): PlacedText => ({ x, y, text, height });
 
@@ -18,6 +18,20 @@ describe("room names written on a floor plan", () => {
     expect(roomLabelKind("כביסה")).toBe("utility");
     expect(roomLabelKind("מעלית")).toBe("circulation");
     expect(roomLabelKind("778.45")).toBeNull();
+  });
+
+  it("reads a public building's rooms only where the building is one", () => {
+    // As the Wolf seminary's sheets name them.
+    expect(publicRoomKind("כיתה")).toBe("hall");
+    expect(publicRoomKind("ח. טכנולוגיה")).toBe("hall");
+    expect(publicRoomKind("חדר מורים")).toBe("office");
+    expect(publicRoomKind("מזכירות")).toBe("office");
+    expect(publicRoomKind("ח.טיפולים")).toBe("office");
+    expect(publicRoomKind("לוח כתה")).toBeNull();
+    expect(publicRoomKind("מודעות")).toBeNull();
+    const sheet = [word(100, 50, "כיתה"), word(400, 50, "שירותים")];
+    expect(roomLabels(sheet).map((l) => l.kind)).toEqual(["bathroom"]);
+    expect(roomLabels(sheet, { public: true }).map((l) => l.kind)).toEqual(["hall", "bathroom"]);
   });
 
   it("calls an open-plan room by its main use", () => {

@@ -367,7 +367,7 @@ export function houseLookOf(name: string, style: FloorplanVizStyleKit): Kind | n
   if (/^view-aerial-[a-z]+\.jpg$/.test(name)) return { kind: "exterior", look: EXTERIOR_LOOK, local: true, railings: true, ...held };
   if (/^view-elev-[a-z]+\.jpg$/.test(name)) return { kind: "elevation", look: ELEVATION_LOOK, local: true, railings: false, ...held };
   // From eye height: not "apartment", whose rules see the plan straight from above.
-  if (/^view-room-[a-z]+\.jpg$/.test(name)) return { kind: "interior", look: roomLook(style), local: "interior", railings: false, ...held };
+  if (/^view-room-[a-z]+(-\d+)?\.jpg$/.test(name)) return { kind: "interior", look: roomLook(style), local: "interior", railings: false, ...held };
   if (/^unit-.+\.jpg$/.test(name)) return { kind: "apartment", look: unitLook(style), local: "interior", railings: false, ...held };
   return null;
 }

@@ -5,10 +5,12 @@ import { Download, Home, RotateCcw, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { OsButton } from "@/components/os/ui";
 import FloorplanVizPaintContact from "@/components/os/widgets/floorplan-viz/FloorplanVizPaintContact";
+import { PLAN_DIRECT_UPLOAD_MAX_BYTES, stagePlanFile } from "@/components/os/widgets/floorplan-viz/plan-source";
 
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
 const API = "/api/projects/building-booklet/private-house";
+const STEP_API = "/api/projects/house-booklet-step";
 const POLL_MS = 5_000;
 const KEPT = "house-booklet-job";
 
@@ -71,18 +73,24 @@ export default function FloorplanVizHouseBooklet({
   const alive = useRef(true);
 
   const watch = useCallback(async (id: string) => {
+    let running = false;
     while (alive.current) {
-      const res = await fetch(`${API}?id=${encodeURIComponent(id)}`, { credentials: "include" }).catch(() => null);
+      // While it runs, each call is a step of it: the job goes on as long as the page is open (QStash drives it where configured).
+      const res: Response | null = await fetch(running ? `${STEP_API}?id=${encodeURIComponent(id)}` : `${API}?id=${encodeURIComponent(id)}`, {
+        method: running ? "POST" : "GET",
+        credentials: "include",
+      }).catch(() => null);
       if (res?.status === 404) {
         localStorage.removeItem(KEPT);
         setJob(null);
         return;
       }
-      const json = res?.ok ? ((await res.json().catch(() => null)) as JobView | null) : null;
+      const json: JobView | null = res?.ok ? ((await res.json().catch(() => null)) as JobView | null) : null;
       if (json && alive.current) {
         setJob(json);
         if (json.review) setBudget((b) => b || String(json.review!.budgetIls));
-        if (json.status !== "measuring" && json.status !== "painting") return;
+        running = json.status === "measuring" || json.status === "painting";
+        if (!running) return;
       }
       await new Promise((r) => setTimeout(r, POLL_MS));
     }
@@ -100,10 +108,30 @@ export default function FloorplanVizHouseBooklet({
   const start = useCallback(async () => {
     setBusy(true);
     try {
-      const form = new FormData();
-      for (const f of files) form.append("file", f);
-      form.append("name", name.trim());
-      const res = await fetch(API, { method: "POST", credentials: "include", body: form });
+      let res: Response;
+      if (files.reduce((n, f) => n + f.size, 0) <= PLAN_DIRECT_UPLOAD_MAX_BYTES) {
+        const form = new FormData();
+        for (const f of files) form.append("file", f);
+        form.append("name", name.trim());
+        res = await fetch(API, { method: "POST", credentials: "include", body: form });
+      } else {
+        // Past what one request may carry (a building's DXFs are tens of MB): each sheet goes up first, the job is made from them.
+        const staged = [];
+        for (const f of files) {
+          const ref = await stagePlanFile(f, { always: true });
+          if (!ref) {
+            toast.error(t("workspaceWidgets.floorplanViz.houseFailed"));
+            return;
+          }
+          staged.push({ name: f.name, ...ref });
+        }
+        res = await fetch(API, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "create", name: name.trim(), files: staged }),
+        });
+      }
       const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok || !json.id) {
         toast.error(json.error ?? t("workspaceWidgets.floorplanViz.houseFailed"));

@@ -180,6 +180,8 @@ export function furnishedFlats(
   rooms?: Array<{ kind: string; name: string; areaM2: number; x: number; z: number; w: number; d: number }>,
   /** The haredi switch: single beds, a kitchen's one drawn sink double (sinks.ts). */
   haredi?: boolean,
+  /** A public building: rooms named as printed, none guessed into a home's by size. */
+  isPublic?: boolean,
 ): Primitive[] {
   const out: Primitive[] = [];
   const source = f.furnish ?? { floor: f.floor, units: f.units };
@@ -194,7 +196,7 @@ export function furnishedFlats(
       }
     : null;
   for (const unit of source.units) {
-    const built = flatFromDwfFloor(source.floor, f.sheet, unit, terraces, undefined, { drawnOnly: f.furnish != null });
+    const built = flatFromDwfFloor(source.floor, f.sheet, unit, terraces, undefined, { drawnOnly: f.furnish != null, public: isPublic });
     if (!built) continue;
     const scene = buildFlatScene(built.flat, built.rooms, haredi ? { haredi: true } : undefined);
     if (houseKnob("DBG_UNIT")) log.info("unit rooms", { tag, unit, rooms: scene.rooms.map((r) => `${r.kind}:${r.areaM2.toFixed(1)}@x${(r.bounds.x + shift.x).toFixed(1)}-${(r.bounds.x + r.bounds.w + shift.x).toFixed(1)},z${(r.bounds.z + shift.y).toFixed(1)}-${(r.bounds.z + r.bounds.d + shift.y).toFixed(1)}`).join(" ") });

@@ -264,6 +264,9 @@ const nextConfig = {
     // flat renderer, and the PDF in the booklet's fonts — all read by path.
     "/api/projects/building-booklet/*/step": BUILDING_BOOKLET_FILES,
     "/api/cron/building-booklet-step": BUILDING_BOOKLET_FILES,
+    // A private house's steps draw the same way, and make its PDF the same way.
+    "/api/projects/house-booklet-step": BUILDING_BOOKLET_FILES,
+    "/api/cron/house-booklet-step": BUILDING_BOOKLET_FILES,
     "/api/projects/visualize-floorplan/*/stills/*": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",

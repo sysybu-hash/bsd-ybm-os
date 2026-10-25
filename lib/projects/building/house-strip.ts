@@ -85,7 +85,7 @@ export function splitDrawings(g: DwfGeometry, minGap = 15): DwfGeometry[] {
  * reader can find.
  */
 export function stackHouseGeometries(
-  floors: Array<{ geometry: DwfGeometry; levelM: number }>,
+  floors: Array<{ geometry: DwfGeometry; levelM: number; /** The roof's plan: what stands on the roof (stair heads), at the roof's level. */ roof?: boolean }>,
   facades?: DwfGeometry | Array<{ geometry: DwfGeometry; title: string }>,
 ): DwfGeometry {
   const placed: DwfGeometry[] = [];
@@ -99,7 +99,7 @@ export function stackHouseGeometries(
       shifted.texts = [...shifted.texts, mark];
     }
     placed.push(shifted);
-    if (floor.geometry.singleSheet) forced.push({ x, y: 0, width: floor.geometry.pageWidth, height: floor.geometry.pageHeight, kind: "floor", level: floor.levelM });
+    if (floor.geometry.singleSheet) forced.push({ x, y: 0, width: floor.geometry.pageWidth, height: floor.geometry.pageHeight, kind: floor.roof ? "roof" : "floor", level: floor.levelM });
     x += floor.geometry.pageWidth + GAP;
     height = Math.max(height, floor.geometry.pageHeight);
   }
