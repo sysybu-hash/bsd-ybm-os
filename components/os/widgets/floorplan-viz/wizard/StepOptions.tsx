@@ -129,6 +129,7 @@ export default function StepOptions(p: StepOptionsProps) {
             customKit={p.customKit}
             onCustomKit={p.onCustomKit}
             disabled={p.loading}
+            structure={p.structure === "commercial" ? "commercial" : "apartment"}
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             {back}

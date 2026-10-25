@@ -101,6 +101,9 @@ const KIND_NAME_HE: Record<FloorplanRoomKind, string> = {
   balcony: "מרפסת",
   circulation: "מסדרון",
   utility: "ח.שירות",
+  shop: "חנות",
+  office: "משרד",
+  hall: "אולם",
   other: "חלל",
 };
 

@@ -28,6 +28,10 @@ export const floorplanRoomKindSchema = z.enum([
   "balcony",
   "circulation",
   "utility",
+  // A commercial or public floor's spaces (the identify step's "commercial").
+  "shop",
+  "office",
+  "hall",
   "other",
 ]);
 export type FloorplanRoomKind = z.infer<typeof floorplanRoomKindSchema>;
@@ -162,6 +166,11 @@ const KNOWN_ROOM_LABELS = [
 ];
 
 const KIND_BY_NEEDLE: Array<{ kind: FloorplanRoomKind; needles: string[] }> = [
+  // Before the dwelling words: "אולם" or "כיתה" is never a flat's room, and a
+  // shop's "מחסן" stays a store room below.
+  { kind: "shop", needles: ["חנות", "חנויות", "מסחר", "קיוסק", "בית מרקחת"] },
+  { kind: "office", needles: ["משרדים", "משרד", "מזכירות", "הנהלה", "חדר ישיבות"] },
+  { kind: "hall", needles: ["אולם", "לובי", "כיתה", "כיתות", "בית כנסת", "מסעדה", "גן ילדים", "למידה", "סדנא", "סדנה"] },
   { kind: "mmd", needles: ['ממ"ד', "ממד", "מרחב מוגן"] },
   { kind: "kitchen", needles: ["מטבח"] },
   { kind: "living", needles: ["סלון", "מגורים", "פינת אוכל", "אוכל"] },
@@ -588,7 +597,10 @@ export function isPlausiblePlanRoom(room: FloorplanRoom): boolean {
   if (!room.name.trim() || isPlanAnnotation(room.name)) return false;
   if (isStudyRoom(room) || isStorageOrServiceRoom(room)) return true;
   const kind = room.kind ?? inferRoomKind(room.name);
-  return kind !== "other";
+  // A flat's sheet that prints a shop, an office or an event hall prints the
+  // building's, not the flat's rooms. A commercial floor is measured from its
+  // drawing and is not read through here.
+  return kind !== "other" && kind !== "shop" && kind !== "office" && kind !== "hall";
 }
 
 export function filterPlausibleRooms(rooms: FloorplanRoom[]): FloorplanRoom[] {

@@ -122,6 +122,19 @@ export type SceneRoomKind =
   | "utility"
   | "other";
 
+const SCENE_ROOM_KINDS: ReadonlySet<string> = new Set([
+  "living", "kitchen", "bedroom", "mmd", "bathroom", "balcony", "circulation", "utility", "other",
+]);
+
+/**
+ * A plan's room kind as the scene knows it. A shop, an office or a hall
+ * (a commercial floor) is furnished and floored as a space the scene has no
+ * rules for: "other".
+ */
+export function sceneRoomKindOf(kind: string | undefined): SceneRoomKind {
+  return kind && SCENE_ROOM_KINDS.has(kind) ? (kind as SceneRoomKind) : "other";
+}
+
 export type SceneRoom = {
   id: string;
   name: string;

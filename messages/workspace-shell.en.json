@@ -991,7 +991,10 @@
         "jerusalem_stone": { "title": "Jerusalem stone", "blurb": "Natural stone, no invented openings" },
         "developer_white": { "title": "Developer white box", "blurb": "White walls, sparse furniture" },
         "haredi_classic": { "title": "Haredi innovative", "blurb": "Contemporary warm — not antique" },
-        "haredi_modern": { "title": "Haredi innovative minimal", "blurb": "Light, clean, modern — not antique" }
+        "haredi_modern": { "title": "Haredi innovative minimal", "blurb": "Light, clean, modern — not antique" },
+        "retail": { "title": "Retail", "blurb": "Shop units, glazed fronts" },
+        "office": { "title": "Offices", "blurb": "A clean office floor, daylight" },
+        "public_space": { "title": "Public building", "blurb": "Halls, classrooms and foyers" }
       },
       "kinds": {
         "living": "Living",
@@ -1002,6 +1005,9 @@
         "balcony": "Balcony",
         "circulation": "Core / circulation",
         "utility": "Utility",
+        "shop": "Shop",
+        "office": "Office",
+        "hall": "Hall / public space",
         "other": "Other"
       }
     },
