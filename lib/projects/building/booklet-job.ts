@@ -82,14 +82,14 @@ function appBaseUrl(): string {
   return "http://127.0.0.1:3000";
 }
 
-/** Ask QStash to make the next call; without it, the open page makes it. */
-export async function scheduleNextStep(id: string): Promise<boolean> {
+/** Ask QStash to make the next call (to `path`, a building booklet's where not given); without it, the open page makes it. */
+export async function scheduleNextStep(id: string, path = "/api/cron/building-booklet-step"): Promise<boolean> {
   const token = env.QSTASH_TOKEN?.trim();
   const secret = env.CRON_SECRET?.trim();
   if (!token || !secret) return false;
   try {
     await new Client({ token }).publishJSON({
-      url: `${appBaseUrl()}/api/cron/building-booklet-step?id=${encodeURIComponent(id)}`,
+      url: `${appBaseUrl()}${path}?id=${encodeURIComponent(id)}`,
       body: { id },
       headers: { Authorization: `Bearer ${secret}` },
       retries: 2,

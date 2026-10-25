@@ -1,5 +1,5 @@
 import { facadeTitle, PLAN_NORTH, sideOfTitle, type North } from "@/lib/projects/building/compass";
-import { elevationTitle, runWholeBooklet, type BookletState } from "@/lib/projects/building/dwf-booklet";
+import { elevationTitle, runWholeBooklet, type BookletState, type StageInput } from "@/lib/projects/building/dwf-booklet";
 import { assembleProjectBookletHtml } from "@/lib/projects/building/dwf-booklet-html";
 import { elevationFrame, type ElevationFrame } from "@/lib/projects/building/elevation-frame";
 import { buildingFromDwf } from "@/lib/projects/building/from-dwf";
@@ -114,7 +114,7 @@ export type HouseFacades = {
   levels: (storeys: number) => HouseLevels | null;
   /** Each drawing with its verified marks written on it. */
   marked: DwfGeometry[];
-  read: Array<{ levels: ElevationLevels; reading: LevelReading[]; image: Buffer } | null>;
+  read: Array<{ levels: ElevationLevels; reading: LevelReading[] } | null>;
   frames: Array<ElevationFrame | null>;
   facts: FaceFacts[];
   proposal: Awaited<ReturnType<typeof proposeFaces>>;
@@ -180,8 +180,121 @@ export async function readHouseFacades(input: {
     proposal = await proposeFaces(images, plan).catch(() => null);
     say(proposal ? `ai faces proposed: ${proposal.proposal.map((p) => p?.face ?? "?").join(", ")}${proposal.missing.length ? `; not drawn: ${proposal.missing.join(", ")}` : ""}` : "ai faces: no answer");
   }
-  const levels = (storeys: number) => project.levels ?? levelsFromMarks(read.map((r) => r?.levels ?? null), storeys);
-  return { ai: input.ai, north, hand, levels, marked, read, frames, facts, proposal };
+  const kept = read.map((r) => (r ? { levels: r.levels, reading: r.reading } : null));
+  return { ai: input.ai, north, hand, levels: facadeLevels(project, kept), marked, read: kept, frames, facts, proposal };
+}
+
+/** The storeys' levels: the hand's, else as the facades' marks give them for so many storeys. */
+function facadeLevels(project: HouseProject, read: HouseFacades["read"]): HouseFacades["levels"] {
+  return (storeys) => project.levels ?? levelsFromMarks(read.map((r) => r?.levels ?? null), storeys);
+}
+
+/** The facades as read, kept between a job's steps: everything but the levels, which are worked out again. */
+export type StoredHouseFacades = Omit<HouseFacades, "levels">;
+
+export function storeHouseFacades(facades: HouseFacades): StoredHouseFacades {
+  const { levels: _levels, ...rest } = facades;
+  return rest;
+}
+
+export function houseFacadesBack(stored: StoredHouseFacades, project: HouseProject): HouseFacades {
+  return { ...stored, levels: facadeLevels(project, stored.read) };
+}
+
+/** True north: the project's own, else the plan's arrow; a guess — the sheet's up — names the sides from the street instead. */
+export async function houseNorth(input: { project: HouseProject; groundPlan: DwfGeometry; ai: boolean; say: (step: string) => void }): Promise<{ north: North; northKnown: boolean }> {
+  if (input.project.north) return { north: input.project.north, northKnown: true };
+  const arrow = input.ai ? await readNorthArrow(input.groundPlan).catch(() => null) : null;
+  input.say(arrow ? `north: the plan's arrow points ${arrow.degrees}° from the sheet's up` : "north: no arrow read — the sheet's up is taken for north");
+  return { north: arrow?.north ?? PLAN_NORTH, northKnown: arrow != null };
+}
+
+/** One model's sheets read: its storeys' levels, its floors, its reading against the facades, and its counts against the sheets' truth. */
+export async function readHouseModelSheets(input: {
+  model: HouseProject["models"][number];
+  project: HouseProject;
+  sheets: ReturnType<typeof houseSheetReader>;
+  facades: HouseFacades;
+  ai: boolean;
+  say: (step: string) => void;
+}): Promise<{ levels: HouseLevels; reading: HouseModelReading; truth: Array<TruthFinding & { text: string }>; openings: NonNullable<BookletState["openings"]>; lawnM2: number | null }> {
+  const { model, project, sheets, facades, say } = input;
+  const marked = facades.levels(model.floors.length);
+  const levels = marked ?? standardLevels(model.floors.length);
+  if (!project.levels) say(`${model.name} levels: ${marked ? "from the elevations' marks" : `standard ${STANDARD_STOREY_LABEL}`} — floors ${levels.floors.map((l) => l.toFixed(2)).join(", ")}, roof ${levels.roof.toFixed(2)}, parapet ${levels.parapet.toFixed(2)}`);
+  const floors = [];
+  for (let i = 0; i < model.floors.length; i++) floors.push({ geometry: await sheets.geometry(model.floors[i]!), levelM: levels.floors[i] ?? i * 3 });
+  const fromCad = model.floors.some((f) => /\.dxf$/i.test(f.file));
+  const reading = await readHouseModel({ name: model.name, floors, facades, say, site: project.site, count: fromCad });
+  const { findings: truth, openings, lawnM2 } = await checkModelTruth({ model, floors, reading, sheets, ai: input.ai, say });
+  return { levels, reading, truth, openings, lawnM2 };
+}
+
+/** What a model's booklet stages are run with: its strip, plot, north and top, and the vision model's naming of its rooms. */
+export function houseStageInput(input: {
+  model: HouseProject["models"][number];
+  project: HouseProject;
+  projectName: string;
+  reading: HouseModelReading;
+  levels: HouseLevels;
+  north: North;
+  northKnown: boolean;
+  ai: boolean;
+  requireCars?: boolean;
+  traceSamples?: number;
+  say: (step: string) => void;
+}): Omit<StageInput, "stage" | "state" | "store" | "deadline"> {
+  const { model, project, reading, levels, say } = input;
+  const style = resolveFloorplanVizStyle(project.style);
+  return {
+    projectName: input.projectName,
+    source: async () => Buffer.alloc(0),
+    geometry: async () => reading.strip,
+    styleId: project.style,
+    haredi: project.haredi ?? style.audience === "haredi",
+    requireCars: input.requireCars,
+    finish: "house",
+    site: reading.site,
+    yard: reading.yard,
+    north: input.north,
+    northKnown: input.northKnown,
+    top: { roof: levels.roof, parapet: levels.parapet },
+    ...(input.ai
+      ? {
+          roomKinds: async (sheet: DwfGeometry, floor: DwfFloor) => {
+            const r = await readHouseRoomUses(sheet, floor);
+            say(
+              r
+                ? `${model.name} rooms: ${r.read.map((n) => `#${n.id} ${n.use}${n.kept ? "" : ` — not used: ${n.why}`}`).join("; ")}`
+                : `${model.name} rooms: no answer, named by size`,
+            );
+            return r?.kinds ?? null;
+          },
+        }
+      : {}),
+    say,
+    traceSamples: input.traceSamples,
+  };
+}
+
+/** The measured renders against their sheets, before any is painted over: reported, not acted on. */
+export async function auditHouseModel(
+  pics: { names(): string[]; get(name: string): Buffer | undefined },
+  input: { name: string; reading: Pick<HouseModelReading, "parking" | "built">; north: North; say: (step: string) => void },
+): Promise<HouseAuditFinding[]> {
+  const pairs = auditPairs(pics.names(), input.north);
+  const found = await Promise.all(
+    pairs.map((p) => {
+      const [drawing, render] = [pics.get(p.drawing), pics.get(p.render)];
+      // An upper floor's plan is rendered without the plot (dwf-views hides the yard over the ground floor).
+      const hidden = p.kind === "plan" && p.sheet !== "floor-0" ? YARD_ELEMENTS : undefined;
+      return drawing && render ? auditPair(p, drawing, render, { parking: input.reading.parking, built: input.reading.built, hidden }).catch(() => null) : Promise.resolve(null);
+    }),
+  );
+  pairs.forEach((p, i) =>
+    input.say(`${input.name} audit ${p.title}: ${found[i] == null ? "no answer" : found[i]!.length ? found[i]!.map((f) => `${f.element} ${f.issue} (${f.where})${f.contradicted ? ` [${f.contradicted}]` : ""}`).join("; ") : "matches"}`),
+  );
+  return found.flatMap((f) => f ?? []);
 }
 
 /**
@@ -318,15 +431,7 @@ export async function runPrivateHouseBooklet(input: {
   const project = input.project ?? GOTTLIEB_HOUSE;
   const sheets = houseSheetReader(input.load);
   const groundPlan = await sheets.geometry(project.models[0]!.floors[0]!);
-  let north = project.north;
-  // Known: the project's own, or the plan's arrow. A guess — the sheet's up — names the sides from the street instead.
-  let northKnown = north != null;
-  if (!north) {
-    const arrow = useAi ? await readNorthArrow(groundPlan).catch(() => null) : null;
-    north = arrow?.north ?? PLAN_NORTH;
-    northKnown = arrow != null;
-    say(arrow ? `north: the plan's arrow points ${arrow.degrees}° from the sheet's up` : "north: no arrow read — the sheet's up is taken for north");
-  }
+  const { north, northKnown } = await houseNorth({ project, groundPlan, ai: useAi, say });
   const facades = await readHouseFacades({ facades: await sheets.facades(project.facades), groundPlan, ai: useAi, say, project, north, answers: input.answers });
   const style = resolveFloorplanVizStyle(project.style);
   const done: Array<{ name: string; state: BookletState; artefacts: Map<string, Buffer> }> = [];
@@ -334,63 +439,14 @@ export async function runPrivateHouseBooklet(input: {
   let pictures = 0;
   for (const model of project.models) {
     say(model.name);
-    const marked = facades.levels(model.floors.length);
-    const levels = marked ?? standardLevels(model.floors.length);
-    if (!project.levels) say(`${model.name} levels: ${marked ? "from the elevations' marks" : `standard ${STANDARD_STOREY_LABEL}`} — floors ${levels.floors.map((l) => l.toFixed(2)).join(", ")}, roof ${levels.roof.toFixed(2)}, parapet ${levels.parapet.toFixed(2)}`);
-    const floors = [];
-    for (let i = 0; i < model.floors.length; i++) floors.push({ geometry: await sheets.geometry(model.floors[i]!), levelM: levels.floors[i] ?? i * 3 });
-    const fromCad = model.floors.some((f) => /\.dxf$/i.test(f.file));
-    const reading = await readHouseModel({ name: model.name, floors, facades, say, site: project.site, count: fromCad });
-    const { findings: truth, openings, lawnM2 } = await checkModelTruth({ model, floors, reading, sheets, ai: useAi, say });
+    const { levels, reading, truth, openings, lawnM2 } = await readHouseModelSheets({ model, project, sheets, facades, ai: useAi, say });
     const projectName = `${input.projectName ?? "בית פרטי"} — ${model.name}`;
     const { state, artefacts } = await runWholeBooklet({
-      projectName,
+      ...houseStageInput({ model, project, projectName, reading, levels, north, northKnown, ai: useAi, requireCars: input.requireCars, traceSamples: input.traceSamples, say }),
       subtitle: houseSubtitle(style),
-      source: async () => Buffer.alloc(0),
-      geometry: async () => reading.strip,
-      styleId: project.style,
-      haredi: project.haredi ?? style.audience === "haredi",
-      requireCars: input.requireCars,
-      finish: "house",
-      site: reading.site,
-      yard: reading.yard,
-      north,
-      northKnown,
-      top: { roof: levels.roof, parapet: levels.parapet },
       ai: reading.ai,
-      ...(useAi
-        ? {
-            roomKinds: async (sheet: DwfGeometry, floor: DwfFloor) => {
-              const r = await readHouseRoomUses(sheet, floor);
-              say(
-                r
-                  ? `${model.name} rooms: ${r.read.map((n) => `#${n.id} ${n.use}${n.kept ? "" : ` — not used: ${n.why}`}`).join("; ")}`
-                  : `${model.name} rooms: no answer, named by size`,
-              );
-              return r?.kinds ?? null;
-            },
-          }
-        : {}),
-      say,
-      traceSamples: input.traceSamples,
       beforeAssemble: async (pics) => {
-        // The measured renders against their sheets, before any is painted over.
-        let audit: HouseAuditFinding[] | undefined;
-        if (useAi) {
-          const pairs = auditPairs(pics.names(), north!);
-          const found = await Promise.all(
-            pairs.map((p) => {
-              const [drawing, render] = [pics.get(p.drawing), pics.get(p.render)];
-              // An upper floor's plan is rendered without the plot (dwf-views hides the yard over the ground floor).
-              const hidden = p.kind === "plan" && p.sheet !== "floor-0" ? YARD_ELEMENTS : undefined;
-              return drawing && render ? auditPair(p, drawing, render, { parking: reading.parking, built: reading.built, hidden }).catch(() => null) : Promise.resolve(null);
-            }),
-          );
-          audit = found.flatMap((f) => f ?? []);
-          pairs.forEach((p, i) =>
-            say(`${model.name} audit ${p.title}: ${found[i] == null ? "no answer" : found[i]!.length ? found[i]!.map((f) => `${f.element} ${f.issue} (${f.where})${f.contradicted ? ` [${f.contradicted}]` : ""}`).join("; ") : "matches"}`),
-          );
-        }
+        const audit = useAi ? await auditHouseModel(pics, { name: model.name, reading, north, say }) : undefined;
         pictures += (await paintingPlan(pics, { subject: houseSubject(model.name), style })).names.length;
         if (!input.photoreal) return { audit };
         const gateRaw = pics.get("geometry-gate.json");
@@ -549,6 +605,69 @@ async function paintModel(
   return { painted, budget: input.spend?.stopped && input.spend.budgetIls != null ? { ils: input.spend.budgetIls, unpainted } : undefined };
 }
 
+/** A measured model's pictures, as the painter takes them (a painting replaces its render in `artefacts`), and those it would paint. */
+async function measuredPictures(model: MeasuredHouseModel) {
+  const style = resolveFloorplanVizStyle(model.styleId ?? HOUSE_STYLE);
+  const refs = model.state.artefacts ?? {};
+  const pics = {
+    names: () => Object.keys(refs),
+    get: (name: string) => (refs[name] ? model.artefacts.get(refs[name]!) : undefined),
+    set: (name: string, data: Buffer) => {
+      if (refs[name]) model.artefacts.set(refs[name]!, data);
+    },
+  };
+  const planned = (await paintingPlan(pics, { subject: houseSubject(model.name), style })).names;
+  return { style, pics, planned };
+}
+
+/**
+ * One measured model's pictures painted over their renders, behind the
+ * gates: the measured geometry (and pixel QA where it ran), the production
+ * paint switches, the plans-ready sign-off for the elevations. `only` paints
+ * a few of them (a job's step); the rest keep their renders. Each painting
+ * that holds replaces its render in `model.artefacts`.
+ */
+export async function paintMeasuredModel(
+  model: MeasuredHouseModel,
+  input: {
+    say?: (step: string) => void;
+    spend?: HouseSpend;
+    only?: (name: string) => boolean;
+    images?: {
+      models?: string[];
+      cache?: PaintingCache;
+      references?: (name: string) => { images: Buffer[]; prompt: (first: number, picture: number) => string } | undefined;
+      promptExtra?: (name: string) => string | undefined;
+    };
+  },
+): Promise<{ planned: string[]; painted: string[]; budget?: { ils: number; unpainted: number } }> {
+  const say = input.say ?? (() => undefined);
+  const { style, pics, planned } = await measuredPictures(model);
+  say(`${model.name}: painting`);
+  const gateRaw = pics.get("geometry-gate.json");
+  const geometryGate = gateRaw ? (JSON.parse(gateRaw.toString("utf8")) as PlanGeometryGateResult) : undefined;
+  const visualRaw = pics.get("visual-gate.json");
+  const visualGate = visualRaw ? (JSON.parse(visualRaw.toString("utf8")) as PlanVisualGateResult) : undefined;
+  const result = await paintModel(pics, {
+    name: model.name,
+    style,
+    say,
+    spend: input.spend,
+    geometryGate,
+    visualGate,
+    plansOnly: houseKnob("HOUSE_PAINT_ONLY") === "plans",
+    plansReady: readPlansReady(process.cwd()),
+    paint: {
+      models: input.images?.models,
+      cache: input.images?.cache,
+      references: input.images?.references,
+      promptExtra: input.images?.promptExtra,
+      only: input.only,
+    },
+  });
+  return { planned, painted: result.painted, budget: result.budget };
+}
+
 /**
  * The booklet from models already measured: each model's pictures painted
  * (where `paint`), then its pages put together from its state. The renders
@@ -573,46 +692,18 @@ export async function finishMeasuredHouse(input: {
   let painted = 0;
   let pictures = 0;
   for (const model of input.models) {
-    const style = resolveFloorplanVizStyle(model.styleId ?? HOUSE_STYLE);
-    const refs = model.state.artefacts ?? {};
-    const pics = {
-      names: () => Object.keys(refs),
-      get: (name: string) => (refs[name] ? model.artefacts.get(refs[name]!) : undefined),
-      set: (name: string, data: Buffer) => {
-        if (refs[name]) model.artefacts.set(refs[name]!, data);
-      },
-    };
-    const planned = (await paintingPlan(pics, { subject: houseSubject(model.name), style })).names;
-    pictures += planned.length;
     const state: BookletState = { ...model.state };
     if (input.paint) {
-      say(`${model.name}: painting`);
-      const gateRaw = pics.get("geometry-gate.json");
-      const geometryGate = gateRaw ? (JSON.parse(gateRaw.toString("utf8")) as PlanGeometryGateResult) : undefined;
-      const visualRaw = pics.get("visual-gate.json");
-      const visualGate = visualRaw ? (JSON.parse(visualRaw.toString("utf8")) as PlanVisualGateResult) : undefined;
-      const result = await paintModel(pics, {
-        name: model.name,
-        style,
-        say,
-        spend: input.spend,
-        geometryGate,
-        visualGate,
-        plansOnly: houseKnob("HOUSE_PAINT_ONLY") === "plans",
-        plansReady: readPlansReady(process.cwd()),
-        paint: {
-          models: input.images?.models,
-          cache: input.images?.cache,
-          references: input.images?.references,
-          promptExtra: input.images?.promptExtra,
-        },
-      });
+      const result = await paintMeasuredModel(model, { say, spend: input.spend, images: input.images });
+      pictures += result.planned.length;
       painted += result.painted.length;
       state.painted = result.painted;
       if (result.budget) state.budget = result.budget;
       // What the painting did not hold stays the measured render: named, so the job can say which.
       const held = new Set(result.painted);
-      unpainted.push(...planned.filter((n) => !held.has(n)).map((n) => `${model.name}: ${n}`));
+      unpainted.push(...result.planned.filter((n) => !held.has(n)).map((n) => `${model.name}: ${n}`));
+    } else {
+      pictures += (await measuredPictures(model)).planned.length;
     }
     done.push({ name: model.name, state, artefacts: model.artefacts });
   }

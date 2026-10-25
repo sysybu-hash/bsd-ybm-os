@@ -19,6 +19,12 @@
     },
     "app/api/cron/building-booklet-step/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/projects/house-booklet-step/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/house-booklet-step/route.ts": {
+      "maxDuration": 300
     }
   },
   "crons": [

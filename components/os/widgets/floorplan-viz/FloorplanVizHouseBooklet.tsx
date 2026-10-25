@@ -9,6 +9,7 @@ import FloorplanVizPaintContact from "@/components/os/widgets/floorplan-viz/Floo
 type TFn = (key: string, vars?: Record<string, string>) => string;
 
 const API = "/api/projects/building-booklet/private-house";
+const STEP_API = "/api/projects/house-booklet-step";
 const POLL_MS = 5_000;
 const KEPT = "house-booklet-job";
 
@@ -71,18 +72,24 @@ export default function FloorplanVizHouseBooklet({
   const alive = useRef(true);
 
   const watch = useCallback(async (id: string) => {
+    let running = false;
     while (alive.current) {
-      const res = await fetch(`${API}?id=${encodeURIComponent(id)}`, { credentials: "include" }).catch(() => null);
+      // While it runs, each call is a step of it: the job goes on as long as the page is open (QStash drives it where configured).
+      const res: Response | null = await fetch(running ? `${STEP_API}?id=${encodeURIComponent(id)}` : `${API}?id=${encodeURIComponent(id)}`, {
+        method: running ? "POST" : "GET",
+        credentials: "include",
+      }).catch(() => null);
       if (res?.status === 404) {
         localStorage.removeItem(KEPT);
         setJob(null);
         return;
       }
-      const json = res?.ok ? ((await res.json().catch(() => null)) as JobView | null) : null;
+      const json: JobView | null = res?.ok ? ((await res.json().catch(() => null)) as JobView | null) : null;
       if (json && alive.current) {
         setJob(json);
         if (json.review) setBudget((b) => b || String(json.review!.budgetIls));
-        if (json.status !== "measuring" && json.status !== "painting") return;
+        running = json.status === "measuring" || json.status === "painting";
+        if (!running) return;
       }
       await new Promise((r) => setTimeout(r, POLL_MS));
     }

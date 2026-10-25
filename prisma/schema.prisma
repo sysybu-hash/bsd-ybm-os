@@ -1794,3 +1794,28 @@ model BuildingBookletJob {
   @@index([organizationId, createdAt])
   @@index([status, updatedAt])
 }
+
+/// A private-house booklet made on the platform, one function call at a time
+/// (lib/projects/building/house-booklet-steps.ts): measured, reviewed, and
+/// painted only on the owner's approval. Its files are in the house store.
+model HouseBookletJob {
+  /// A UUID: it names the job's folder in the house store.
+  id             String    @id
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  organizationId String
+  userId         String
+  name           String
+  /// measuring | awaiting_approval | painting | done | failed
+  status         String    @default("measuring")
+  /// The next step: facades, read:0, build:0:views, review:0, estimate, paint:0, assemble, done
+  stage          String    @default("facades")
+  /// The job's record (house-booklet-job.ts): its files, review, approval, cost and steps.
+  state          Json      @default("{}")
+  error          String?
+  /// A step holds the job until then; another may take it after.
+  lockedUntil    DateTime?
+
+  @@index([organizationId, createdAt])
+  @@index([status, updatedAt])
+}

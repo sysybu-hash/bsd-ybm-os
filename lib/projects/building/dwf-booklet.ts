@@ -166,6 +166,8 @@ export type StageInput = {
   say?: (step: string) => void;
   /** Path-trace the outside views with this many samples a pixel: local only, the tracer is a dev dependency. */
   traceSamples?: number;
+  /** Views drawn by one browser between deadline checks; 3 where not given. A house's 4000 px views on the platform go one at a time. */
+  viewBatch?: number;
 };
 
 /** Where the job stands after a call, and the booklet's page once it is assembled. */
@@ -240,9 +242,10 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
     }
     const pending = views.filter((v) => !(state.viewsDone ?? []).includes(v.id));
     // A few at a time: one browser for each batch, and the deadline checked between them.
-    for (let i = 0; i < pending.length; i += 3) {
+    const size = Math.max(1, input.viewBatch ?? 3);
+    for (let i = 0; i < pending.length; i += size) {
       if (Date.now() > input.deadline) return { stage: "views", state };
-      const batch = pending.slice(i, i + 3);
+      const batch = pending.slice(i, i + size);
       say(`drawing ${batch.map((v) => v.id).join(", ")}`);
       // A plan is traced too: its cut is made in the geometry (cut-model.ts).
       const traced = (_v: (typeof batch)[number]) => (input.traceSamples ? { pathTrace: { samples: input.traceSamples } } : {});
