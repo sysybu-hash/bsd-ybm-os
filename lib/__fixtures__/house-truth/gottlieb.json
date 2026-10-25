@@ -1,0 +1,589 @@
+{
+ "project": "gottlieb",
+ "source": "DXF of the office's DWG, read by dxf-house.ts",
+ "sheets": [
+  {
+   "source": "dxf",
+   "sheet": "A_קומת קרקע",
+   "model": "A",
+   "storey": 0,
+   "counts": {
+    "doors": 16,
+    "windows": 17,
+    "parking": 4,
+    "rooms": 8,
+    "lawnM2": 169.8,
+    "trees": 0,
+    "gates": 1,
+    "fence": true,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 4,
+    "90": 6
+   },
+   "rooms": [
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    },
+    {
+     "name": null,
+     "dims": "2.83*4.45",
+     "statedM2": 12.59
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    }
+   ]
+  },
+  {
+   "source": "dxf",
+   "sheet": "A_קומה א",
+   "model": "A",
+   "storey": 1,
+   "counts": {
+    "doors": 18,
+    "windows": 18,
+    "parking": 4,
+    "rooms": 14,
+    "lawnM2": 0,
+    "trees": 0,
+    "gates": 1,
+    "fence": false,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 10,
+    "90": 2
+   },
+   "rooms": [
+    {
+     "name": "מ.מ.ד",
+     "dims": "3.00*3.40 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.10",
+     "statedM2": 6.51
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.80*3.55",
+     "statedM2": 13.49
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.10*2.95",
+     "statedM2": 9.15
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.15 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*4.80",
+     "statedM2": 13.58
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.50  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "מ.מ.ד",
+     "dims": "3.00*3.40 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.10",
+     "statedM2": 6.51
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.80*3.55",
+     "statedM2": 13.49
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.10*2.95",
+     "statedM2": 9.15
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.15 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*4.80",
+     "statedM2": 13.58
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.50  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    }
+   ]
+  },
+  {
+   "source": "dxf",
+   "sheet": "B_קומת קרקע",
+   "model": "B",
+   "storey": 0,
+   "counts": {
+    "doors": 16,
+    "windows": 17,
+    "parking": 4,
+    "rooms": 8,
+    "lawnM2": 169.8,
+    "trees": 0,
+    "gates": 1,
+    "fence": true,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 4,
+    "90": 6
+   },
+   "rooms": [
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    },
+    {
+     "name": null,
+     "dims": "2.83*4.45",
+     "statedM2": 12.59
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    }
+   ]
+  },
+  {
+   "source": "dxf",
+   "sheet": "B_קומה א",
+   "model": "B",
+   "storey": 1,
+   "counts": {
+    "doors": 14,
+    "windows": 18,
+    "parking": 4,
+    "rooms": 10,
+    "lawnM2": 0,
+    "trees": 0,
+    "gates": 1,
+    "fence": false,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 8
+   },
+   "rooms": [
+    {
+     "name": "מ.מ.ד",
+     "dims": "3.00*3.40 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.10",
+     "statedM2": 6.51
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.15 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*4.80",
+     "statedM2": 13.58
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.50  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "מ.מ.ד",
+     "dims": "3.00*3.40 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.10",
+     "statedM2": 6.51
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.15 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*4.80",
+     "statedM2": 13.58
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.50  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    }
+   ]
+  },
+  {
+   "source": "dxf",
+   "sheet": "C-קרקע",
+   "model": "C",
+   "storey": 0,
+   "counts": {
+    "doors": 18,
+    "windows": 14,
+    "parking": 4,
+    "rooms": 14,
+    "lawnM2": 169.8,
+    "trees": 0,
+    "gates": 1,
+    "fence": true,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 6,
+    "90": 6
+   },
+   "rooms": [
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.05 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.20*1.70",
+     "statedM2": 3.74
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.83*4.60",
+     "statedM2": 13.02
+    },
+    {
+     "name": "סלון",
+     "dims": "4.95*4.95",
+     "statedM2": 24.5
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*3.00",
+     "statedM2": 6.3
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.00*3.50",
+     "statedM2": 10.5
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*3.05 /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.20*1.70",
+     "statedM2": 3.74
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.83*4.60",
+     "statedM2": 13.02
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    },
+    {
+     "name": null,
+     "dims": "2.30*2.00 /",
+     "statedM2": null
+    }
+   ]
+  },
+  {
+   "source": "dxf",
+   "sheet": "C-קומה א",
+   "model": "C",
+   "storey": 1,
+   "counts": {
+    "doors": 16,
+    "windows": 14,
+    "parking": 4,
+    "rooms": 14,
+    "lawnM2": 0,
+    "trees": 0,
+    "gates": 1,
+    "fence": true,
+    "stairs": true
+   },
+   "doorWidths": {
+    "70": 6,
+    "80": 4,
+    "90": 6
+   },
+   "rooms": [
+    {
+     "name": "סלון",
+     "dims": "4.95*3.80",
+     "statedM2": 18.81
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*2.85 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.40*3.50 /",
+     "statedM2": null
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.60  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*2.95",
+     "statedM2": 8.35
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.83*4.70",
+     "statedM2": 13.3
+    },
+    {
+     "name": "סלון",
+     "dims": "4.95*3.80",
+     "statedM2": 18.81
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.95*3.10",
+     "statedM2": 9.15
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*2.85 /",
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "3.40*3.50 /",
+     "statedM2": null
+    },
+    {
+     "name": "מרפסת",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": "2.10*1.60  /",
+     "statedM2": null
+    },
+    {
+     "name": "אמבטיה",
+     "dims": null,
+     "statedM2": null
+    },
+    {
+     "name": "ח.שינה",
+     "dims": "2.83*2.95",
+     "statedM2": 8.35
+    },
+    {
+     "name": "מטבח",
+     "dims": "2.83*4.70",
+     "statedM2": 13.3
+    }
+   ]
+  }
+ ]
+}

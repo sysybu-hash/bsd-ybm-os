@@ -84,6 +84,21 @@ describe("reading a W2D stream", () => {
     expect(g.texts.map((t) => t.text)).toEqual(["רשת"]);
   });
 
+  it("moves the pen through a complex text's four corners, so the next text stands where it is drawn", () => {
+    const g = geometryFromW2d(
+      w2d([
+        op(0x6c, i32(0, 0, 1000, 0)),
+        op(0x18, i32(100, 200), Buffer.from("'abc'", "latin1"), u16(0), i32(0, 0, 50, 0, 0, 10, -50, 0), Buffer.from([0])),
+        op(0x78, i32(10, 0), Buffer.from("'def'", "latin1")),
+      ]),
+    )!;
+    const [abc, def] = g.texts;
+    expect(def!.text).toBe("def");
+    // The pen ends the corners at (100, 210); the next text is 10 on from there. 1 mm is 2.8346 points, y down.
+    expect(def!.x - abc!.x).toBeCloseTo(10 * 2.8346, 1);
+    expect(def!.y - abc!.y).toBeCloseTo(-10 * 2.8346, 1);
+  });
+
   it("is not a W2D stream without its header", () => {
     expect(geometryFromW2d(Buffer.from("hello"))).toBeNull();
   });

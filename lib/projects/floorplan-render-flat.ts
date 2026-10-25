@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
-import { getFloorplanVizModelChain } from "@/lib/gemini-model";
+import { getFloorplanVizModelChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { createLogger } from "@/lib/logger";
 import { buildFlatFromGeometry, buildFlatFromPdf, type BuiltFlat } from "@/lib/projects/floorplan-build";
 import {
@@ -153,9 +153,10 @@ async function imagePass(
       recordAiUsage(model, usageFromGemini(res));
       const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
       const data = part?.inlineData?.data;
-      if (data) return { mimeType: "image/jpeg", base64: data, model };
-    } catch {
-      // Try the next model in the chain.
+      // Answered, and billed: an answer without a picture is not asked of the next model.
+      return data ? { mimeType: "image/jpeg", base64: data, model } : null;
+    } catch (err: unknown) {
+      if (!isLikelyGeminiModelUnavailable(err)) return null;
     }
   }
   return null;

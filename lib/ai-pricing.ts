@@ -55,6 +55,13 @@ const PRICES: Record<string, PriceEntry> = {
     // $60 per million image tokens: 1,120 tokens = $0.067 for a 1K picture.
     schedule: [{ from: "2000-01-01", rate: { input: 0.5, output: 3, imageOutputPerMTok: 60, perImage: 0.067 } }],
   },
+  "gemini-nano-banana-2.1": {
+    provider: "google",
+    // Nano Banana 2.1 (GA 6/10/2026; Google's page, 13/10/2026): $0.0336 a 1K
+    // picture (1,120 tokens), $0.0504 at 2K (1,680) — half Nano Banana 2's.
+    // $1.50 per million in, $7.50 per million text and thinking out.
+    schedule: [{ from: "2000-01-01", rate: { input: 1.5, output: 7.5, imageOutputPerMTok: 30, perImage: 0.0336 } }],
+  },
   "gemini-3.1-flash-lite-image": {
     provider: "google",
     schedule: [{ from: "2000-01-01", rate: { input: 0.25, output: 1.5, imageOutputPerMTok: 30, perImage: 0.0336 } }],

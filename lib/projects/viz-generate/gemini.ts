@@ -38,10 +38,14 @@ export async function generateOneImage(
     .filter((img) => img.base64)
     .map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } }));
 
+  // The next model is asked only where the last made no billed answer: it is
+  // not there, or busy. An answer without a picture was billed, and any other
+  // error is the same on every model.
   for (const model of getFloorplanVizModelChain()) {
+    let response: Awaited<ReturnType<typeof client.models.generateContent>>;
     try {
       recordAmbientFloorplanSpend("image", model);
-      const response = await client.models.generateContent({
+      response = await client.models.generateContent({
         model,
         contents: [
           {
@@ -56,11 +60,6 @@ export async function generateOneImage(
             : {}),
         },
       });
-      recordAiUsage(model, usageFromGemini(response));
-      const images = collectInlineImages(response);
-      const first = images[0];
-      if (first) return first;
-      lastErr = new Error(`Gemini image (${model}) לא החזיר תמונה`);
     } catch (err: unknown) {
       lastErr = err;
       log.warn("image model failed", {
@@ -68,7 +67,12 @@ export async function generateOneImage(
         error: err instanceof Error ? err.message : String(err),
       });
       if (isLikelyGeminiModelUnavailable(err)) continue;
+      throw err instanceof Error ? err : new Error(String(err));
     }
+    recordAiUsage(model, usageFromGemini(response));
+    const first = collectInlineImages(response)[0];
+    if (first) return first;
+    throw new Error(`Gemini image (${model}) לא החזיר תמונה`);
   }
 
   throw lastErr instanceof Error ? lastErr : new Error("יצירת ההדמיה נכשלה");

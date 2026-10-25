@@ -23,18 +23,19 @@ export function apartmentFinish(mesh: SceneBox, roomKind: (id: string) => SceneR
     return { material: FLOOR[roomKind(mesh.sourceId) ?? "living"] ?? (mesh.material === "floorTile" ? "floorWet" : "floorPorcelain") };
   }
   if (mesh.kind === "terrace") return { material: "terraceTile" };
-  if (mesh.kind === "prop" && mesh.sourceId === "prop:rug") return { material: "rug" };
+  if (mesh.kind === "prop" && (mesh.sourceId === "prop:rug" || mesh.sourceId === "prop:house-rug")) return { material: "rug" };
   switch (mesh.material) {
     case "upholstery":
       return { material: part === "cushion" ? "cushion" : "sofaFabric", round };
     case "linen":
       return { material: "linen", round };
     case "joinery":
-      // A door's leaf is oak veneer; joinery otherwise painted.
-      return { material: part === "leaf" ? "walnut" : "cabinet", round };
+      // A door's leaf is oak veneer, and so is a wardrobe's door; a kitchen's joinery is painted.
+      return { material: part === "leaf" || part === "door" ? "walnut" : "cabinet", round };
     case "timber":
-      // A wardrobe's carcass is painted, like its doors; a table is timber.
-      return { material: part === "carcass" ? "cabinet" : "walnut", round };
+      // A wardrobe is wood, as the sheet colours it: painted white, Gottlieb's
+      // wardrobes read from above as blank boxes (13/10/2026).
+      return { material: "walnut", round };
     case "worktop":
       return { material: "quartz", round };
     case "ceramic":
@@ -42,7 +43,7 @@ export function apartmentFinish(mesh: SceneBox, roomKind: (id: string) => SceneR
     case "metal":
     case "steel":
       // A hob is black glass; a sink and a tap are steel.
-      return { material: part === "plate" || part === "ring" ? "screen" : "metal", round };
+      return { material: part === "plate" || part === "ring" ? "screen" : part === "basin" || part === "drain" || part === "door" ? "darkSteel" : "metal", round };
     case "glass":
       return { material: mesh.kind === "railing" || part === "screen" ? "railGlass" : "glass" };
     case "wall":

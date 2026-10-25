@@ -129,11 +129,46 @@ ${options.inventory}`] : []),
   ].join("\n");
 }
 
-/** One image call over the model chain; images after the first ride along as references. */
+/**
+ * The size a model is asked for where the caller names none: on Pro 2K costs
+ * what 1K does (a 1K design of a flat was 896 px wide); on every other model
+ * 2K costs half as much again.
+ */
+export function finishImageSize(model: string): FinishImageSize {
+  return /-pro(-|$)/i.test(model) ? "2K" : "1K";
+}
+
+/** The sizes an image model is asked for: 4K only by a caller that names it (a whole storey's plan in one call). */
+export type FinishImageSize = "1K" | "2K" | "4K";
+
+const errorText = (err: unknown) => `${err instanceof Error ? err.message : String(err)} ${JSON.stringify(err ?? "")}`.toLowerCase();
+
+/** The request's own fault — the sizing a model does not take: asked once more without it. */
+function sizingRefused(err: unknown): boolean {
+  const text = errorText(err);
+  return /\b400\b|invalid_argument|invalid argument/.test(text) && /image_?config|image ?size|aspect/.test(text);
+}
+
+/** A fault no other model mends: the key, the account's quota or billing. */
+function accountFault(err: unknown): boolean {
+  return /\b40[13]\b|api[_ ]key|permission|billing|unauthenticated/.test(errorText(err));
+}
+
+/**
+ * One image call over the model chain; images after the first ride along as
+ * references. The next model is asked only where the last made no billed
+ * answer — it is not there, or busy; an answer without a picture was billed,
+ * and is the caller's to ask again within its attempts, not the chain's.
+ */
 export async function finishPass(
   client: GoogleGenAI,
   prompt: string,
   image: Buffer | Buffer[],
+  models: string[] = getFloorplanVizModelChain(),
+  imageSize?: FinishImageSize,
+  signal?: AbortSignal,
+  /** The wide and tall frames (WIDE_ASPECT_RATIOS) too: only Nano Banana 2.1 takes them; another model is asked again unsized. */
+  wide = false,
 ): Promise<{ image: Buffer; model: string } | null> {
   const images = await Promise.all(
     (Array.isArray(image) ? image : [image]).map(async (one) => ({
@@ -141,36 +176,45 @@ export async function finishPass(
     })),
   );
   const first = await sharp(Array.isArray(image) ? image[0]! : image).metadata();
-  // 2K costs what 1K does; a 1K design of a flat was 896 px wide. The ratio
-  // the layout has, or the model returns its own frame and the walls drift.
-  const imageConfig = { imageSize: "2K", aspectRatio: nearestAspectRatio((first.width ?? 1) / (first.height ?? 1)) };
-  for (const model of getFloorplanVizModelChain()) {
-    // A model that refuses the sizing is asked once more without it.
+  // The ratio the layout has, or the model returns its own frame and the walls drift.
+  const aspectRatio = nearestAspectRatio((first.width ?? 1) / (first.height ?? 1), wide);
+  for (const model of models) {
+    const imageConfig = { imageSize: imageSize ?? finishImageSize(model), aspectRatio };
     for (const sized of [true, false]) {
+      if (signal?.aborted) return null;
+      let res: Awaited<ReturnType<GoogleGenAI["models"]["generateContent"]>>;
       try {
-        const res = await client.models.generateContent({
+        res = await client.models.generateContent({
           model,
           contents: [{ role: "user", parts: [{ text: prompt }, ...images] }],
-          config: { responseModalities: ["IMAGE"], ...(sized ? { imageConfig } : {}) },
+          config: { responseModalities: ["IMAGE"], ...(sized ? { imageConfig } : {}), ...(signal ? { abortSignal: signal } : {}) },
         });
-        recordAiUsage(model, usageFromGemini(res));
-        const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-        if (part?.inlineData?.data) return { image: Buffer.from(part.inlineData.data, "base64"), model };
+      } catch (err: unknown) {
+        if (signal?.aborted || accountFault(err)) return null;
+        if (sized && sizingRefused(err)) continue;
         break;
-      } catch {
-        // Unsized, then the next model in the chain.
       }
+      recordAiUsage(model, usageFromGemini(res));
+      const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
+      return part?.inlineData?.data ? { image: Buffer.from(part.inlineData.data, "base64"), model } : null;
     }
   }
   return null;
 }
 
-const ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+export const ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
+/** Nano Banana 2.1's strips besides (Google's page, 15/10/2026): asked for only where a caller allows them. */
+export const WIDE_ASPECT_RATIOS = ["4:1", "1:4", "8:1", "1:8"];
+
+/** The ratios a call may be framed to. */
+export function aspectRatios(wide = false): string[] {
+  return wide ? [...ASPECT_RATIOS, ...WIDE_ASPECT_RATIOS] : ASPECT_RATIOS;
+}
 
 /** The image model's aspect ratio closest to width / height. */
-export function nearestAspectRatio(ratio: number): string {
+export function nearestAspectRatio(ratio: number, wide = false): string {
   const of = (r: string) => { const [w, h] = r.split(":").map(Number); return w! / h!; };
-  return ASPECT_RATIOS.reduce((best, r) => (Math.abs(Math.log(of(r) / ratio)) < Math.abs(Math.log(of(best) / ratio)) ? r : best));
+  return aspectRatios(wide).reduce((best, r) => (Math.abs(Math.log(of(r) / ratio)) < Math.abs(Math.log(of(best) / ratio)) ? r : best));
 }
 
 /**
@@ -378,4 +422,599 @@ export async function massMatch(render: Buffer, finish: Buffer): Promise<number>
     bb += db * db;
   }
   return aa > 0 && bb > 0 ? ab / Math.sqrt(aa * bb) : 0;
+}
+
+/** A part of a painting that is not its render's: where, and its box as shares of the frame. */
+export type LocalFault = { place: string; box: { x: number; y: number; w: number; h: number } };
+
+/** The render at 480 px wide, cut into its plain surfaces, which of them is the sky, and the far land under it. */
+type Surfaces = { w: number; h: number; r: Buffer; label: Int32Array; sizes: number[]; sky: number; far: Set<number> };
+
+const LOCAL_WIDTH = 480;
+
+async function surfacesOf(render: Buffer): Promise<Surfaces> {
+  const meta = await sharp(render).metadata();
+  const w = LOCAL_WIDTH;
+  const h = Math.max(8, Math.round((w * (meta.height ?? 300)) / (meta.width ?? 480)));
+  const n = w * h;
+  const r = (await sharp(render).resize(w, h, { fit: "fill" }).removeAlpha().blur(1.2).raw().toBuffer({ resolveWithObject: true })).data;
+  // Runs of pixels each within a step of its neighbour and of the run's own
+  // colour: a soft seam is many small steps, and the sky ran down a
+  // parapet's face into the roof.
+  const label = new Int32Array(n).fill(-1);
+  const sizes: number[] = [];
+  const step = (a: number, b: number) =>
+    Math.max(Math.abs(r[a * 3]! - r[b * 3]!), Math.abs(r[a * 3 + 1]! - r[b * 3 + 1]!), Math.abs(r[a * 3 + 2]! - r[b * 3 + 2]!)) <= 4;
+  for (let start = 0; start < n; start++) {
+    if (label[start] !== -1) continue;
+    const id = sizes.length;
+    const stack = [start];
+    label[start] = id;
+    const sum = [r[start * 3]!, r[start * 3 + 1]!, r[start * 3 + 2]!];
+    let size = 0;
+    while (stack.length) {
+      const k = stack.pop()!;
+      size++;
+      const x = k % w;
+      for (const q of [x > 0 ? k - 1 : -1, x < w - 1 ? k + 1 : -1, k - w, k + w]) {
+        if (q < 0 || q >= n || label[q] !== -1 || !step(k, q)) continue;
+        const held = size + stack.length;
+        if (![0, 1, 2].every((c) => Math.abs(r[q * 3 + c]! - sum[c]! / held) <= 14)) continue;
+        label[q] = id;
+        for (let c = 0; c < 3; c++) sum[c] = sum[c]! + r[q * 3 + c]!;
+        stack.push(q);
+      }
+    }
+    sizes.push(size);
+  }
+  // The sky: the surface along most of the top edge, and high in the frame —
+  // a top-down view's lawn runs along the top edge too, and down the frame.
+  const topRow = new Map<number, number>();
+  for (let x = 0; x < w; x++) topRow.set(label[x]!, (topRow.get(label[x]!) ?? 0) + 1);
+  const [skyId, skyRow] = [...topRow].reduce((a, b) => (b[1] > a[1] ? b : a));
+  let skyY = 0;
+  for (let k = 0; k < n; k++) if (label[k] === skyId) skyY += Math.floor(k / w);
+  const sky = skyRow >= w / 2 && skyY / sizes[skyId]! < h * 0.4 ? skyId : -1;
+  // The far land: a plain surface under the sky reaching the frame's left or
+  // right edge, high in the frame — the empty ground past the plot,
+  // where the painting is asked for a distant neighbourhood and hills. Held
+  // to the render there, model A's best photograph of 12/10/2026 was refused
+  // as "invented objects" at its top corners, and its four repairs lost the
+  // planting and the light.
+  const far = new Set<number>();
+  if (sky >= 0) {
+    // The render's sky is bands (a pale top, a bluer one under it): the land is under the last, not the first.
+    const touch = new Map<number, { left: boolean; right: boolean; top: number; y: number }>();
+    for (let k = 0; k < n; k++) {
+      const id = label[k]!;
+      if (id === sky || sizes[id]! < n * 0.005) continue;
+      const x = k % w;
+      const t = touch.get(id) ?? { left: false, right: false, top: h, y: 0 };
+      if (x === 0) t.left = true;
+      if (x === w - 1) t.right = true;
+      t.top = Math.min(t.top, Math.floor(k / w));
+      t.y += Math.floor(k / w);
+      touch.set(id, t);
+    }
+    for (const [id, t] of touch) if (sizes[id]! >= n * 0.03 && (t.left || t.right) && t.top < h * 0.25 && t.y / sizes[id]! < h * 0.4) far.add(id);
+    // And the grass at the frame's side, high in it: the land past the
+    // boundary wall, where the painting set the distant houses.
+    for (const [id, t] of touch) {
+      const k = label.indexOf(id);
+      const [rr, gg, bb] = [r[k * 3]!, r[k * 3 + 1]!, r[k * 3 + 2]!];
+      if ((t.left || t.right) && t.top < h * 0.4 && gg > rr && gg > bb + 20) far.add(id);
+    }
+  }
+  return { w, h, r, label, sizes, sky, far };
+}
+
+/**
+ * What a painting invented, part by part. The edge and mass scores are the
+ * whole frame's: a lounge suite painted on a bare roof moved a few per cent of
+ * either, and passed.
+ *
+ * Away from the seams of the render's plain surfaces — a roof, a wall face, a
+ * stretch of paving — the painting's own edges are looked at 16 px at a time.
+ * Paint adds texture there, too faint to count; a shadow adds a line, all one
+ * way. A thing stood on the surface adds strong edges that run every way,
+ * close together; five such windows touching are an invention. The sky is
+ * left out — the painter redraws every tree against it, and a thing on a roof
+ * is seen against the roof — and so is foliage.
+ */
+export async function inventedObjects(render: Buffer, painting: Buffer, surfaces?: Surfaces): Promise<LocalFault[]> {
+  const { w, h, label, sizes, sky, far } = surfaces ?? (await surfacesOf(render));
+  const n = w * h;
+  const p = (await sharp(painting).resize(w, h, { fit: "fill" }).removeAlpha().blur(1.2).raw().toBuffer({ resolveWithObject: true })).data;
+  // A painting's edges wander a few pixels from the render's.
+  const SEAM = 4;
+  const inside = new Uint8Array(n);
+  for (let k = 0; k < n; k++) {
+    if (sizes[label[k]!]! < n * 0.002 || label[k] === sky || far.has(label[k]!)) continue;
+    const x = k % w;
+    const y = (k - x) / w;
+    let ok = true;
+    for (let dy = -SEAM; dy <= SEAM && ok; dy++) {
+      for (let dx = -SEAM; dx <= SEAM; dx++) {
+        const qx = x + dx;
+        const qy = y + dy;
+        if (qx < 0 || qy < 0 || qx >= w || qy >= h || label[qy * w + qx] !== label[k]) {
+          ok = false;
+          break;
+        }
+      }
+    }
+    inside[k] = ok ? 1 : 0;
+  }
+  const lum = (k: number) => (p[k * 3]! + p[k * 3 + 1]! + p[k * 3 + 2]!) / 3;
+  const WIN = 16;
+  const STRIDE = 8;
+  const cols = Math.floor((w - WIN) / STRIDE) + 1;
+  const rows = Math.floor((h - WIN) / STRIDE) + 1;
+  const flagged = new Uint8Array(cols * rows);
+  for (let wy = 0; wy < rows; wy++) {
+    for (let wx = 0; wx < cols; wx++) {
+      let plain = 0;
+      let strong = 0;
+      let green = 0;
+      let warm = 0;
+      let [jxx, jyy, jxy] = [0, 0, 0];
+      for (let y = Math.max(1, wy * STRIDE); y < Math.min(h - 1, wy * STRIDE + WIN); y++) {
+        for (let x = Math.max(1, wx * STRIDE); x < Math.min(w - 1, wx * STRIDE + WIN); x++) {
+          const k = y * w + x;
+          if (!inside[k]) continue;
+          plain++;
+          if (p[k * 3 + 1]! >= p[k * 3]! && p[k * 3 + 1]! > p[k * 3 + 2]! + 8) green++;
+          // Flowers are planting too: the bougainvillea and lavender the house's
+          // garden is painted with are magenta and violet, not green.
+          else if (p[k * 3]! > p[k * 3 + 1]! + 30 && p[k * 3 + 2]! > p[k * 3 + 1]! + 10) green++;
+          // A wall light's warm glow on the plaster is light, not an object.
+          if (lum(k) > 170 && p[k * 3]! > p[k * 3 + 2]! + 45) warm++;
+          const gx = lum(k + 1) - lum(k - 1);
+          const gy = lum(k + w) - lum(k - w);
+          if (Math.hypot(gx, gy) < 20) continue;
+          strong++;
+          jxx += gx * gx;
+          jyy += gy * gy;
+          jxy += gx * gy;
+        }
+      }
+      if (plain < WIN * WIN * 0.4 || strong < plain * 0.2 || green >= plain * 0.3 || warm >= plain * 0.12) continue;
+      // How much the edges run one way: 1 for a line, 0 for every way at once.
+      const oneWay = Math.sqrt((jxx - jyy) ** 2 + 4 * jxy * jxy) / (jxx + jyy);
+      if (oneWay < 0.6) flagged[wy * cols + wx] = 1;
+    }
+  }
+  const seen = new Uint8Array(flagged.length);
+  const found: LocalFault[] = [];
+  for (let start = 0; start < flagged.length; start++) {
+    if (!flagged[start] || seen[start]) continue;
+    const stack = [start];
+    seen[start] = 1;
+    let [x0, x1, y0, y1, windows] = [w, 0, h, 0, 0];
+    while (stack.length) {
+      const i = stack.pop()!;
+      const cx = i % cols;
+      const cy = (i - cx) / cols;
+      windows++;
+      [x0, x1, y0, y1] = [Math.min(x0, cx * STRIDE), Math.max(x1, cx * STRIDE + WIN), Math.min(y0, cy * STRIDE), Math.max(y1, cy * STRIDE + WIN)];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const qx = cx + dx;
+          const qy = cy + dy;
+          const q = qy * cols + qx;
+          if (qx < 0 || qy < 0 || qx >= cols || qy >= rows || seen[q] || !flagged[q]) continue;
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    // Four was a post the painting set a few pixels off; the lounge suite on a roof was six.
+    if (windows < 5) continue;
+    found.push({ place: framePlace((x0 + x1) / 2 / w, (y0 + y1) / 2 / h), box: { x: x0 / w, y: y0 / h, w: (x1 - x0) / w, h: (y1 - y0) / h } });
+  }
+  return found;
+}
+
+/**
+ * What a painting lost, part by part: the frame cut into 48 px cells at 480
+ * px wide, and in each cell holding a run of the render's structure, the
+ * share of it the painting keeps an edge on within 3 px. A window painted
+ * over keeps a fraction of its cell. Not counted: the render's trees, which
+ * every painting redraws, and the sky's edge — the render's horizon, which a
+ * painting with its sky down to the hills has nowhere.
+ */
+export async function lostStructure(render: Buffer, painting: Buffer, surfaces?: Surfaces): Promise<LocalFault[]> {
+  const { w, h, label, sky } = surfaces ?? (await surfacesOf(render));
+  const n = w * h;
+  const read = async (img: Buffer) => (await sharp(img).resize(w, h, { fit: "fill" }).removeAlpha().blur(0.8).raw().toBuffer({ resolveWithObject: true })).data;
+  const r = await read(render);
+  const p = await read(painting);
+  const strength = (d: Buffer) => {
+    const out = new Float32Array(n);
+    const l = (q: number) => (d[q * 3]! + d[q * 3 + 1]! + d[q * 3 + 2]!) / 3;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const k = y * w + x;
+        out[k] = Math.hypot(l(k + 1) - l(k - 1), l(k + w) - l(k - w));
+      }
+    }
+    return out;
+  };
+  const cutOf = (s: Float32Array, share: number) => Float32Array.from(s).sort()[Math.floor(n * share)]!;
+  const rs = strength(r);
+  const ps = strength(p);
+  const rCut = Math.max(8, cutOf(rs, 0.92));
+  // The painting's edges, generously: it softens what the render draws hard.
+  const pCut = Math.max(6, cutOf(ps, 0.8));
+  const leafy = (k: number) => r[k * 3 + 1]! > r[k * 3]! + 12 && r[k * 3 + 1]! > r[k * 3 + 2]! + 12;
+  const nearSky = (x: number, y: number) => {
+    if (sky < 0) return false;
+    for (let dy = -3; dy <= 3; dy++) {
+      for (let dx = -3; dx <= 3; dx++) {
+        const qx = x + dx;
+        const qy = y + dy;
+        if (qx >= 0 && qy >= 0 && qx < w && qy < h && label[qy * w + qx] === sky) return true;
+      }
+    }
+    return false;
+  };
+  const CELL = 48;
+  const cols = Math.ceil(w / CELL);
+  const rows = Math.ceil(h / CELL);
+  const on = new Uint32Array(cols * rows);
+  const hit = new Uint32Array(cols * rows);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const k = y * w + x;
+      if (rs[k]! <= rCut || leafy(k) || nearSky(x, y)) continue;
+      const c = Math.floor(y / CELL) * cols + Math.floor(x / CELL);
+      on[c]!++;
+      search: for (let dy = -3; dy <= 3; dy++) {
+        for (let dx = -3; dx <= 3; dx++) {
+          const qx = x + dx;
+          const qy = y + dy;
+          if (qx >= 0 && qy >= 0 && qx < w && qy < h && ps[qy * w + qx]! > pCut) {
+            hit[c]!++;
+            break search;
+          }
+        }
+      }
+    }
+  }
+  const found: LocalFault[] = [];
+  for (let c = 0; c < on.length; c++) {
+    if (on[c]! < CELL * 1.5 || hit[c]! >= on[c]! * 0.4) continue;
+    const [x, y] = [(c % cols) * CELL, Math.floor(c / cols) * CELL];
+    const [cw, ch] = [Math.min(CELL, w - x), Math.min(CELL, h - y)];
+    found.push({ place: framePlace((x + cw / 2) / w, (y + ch / 2) / h), box: { x: x / w, y: y / h, w: cw / w, h: ch / h } });
+  }
+  return found;
+}
+
+/**
+ * A railing the painting set on a wall the render leaves bare. Its bars are
+ * thin lines, all one way, a few pixels apart: the edge-window check takes
+ * them for a shadow, and at 480 px they are not there at all. So: at the
+ * render's own width (to 1600 px), runs of four or more thin upright bars
+ * within 21 px of each other, away from grass and leaves — and kept only where
+ * the render has no thin line of its own within a few pixels. The street
+ * railing the render does draw is a rail and a band, a thin line along all of
+ * it; a coping beside a lawn is a broad band, and has none.
+ */
+export async function addedRailings(render: Buffer, painting: Buffer): Promise<LocalFault[]> {
+  const meta = await sharp(render).metadata();
+  const w = Math.min(1600, meta.width ?? 1400);
+  const h = Math.max(8, Math.round((w * (meta.height ?? 875)) / (meta.width ?? 1400)));
+  const n = w * h;
+  const read = async (img: Buffer) => (await sharp(img).resize(w, h, { fit: "fill" }).removeAlpha().raw().toBuffer({ resolveWithObject: true })).data;
+  const [p, r] = await Promise.all([read(painting), read(render)]);
+  const lumOf = (d: Buffer) => {
+    const out = new Float32Array(n);
+    for (let k = 0; k < n; k++) out[k] = (d[k * 3]! + d[k * 3 + 1]! + d[k * 3 + 2]!) / 3;
+    return out;
+  };
+  const pl = lumOf(p);
+  const rl = lumOf(r);
+  // Five rows together: a bar runs down them, a blade of grass or a speck does not.
+  const L = new Float32Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      for (let dy = -2; dy <= 2; dy++) sum += pl[Math.min(h - 1, Math.max(0, y + dy)) * w + x]!;
+      L[y * w + x] = sum / 5;
+    }
+  }
+  const A = 30;
+  const leafy = (k: number) => p[k * 3 + 1]! > p[k * 3]! + 6 && p[k * 3 + 1]! > p[k * 3 + 2]! + 6;
+  const bar = new Uint8Array(n);
+  for (let y = 0; y < h; y++) {
+    for (let x = 2; x < w - 2; x++) {
+      const k = y * w + x;
+      if (leafy(k)) continue;
+      const [a, b, c] = [L[k - 2]!, L[k]!, L[k + 2]!];
+      if ((b < a - A && b < c - A) || (b > a + A && b > c + A)) bar[k] = 1;
+    }
+  }
+  const RUN = 10;
+  const rail = new Uint8Array(n);
+  for (let y = 0; y < h; y++) {
+    let count = 0;
+    for (let x = 0; x < Math.min(w, RUN); x++) count += bar[y * w + x]!;
+    for (let x = 0; x < w; x++) {
+      if (x + RUN < w) count += bar[y * w + x + RUN]!;
+      if (x - RUN - 1 >= 0) count -= bar[y * w + x - RUN - 1]!;
+      if (bar[y * w + x] && count >= 4) rail[y * w + x] = 1;
+    }
+  }
+  // The render's thin lines: darker or lighter than the pixels 3 px either side, any way round.
+  const line = new Uint8Array(n);
+  const T = 25;
+  for (let y = 3; y < h - 3; y++) {
+    for (let x = 3; x < w - 3; x++) {
+      const k = y * w + x;
+      const v = rl[k]!;
+      for (const d of [3, 3 * w, 3 * w + 3, 3 * w - 3]) {
+        const [a, b] = [rl[k - d]!, rl[k + d]!];
+        if (v < a - T && v < b - T) {
+          line[k] = 1;
+          break;
+        }
+      }
+    }
+  }
+  // Only long ones: a rail runs the wall's length, a stone's joints are dashes.
+  const long = new Uint8Array(n);
+  const reach = new Uint8Array(n);
+  for (let start = 0; start < n; start++) {
+    if (!line[start] || reach[start]) continue;
+    const run = [start];
+    reach[start] = 1;
+    let [x0, x1, y0, y1] = [w, 0, h, 0];
+    for (let i = 0; i < run.length; i++) {
+      const k = run[i]!;
+      const x = k % w;
+      const y = (k - x) / w;
+      [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)];
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const q = (y + dy) * w + x + dx;
+          if (x + dx < 0 || y + dy < 0 || x + dx >= w || y + dy >= h || reach[q] || !line[q]) continue;
+          reach[q] = 1;
+          run.push(q);
+        }
+      }
+    }
+    if (Math.max(x1 - x0, y1 - y0) >= w * 0.03) for (const k of run) long[k] = 1;
+  }
+  const NEAR = 5;
+  const lineSum = new Uint32Array((w + 1) * (h + 1));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) lineSum[(y + 1) * (w + 1) + x + 1] = long[y * w + x]! + lineSum[y * (w + 1) + x + 1]! + lineSum[(y + 1) * (w + 1) + x]! - lineSum[y * (w + 1) + x]!;
+  }
+  const lineNear = (x: number, y: number) => {
+    const [x0, y0, x1, y1] = [Math.max(0, x - NEAR), Math.max(0, y - NEAR), Math.min(w, x + NEAR + 1), Math.min(h, y + NEAR + 1)];
+    return lineSum[y1 * (w + 1) + x1]! - lineSum[y0 * (w + 1) + x1]! - lineSum[y1 * (w + 1) + x0]! + lineSum[y0 * (w + 1) + x0]! > 0;
+  };
+  // A railing's bars, joined across the gaps between them.
+  const seen = new Uint8Array(n);
+  const found: LocalFault[] = [];
+  const GAP = 4;
+  for (let start = 0; start < n; start++) {
+    if (!rail[start] || seen[start]) continue;
+    const stack = [start];
+    seen[start] = 1;
+    let [x0, x1, y0, y1, bars, bare] = [w, 0, h, 0, 0, 0];
+    let [sx, sy, sxx, syy, sxy] = [0, 0, 0, 0, 0];
+    while (stack.length) {
+      const k = stack.pop()!;
+      const x = k % w;
+      const y = (k - x) / w;
+      bars++;
+      [sx, sy, sxx, syy, sxy] = [sx + x, sy + y, sxx + x * x, syy + y * y, sxy + x * y];
+      if (!lineNear(x, y)) bare++;
+      [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)];
+      for (let dy = -GAP; dy <= GAP; dy++) {
+        for (let dx = -GAP; dx <= GAP; dx++) {
+          const qx = x + dx;
+          const qy = y + dy;
+          const q = qy * w + qx;
+          if (qx < 0 || qy < 0 || qx >= w || qy >= h || seen[q] || !rail[q]) continue;
+          seen[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    // How long the run is for its breadth: a railing is a long thin band, a car's grille or a shrub is not.
+    const [cxx, cyy, cxy] = [sxx / bars - (sx / bars) ** 2, syy / bars - (sy / bars) ** 2, sxy / bars - (sx / bars) * (sy / bars)];
+    const spread = Math.sqrt((cxx - cyy) ** 2 + 4 * cxy * cxy);
+    const slender = Math.sqrt((cxx + cyy + spread) / Math.max(1e-6, cxx + cyy - spread));
+    // A car's grille was 4.5, a shrub 1.2–4; the railings set on garden walls 7 to 35.
+    if (Math.max(x1 - x0, y1 - y0) < w * 0.04 || bars < 40 || bare < bars * 0.5 || slender < 6) continue;
+    found.push({ place: framePlace((x0 + x1) / 2 / w, (y0 + y1) / 2 / h), box: { x: x0 / w, y: y0 / h, w: (x1 - x0 + 1) / w, h: (y1 - y0 + 1) / h } });
+  }
+  return found;
+}
+
+/**
+ * A furnished plan's painting checked piece by piece against its render: the
+ * render's pieces are its small plain surfaces standing apart from the floor
+ * round them (a bed, a bath, a table, a car). Each must still be a thing in
+ * the painting — not painted over as floor — and keep its material's tone:
+ * a white tub is not painted a grey sofa. The render is furnished from the
+ * sheet (the furniture audit, 136 of 136), so it is the authority; asked of
+ * a vision model instead, the answer turned from "bath missing" to "bed
+ * added" on the same faithful painting (Gottlieb A, 12/10/2026).
+ */
+export async function furnitureFaults(render: Buffer, painting: Buffer, mask?: Buffer): Promise<{ lost: LocalFault[]; changed: LocalFault[]; added: LocalFault[]; pieces: number }> {
+  const surfaces = await surfacesOf(render);
+  const { w, h, r, label, sizes } = surfaces;
+  const n = w * h;
+  const p = (await sharp(painting).resize(w, h, { fit: "fill" }).removeAlpha().blur(1.2).raw().toBuffer({ resolveWithObject: true })).data;
+  // Inside the house only: the plan's parked cars, painted real as they are
+  // asked to be, were "pieces turned to another thing" against the render's
+  // boxes, and the yard's shade "added pieces" (Gottlieb A, 12/10/2026).
+  const inHouse = new Uint8Array(n).fill(1);
+  if (mask) {
+    const m = (await sharp(mask).resize(w, h, { fit: "fill" }).greyscale().raw().toBuffer({ resolveWithObject: true })).data;
+    for (let k = 0; k < n; k++) inHouse[k] = m[k]! > 127 ? 1 : 0;
+  }
+  const box = new Map<number, { x0: number; y0: number; x1: number; y1: number; sum: [number, number, number] }>();
+  for (let k = 0; k < n; k++) {
+    const id = label[k]!;
+    if (sizes[id]! < n * 0.0004 || sizes[id]! > n * 0.012) continue;
+    const x = k % w;
+    const y = (k - x) / w;
+    const b = box.get(id) ?? { x0: x, y0: y, x1: x, y1: y, sum: [0, 0, 0] as [number, number, number] };
+    [b.x0, b.y0, b.x1, b.y1] = [Math.min(b.x0, x), Math.min(b.y0, y), Math.max(b.x1, x), Math.max(b.y1, y)];
+    for (let c = 0; c < 3; c++) b.sum[c] = b.sum[c]! + r[k * 3 + c]!;
+    box.set(id, b);
+  }
+  const lum = (buf: Buffer, k: number) => (buf[k * 3]! + buf[k * 3 + 1]! + buf[k * 3 + 2]!) / 3;
+  const lost: LocalFault[] = [];
+  const changed: LocalFault[] = [];
+  let pieces = 0;
+  for (const [id, b] of box) {
+    const bw = b.x1 - b.x0 + 1;
+    const bh = b.y1 - b.y0 + 1;
+    if (!inHouse[Math.round((b.y0 + b.y1) / 2) * w + Math.round((b.x0 + b.x1) / 2)]) continue;
+    // A piece is compact: most of its box is itself (a wall's strip or a floor's band is not).
+    if (sizes[id]! < 0.55 * bw * bh || Math.max(bw, bh) > 8 * Math.min(bw, bh)) continue;
+    // ...and stands apart from what is round it in the render: a ring 3 px out, of another tone.
+    const ring: number[] = [];
+    for (let y = Math.max(0, b.y0 - 3); y <= Math.min(h - 1, b.y1 + 3); y++) {
+      for (let x = Math.max(0, b.x0 - 3); x <= Math.min(w - 1, b.x1 + 3); x++) {
+        if (x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1) continue;
+        ring.push(y * w + x);
+      }
+    }
+    if (ring.length === 0) continue;
+    const mean = (buf: Buffer, ks: number[]) => {
+      const m = [0, 0, 0];
+      for (const k of ks) for (let c = 0; c < 3; c++) m[c] = m[c]! + buf[k * 3 + c]!;
+      return m.map((v) => v / ks.length);
+    };
+    const inside: number[] = [];
+    for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) if (label[y * w + x] === id) inside.push(y * w + x);
+    const dist = (a: number[], c: number[]) => Math.hypot(a[0]! - c[0]!, a[1]! - c[1]!, a[2]! - c[2]!);
+    const rIn = mean(r, inside);
+    const rRing = mean(r, ring);
+    if (dist(rIn, rRing) < 25) continue;
+    pieces++;
+    const pIn = mean(p, inside);
+    const pRing = mean(p, ring);
+    // Edges inside it in the painting: a thing has some, a floor painted over it few.
+    let strong = 0;
+    for (const k of inside) {
+      const x = k % w;
+      if (x < 1 || x >= w - 1 || k < w || k >= n - w) continue;
+      if (Math.hypot(lum(p, k + 1) - lum(p, k - 1), lum(p, k + w) - lum(p, k - w)) > 18) strong++;
+    }
+    const fault = { place: framePlace((b.x0 + b.x1) / 2 / w, (b.y0 + b.y1) / 2 / h), box: { x: b.x0 / w, y: b.y0 / h, w: bw / w, h: bh / h } };
+    if (dist(pIn, pRing) < 12 && strong < inside.length * 0.04) lost.push(fault);
+    // Turned to another thing: its tone far from the render's, and far from
+    // what the painting's light did to the floor round it — the golden hour
+    // warms and darkens a whole room, and its small pieces with it.
+    else {
+      const shift = (pRing[0]! + pRing[1]! + pRing[2]!) / 3 - (rRing[0]! + rRing[1]! + rRing[2]!) / 3;
+      const moved = (pIn[0]! + pIn[1]! + pIn[2]!) / 3 - (rIn[0]! + rIn[1]! + rIn[2]!) / 3;
+      if (inside.length >= n * 0.0004 && Math.abs(moved - shift) > 60) changed.push(fault);
+    }
+  }
+  // A piece the render does not stand: on a floor — a surface of the render
+  // bigger than any piece — a compact patch of the painting off the floor's
+  // own tone. An armchair and a coffee table painted round a sheet's one sofa
+  // held every piece of the render and passed (12/10/2026).
+  const added: LocalFault[] = [];
+  const floors = new Set<number>();
+  // Not a lawn: a tree the sheet plants, and its shade, fall on the grass.
+  const greenish = (id: number) => {
+    const k = label.indexOf(id);
+    return r[k * 3 + 1]! > r[k * 3]! + 8 && r[k * 3 + 1]! > r[k * 3 + 2]! + 8;
+  };
+  for (let id = 0; id < sizes.length; id++) if (sizes[id]! > n * 0.012 && id !== surfaces.sky && !greenish(id)) floors.add(id);
+  for (const id of floors) {
+    const ks: number[] = [];
+    for (let k = 0; k < n; k++) {
+      if (label[k] !== id) continue;
+      const x = k % w;
+      // Away from the surface's seams: a painting's lines wander a few pixels.
+      if (x < 4 || x >= w - 4 || k < 4 * w || k >= n - 4 * w) continue;
+      if (label[k - 4]! !== id || label[k + 4]! !== id || label[k - 4 * w]! !== id || label[k + 4 * w]! !== id) continue;
+      if (!inHouse[k]) continue;
+      ks.push(k);
+    }
+    if (ks.length < 200) continue;
+    // The floor's own colour: the median of each channel over it.
+    const med = [0, 1, 2].map((c) => ks.map((k) => p[k * 3 + c]!).sort((a, b) => a - b)[ks.length >> 1]!);
+    const off = new Uint8Array(n);
+    for (const k of ks) if (Math.hypot(p[k * 3]! - med[0]!, p[k * 3 + 1]! - med[1]!, p[k * 3 + 2]! - med[2]!) > 38) off[k] = 1;
+    const seen = new Uint8Array(n);
+    for (const start of ks) {
+      if (!off[start] || seen[start]) continue;
+      const stack = [start];
+      seen[start] = 1;
+      let [x0, y0, x1, y1, size] = [w, h, 0, 0, 0];
+      while (stack.length) {
+        const k = stack.pop()!;
+        size++;
+        const x = k % w;
+        const y = (k - x) / w;
+        [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+        for (const q of [k - 1, k + 1, k - w, k + w]) if (q >= 0 && q < n && off[q] && !seen[q]) (seen[q] = 1), stack.push(q);
+      }
+      const [bw, bh] = [x1 - x0 + 1, y1 - y0 + 1];
+      if (size < n * 0.0004 || size < 0.5 * bw * bh || Math.max(bw, bh) > 4 * Math.min(bw, bh)) continue;
+      // A thing has a crisp edge round it; the sun's light and a wall's shade on the floor fade.
+      let crisp = 0;
+      let rim = 0;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const k = y * w + x;
+          if (!off[k] || x < 1 || x >= w - 1 || y < 1 || y >= h - 1) continue;
+          if (off[k - 1] && off[k + 1] && off[k - w] && off[k + w]) continue;
+          rim++;
+          if (Math.hypot(lum(p, k + 1) - lum(p, k - 1), lum(p, k + w) - lum(p, k - w)) > 30) crisp++;
+        }
+      }
+      if (rim === 0 || crisp < rim * 0.35) continue;
+      // Sunlight through a window: the floor itself, brighter, its tint kept.
+      const pm = [0, 0, 0];
+      let pc = 0;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (off[y * w + x]) {
+        for (let c = 0; c < 3; c++) pm[c] = pm[c]! + p[(y * w + x) * 3 + c]!;
+        pc++;
+      }
+      const [pr, pg, pb] = pm.map((v) => v / Math.max(1, pc)) as [number, number, number];
+      const tint = (a: number, b2: number, c: number) => [a / (a + b2 + c + 1), b2 / (a + b2 + c + 1)];
+      const [t1, t2] = [tint(pr, pg, pb), tint(med[0]!, med[1]!, med[2]!)];
+      if (pr + pg + pb > med[0]! + med[1]! + med[2]! && Math.hypot(t1[0]! - t2[0]!, t1[1]! - t2[1]!) < 0.04) continue;
+      added.push({ place: framePlace((x0 + x1) / 2 / w, (y0 + y1) / 2 / h), box: { x: x0 / w, y: y0 / h, w: bw / w, h: bh / h } });
+    }
+  }
+  return { lost, changed, added, pieces };
+}
+
+/**
+ * The local checks over one painting, and what they found in words — null
+ * where it holds. `railings: false` for a view straight down, where a railing
+ * is its top rail and has no bars to count.
+ */
+export async function localMatch(
+  render: Buffer,
+  painting: Buffer,
+  options?: { railings?: boolean },
+): Promise<{ invented: LocalFault[]; lost: LocalFault[]; railings: LocalFault[]; reason: string | null }> {
+  const surfaces = await surfacesOf(render);
+  const [invented, lost, railings] = await Promise.all([
+    inventedObjects(render, painting, surfaces),
+    lostStructure(render, painting, surfaces),
+    options?.railings === false ? Promise.resolve([]) : addedRailings(render, painting),
+  ]);
+  const places = (faults: LocalFault[]) => [...new Set(faults.map((f) => f.place))].join(", ");
+  const reason = [
+    ...(invented.length ? [`invented object at ${places(invented)}`] : []),
+    ...(railings.length ? [`added railing at ${places(railings)}`] : []),
+    ...(lost.length ? [`lost structure at ${places(lost)}`] : []),
+  ].join("; ");
+  return { invented, lost, railings, reason: reason || null };
 }

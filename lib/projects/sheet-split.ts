@@ -27,6 +27,9 @@ const CELL = 40;
  * numbers and room names.
  */
 export function splitStrip(strip: DwfGeometry): StripSheet[] {
+  // Floors given whole (a DXF floor is one drawing, courtyards and all) are taken as they are; only what lies outside their boxes is cut by its ink.
+  const forced = strip.forcedSheets ?? [];
+  const inForced = (x: number, y: number) => forced.some((f) => x >= f.x && x <= f.x + f.width && y >= f.y && y <= f.y + f.height);
   const cols = Math.ceil(strip.pageWidth / CELL) + 1;
   const rows = Math.ceil(strip.pageHeight / CELL) + 1;
   const grid = new Uint8Array(cols * rows);
@@ -34,6 +37,7 @@ export function splitStrip(strip: DwfGeometry): StripSheet[] {
   for (const s of [...strip.segments, ...strip.curves]) {
     const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     if (length > frame) continue;
+    if (forced.length && inForced((s.x1 + s.x2) / 2, (s.y1 + s.y2) / 2)) continue;
     const steps = Math.max(1, Math.ceil(length / CELL));
     for (let k = 0; k <= steps; k++) {
       const x = s.x1 + ((s.x2 - s.x1) * k) / steps;
@@ -74,7 +78,12 @@ export function splitStrip(strip: DwfGeometry): StripSheet[] {
     patches.push(patch);
   }
 
-  return patches
+  const given: StripSheet[] = forced.map((f) => {
+    const box = { x: f.x, y: f.y, width: f.width, height: f.height };
+    const texts = strip.texts.filter((t) => t.x >= box.x && t.x <= box.x + box.width && t.y >= box.y && t.y <= box.y + box.height);
+    return { box, kind: f.kind, title: null, units: unitNumbers(texts) };
+  });
+  return [...given, ...patches
     .filter((patch) => patch.cells > 20)
     .sort((a, b) => a.x0 - b.x0)
     .map((patch) => {
@@ -92,7 +101,7 @@ export function splitStrip(strip: DwfGeometry): StripSheet[] {
       const kind = kindOf(found, texts, units);
       const title = kind === "form" ? null : kind === "floor" && found && !/קומ|תכנית|תוכנית/.test(found) ? null : found;
       return { box, kind, title, units };
-    });
+    })].sort((a, b) => a.box.x - b.box.x);
 }
 
 /** Words on one line, joined in reading order (right to left). */

@@ -35,12 +35,42 @@ const median = (values: number[]) => {
   return s[s.length >> 1] ?? 0;
 };
 
-export function elevationFrame(g: DwfGeometry, upm = DWF_FLOOR_UNITS_PER_METRE): ElevationFrame | null {
+/**
+ * A private house's elevation is hatched, not coursed: its width is its
+ * outline instead — the outermost vertical lines standing from ±0.00 to its
+ * roof, broken lines at one place joined. The sheet's border reaches both
+ * past the highest mark and below the land; a fence or a door stops short of
+ * the roof. Its frame reaches 2.5 m under ±0.00: the land and
+ * the bays fall to the street below it.
+ */
+function outlineSpan(g: DwfGeometry, zeroY: number, top: number, upm: number): [number, number] | null {
+  const levelOf = (y: number) => (zeroY - y) / upm;
+  const verticals = g.segments
+    .filter((s) => Math.abs(s.x2 - s.x1) < 0.01 * upm && Math.abs(s.y2 - s.y1) > 0.3 * upm)
+    .map((s) => ({ x: (s.x1 + s.x2) / 2, lo: levelOf(Math.max(s.y1, s.y2)), hi: levelOf(Math.min(s.y1, s.y2)) }))
+    .sort((a, b) => a.x - b.x || a.lo - b.lo);
+  const runs: Array<{ x: number; lo: number; hi: number }> = [];
+  for (const v of verticals) {
+    const run = runs.find((r) => Math.abs(r.x - v.x) < 0.02 * upm && v.lo <= r.hi + 0.05 && v.hi >= r.lo - 0.05);
+    if (run) [run.lo, run.hi] = [Math.min(run.lo, v.lo), Math.max(run.hi, v.hi)];
+    else runs.push({ ...v });
+  }
+  const edges = runs.filter((r) => r.lo <= 0.5 && r.hi >= Math.max(3, 0.6 * top) && !(r.lo < -1.5 && r.hi > top + 0.3)).map((r) => r.x);
+  if (edges.length < 2) return null;
+  const [left, right] = [Math.min(...edges), Math.max(...edges)];
+  return right - left >= 3 * upm ? [left, right] : null;
+}
+
+export function elevationFrame(g: DwfGeometry, upm = DWF_FLOOR_UNITS_PER_METRE, options?: { house?: boolean }): ElevationFrame | null {
   const marks = levelMarks(g.texts).filter((m) => Math.abs(m.value) < 200);
   if (marks.length < 3) return null;
   const zeroY = median(marks.map((m) => m.y + upm * m.value));
   const yOf = (level: number) => zeroY - upm * level;
   const top = Math.max(...marks.map((m) => m.value));
+  if (options?.house) {
+    const outline = outlineSpan(g, zeroY, top, upm);
+    return outline ? frameAround(outline[0], outline[1], zeroY, top, -2.5, upm) : null;
+  }
 
   // For each 10 cm across the page, how many of the 25 cm bands of height
   // above the ground a horizontal stroke crosses it in. Counting heights, not
@@ -81,11 +111,13 @@ export function elevationFrame(g: DwfGeometry, upm = DWF_FLOOR_UNITS_PER_METRE):
     if (end - c > best[1] - best[0]) best = [c, end];
     c = end;
   }
-  const left = best[0] * bin;
-  const right = (best[1] + 1) * bin;
+  return frameAround(best[0] * bin, (best[1] + 1) * bin, zeroY, top, -1, upm);
+}
+
+function frameAround(left: number, right: number, zeroY: number, top: number, bottomM: number, upm: number): ElevationFrame {
+  const yOf = (level: number) => zeroY - upm * level;
   const width = (right - left) * 1.25;
   const centre = (left + right) / 2;
-  const bottomM = -1;
   const topM = top + 1.5;
   return {
     box: { x: centre - width / 2, y: yOf(topM), width, height: (topM - bottomM) * upm },

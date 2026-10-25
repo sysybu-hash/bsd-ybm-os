@@ -3,7 +3,7 @@ import { createHash } from "crypto";
 /** Bump when extract prompts or merge rules change — invalidates layout replay. */
 export const FLOORPLAN_EXTRACT_LOCK_VERSION = "extract-pixel-v4";
 /** Bump when viz prompts or style locks change — invalidates still replay. */
-export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v49";
+export const FLOORPLAN_VIZ_LOCK_VERSION = "viz-pixel-v50";
 
 const GEMINI_IMAGE_ASPECTS: ReadonlyArray<readonly [number, number]> = [
   [1, 1],
@@ -61,7 +61,7 @@ PIXEL LOCK — the attached sales sheet is CAD ink, not a mood board:
 - Inventory integers are exact. 1 office = 1 desk-only room in the photograph. 1 twin = 1 twin. 0 beds = empty.
 - חדר שירות / ח.שרות is laundry (washer, shelves). It is not שירותים. Do not place a toilet, basin, or bathtub there.
 - If a symbol is not printed, it does not exist. Do not fill empty rooms from memory.
-- Do not copy 2D CAD annotations into the photograph: entrance triangles, north arrows, dimension ticks, hatch as hatch.
+- Do not copy 2D CAD annotations into the photograph: north arrows, dimension ticks, hatch as hatch. The one 2D mark that stays is the small solid black entrance triangle OUTSIDE the front door, on the landing side, where the sheet prints it.
 - A toilet pan, oval basin, or bathtub on the sheet MUST appear in that wet room. Never an empty tiled bathroom.
 - Diagonal hatch on a rectangle is a closet with CLOSED doors, not open hanging rails.
 - Forbidden: typical apartments, approximate counts, similar furniture, "around" a measurement.
@@ -84,14 +84,14 @@ PIXEL LOCK (absolute — this overrides every later sentence):
 
 export const GEOMETRY_PRESENTATION_LOCK = `
 PRESENTATION LOCK — finished Israeli sales-brochure still, not a CAD dollhouse:
-- Forbidden in the photograph: north arrows, black entrance triangles, dimension ticks, 2D hatch patterns, paper title blocks, letters or digits.
+- Forbidden in the photograph: north arrows, dimension ticks, 2D hatch patterns, paper title blocks, letters or digits. The one 2D mark that stays is the small solid black entrance triangle OUTSIDE the front door, on the landing side, where the sheet prints it.
 - Lighting and materials: soft even brochure daylight, finished millwork, complete wet rooms. Not vacant contractor boxes, not a plastic CGI dollhouse.
 `.trim();
 
 export const PRESENTATION_LOCK = `
 PRESENTATION LOCK — finished Israeli sales-brochure still, not a CAD dollhouse:
-- Forbidden in the photograph: north arrows, black entrance triangles, dimension ticks, 2D hatch patterns, paper title blocks, letters or digits.
-- The triangular arrow at the door is a 2D CAD marker. Omit it. Model a real door leaf.
+- Forbidden in the photograph: north arrows, dimension ticks, 2D hatch patterns, paper title blocks, letters or digits. The one 2D mark that stays is the small solid black entrance triangle OUTSIDE the front door, on the landing side, where the sheet prints it.
+- Model a real door leaf in the front door. The triangular arrow the sheet prints outside it stays outside it only — never inside the apartment, never on a terrace, never on a floor.
 - Hatched closet rectangles = built-in cabinets with CLOSED doors. Never exposed hanging rods. Never a walk-in without doors unless the plan draws an open wardrobe.
 - Every bathroom / guest WC with a pan, basin, or tub on the sheet shows those fixtures. Never an empty tiled void. The wall-tracing looks empty — copy wet fixtures from the sales sheet.
 - Laundry symbol = one floor-standing washer unless two machines are drawn. Do not invent a stacked dryer.

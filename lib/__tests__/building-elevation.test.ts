@@ -82,7 +82,7 @@ describe("a laundry screen, as an elevation draws it", () => {
     const g: DwfGeometry = { pageWidth: m(30), pageHeight: m(20), segments: [], curves: [], walls: [], texts, fills: [], arcs: [] };
     return { g, zeroY: ZERO, centreX: m(15), left: m(5), right: m(25), hor, ver: [] };
   };
-  const east = { title: "חזית מזרחית", normal: { x: 1, z: 0 }, sign: -1 as const, alongX: false };
+  const east = { side: "east" as const, normal: { x: 1, z: 0 }, sign: -1 as const, alongX: false };
   const floors = [0, 3, 6, 9].map((level) => ({ level, height: 3, roof: false, outline: [[0, 0], [12, 0], [12, 20], [0, 20]] as Array<[number, number]> }));
 
   it("stands slats in front of the face, where the elevation draws them", async () => {

@@ -49,6 +49,8 @@ export type FurniturePiece = {
   fixture?: "bath" | "shower" | "toilet" | "basin" | "washer";
   /** A bed's head, page-north up, where the drawing shows it (see bedHeadsFromDrawing). */
   head?: "north" | "south" | "east" | "west";
+  /** Named by the drawing itself (a DXF's block): no rule that guards against a misread lines' shape holds it back. */
+  drawn?: boolean;
 };
 
 type Edge = { at: number; a: number; b: number };

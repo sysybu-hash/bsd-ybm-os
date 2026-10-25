@@ -84,7 +84,19 @@ export async function dwfSheetJpeg(sheet: DwfGeometry, box: { x: number; y: numb
   const { x: x0, y: y0, width: w, height: h } = box;
   const scale = px / w;
   const inside = (x: number, y: number) => x >= x0 && x <= x0 + w && y >= y0 && y <= y0 + h;
-  const lines = [...sheet.segments, ...sheet.curves]
+  const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+  // A DXF's sheet is drawn in its own colours (DwfGeometry.display); a plot's in ink.
+  const coloured = sheet.display
+    ? sheet.display.fills
+        .filter((f) => f.pts.some(([x, y]) => inside(x, y)))
+        .map((f) => `<polygon points="${f.pts.map(([x, y]) => `${((x - x0) * scale).toFixed(1)},${((y - y0) * scale).toFixed(1)}`).join(" ")}" fill="${hex(f.rgb)}" stroke="${hex(f.rgb)}" stroke-width="0.4"/>`)
+        .join("") +
+      sheet.display.lines
+        .filter((s) => inside(s.x1, s.y1) || inside(s.x2, s.y2))
+        .map((s) => `<line x1="${((s.x1 - x0) * scale).toFixed(1)}" y1="${((s.y1 - y0) * scale).toFixed(1)}" x2="${((s.x2 - x0) * scale).toFixed(1)}" y2="${((s.y2 - y0) * scale).toFixed(1)}" stroke="${hex(s.rgb)}" stroke-width="${s.w >= 1.2 ? 2.2 : 0.8}" stroke-linecap="round"/>`)
+        .join("")
+    : null;
+  const lines = coloured ?? [...sheet.segments, ...sheet.curves]
     .filter((s) => inside(s.x1, s.y1) || inside(s.x2, s.y2))
     .map((s) => {
       const heavy = s.lineWidth >= 1.2;
@@ -92,7 +104,7 @@ export async function dwfSheetJpeg(sheet: DwfGeometry, box: { x: number; y: numb
     })
     .join("");
   const escape = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[c]!);
-  const texts = sheet.texts
+  const texts = [...sheet.texts, ...(sheet.display?.texts ?? [])]
     .filter((t) => inside(t.x, t.y) && t.text.trim())
     .map((t) => `<text x="${((t.x - x0) * scale).toFixed(1)}" y="${((t.y - y0) * scale).toFixed(1)}" font-size="${(t.height * scale).toFixed(1)}" font-family="Arial, sans-serif" fill="#1f2937" text-anchor="middle" direction="rtl">${escape(t.text)}</text>`)
     .join("");

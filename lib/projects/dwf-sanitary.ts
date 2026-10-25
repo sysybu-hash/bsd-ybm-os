@@ -21,6 +21,9 @@ import type { FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
  *   pan is the pan's own outline. In a kitchen the same ring is the sink.
  *   Where a rectangle up to 1.3 m stands round it, that is the vanity and the
  *   piece is the vanity.
+ * - a basin is also a cluster of arcs too flat for a pan, 15–30 by 25–75 cm,
+ *   inside a counter 35–75 cm deep. The piece is the basin: the counter is
+ *   then known for no bath.
  */
 type Rect = { x: number; y: number; w: number; h: number };
 
@@ -82,7 +85,20 @@ export function readDwfSanitary(
     const box = union(group.map((q) => q.box));
     const s = Math.min(cm(box.w), cm(box.h));
     const l = Math.max(cm(box.w), cm(box.h));
-    if (s >= 30 && s <= 52 && l >= 42 && l <= 80) piece(box, "toilet");
+    if (s >= 30 && s <= 52 && l >= 42 && l <= 80) {
+      piece(box, "toilet");
+      continue;
+    }
+    // A basin drawn in arcs is flatter than a pan and stands in its vanity —
+    // a counter 50 cm deep and up to two metres long, a bath's size, that
+    // would otherwise be read as one.
+    if (group.length < 6 || s < 15 || s >= 30 || l < 25 || l > 75) continue;
+    const vanity = rects.find((r) => {
+      const rs = Math.min(cm(r.w), cm(r.h));
+      const rl = Math.max(cm(r.w), cm(r.h));
+      return rs >= 35 && rs <= 75 && rl >= 50 && rl <= 200 && r.x <= box.x && r.y <= box.y && r.x + r.w >= box.x + box.w && r.y + r.h >= box.y + box.h;
+    });
+    if (vanity) piece(box, "basin");
   }
 
   // --- basins: rings of short strokes
@@ -142,11 +158,17 @@ export function readDwfSanitary(
     const room = [...tally].sort((a, b) => b[1] - a[1])[0]![0];
     // A pan's own outline, drawn in strokes over its arcs, is the pan.
     if (out.some((p) => p.fixture === "toilet" && cx > p.x && cx < p.x + p.w && cy > p.y && cy < p.y + p.h)) continue;
-    if (room === "kitchen" || room === "living") {
+    // An oval — no straight side to it — is a washbasin wherever the reader
+    // put its room; a kitchen sink is a rounded box, its sides straight
+    // (Gottlieb's bathroom basins, read as sinks in the hall beside them).
+    const longest = Math.max(...ring.map((g) => Math.hypot(g.x2 - g.x1, g.y2 - g.y1)));
+    // Only on a sheet that draws its curves as arcs (a house's): a permit plan strokes every ring, its sinks oval too.
+    const oval = (sheet.arcs?.length ?? 0) > 0 && longest < 0.3 * Math.max(box.w, box.h);
+    if ((room === "kitchen" || room === "living") && !oval) {
       piece(box, "basin", "sink");
       continue;
     }
-    if (room !== null && room !== "bathroom" && room !== "utility") continue;
+    if (room !== null && room !== "bathroom" && room !== "utility" && !oval && room !== "circulation") continue;
     const vanity = rects
       .filter((r) => r.x <= box.x && r.y <= box.y && r.x + r.w >= box.x + box.w && r.y + r.h >= box.y + box.h && Math.max(cm(r.w), cm(r.h)) <= 130)
       .sort((p, q) => p.w * p.h - q.w * q.h)[0];

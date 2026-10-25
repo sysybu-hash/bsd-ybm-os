@@ -178,6 +178,10 @@ if (reuse) {
     rooms: report.rooms ?? [],
   });
 } else {
+  if (process.env.ALLOW_PAID_AI !== "1") {
+    console.error("generating a booklet makes paid model calls: run with ALLOW_PAID_AI=1, or --reuse for the stills already made");
+    process.exit(2);
+  }
   const { visualizeFloorplanFromDrawing } = await import("../lib/projects/floorplan-viz.ts");
   console.log(`${name}: generating full ${styleId} booklet`);
   const result = await visualizeFloorplanFromDrawing(

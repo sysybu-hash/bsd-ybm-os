@@ -91,6 +91,7 @@ mobile-shot-*.png
 תוכניות לביצוע הדמיות/
 תוכניות בנין/
 הדמיות גוטליב/
+מערכת הדמיות/
 # render captures and booklet runs made while working on the viz pipeline
 previews/
 e2e/_*-capture.spec.ts
@@ -121,6 +122,9 @@ next-env.d.ts
 # scratch diagnostics, hardcoded to one plan
 scripts/_*.mjs
 scripts/_*.mts
+scripts/_*.cjs
+scripts/_*.jpg
+scripts/_dwg-truth/
 e2e/_*.spec.ts
 scripts/_*.json
 

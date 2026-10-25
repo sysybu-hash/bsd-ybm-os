@@ -241,7 +241,8 @@ export function useProjectDashboard({ projectId, projectName, openWorkspaceWidge
       const fd = new FormData();
       let upload = file;
       const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-      if (isPdf) {
+      // The PDF itself is what the plan is measured from; a picture of it is refused. Only one past the upload's size is sent as a picture.
+      if (isPdf && file.size > 3.5 * 1024 * 1024) {
         try {
           const { rasterizePlanFile, fileFromDataUrl } = await import(
             "@/components/os/widgets/floorplan-viz/plan-source"

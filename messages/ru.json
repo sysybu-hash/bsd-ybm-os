@@ -1659,6 +1659,7 @@
     "upload_unavailable": "Невозможно начать загрузку этого файла",
     "upload_incomplete": "Загрузка файла не завершена",
     "upload_unknown": "Неизвестный запрос загрузки",
+    "house_booklet_local_only": "Буклет частного дома пока работает только в Studio на компьютере; перенос на сайт в процессе.",
     "blob_unavailable": "Загруженный файл плана недоступен",
     "bundle_not_found": "Пакет не найден или неактивен",
     "calendar_not_connected": "Сначала подключите Google Calendar",

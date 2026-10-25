@@ -19,6 +19,14 @@ export type ViewSpec = {
   roomId?: string;
   /** Metres to cut the walls at. Defaults per view. */
   cutawayM?: number;
+  /** An interior shot placed by hand: where the camera stands and what it looks at, metres. */
+  eye?: Vec3;
+  look?: Vec3;
+  fovDeg?: number;
+  /** Frame width / height. Defaults to the shape of the flat. */
+  aspect?: number;
+  /** Overview camera pitch above the horizon, degrees (default 62; 90 is straight down). */
+  pitchDeg?: number;
 };
 
 export type CameraRig = {
@@ -92,8 +100,9 @@ export function cameraFor(scene: FlatScene, view: ViewSpec, aspect: number): Cam
   const { width, depth } = scene.extent;
 
   if (view.id === "overview") {
-    const pitch = (OVERVIEW_PITCH_DEG * Math.PI) / 180;
-    const distance = overviewDistance(width, depth, aspect);
+    const pitchDeg = view.pitchDeg ?? OVERVIEW_PITCH_DEG;
+    const pitch = (pitchDeg * Math.PI) / 180;
+    const distance = overviewDistance(width, depth, aspect, OVERVIEW_FOV, pitchDeg);
     return {
       kind: "perspective",
       position: {
@@ -131,6 +140,19 @@ export function cameraFor(scene: FlatScene, view: ViewSpec, aspect: number): Cam
       halfHeight: half * 1.4,
       near: 0.1,
       far: distance * 3,
+      cutawayM: view.cutawayM,
+    };
+  }
+
+  if (view.id === "interior" && view.eye && view.look) {
+    return {
+      kind: "perspective",
+      position: view.eye,
+      target: view.look,
+      up: { x: 0, y: 1, z: 0 },
+      fovDeg: view.fovDeg ?? INTERIOR_FOV,
+      near: 0.05,
+      far: Math.max(width, depth) * 3,
       cutawayM: view.cutawayM,
     };
   }

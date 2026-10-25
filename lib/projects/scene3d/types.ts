@@ -43,6 +43,8 @@ export type MaterialId =
   | "skirting"
   | "glass"
   | "joinery"
+  /** Jerusalem stone around an exterior window. Interior doors stay joinery. */
+  | "stoneFrame"
   | "metal"
   | "linen"
   | "upholstery"
@@ -72,9 +74,42 @@ export type SceneBox = {
    * there is no bowl. It is how "lived-in" stays honest.
    */
   anchorId?: string;
-  /** Edges rounded to this radius, metres, where the renderer can. */
+  /** Edges rounded to this radius, metres: the box is built as a rounded box (a cushion, a worktop's edge). */
   round?: number;
+  /**
+   * Any other form. With one, `size` is the form's bounding box (what audits, the hash and the cutaway read) and the form itself is built inside it,
+   * in coordinates relative to `centre`.
+   */
+  shape?: SceneShape;
+  /** Turns about the vertical axis, radians, about `centre`: a piece set at an angle to the walls. */
+  rotY?: number;
+  /**
+   * The form's own extents before it is turned, when a quarter turn has made `size` its footprint on the page's axes (audits and the cutaway read the footprint;
+   * the geometry is built from these).
+   */
+  local?: Vec3;
+  /** Slopes, radians about the x and z axes through `centre` (a leaning back rest, a raked headboard, a ramp): applied before `rotY`. */
+  tiltX?: number;
+  tiltZ?: number;
 };
+
+/**
+ * What a mesh can be besides a box. Every form is built from numbers the caller gives, in metres relative to the mesh's centre; nothing is picked
+ * from a catalogue, so any outline, slope or curve can be handed to the renderer.
+ */
+export type SceneShape =
+  /** An ellipsoid filling the bounding box: a pillow's bulk, a bowl, a lamp shade's globe. */
+  | { kind: "ellipsoid"; segments?: number }
+  /** A solid of revolution about the vertical axis (a vase, a lamp base, a round table). Profile points are (radius, y), bottom to top. */
+  | { kind: "lathe"; profile: Array<[number, number]>; segments?: number }
+  /** A plan outline (x, z) extruded up through the box's height; `bevel` rounds the top and bottom edges. Any curved outline is just many points. */
+  | { kind: "extrude"; outline: Array<[number, number]>; bevel?: number; /** Rings cut through it: a worktop with its sink's opening. */ holes?: Array<Array<[number, number]>> }
+  /** A loft: horizontal sections at heights y, each a closed ring of the same number of (x, z) points, joined into a skin: tapers, slopes, bulges and curves of any kind. */
+  | { kind: "loft"; sections: Array<{ y: number; ring: Array<[number, number]> }>; capped?: boolean }
+  /** A tube of constant radius along a path of 3-D points, smoothed through them: a bent leg, a handle, a lamp's arm. */
+  | { kind: "sweep"; path: Array<[number, number, number]>; radius: number; segments?: number }
+  /** Raw triangles: positions (x, y, z flattened) and indices into them. */
+  | { kind: "mesh"; positions: number[]; indices: number[] };
 
 export type SceneRoomKind =
   | "living"

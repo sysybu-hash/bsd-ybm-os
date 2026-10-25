@@ -4315,36 +4315,19 @@ export function openingsInWalls<T extends Opening & { kind?: string }>(
   });
 }
 
-/**
- * Walls the sheet hatches that no body was built for.
- *
- * The bodies come from paired faces, and a short hatched piece between a
- * corner and a doorway pairs wrong or not at all: 17's front door had the
- * jamb on its left drawn as a hatched band 57 cm long and measured as a 9 cm
- * sliver, which the hatch test then dropped — the door had no wall to stand
- * in, and the envelope a hole beside it. So the hatch is read as area: its
- * strokes drawn into a grid and closed across their pitch, what the bodies
- * already cover taken off, and each piece left that is a wall's shape —
- * a solid band at least 6 cm thick and 25 cm long, hatched with four strokes
- * or more, against a wall already found — becomes one. A level mark's
- * hatched quarter, a hatched symbol in a legend, stands clear of every wall
- * and is left.
- */
-export function hatchedWallsMissed(
-  bodies: WallBody[],
+/** The sheet's wall hatch as solid cells: its strokes drawn into a grid and closed across their pitch. */
+function hatchRaster(
   segments: VectorSegment[],
   unitsPerMetre: number,
   extent: { x: number; y: number; width: number; height: number },
-  /** Told of every uncovered hatched piece and what was decided; for debugging. */
-  onPiece?: (rect: { x: number; y: number; w: number; h: number }, verdict: string) => void,
-): WallBody[] {
+) {
   const g = unitsPerMetre * 0.025;
   const pad = unitsPerMetre * 0.5;
   const x0 = extent.x - pad;
   const y0 = extent.y - pad;
   const W = Math.ceil((extent.width + 2 * pad) / g);
   const H = Math.ceil((extent.height + 2 * pad) / g);
-  if (W <= 0 || H <= 0 || W * H > 8_000_000) return [];
+  if (W <= 0 || H <= 0 || W * H > 8_000_000) return null;
   const strokes = segments.filter((s) => {
     const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     if (len < unitsPerMetre * 0.04 || len > unitsPerMetre * 0.8) return false;
@@ -4392,6 +4375,35 @@ export function hatchedWallsMissed(
   // Closed across the pitch: a hatch is drawn every 4 to 7 cm.
   const r = Math.max(1, Math.round((unitsPerMetre * 0.04) / g));
   const solid = grow(grow(ink, r, 1), r, 0);
+  return { g, x0, y0, W, H, strokes, solid };
+}
+
+/**
+ * Walls the sheet hatches that no body was built for.
+ *
+ * The bodies come from paired faces, and a short hatched piece between a
+ * corner and a doorway pairs wrong or not at all: 17's front door had the
+ * jamb on its left drawn as a hatched band 57 cm long and measured as a 9 cm
+ * sliver, which the hatch test then dropped — the door had no wall to stand
+ * in, and the envelope a hole beside it. So the hatch is read as area: its
+ * strokes drawn into a grid and closed across their pitch, what the bodies
+ * already cover taken off, and each piece left that is a wall's shape —
+ * a solid band at least 6 cm thick and 25 cm long, hatched with four strokes
+ * or more, against a wall already found — becomes one. A level mark's
+ * hatched quarter, a hatched symbol in a legend, stands clear of every wall
+ * and is left.
+ */
+export function hatchedWallsMissed(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  extent: { x: number; y: number; width: number; height: number },
+  /** Told of every uncovered hatched piece and what was decided; for debugging. */
+  onPiece?: (rect: { x: number; y: number; w: number; h: number }, verdict: string) => void,
+): WallBody[] {
+  const raster = hatchRaster(segments, unitsPerMetre, extent);
+  if (!raster) return [];
+  const { g, x0, y0, W, H, strokes, solid } = raster;
   const covered = new Uint8Array(W * H);
   for (const b of bodies) {
     const rc = bodyRect(b);
@@ -4879,4 +4891,72 @@ export function openFloorLookup(
     const j = Math.floor((y - minY) / g);
     return i >= 0 && j >= 0 && i < W && j < H && opened[j * W + i] === 1;
   };
+}
+
+/**
+ * Each wall widened to its hatch, face by face.
+ *
+ * The faces are paired before the hatch is read, and a pair can be the wrong
+ * one: 17's shelter wall is hatched 40 cm deep and was built 21 cm, and the
+ * scene, finding no floor a step past its inner face (a bed and a wardrobe
+ * stand there), took it down. A face is moved out a cell at a time while the
+ * cells along the wall's length past it are hatch — most of them, so a
+ * doorway or a window in the run does not stop it — up to 30 cm. A strip
+ * another wall already holds is not taken twice.
+ */
+export function widenToHatch(
+  bodies: WallBody[],
+  segments: VectorSegment[],
+  unitsPerMetre: number,
+  extent: { x: number; y: number; width: number; height: number },
+): WallBody[] {
+  const raster = hatchRaster(segments, unitsPerMetre, extent);
+  if (!raster) return bodies;
+  const { g, x0, y0, W, H, solid } = raster;
+  const cell = (x: number, y: number) => {
+    const i = Math.floor((x - x0) / g);
+    const j = Math.floor((y - y0) / g);
+    return i >= 0 && j >= 0 && i < W && j < H && solid[j * W + i] === 1;
+  };
+  const maxGrow = unitsPerMetre * 0.3;
+  return bodies.map((b, index) => {
+    // A wall, not a stub: a stub's "length" is a wall's depth, and widened it
+    // grows along the wall it sits in.
+    if (b.to - b.from < b.thickness * 3) return b;
+    const h = b.orientation === "h";
+    const others = bodies.filter((_, k) => k !== index).map(bodyRect);
+    const inOther = (x: number, y: number) => others.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+    // The share of the wall's length hatched on the line `at` across it.
+    const hatchedAlong = (at: number) => {
+      let on = 0;
+      let n = 0;
+      let all = 0;
+      for (let t = b.from + g / 2; t < b.to; t += g) {
+        all++;
+        const [x, y] = h ? [t, at] : [at, t];
+        if (inOther(x, y)) continue;
+        n++;
+        if (cell(x, y)) on++;
+      }
+      // Along most of the wall's own length, not the end left between the
+      // walls it meets.
+      return n >= all * 0.6 ? on / n : 0;
+    };
+    let lo = b.centre - b.thickness / 2;
+    let hi = b.centre + b.thickness / 2;
+    // And held in from a face its hatch does not reach, where the wall is
+    // hatched at all: 21's west bedroom wall paired its outer face with the
+    // wardrobe's edge, 8 cm into the room.
+    if (hatchedAlong(b.centre) >= 0.7) {
+      const minThickness = unitsPerMetre * 0.06;
+      while (hi - lo > minThickness && hatchedAlong(lo + g / 2) < 0.3) lo += g;
+      while (hi - lo > minThickness && hatchedAlong(hi - g / 2) < 0.3) hi -= g;
+    }
+    const fromLo = lo;
+    const fromHi = hi;
+    while (fromHi - lo < b.thickness + maxGrow && hatchedAlong(lo - g / 2) >= 0.7) lo -= g;
+    while (hi - fromLo < b.thickness + maxGrow && hatchedAlong(hi + g / 2) >= 0.7) hi += g;
+    if (Math.abs(hi - lo - b.thickness) <= g / 2 && Math.abs((lo + hi) / 2 - b.centre) <= g / 2) return b;
+    return { ...b, centre: (lo + hi) / 2, thickness: hi - lo };
+  });
 }

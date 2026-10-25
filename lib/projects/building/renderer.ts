@@ -4,9 +4,21 @@ import path from "path";
 import type { HTTPRequest } from "puppeteer-core";
 import sharp from "sharp";
 
+import { env } from "@/lib/env";
 import { launchChromium } from "@/lib/pdf/chromium-launch";
 import { forTracing } from "@/lib/projects/building/cut-model";
 import { BUILDING_ORIGIN, buildingPageHtml, type BuildingRenderPayload } from "@/lib/projects/building/render-page";
+
+/**
+ * The geometric render is local Chrome plus three.js. Path tracing needs the
+ * machine's GPU and a long DevTools timeout; on the website (Vercel) it is
+ * dropped and the same frame is rasterised. Local FLUX and paid paint are
+ * not this function.
+ */
+function framesForHost(payloads: BuildingRenderPayload[]): BuildingRenderPayload[] {
+  if (!env.VERCEL) return payloads;
+  return payloads.map((p) => (p.pathTrace ? { ...p, pathTrace: undefined } : p));
+}
 
 /**
  * Draw frames of a building in a headless Chromium, one browser for all of
@@ -17,6 +29,7 @@ export async function renderBuildingFrames(
   payloads: BuildingRenderPayload[],
   options?: { outputWidthPx?: number; timeoutMs?: number },
 ): Promise<Buffer[]> {
+  payloads = framesForHost(payloads);
   // A traced frame leaves the GPU process holding its scene's textures, and
   // the next traced frame in the same browser came out with its walls
   // missing. Each traced frame gets a browser of its own.
