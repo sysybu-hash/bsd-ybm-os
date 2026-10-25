@@ -12,12 +12,13 @@ import {
   PLAN_DIRECT_UPLOAD_MAX_BYTES,
   planExceedsUploadLimit,
   stagePlanFile,
+  type StagedPlanRef,
 } from "@/components/os/widgets/floorplan-viz/plan-source";
 import type { FloorplanVizResult } from "@/lib/projects/floorplan-viz";
-import type { FloorplanLayout, FloorplanRoom } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizRunSummary } from "@/lib/projects/floorplan-viz-ids";
 import { useFloorplanVizStills } from "@/components/os/widgets/floorplan-viz/useFloorplanVizStills";
 import { useDwfBuilding } from "@/components/os/widgets/floorplan-viz/useDwfBuilding";
+import { useFloorplanVizLibrary } from "@/components/os/widgets/floorplan-viz/useFloorplanVizLibrary";
 import {
   listFloorplanVizJobs,
   type FloorplanVizScope,
@@ -33,6 +34,15 @@ type TFn = (key: string, vars?: Record<string, string>) => string;
 type ProjectListItem = { id: string; name: string };
 
 export type VizAccess = { subscriber: boolean; paint: boolean; contactEmail: string };
+
+/**
+ * What the identify step adds to a run: the plan already uploaded (so it is
+ * not uploaded twice) and the structure and plan the person confirmed.
+ */
+export type ConfirmedRunFields = {
+  staged?: StagedPlanRef | null;
+  fields?: Record<string, string>;
+};
 
 /**
  * A floor-plan run and everything that can be done to it: upload, generate,
@@ -132,7 +142,11 @@ export function useFloorplanVizRun({
   }, []);
 
   const generate = useCallback(
-    async (nextScope: FloorplanVizScope, renderMode: "render3d" | "finish" = "render3d") => {
+    async (
+      nextScope: FloorplanVizScope,
+      renderMode: "render3d" | "finish" = "render3d",
+      confirmed?: ConfirmedRunFields,
+    ) => {
       const appending = Boolean(result?.runId);
       if (!appending && !file) {
         toast.error(t("workspaceWidgets.floorplanViz.needFile"));
@@ -166,7 +180,7 @@ export function useFloorplanVizRun({
               toast.error(message);
               return;
             }
-            const staged = await stagePlanFile(file);
+            const staged = confirmed?.staged ?? (await stagePlanFile(file));
             if (staged?.blobUrl) fd.append("blobUrl", staged.blobUrl);
             else if (staged?.uploadId) fd.append("uploadId", staged.uploadId);
             else if (file.size <= PLAN_DIRECT_UPLOAD_MAX_BYTES) fd.append("file", file);
@@ -183,6 +197,7 @@ export function useFloorplanVizRun({
           fd.append("scope", nextScope);
           fd.append("renderMode", renderMode);
           if (customKit) fd.append("styleKit", JSON.stringify(customKit));
+          for (const [key, value] of Object.entries(confirmed?.fields ?? {})) fd.append(key, value);
         }
         const res = await fetch("/api/projects/visualize-floorplan", {
           method: "POST",
@@ -217,107 +232,17 @@ export function useFloorplanVizRun({
     [applyResult, customKit, dwf, file, projectId, refreshRuns, result, styleId, t],
   );
 
-  const openRun = useCallback(
-    async (id: string) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/projects/visualize-floorplan/${encodeURIComponent(id)}`, {
-          credentials: "include",
-        });
-        const json = (await res.json()) as Record<string, unknown>;
-        if (!res.ok) {
-          toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.loadFailed"));
-          return;
-        }
-        const incoming = json as unknown as FloorplanVizResult & { sourceFileName?: string };
-        applyResult(incoming);
-        if (incoming.planBase64 && incoming.planMimeType) {
-          const incomingPdf =
-            incoming.planMimeType === "application/pdf" || incoming.planBase64.startsWith("JVBERi");
-          setFile((prev) => {
-            if (
-              !incomingPdf &&
-              prev &&
-              (prev.type === "application/pdf" || /\.pdf$/i.test(prev.name))
-            ) {
-              return prev;
-            }
-            return fileFromDataUrl(
-              `data:${incoming.planMimeType};base64,${incoming.planBase64}`,
-              incoming.sourceFileName || incoming.title || (incomingPdf ? "plan.pdf" : "plan.jpg"),
-            );
-          });
-        }
-      } catch {
-        toast.error(t("workspaceWidgets.floorplanViz.loadFailed"));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [applyResult, t],
-  );
-
-  const deleteRun = useCallback(
-    async (id: string) => {
-      if (!window.confirm(t("workspaceWidgets.floorplanViz.deleteRunConfirm"))) return;
-      const res = await fetch(`/api/projects/visualize-floorplan/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) {
-        toast.error(t("workspaceWidgets.floorplanViz.deleteFailed"));
-        return;
-      }
-      if (result?.runId === id) {
-        setResult(null);
-        setFile(null);
-      }
-      toast.success(t("workspaceWidgets.floorplanViz.deleted"));
-      void refreshRuns();
-    },
-    [refreshRuns, result?.runId, t],
-  );
-
-  const renameRun = useCallback(async () => {
-    if (!result?.runId) return;
-    const title = titleDraft.trim();
-    if (!title || title === result.title) return;
-    const res = await fetch(`/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
-    if (!res.ok) {
-      toast.error(t("workspaceWidgets.floorplanViz.renameFailed"));
-      return;
-    }
-    setResult({ ...result, title });
-    void refreshRuns();
-  }, [refreshRuns, result, t, titleDraft]);
-
-  /** Save the room list a person checked against the sheet; the booklet builds from it. */
-  const saveRooms = useCallback(
-    async (rooms: FloorplanRoom[]): Promise<boolean> => {
-      if (!result?.runId) return false;
-      const res = await fetch(`/api/projects/visualize-floorplan/${encodeURIComponent(result.runId)}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rooms }),
-      });
-      const json = (await res.json().catch(() => ({}))) as { layout?: FloorplanLayout; error?: string };
-      if (!res.ok || !json.layout) {
-        toast.error(typeof json.error === "string" ? json.error : t("workspaceWidgets.floorplanViz.roomsSaveFailed"));
-        return false;
-      }
-      setResult({ ...result, layout: json.layout });
-      toast.success(t("workspaceWidgets.floorplanViz.roomsSaved"));
-      return true;
-    },
-    [result, t],
-  );
+  const { openRun, deleteRun, renameRun, saveRooms } = useFloorplanVizLibrary({
+    t,
+    result,
+    setResult,
+    setFile,
+    setLoading,
+    setError,
+    applyResult,
+    refreshRuns,
+    titleDraft,
+  });
 
   const { editingKey, editStill, improveStill, rescanStill, selectStill, deleteStill, dismissIssue } =
     useFloorplanVizStills({ result, setResult, refreshRuns, t });

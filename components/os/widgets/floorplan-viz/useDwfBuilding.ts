@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { extractW2dFromDwf, isDwfFileName } from "@/components/os/widgets/floorplan-viz/dwf-extract";
 import {
@@ -30,7 +30,13 @@ export function useDwfBuilding(t: TFn) {
   const [drawing, setDrawing] = useState<File | null>(null);
   const [units, setUnits] = useState<DwfBuildingUnit[]>([]);
   const [choice, setChoice] = useState("");
-  const [staged, setStaged] = useState<StagedPlanRef | null>(null);
+  const [staged, setStagedState] = useState<StagedPlanRef | null>(null);
+  // Read right after prepare resolves, before the state has rendered.
+  const stagedNow = useRef<StagedPlanRef | null>(null);
+  const setStaged = useCallback((ref: StagedPlanRef | null) => {
+    stagedNow.current = ref;
+    setStagedState(ref);
+  }, []);
   const [reading, setReading] = useState(false);
 
   const reset = useCallback(() => {
@@ -38,7 +44,7 @@ export function useDwfBuilding(t: TFn) {
     setUnits([]);
     setChoice("");
     setStaged(null);
-  }, []);
+  }, [setStaged]);
 
   /**
    * Take a chosen file. Answers the file the run should carry — the drawing
@@ -89,7 +95,7 @@ export function useDwfBuilding(t: TFn) {
         setReading(false);
       }
     },
-    [reset, t],
+    [reset, setStaged, t],
   );
 
   /** The run's fields: the upload (again, if the last run used it up) and the apartment. */
@@ -119,7 +125,10 @@ export function useDwfBuilding(t: TFn) {
       unit: String(picked.unit),
       ...(picked.level ? { level: picked.level } : {}),
     };
-  }, [staged, choice, drawing, t, units]);
+  }, [staged, setStaged, choice, drawing, t, units]);
 
-  return { isDwf: drawing !== null, drawing, units, choice, setChoice, reading, prepare, runFields, reset };
+  /** The strip's upload as prepare left it, readable before the next render. */
+  const currentStaged = useCallback(() => stagedNow.current, []);
+
+  return { isDwf: drawing !== null, drawing, units, choice, setChoice, currentStaged, reading, prepare, runFields, reset };
 }
