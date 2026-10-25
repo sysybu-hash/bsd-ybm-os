@@ -13,7 +13,6 @@
     "floorplan:bench": "npx tsx scripts/floorplan-cad-bench.mts",
     "floorplan:bench-programmes": "dotenv -e .env.local -- npx tsx --conditions=react-server scripts/floorplan-bench-programmes.mts",
     "floorplan:audit-bench": "dotenv -e .env.local -- npx tsx --conditions=react-server scripts/floorplan-audit-bench.mts",
-    "studio": "node scripts/studio/server.mjs",
     "floorplan:render3d": "npx tsx scripts/render-floorplan-3d.mts",
     "floorplan:survey": "npx tsx scripts/survey-plans.mjs",
     "floorplan:booklet": "npx tsx scripts/build-booklet.mjs",

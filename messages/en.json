@@ -1659,6 +1659,7 @@
     "upload_unavailable": "An upload cannot be opened for this file",
     "upload_incomplete": "The file upload did not finish",
     "upload_unknown": "Unknown upload request",
+    "house_booklet_local_only": "The private-house booklet runs only in the desktop Studio for now; it is being moved to the site.",
     "blob_unavailable": "The uploaded plan file is unavailable",
     "bundle_not_found": "Bundle not found or inactive",
     "calendar_not_connected": "Connect Google Calendar first",

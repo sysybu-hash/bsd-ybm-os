@@ -1659,6 +1659,7 @@
     "upload_unavailable": "לא ניתן לפתוח העלאה לקובץ הזה",
     "upload_incomplete": "העלאת הקובץ לא הושלמה",
     "upload_unknown": "בקשת העלאה לא מוכרת",
+    "house_booklet_local_only": "חוברת בית פרטי רצה בינתיים רק בתוכנת ה־Studio במחשב. ההעברה לאתר בתהליך.",
     "blob_unavailable": "קובץ התוכנית שהועלה אינו זמין",
     "bundle_not_found": "חבילה לא נמצאה או לא פעילה",
     "calendar_not_connected": "חברו Google Calendar תחילה",

@@ -10,7 +10,8 @@ import { env } from "@/lib/env";
  * in one thing only — whether the page needs WebGL — so that is the argument.
  */
 
-const isVercel = Boolean(env.VERCEL);
+/** Read when a browser is launched, not on import: tests import the renderer with no env. */
+const isVercel = () => Boolean(env.VERCEL);
 
 const LAUNCH_ARGS = [
   "--no-sandbox",
@@ -66,7 +67,7 @@ export async function launchChromium(options?: ChromiumLaunchOptions) {
   const puppeteer = await import("puppeteer-core");
   const defaultViewport = options?.viewport ?? { width: 1280, height: 720 };
 
-  if (isVercel) {
+  if (isVercel()) {
     const chromium = (await import("@sparticuz/chromium")).default;
     // Only ever switched on. The PDF exporters have always run with whatever
     // the package defaults to, and a render must not change how they launch.

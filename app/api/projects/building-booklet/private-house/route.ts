@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest, jsonForbidden, jsonNotFound } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden, jsonNotFound, jsonServiceUnavailable } from "@/lib/api-json";
+import { env } from "@/lib/env";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { houseProjectFromFiles } from "@/lib/projects/building/house-project";
@@ -44,6 +45,15 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     const access = await vizAccessForUser(userId, orgId);
     if (!access.subscriber) return jsonForbidden("ההדמיה המדודה פתוחה למנויים פעילים");
     if (!access.paint) return jsonForbidden("חוברת הבית הפרטי פתוחה לבעל המערכת.");
+    // The job runs inside this process for many minutes. A serverless function
+    // is killed 300 s after the request, mid-run, so on the platform it is
+    // refused until the job runs in steps like the building booklet.
+    if (env.VERCEL) {
+      return jsonServiceUnavailable(
+        "חוברת בית פרטי רצה בינתיים רק בתוכנת ה־Studio במחשב. ההעברה לאתר בתהליך.",
+        "house_booklet_local_only",
+      );
+    }
     if ((req.headers.get("content-type") ?? "").includes("application/json")) {
       const limited = await applyRateLimit(req, "building-booklet:house-action", 20, 3_600_000);
       if (limited) return limited;
