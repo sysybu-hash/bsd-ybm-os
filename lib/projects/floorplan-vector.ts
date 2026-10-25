@@ -1,6 +1,7 @@
 import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
+import type { DxfLabel, DxfReadReport } from "@/lib/projects/floorplan-dxf";
 
 const log = createLogger("floorplan-vector");
 
@@ -77,6 +78,10 @@ export type FloorplanVectorGeometry = {
    * floor; a flat that names its rooms keeps every check a flat gets.
    */
   dwellingLabels?: number;
+  /** A DXF's text, where it stands on the page, for the preview it is read from. */
+  labels?: DxfLabel[];
+  /** What a DXF reader took from the drawing and what it did not; see DxfReadReport. */
+  cad?: DxfReadReport;
 };
 
 type Matrix = [number, number, number, number, number, number];

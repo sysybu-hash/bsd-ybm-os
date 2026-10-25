@@ -66,6 +66,7 @@ import {
 } from "@/lib/projects/floorplan-geometry-payload";
 import {
   FloorplanCadUnreadableError,
+  dxfReportLines,
   geometryFromDxf,
   renderDxfPageJpeg,
 } from "@/lib/projects/floorplan-dxf";
@@ -244,11 +245,13 @@ async function rasterizeNativeCadReference(
   prepared: { base64: string; mimeType: string },
 ): Promise<NativeCadReference> {
   const bytes = Buffer.from(prepared.base64, "base64");
-  const dxfText = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : bytes.toString("utf8");
-  if (!dxfText) throw new FloorplanCadUnreadableError("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
-  const geometry = await geometryFromDxf(dxfText);
+  // A DXF goes in as its bytes: before AutoCAD 2007 its text is in the code
+  // page its header names (ANSI_1255 in a Hebrew office), not UTF-8.
+  const dxf = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : new Uint8Array(bytes);
+  if (!dxf) throw new FloorplanCadUnreadableError("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
+  const geometry = await geometryFromDxf(dxf);
   if (!geometry) throw new FloorplanCadUnreadableError("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
-  const raster = await renderDxfPageJpeg(geometry, dxfText);
+  const raster = await renderDxfPageJpeg(geometry);
   if (!raster) throw new FloorplanCadUnreadableError("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
   return {
     geometry,
@@ -847,13 +850,17 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
         }),
       ),
       geometry: { mimeType: "image/jpeg", base64: rendered.geometry.toString("base64") },
-      confidence: rendered.flat.framedPart
-        ? {
-            ...rendered.confidence,
-            tier: "cad",
-            soft: [...rendered.confidence.soft, framedPartLabel(rendered.flat.framedPart)],
-          }
-        : { ...rendered.confidence, tier: "cad" },
+      // What the drawing holds that this plate does not is said under it,
+      // never left out silently: the other plans, the fills, the sections.
+      confidence: {
+        ...rendered.confidence,
+        tier: "cad",
+        soft: [
+          ...rendered.confidence.soft,
+          ...(rendered.flat.framedPart ? [framedPartLabel(rendered.flat.framedPart)] : []),
+          ...(geometry.cad ? dxfReportLines(geometry.cad) : []),
+        ],
+      },
       ...(rendered.flat.framedPart ? { framedPart: rendered.flat.framedPart } : {}),
       sourceRaster: nativeCad.raster,
       truth,
