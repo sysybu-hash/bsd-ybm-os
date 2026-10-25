@@ -754,7 +754,7 @@
         "structure": {
           "apartment": "Apartment",
           "building": "Building (permit strip)",
-          "house": "Private house",
+          "house": "Building by storeys (house / building)",
           "commercial": "Commercial / public floor",
           "site": "Site / development",
           "unknown": "Unknown"
@@ -787,7 +787,7 @@
         "buildingWholeHint": "Facades, aerial view and every flat",
         "buildingOne": "One flat",
         "buildingOneHint": "Pick a flat from the strip and visualise it",
-        "houseHint": "Private-house booklet: measuring includes a short read of the sheets (a few agorot), then a review and a cost estimate before any painting.",
+        "houseHint": "Booklet by storeys (a house or a building): measuring includes a short read of the sheets (a few agorot), then a review and a cost estimate before any painting.",
         "commercialHint": "A commercial or public floor is measured as an open space — no bedrooms required.",
         "noFloor": "The file has no floor plan to produce from"
       },
