@@ -144,7 +144,11 @@ async function main() {
   su.mieCoefficient.value = 0.004;
   su.mieDirectionalG.value = 0.82;
   const az = THREE.MathUtils.degToRad(P.sun.azimuthDeg);
-  const el = THREE.MathUtils.degToRad(P.sun.elevationDeg);
+  // A model whose palette is the golden hour (Wolf's, from its photographs) is
+  // seen in it from every perspective outside: the views' noon suns lowered.
+  const goldenSky = !!(P.model.palette && P.model.palette.golden) && P.camera.interior !== true && P.camera.cutAboveM == null && !P.camera.studio && !P.camera.section && P.camera.orthoHalfWidth == null;
+  const sunElevationDeg = goldenSky ? Math.min(P.sun.elevationDeg, 15) : P.sun.elevationDeg;
+  const el = THREE.MathUtils.degToRad(sunElevationDeg);
   // North is -z; azimuth runs clockwise from it, so east is +x.
   const sunDir = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), -Math.cos(az) * Math.cos(el)).normalize();
   su.sunPosition.value.copy(sunDir);
@@ -171,7 +175,7 @@ async function main() {
   // A house's street views in the golden hour the client chose: the sun low
   // and warm, the sky deepening to amber at the horizon, the distance hazed.
   const goldenModel = !!(P.model.palette && P.model.palette.golden) && !inside && P.camera.cutAboveM == null && !P.camera.studio && !P.camera.section;
-  const golden = (houseOut || goldenModel) && P.camera.orthoHalfWidth == null && P.sun.elevationDeg <= 18;
+  const golden = (houseOut || goldenModel) && P.camera.orthoHalfWidth == null && sunElevationDeg <= 18;
   if (golden) {
     su.turbidity.value = 6.5; su.rayleigh.value = 2.6; su.mieCoefficient.value = 0.007; su.mieDirectionalG.value = 0.86;
     scene.environment = pmrem.fromScene(skyScene, 0.02).texture;

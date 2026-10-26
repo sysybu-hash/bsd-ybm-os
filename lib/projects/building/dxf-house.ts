@@ -1001,6 +1001,8 @@ export function drawnFurniture(inv: HouseInventory, sheet: CadSheet, unitsM: num
     }
     // A computer on a classroom's desk ("A-KOMPL", 45 × 38 cm): no basin.
     else if (/kompl/.test(name)) continue;
+    // A window's block on the window layer ("za-45" on W) and a fire point ("emdat kibui"): neither is a basin (Wolf, 26/10/2026).
+    else if (/^(w|win|window)$/i.test(it.layer) || /kibui/.test(name)) continue;
     else if (s >= 0.8 && s <= 1.0 && l >= 1.85 && l <= 2.15) add(x0, z0, x1, z1, "bed");
     else if (s >= 1.3 && s <= 2.2 && l >= 1.85 && l <= 2.3) add(x0, z0, x1, z1, "bed");
     else if (!sanLayer && s >= 0.6 && s <= 0.85 && l >= 1.45 && l <= 1.9) add(x0, z0, x1, z1, "fixture", "bath");

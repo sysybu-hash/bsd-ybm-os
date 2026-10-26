@@ -501,7 +501,7 @@ export function buildingFromDwf(
       facade: body,
       interior: "plaster",
       // A frame the project's palette colours (Wolf's dark green, from its photographs) is a frame, not the stone's.
-      ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: options?.palette?.colors?.frame ? "frame" : HOUSE_WINDOW_FRAME } : {}),
+      ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: options?.palette?.colors?.frame ? "frame" : HOUSE_WINDOW_FRAME, frameAtFace: !!options?.palette?.colors?.frame } : {}),
     };
     prims.push(...parts.reduce((laid, part) => flushFacade(laid, part, spec.facade, id), faceTheWeather(floorPrimitives(moved, openings, spec), parts, spec.facade)));
     for (const wall of f.sheet.curvedWalls ?? []) prims.push(...curvedWallPrimitives(wall, { shift, level: f.level, height, sill: typicalWindow.sill, head: typicalWindow.head }, body, `${id}:curved`));
@@ -623,7 +623,9 @@ export function buildingFromDwf(
       const groundDoors = groundOpenings.filter((o) => o.door && o.exterior && o.outward).map((o) => ({ ...o, outward: o.outward! }));
       const alongWall = (door: { orientation: "h" | "v"; x: number; y: number; w: number; h: number; outward: 1 | -1 }) => drawnSideFlight(elevations, door, ground, centre);
       const side = front ? houseSideFlights({ doors: groundDoors, ground, front, levels: options?.site, taken: stood?.flights ?? [], plot: yard.plot, prims: yard.primitives, alongWall }) : null;
-      prims.push(...yard.primitives.flatMap((p) => (p.type === "prism" && p.tag === "yard:paving" ? pavingAround(p) : [p])), ...(stood?.primitives ?? []), ...(side?.primitives ?? []));
+      // A yard the project's palette lays in red pavers (Wolf's, from its photographs): the pavers, not the porch's stone.
+      const laid = (p: Primitive): Primitive => (options?.palette?.redPavers && p.type === "prism" && p.material === "floorStone" ? { ...p, material: "paving" } : p);
+      prims.push(...yard.primitives.flatMap((p) => (p.type === "prism" && p.tag === "yard:paving" ? pavingAround(p).map(laid) : [p])), ...(stood?.primitives ?? []), ...(side?.primitives ?? []));
       flights = [...(stood?.flights ?? []), ...(side?.flights ?? [])];
     }
     const site = houseSite(storeys.map((f) => f.outline), ground, yard ?? undefined);

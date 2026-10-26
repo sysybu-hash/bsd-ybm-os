@@ -33,6 +33,8 @@ export type FloorSpec = {
   surroundMaterial?: BuildingMaterial;
   /** The frame of the glazing itself. Absent: aluminium. */
   frameMaterial?: BuildingMaterial;
+  /** The glazing set 5 cm in from the facade in a broad frame, as a coloured frame shows (Wolf's green), not 12 cm back in shadow. */
+  frameAtFace?: boolean;
 };
 
 export function insidePolygon(ring: Outline, x: number, y: number): boolean {
@@ -238,7 +240,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
         if (o.orientation === "h") box(o.x + p0, outer, p1 - p0, SKIN + proud, y0 + h0, y0 + h1, material, `${tag}:door`);
         else box(outer, o.y + p0, SKIN + proud, p1 - p0, y0 + h0, y0 + h1, material, `${tag}:door`);
       }
-      if (o.full || glassWall) glazing(out, o, y0, y0 + head - frame, frame, side, `${tag}:door`, o.sliding ? Math.max(2, Math.round(along / 1.5)) : 1, floor.frameMaterial ?? "frame");
+      if (o.full || glassWall) glazing(out, o, y0, y0 + head - frame, frame, side, `${tag}:door`, o.sliding ? Math.max(2, Math.round(along / 1.5)) : 1, floor.frameMaterial ?? "frame", floor.frameAtFace);
       else {
         const thick = o.orientation === "h" ? o.h : o.w;
         const face = (o.orientation === "h" ? o.y : o.x) + (side < 0 ? 0.12 : side > 0 ? thick - 0.12 : thick / 2);
@@ -300,7 +302,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
         else box(face, o.y + s0, SKIN + proud + 0.04, s1 - s0, y0 + sillBottom, y0 + sill, sillMaterial, `${tag}:sill`);
       }
       // The glass fills the opening; a window of two leaves where it is wide enough to slide.
-      glazing(out, o, y0 + sill, y0 + head, 0, side, `${tag}:window`, along >= 0.9 ? 2 : 1, floor.frameMaterial ?? "frame");
+      glazing(out, o, y0 + sill, y0 + head, 0, side, `${tag}:window`, along >= 0.9 ? 2 : 1, floor.frameMaterial ?? "frame", floor.frameAtFace);
       continue;
     }
     // A curtain wall: to its head, mullions every two metres or so, stone above.
@@ -325,13 +327,14 @@ function glazing(
   tag: string,
   panes: number,
   frameMaterial: BuildingMaterial = "frame",
+  atFace = false,
 ): void {
   const horizontal = o.orientation === "h";
   const len = (horizontal ? o.w : o.h) - 2 * inset;
   const start = (horizontal ? o.x : o.y) + inset;
   const thick = horizontal ? o.h : o.w;
-  const face = (horizontal ? o.y : o.x) + (side < 0 ? 0.12 : side > 0 ? thick - 0.12 : thick / 2);
-  const frameT = 0.06;
+  const face = (horizontal ? o.y : o.x) + (side < 0 ? (atFace ? 0.05 : 0.12) : side > 0 ? thick - (atFace ? 0.05 : 0.12) : thick / 2);
+  const frameT = atFace ? 0.09 : 0.06;
   const put = (s: number, e: number, h0: number, h1: number, depth: number, material: BuildingMaterial) => {
     const size = horizontal ? { x: e - s, y: h1 - h0, z: depth } : { x: depth, y: h1 - h0, z: e - s };
     const centre = horizontal

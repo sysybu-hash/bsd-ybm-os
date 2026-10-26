@@ -83,7 +83,9 @@ export function dwfBuildingViews(
     const across = { x: -s.z, z: s.x };
     const front = s.x !== 0 ? width : depth;
     const wide = s.x !== 0 ? depth : width;
-    const out = front / 2 + Math.max(28, wide * 1.2);
+    // A public building's corners from its own forecourt, as the seminary's photographs stand: from across a street
+    // a 60 m school stood small behind its fence.
+    const out = front / 2 + (options.public ? Math.max(18, wide * 0.5) : Math.max(28, wide * 1.2));
     // Each corner shows the front and that side: the camera out past the
     // house's side, high enough to see over the garden walls (12/10/2026:
     // "right side and front, left side and front, and the full front — higher").
@@ -125,6 +127,15 @@ export function dwfBuildingViews(
     // Farther back, less lateral — outer parking cars were cropped (16/10/2026).
     const back = Math.max(wide, height * 1.6) * 2.15;
     const at = { x: cx + s.x * (front / 2), z: cz + s.z * (front / 2) };
+    // A public building's cover: its street corner from close by and low, the building filling the page.
+    if (options.public) {
+      const near = Math.max(wide * 0.55, height * 1.6);
+      return {
+        position: { x: at.x + s.x * near + across.x * wide * 0.55, y: ground + 6, z: at.z + s.z * near + across.z * wide * 0.55 },
+        target: { x: cx + across.x * wide * 0.05, y: ground + height * 0.42, z: cz + across.z * wide * 0.05 },
+        fovDeg: 56,
+      };
+    }
     return {
       position: { x: at.x + s.x * back + across.x * wide * 0.08, y: ground + back * 0.38, z: at.z + s.z * back + across.z * wide * 0.08 },
       target: { x: cx + s.x * front * 0.08, y: ground + height * 0.28, z: cz + s.z * front * 0.08 },

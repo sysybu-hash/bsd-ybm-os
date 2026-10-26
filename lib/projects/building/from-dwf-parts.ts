@@ -220,6 +220,8 @@ export function furnishedFlats(
     for (const mesh of [...scene.meshes, ...(staged?.boxes ?? [])]) {
       if (mesh.kind !== "furniture" && mesh.kind !== "floor" && mesh.kind !== "prop") continue;
       if (f.furnish && mesh.kind === "prop" && !mesh.sourceId.startsWith("prop:house-")) continue;
+      // A public building is no home: no bowl on each desk, no rug under it (Wolf's hall, 26/10/2026).
+      if (isPublic && mesh.kind === "prop") continue;
       const finish = apartmentFinish(mesh, kindOf);
       if (!finish) continue;
       // A rug a hair above the floor's finish, the finish a hair above the slab.
