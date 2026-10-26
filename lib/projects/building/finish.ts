@@ -3,6 +3,9 @@ import sharp from "sharp";
 
 import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
 import { getFloorplanVizModelChain } from "@/lib/gemini-model";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("finish");
 
 /**
  * A photographic finish over a measured render — and proof it changed nothing
@@ -190,7 +193,12 @@ export async function finishPass(
           config: { responseModalities: ["IMAGE"], ...(sized ? { imageConfig } : {}), ...(signal ? { abortSignal: signal } : {}) },
         });
       } catch (err: unknown) {
-        if (signal?.aborted || accountFault(err)) return null;
+        if (signal?.aborted) return null;
+        // An account's fault (no key, no credit) ends the pass; said, or a run reads "no picture came back" (Wolf, 26/10/2026: prepaid credit depleted).
+        if (accountFault(err)) {
+          log.warn("image call refused for the account", { model, error: errorText(err).slice(0, 300) });
+          return null;
+        }
         if (sized && sizingRefused(err)) continue;
         break;
       }
