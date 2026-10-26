@@ -75,6 +75,8 @@ export type HouseInventory = {
   wallLines: Array<{ layer: string; exterior: boolean; pts: XY[] }>;
   /** The glazing drawn in lines on the windows' layer, not as blocks: a glass front, a curved ribbon window. */
   glassLines: Array<{ layer: string; pts: XY[] }>;
+  /** A wall drawn as arcs about one centre: solid where the walls' arcs run, glass where the windows' do (angles in this frame, radians). */
+  curvedWalls: Array<{ centre: XY; r0: number; r1: number; spans: Array<{ a0: number; a1: number; glass: boolean }> }>;
   doors: Array<InventoryInsert & { widthCm: number | null; leafCm: number | null; opening: { hinge: XY; end: XY; centre: XY; widthM: number } | null }>;
   windows: Array<InventoryInsert & { centre?: XY; widthCm?: number; depthCm?: number; runs?: "x" | "z" }>;
   parking: Array<InventoryInsert & { rings: XY[][]; label?: string }>;
@@ -314,6 +316,7 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     walls: [],
     wallLines: [],
     glassLines: [],
+    curvedWalls: [],
     doors: [],
     windows: [],
     parking: [],
@@ -403,20 +406,48 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     else inv.other.push(rec);
   }
 
+  // A wall or a glass front drawn as an arc, in chords of a quarter metre: Wolf's lobby wall is two ARCs, r 18.13 and 18.33 m, and stood nowhere (26/10/2026).
+  const arcLine = (a: NonNullable<DxfPiece["arc"]>): Pt[] => {
+    let end = a.end;
+    while (end <= a.start) end += Math.PI * 2;
+    const steps = Math.max(2, Math.ceil(((end - a.start) * a.r * u) / 0.25));
+    return Array.from({ length: steps + 1 }, (_, i) => {
+      const t = a.start + ((end - a.start) * i) / steps;
+      return { x: a.c.x + a.r * Math.cos(t), y: a.c.y + a.r * Math.sin(t) };
+    });
+  };
+  const arcsSeen: Array<{ arc: NonNullable<DxfPiece["arc"]>; glass: boolean; wall?: HouseInventory["wallLines"][number] }> = [];
   for (const p of pieces) {
     if (p.insert) continue;
     const inBlock = !loose(p);
     const blockName = p.path[0] ?? "";
     const lk = layerKind(profile, p.layer);
+    const line = p.arc ? arcLine(p.arc) : p.pts;
+    if (p.arc && !inBlock && (lk === "wall-ext" || lk === "wall-int" || lk === "window")) arcsSeen.push({ arc: p.arc, glass: lk === "window" });
     if ((lk === "wall-ext" || lk === "wall-int") && !inBlock) {
       const exterior = lk === "wall-ext";
       if (p.rings) for (const r of p.rings) inv.walls.push({ layer: p.layer, kind: "hatch", exterior, ring: r.map(P), areaM2: m2(r) });
       else if (p.pts && p.closed) inv.walls.push({ layer: p.layer, kind: "outline", exterior, ring: p.pts.map(P), areaM2: m2(p.pts) });
-      else if (p.pts) inv.wallLines.push({ layer: p.layer, exterior, pts: p.pts.map(P) });
+      else if (line) {
+        inv.wallLines.push({ layer: p.layer, exterior, pts: line.map(P) });
+        if (p.arc) arcsSeen[arcsSeen.length - 1]!.wall = inv.wallLines[inv.wallLines.length - 1];
+      }
       continue;
     }
+    // A table drawn as a rectangle on the furniture layer, not a block: Wolf's classrooms' desks, under their chairs and computers (26/10/2026).
+    if (lk === "furniture" && !inBlock && p.pts && !p.rings) {
+      const ring = p.pts.length === 5 && Math.hypot(p.pts[4]!.x - p.pts[0]!.x, p.pts[4]!.y - p.pts[0]!.y) * u < 0.01 ? p.pts.slice(0, 4) : p.pts;
+      const square = ring.length === 4 && (p.closed || p.pts.length === 5) && ring.every((a, i) => {
+        const b = ring[(i + 1) % 4]!;
+        return Math.min(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * u < 0.01;
+      });
+      if (square) {
+        const box = ring.map(P);
+        inv.furniture.push({ block: "drawn-table", layer: p.layer, at: [box.reduce((t, q) => t + q[0], 0) / 4, box.reduce((t, q) => t + q[1], 0) / 4], rotDeg: 0, mirrored: false, box });
+      }
+    }
     // Wolf's glass fronts are lines on "WIN": the windows' blocks the reader counts are not all of its glazing.
-    if (lk === "window" && !inBlock && p.pts && !p.rings) inv.glassLines.push({ layer: p.layer, pts: p.pts.map(P) });
+    if (lk === "window" && !inBlock && line && !p.rings) inv.glassLines.push({ layer: p.layer, pts: line.map(P) });
     if (p.type === "HATCH" && p.rings && !inBlock) {
       const kind = hatchKind(profile, p.pattern ?? "", p.layer);
       if ((kind === "wall-ext" || kind === "wall-int") && p.solid) {
@@ -472,6 +503,48 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
   for (const d of dims) {
     if (used.has(d)) continue;
     inv.rooms.push({ name: null, at: d.at, dims: d.text, statedM2: stated(d.text) });
+  }
+
+  // A curved wall: the arcs of the walls' and the windows' layers about one centre, a wall's thickness apart.
+  // The readers stand walls on straight runs: Wolf's curved lobby front came out as steps, or not at all (26/10/2026).
+  const groups: Array<{ c: Pt; r: number; arcs: typeof arcsSeen }> = [];
+  for (const a of arcsSeen) {
+    if (a.arc.r * u < 3) continue;
+    const g = groups.find((q) => Math.hypot(q.c.x - a.arc.c.x, q.c.y - a.arc.c.y) * u < 0.3 && Math.abs(q.r - a.arc.r) * u < 0.6);
+    if (g) g.arcs.push(a);
+    else groups.push({ c: a.arc.c, r: a.arc.r, arcs: [a] });
+  }
+  for (const g of groups) {
+    const radii = g.arcs.map((a) => a.arc.r * u);
+    const [r0, r1] = [Math.min(...radii), Math.max(...radii)];
+    if (g.arcs.length < 2 || r1 - r0 < 0.1 || r1 - r0 > 0.6) continue;
+    // In this frame z runs down the sheet: an arc from s to e counter-clockwise is from -e to -s here, every angle kept near the first's.
+    const ref = -g.arcs[0]!.arc.start;
+    const near = (t: number) => t + 2 * Math.PI * Math.round((ref - t) / (2 * Math.PI));
+    const runs = g.arcs.map((a) => {
+      let end = a.arc.end;
+      while (end <= a.arc.start) end += Math.PI * 2;
+      const a1 = near(-a.arc.start);
+      return { a0: a1 - (end - a.arc.start), a1, glass: a.glass };
+    });
+    const cuts = [...new Set(runs.flatMap((r) => [r.a0, r.a1]))].sort((p, q) => p - q);
+    const spans: HouseInventory["curvedWalls"][number]["spans"] = [];
+    for (let i = 1; i < cuts.length; i++) {
+      const mid = (cuts[i - 1]! + cuts[i]!) / 2;
+      const over = runs.filter((r) => r.a0 <= mid && mid <= r.a1);
+      if (!over.length) continue;
+      const glass = over.some((r) => r.glass);
+      const last = spans[spans.length - 1];
+      if (last && last.glass === glass && Math.abs(last.a1 - cuts[i - 1]!) < 1e-9) last.a1 = cuts[i]!;
+      else spans.push({ a0: cuts[i - 1]!, a1: cuts[i]!, glass });
+    }
+    inv.curvedWalls.push({ centre: P(g.c), r0, r1, spans });
+    // Built apart, not stood as the readers' steps; its faces still close the rooms behind it.
+    for (const a of g.arcs) {
+      if (!a.wall) continue;
+      inv.wallLines.splice(inv.wallLines.indexOf(a.wall), 1);
+      inv.glassLines.push({ layer: a.wall.layer, pts: a.wall.pts });
+    }
   }
 
   const sum = (kind: CadKind) => Math.round(inv.hatches.filter((h) => h.kind === kind).reduce((s, h) => s + h.areaM2, 0) * 10) / 10;
@@ -818,6 +891,7 @@ function withZones(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM:
   const zones = inv.hatches
     .filter((h) => (h.kind === "lawn" || h.kind === "paving" || h.kind === "planting") && h.ring.length >= 3 && h.areaM2 >= 0.2)
     .map((h) => ({ kind: h.kind as "lawn" | "paving" | "planting", ring: h.ring.map(([x, z]) => [(x + hw) * k, (z + hh) * k] as [number, number]) }));
+  const curvedWalls = inv.curvedWalls.map((c) => ({ cx: (c.centre[0] + hw) * k, cy: (c.centre[1] + hh) * k, r0: c.r0 * k, r1: c.r1 * k, spans: c.spans }));
   const glassLines = inv.glassLines.flatMap((l) => l.pts.slice(1).map((b, i) => ({ x1: (l.pts[i]![0] + hw) * k, y1: (l.pts[i]![1] + hh) * k, x2: (b[0] + hw) * k, y2: (b[1] + hh) * k })));
   const wallLines = inv.wallLines.flatMap((l) => l.pts.slice(1).map((b, i) => ({ x1: (l.pts[i]![0] + hw) * k, y1: (l.pts[i]![1] + hh) * k, x2: (b[0] + hw) * k, y2: (b[1] + hh) * k, ...(l.exterior ? {} : { inner: true }) })));
   const stairLines = inv.stairs.flatMap((st) => {
@@ -859,7 +933,7 @@ function withZones(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM:
     : null;
   const doorsDrawn = inv.doors.flatMap((d) => (d.opening ? [{ x1: (d.opening.hinge[0] + hw) * k, y1: (d.opening.hinge[1] + hh) * k, x2: (d.opening.end[0] + hw) * k, y2: (d.opening.end[1] + hh) * k }] : []));
   const roomsDrawn = inv.rooms.map((r) => ({ x: (r.at[0] + hw) * k, y: (r.at[1] + hh) * k, name: r.name, dims: r.dims }));
-  return { ...g, wallPen: POCHE_PEN, ...(doorsDrawn.length ? { doorsDrawn } : {}), ...(plotDrawn ? { plotDrawn } : {}), ...(stairLines.length ? { stairLines } : {}), ...(walkLines.length ? { walkLines } : {}), ...(parkingDrawn.length ? { parkingDrawn } : {}), ...(wallLines.length ? { wallLines } : {}), ...(glassLines.length ? { glassLines } : {}), ...(zones.length ? { zones } : {}), ...(windowsDrawn.length ? { windowsDrawn } : {}), ...(roomsDrawn.length ? { roomsDrawn } : {}) };
+  return { ...g, wallPen: POCHE_PEN, ...(doorsDrawn.length ? { doorsDrawn } : {}), ...(plotDrawn ? { plotDrawn } : {}), ...(stairLines.length ? { stairLines } : {}), ...(walkLines.length ? { walkLines } : {}), ...(parkingDrawn.length ? { parkingDrawn } : {}), ...(wallLines.length ? { wallLines } : {}), ...(glassLines.length ? { glassLines } : {}), ...(curvedWalls.length ? { curvedWalls } : {}), ...(zones.length ? { zones } : {}), ...(windowsDrawn.length ? { windowsDrawn } : {}), ...(roomsDrawn.length ? { roomsDrawn } : {}) };
 }
 
 function withDrawnFurniture(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM: number): DwfGeometry {
@@ -921,6 +995,12 @@ export function drawnFurniture(inv: HouseInventory, sheet: CadSheet, unitsM: num
     else if (/kvisa/.test(name)) add(x0, z0, x1, z1, "fixture", "washer");
     // A chair named as one: Wolf's classrooms seat their pupils on "CISE-BAR" and "CHAIR2", 36–64 cm, and stood them up as washbasins (26/10/2026).
     else if (/chair|cise|kise|kisse/.test(name)) add(x0, z0, x1, z1, "seat");
+    // A desk or a table drawn as a rectangle: a table as drawn, its chairs drawn apart (a sofa or a bed is a block).
+    else if (name === "drawn-table") {
+      if (s >= 0.4 && s <= 1.6 && l >= 0.6 && l <= 8) add(x0, z0, x1, z1, "table");
+    }
+    // A computer on a classroom's desk ("A-KOMPL", 45 × 38 cm): no basin.
+    else if (/kompl/.test(name)) continue;
     else if (s >= 0.8 && s <= 1.0 && l >= 1.85 && l <= 2.15) add(x0, z0, x1, z1, "bed");
     else if (s >= 1.3 && s <= 2.2 && l >= 1.85 && l <= 2.3) add(x0, z0, x1, z1, "bed");
     else if (!sanLayer && s >= 0.6 && s <= 0.85 && l >= 1.45 && l <= 1.9) add(x0, z0, x1, z1, "fixture", "bath");

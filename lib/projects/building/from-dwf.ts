@@ -216,6 +216,52 @@ function wallsFromAbove(f: ReadFloor, shift: { x: number; y: number }, above: Re
 }
 
 /** The arcs a sheet draws, metres in its walls' frame, with the ends each sweeps between. */
+/**
+ * A curved wall as its sheet draws it, in straight facets of under a metre:
+ * the facade's stone where its walls' arcs run, and where its windows' arcs
+ * run a ribbon window — stone under the sill and over the head, glass framed
+ * between. Wolf's lobby front, the only curve on its sheets (26/10/2026).
+ */
+export function curvedWallPrimitives(
+  wall: NonNullable<DwfGeometry["curvedWalls"]>[number],
+  at: { shift: { x: number; y: number }; level: number; height: number; sill: number; head: number },
+  body: BuildingMaterial,
+  tag: string,
+): Primitive[] {
+  const metres = (v: number) => v / DWF_FLOOR_UNITS_PER_METRE;
+  const [cx, cz] = [metres(wall.cx) + at.shift.x, metres(wall.cy) + at.shift.y];
+  const r = metres((wall.r0 + wall.r1) / 2);
+  const thick = Math.max(0.2, metres(wall.r1 - wall.r0));
+  const out: Primitive[] = [];
+  const piece = (a0: number, a1: number, y0: number, y1: number, material: BuildingMaterial, depth: number) => {
+    const am = (a0 + a1) / 2;
+    // The chord's length, and long enough at its middle to meet its neighbours on the curve.
+    const length = 2 * r * Math.sin((a1 - a0) / 2) + 0.02;
+    out.push({ type: "box", centre: { x: cx + r * Math.cos(am), y: at.level + (y0 + y1) / 2, z: cz + r * Math.sin(am) }, size: { x: length, y: y1 - y0, z: depth }, rotY: -(am + Math.PI / 2), material, tag });
+  };
+  const [sill, head] = [Math.min(at.sill, at.height - 0.4), Math.min(at.head, at.height - 0.15)];
+  for (const span of wall.spans) {
+    const n = Math.max(1, Math.ceil(((span.a1 - span.a0) * r) / 0.8));
+    for (let i = 0; i < n; i++) {
+      const a0 = span.a0 + ((span.a1 - span.a0) * i) / n;
+      const a1 = span.a0 + ((span.a1 - span.a0) * (i + 1)) / n;
+      if (!span.glass) {
+        piece(a0, a1, 0, at.height, body, thick);
+        continue;
+      }
+      piece(a0, a1, 0, sill, body, thick);
+      piece(a0, a1, head, at.height, body, thick);
+      piece(a0, a1, sill, head, "glass", 0.04);
+      piece(a0, a1, sill, sill + 0.06, "frame", 0.1);
+      piece(a0, a1, head - 0.06, head, "frame", 0.1);
+      // A mullion at every joint of the ribbon.
+      const ap = a1;
+      if (i < n - 1) out.push({ type: "box", centre: { x: cx + r * Math.cos(ap), y: at.level + (sill + head) / 2, z: cz + r * Math.sin(ap) }, size: { x: 0.06, y: head - sill, z: 0.1 }, rotY: -(ap + Math.PI / 2), material: "frame", tag });
+    }
+  }
+  return out;
+}
+
 export function leavesOf(sheet: DwfGeometry): PlanLeaf[] {
   const metres = (v: number) => v / DWF_FLOOR_UNITS_PER_METRE;
   return sheet.arcs.map((a) => ({ cx: metres(a.cx), cy: metres(a.cy), r: metres(a.r), sweep: Math.abs(a.end - a.start), start: a.start, end: a.end }));
@@ -454,9 +500,11 @@ export function buildingFromDwf(
       window: typicalWindow,
       facade: body,
       interior: "plaster",
-      ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: HOUSE_WINDOW_FRAME } : {}),
+      // A frame the project's palette colours (Wolf's dark green, from its photographs) is a frame, not the stone's.
+      ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: options?.palette?.colors?.frame ? "frame" : HOUSE_WINDOW_FRAME } : {}),
     };
     prims.push(...parts.reduce((laid, part) => flushFacade(laid, part, spec.facade, id), faceTheWeather(floorPrimitives(moved, openings, spec), parts, spec.facade)));
+    for (const wall of f.sheet.curvedWalls ?? []) prims.push(...curvedWallPrimitives(wall, { shift, level: f.level, height, sill: typicalWindow.sill, head: typicalWindow.head }, body, `${id}:curved`));
     for (const part of parts) prims.push(slab(inset(part, 0.06), f.level - 0.02, 0.3, "slab", `${id}:slab`));
     // A house's ceiling under the slab over a storey, smooth white plaster:
     // seen from inside, the slab's underside and the paving over it read as

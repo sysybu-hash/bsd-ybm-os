@@ -264,10 +264,12 @@ const ROOM_VIEWS: Array<{ kind: string; storey: number; title: string }> = [
   // No bathroom: 1.5 by 2.1 m, a camera inside it saw its door leaf and a corner.
 ];
 
-/** A public building's rooms seen inside: the largest classroom or hall of its two lowest storeys, titled as its sheet names it. */
-const PUBLIC_ROOM_VIEWS: Array<{ kind: string; storey: number; title: string }> = [
+/** A public building's rooms seen inside: the largest hall of its two lowest storeys and a classroom on each storey, titled as its sheet names it. */
+const PUBLIC_ROOM_VIEWS: Array<{ kind: string; storey: number; title: string; id?: string; name?: RegExp }> = [
   { kind: "hall", storey: 0, title: "" },
   { kind: "hall", storey: 1, title: "" },
+  // A school is its classrooms: the booklet showed one hall and no class (Wolf, 26/10/2026).
+  ...[0, 1, 2, 3].map((storey) => ({ kind: "hall", storey, title: "", id: "class", name: /כית|כתה/ })),
 ];
 
 /**
@@ -388,13 +390,15 @@ export function houseRoomViews(floors: BuildingFloorMeta[], centre: { x: number;
   // A public building is no pair of mirrored homes: its rooms are taken from the whole storey, by the kind their printed name gives.
   const ofKind = (r: { kind: string; name: string; x: number; w: number }, kind: string) =>
     isPublic ? publicRoomKind(r.name) === kind : r.kind === kind && r.x + r.w / 2 < centre.x;
-  for (const want of isPublic ? PUBLIC_ROOM_VIEWS : ROOM_VIEWS) {
+  const shown = new Set<unknown>();
+  for (const want of (isPublic ? PUBLIC_ROOM_VIEWS : ROOM_VIEWS) as Array<{ kind: string; storey: number; title: string; id?: string; name?: RegExp }>) {
     const f = storeys[want.storey];
-    const rooms = (f?.rooms ?? []).filter((r) => ofKind(r, want.kind) && Math.min(r.w, r.d) >= 1.4);
+    const rooms = (f?.rooms ?? []).filter((r) => ofKind(r, want.kind) && Math.min(r.w, r.d) >= 1.4 && (!want.name || want.name.test(r.name)) && !shown.has(r));
     // The largest of its kind — but a bathroom the smallest full one: the
     // largest, split by its WC's partitions, showed walls and a passage.
     const room = want.kind === "bathroom" ? rooms.filter((r) => r.areaM2 >= 2.5).sort((a, b) => a.areaM2 - b.areaM2)[0] : rooms.sort((a, b) => b.areaM2 - a.areaM2)[0];
     if (!f || !room) continue;
+    shown.add(room);
     const inset = 0.4;
     const corners = [
       { x: room.x + inset, z: room.z + inset },
@@ -453,7 +457,7 @@ export function houseRoomViews(floors: BuildingFloorMeta[], centre: { x: number;
     const chosen = !diag && storeyBlocks.length ? chooseRoomCamera({ room, level: f.level, blocks: storeyBlocks, fovDeg: fov, aspect: 2000 / 1334, keep: want.kind === "kitchen" ? top : null }) : null;
     const [eyeAt, lookAt] = diag ? [diag.eye, diag.at] : chosen ? [chosen.eye, chosen.at] : [stand, far];
     out.push({
-      id: isPublic ? `room-${want.kind}-${want.storey}` : `room-${want.kind}`,
+      id: isPublic ? `room-${want.id ?? want.kind}-${want.storey}` : `room-${want.kind}`,
       title: want.title || room.name.replace(/ \d+$/, ""),
       payload: {
         width: 2000,

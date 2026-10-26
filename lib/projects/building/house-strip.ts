@@ -27,6 +27,7 @@ function shiftGeometry(g: DwfGeometry, dx: number, dy: number): DwfGeometry {
     ...(g.parkingDrawn ? { parkingDrawn: g.parkingDrawn.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })) } : {}),
     ...(g.wallLines ? { wallLines: g.wallLines.map((s) => ({ x1: s.x1 + dx, y1: s.y1 + dy, x2: s.x2 + dx, y2: s.y2 + dy })) } : {}),
     ...(g.glassLines ? { glassLines: g.glassLines.map((s) => ({ x1: s.x1 + dx, y1: s.y1 + dy, x2: s.x2 + dx, y2: s.y2 + dy })) } : {}),
+    ...(g.curvedWalls ? { curvedWalls: g.curvedWalls.map((c) => ({ ...c, cx: c.cx + dx, cy: c.cy + dy })) } : {}),
     ...(g.windowsDrawn ? { windowsDrawn: g.windowsDrawn.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })) } : {}),
     ...(g.roomsDrawn ? { roomsDrawn: g.roomsDrawn.map((r) => ({ ...r, x: r.x + dx, y: r.y + dy })) } : {}),
     ...(g.zones ? { zones: g.zones.map((z) => ({ ...z, ring: z.ring.map(([x, y]) => [x + dx, y + dy] as [number, number]) })) } : {}),
@@ -146,6 +147,7 @@ export function stackHouseGeometries(
   if (placed.some((g) => g.parkingDrawn)) out.parkingDrawn = placed.flatMap((g) => g.parkingDrawn ?? []);
   if (placed.some((g) => g.wallLines)) out.wallLines = placed.flatMap((g) => g.wallLines ?? []);
   if (placed.some((g) => g.glassLines)) out.glassLines = placed.flatMap((g) => g.glassLines ?? []);
+  if (placed.some((g) => g.curvedWalls)) out.curvedWalls = placed.flatMap((g) => g.curvedWalls ?? []);
   if (placed.some((g) => g.windowsDrawn)) out.windowsDrawn = placed.flatMap((g) => g.windowsDrawn ?? []);
   if (placed.some((g) => g.roomsDrawn)) out.roomsDrawn = placed.flatMap((g) => g.roomsDrawn ?? []);
   if (placed.some((g) => g.zones)) out.zones = placed.flatMap((g) => g.zones ?? []);

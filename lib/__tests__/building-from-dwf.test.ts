@@ -1,5 +1,6 @@
 import { floorPrimitives, type FloorSpec } from "@/lib/projects/building/assemble";
-import { sheetLevel } from "@/lib/projects/building/from-dwf";
+import { curvedWallPrimitives, sheetLevel } from "@/lib/projects/building/from-dwf";
+import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import type { PlanWalls } from "@/lib/projects/building/plan-walls";
 import { emptyMask, traceOutline } from "@/lib/projects/building/raster";
 import type { DwfGeometry, PlacedText } from "@/lib/projects/floorplan-dwf";
@@ -96,5 +97,28 @@ describe("an opening onto a terrace", () => {
     const stone = prims.filter((p) => p.type === "box" && p.material === "jerusalemStone");
     expect(stone.some((p) => p.type === "box" && p.tag?.endsWith(":surround") && p.size.x > 0.1)).toBe(true);
     expect(stone.some((p) => p.type === "box" && p.tag?.endsWith(":window"))).toBe(true);
+  });
+});
+
+describe("curvedWallPrimitives", () => {
+  const k = DWF_FLOOR_UNITS_PER_METRE;
+  // Wolf's lobby front: r 18.13–18.33 m, stone for 12°, then a ribbon window for 27°.
+  const wall = { cx: 0, cy: 0, r0: 18.13 * k, r1: 18.33 * k, spans: [{ a0: 0, a1: (12 * Math.PI) / 180, glass: false }, { a0: (12 * Math.PI) / 180, a1: (39 * Math.PI) / 180, glass: true }] };
+  const prims = curvedWallPrimitives(wall, { shift: { x: 0, y: 0 }, level: 3.36, height: 3.36, sill: 1.6, head: 2.6 }, "stone", "floor-1:curved");
+  const boxes = prims.filter((p): p is Extract<typeof p, { type: "box" }> => p.type === "box");
+  it("stands every facet on the wall's circle, under a metre long", () => {
+    for (const b of boxes) {
+      if (b.material === "frame" && b.size.x < 0.1) continue;
+      expect(Math.hypot(b.centre.x, b.centre.z)).toBeGreaterThan(18.1);
+      expect(Math.hypot(b.centre.x, b.centre.z)).toBeLessThan(18.35);
+      expect(b.size.x).toBeLessThan(0.85);
+    }
+  });
+  it("is stone where the walls' arcs run and a ribbon window where the windows' do", () => {
+    const at = (deg: number) => boxes.filter((b) => Math.abs((Math.atan2(b.centre.z, b.centre.x) * 180) / Math.PI - deg) < 1.2);
+    expect(at(6).every((b) => b.material === "stone" && b.size.y === 3.36)).toBe(true);
+    const ribbon = at(25);
+    expect(ribbon.some((b) => b.material === "glass" && Math.abs(b.centre.y - (3.36 + 2.1)) < 0.01)).toBe(true);
+    expect(ribbon.filter((b) => b.material === "stone").map((b) => b.size.y.toFixed(2)).sort()).toEqual(["0.76", "1.60"]);
   });
 });

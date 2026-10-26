@@ -262,11 +262,15 @@ async function main() {
       }
     }
     // Over each dining table: a pendant, its shade dark outside and lit within.
-    for (const q of P.model.primitives) {
-      if (q.type !== "box" || q.material !== "walnut" || !/inside:furniture/.test(q.tag || "")) continue;
+    const tables = P.model.primitives.filter((q) => {
+      if (q.type !== "box" || q.material !== "walnut" || !/inside:furniture/.test(q.tag || "")) return false;
       const top = q.centre.y + q.size.y / 2;
-      if (q.size.y > 0.06 || top < R.floorY + 0.68 || top > R.floorY + 0.8 || Math.min(q.size.x, q.size.z) < 0.45 || Math.max(q.size.x, q.size.z) < 1.0) continue;
-      if (q.centre.x < R.x0 - 1 || q.centre.x > R.x1 + 1 || q.centre.z < R.z0 - 1 || q.centre.z > R.z1 + 1) continue;
+      if (q.size.y > 0.06 || top < R.floorY + 0.68 || top > R.floorY + 0.8 || Math.min(q.size.x, q.size.z) < 0.45 || Math.max(q.size.x, q.size.z) < 1.0) return false;
+      return !(q.centre.x < R.x0 - 1 || q.centre.x > R.x1 + 1 || q.centre.z < R.z0 - 1 || q.centre.z > R.z1 + 1);
+    });
+    // A home's table, not a classroom's rows of desks: a pendant over each hung at the lens, a glowing ball across the frame (Wolf, 26/10/2026).
+    for (const q of tables.length <= 2 ? tables : []) {
+      if (q.type !== "box") continue;
       const hy = R.floorY + 1.6;
       const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.32, 0.28, 32, 1, true), new THREE.MeshStandardMaterial({ color: 0x2b2622, roughness: 0.5, metalness: 0.6, side: THREE.DoubleSide }));
       shade.position.set(q.centre.x, hy, q.centre.z); scene.add(shade);

@@ -82,8 +82,8 @@ export function settleStoreyLevels<F extends { level: number; roof: boolean; she
 export function faceTheWeather(prims: Primitive[], outline: Outline | Outline[], facade: BuildingMaterial): Primitive[] {
   // A floor in wings: outside is outside them all.
   const rings = isRings(outline) ? outline : [outline];
-  return prims.map((p) => {
-    if (p.type !== "box" || p.material !== "plaster") return p;
+  return prims.flatMap((p): Primitive[] => {
+    if (p.type !== "box" || p.material !== "plaster") return [p];
     // Its two faces and its two ends: a partition meeting the facade shows its end.
     const hx = p.size.x / 2 + 0.08;
     const hz = p.size.z / 2 + 0.08;
@@ -93,7 +93,19 @@ export function faceTheWeather(prims: Primitive[], outline: Outline | Outline[],
       [p.centre.x - hx, p.centre.z],
       [p.centre.x + hx, p.centre.z],
     ];
-    return probes.some(([x, z]) => !rings.some((ring) => insidePolygon(ring, x, z))) ? { ...p, material: facade } : p;
+    const inside = probes.map(([x, z]) => rings.some((ring) => insidePolygon(ring, x, z)));
+    if (inside.every(Boolean)) return [p];
+    const faced = { ...p, material: facade };
+    if (facade === "plaster") return [faced];
+    // A stone wall is plastered on its rooms' side: inside, Wolf's classrooms stood in stone (26/10/2026).
+    const along = p.size.x >= p.size.z;
+    const linings: Primitive[] = [];
+    for (const [k, sign] of (along ? [[0, -1], [1, 1]] : [[2, -1], [3, 1]]) as Array<[number, number]>) {
+      if (!inside[k]) continue;
+      const centre = along ? { ...p.centre, z: p.centre.z + sign * (p.size.z / 2 + 0.005) } : { ...p.centre, x: p.centre.x + sign * (p.size.x / 2 + 0.005) };
+      linings.push({ ...p, centre, size: along ? { ...p.size, z: 0.01 } : { ...p.size, x: 0.01 }, material: "plaster" });
+    }
+    return [faced, ...linings];
   });
 }
 
