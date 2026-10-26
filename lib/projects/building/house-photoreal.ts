@@ -631,7 +631,10 @@ export function repairPrompt(kind: Pick<Kind, "kind">, pass: Extract<NextPass, {
 
 type PictureSet = { names(): string[]; get(name: string): Buffer | undefined };
 
-function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit) {
+/** A building's own look in place of a house's (Wolf's: its stone, frames and pavers): the whole prompt, at its size. */
+export type OwnLook = (name: string) => { look: string; imageSize?: HouseImageSize } | undefined;
+
+function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit, own?: OwnLook) {
   const names = new Set(pictures.names());
   return pictures
     .names()
@@ -641,7 +644,9 @@ function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit) {
       return !side || names.has(`sheet-${side}.jpg`);
     })
     .map((name) => {
-      const kind = houseLookOf(name, style);
+      const base = houseLookOf(name, style);
+      const mine = base ? own?.(name) : undefined;
+      const kind = base && mine ? { ...base, look: mine.look, whole: true, ...(mine.imageSize ? { imageSize: mine.imageSize } : {}) } : base;
       const storey = /^view-plan(?:whole)?-(floor-\d+)\.jpg$/.exec(name)?.[1];
       const tile = /^view-plantile-(floor-\d+-(?:back|front)(?:-r)?)\.jpg$/.exec(name)?.[1];
       const mask = tile ? pictures.get(`mask-${tile}.png`) : storey ? pictures.get(`mask-${storey}.png`) : undefined;
@@ -664,10 +669,10 @@ export function paintingPrompt(subject: string, kind: Kind): string {
  */
 export async function paintingPlan(
   pictures: PictureSet,
-  options: { subject: string; style: FloorplanVizStyleKit; models?: string[]; cache?: PaintingCache },
+  options: { subject: string; style: FloorplanVizStyleKit; models?: string[]; cache?: PaintingCache; look?: OwnLook },
 ): Promise<{ names: string[]; reused: string[] }> {
   const model = (options.models?.length ? options.models : HOUSE_IMAGE_MODELS)[0] ?? "unknown";
-  const jobs = paintingJobs(pictures, options.style);
+  const jobs = paintingJobs(pictures, options.style, options.look);
   const reused: string[] = [];
   for (const job of jobs) {
     if (options.cache && (await options.cache.get(paintingKey(job.render, paintingPrompt(options.subject, job.kind), model)))) reused.push(job.name);
@@ -726,6 +731,8 @@ export async function paintHousePictures(
      * checks refused every plan painting of 14/10/2026, the faithful ones too.
      */
     humanReview?: boolean;
+    /** A building's own look for a picture, in place of the house's. */
+    look?: OwnLook;
   },
 ): Promise<string[]> {
   const say = options.say ?? (() => undefined);
@@ -736,7 +743,7 @@ export async function paintHousePictures(
   const models = options.models?.length ? options.models : [...HOUSE_IMAGE_MODELS];
   const model = models[0] ?? "unknown";
   const group = options.group ?? "";
-  const jobs = paintingJobs(pictures, options.style).filter((j) => options.only?.(j.name) ?? true);
+  const jobs = paintingJobs(pictures, options.style, options.look).filter((j) => options.only?.(j.name) ?? true);
   const painted: string[] = [];
   const free = { calls: 0, images: 0, usd: 0, ils: 0 };
   let next = 0;
