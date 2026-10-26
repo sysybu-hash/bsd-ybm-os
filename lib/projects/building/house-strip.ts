@@ -26,6 +26,7 @@ function shiftGeometry(g: DwfGeometry, dx: number, dy: number): DwfGeometry {
     ...(g.plotDrawn ? { plotDrawn: { x0: g.plotDrawn.x0 + dx, y0: g.plotDrawn.y0 + dy, x1: g.plotDrawn.x1 + dx, y1: g.plotDrawn.y1 + dy } } : {}),
     ...(g.parkingDrawn ? { parkingDrawn: g.parkingDrawn.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })) } : {}),
     ...(g.wallLines ? { wallLines: g.wallLines.map((s) => ({ x1: s.x1 + dx, y1: s.y1 + dy, x2: s.x2 + dx, y2: s.y2 + dy })) } : {}),
+    ...(g.glassLines ? { glassLines: g.glassLines.map((s) => ({ x1: s.x1 + dx, y1: s.y1 + dy, x2: s.x2 + dx, y2: s.y2 + dy })) } : {}),
     ...(g.windowsDrawn ? { windowsDrawn: g.windowsDrawn.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy })) } : {}),
     ...(g.roomsDrawn ? { roomsDrawn: g.roomsDrawn.map((r) => ({ ...r, x: r.x + dx, y: r.y + dy })) } : {}),
     ...(g.zones ? { zones: g.zones.map((z) => ({ ...z, ring: z.ring.map(([x, y]) => [x + dx, y + dy] as [number, number]) })) } : {}),
@@ -144,6 +145,7 @@ export function stackHouseGeometries(
   if (plotted) out.plotDrawn = plotted.plotDrawn;
   if (placed.some((g) => g.parkingDrawn)) out.parkingDrawn = placed.flatMap((g) => g.parkingDrawn ?? []);
   if (placed.some((g) => g.wallLines)) out.wallLines = placed.flatMap((g) => g.wallLines ?? []);
+  if (placed.some((g) => g.glassLines)) out.glassLines = placed.flatMap((g) => g.glassLines ?? []);
   if (placed.some((g) => g.windowsDrawn)) out.windowsDrawn = placed.flatMap((g) => g.windowsDrawn ?? []);
   if (placed.some((g) => g.roomsDrawn)) out.roomsDrawn = placed.flatMap((g) => g.roomsDrawn ?? []);
   if (placed.some((g) => g.zones)) out.zones = placed.flatMap((g) => g.zones ?? []);

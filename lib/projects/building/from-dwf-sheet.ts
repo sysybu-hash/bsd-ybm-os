@@ -2,7 +2,7 @@ import { insidePolygon, type Outline } from "@/lib/projects/building/assemble";
 import type { ReadFloor } from "@/lib/projects/building/from-dwf-parts";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
 import { bandsOf, type PlanWalls } from "@/lib/projects/building/plan-walls";
-import { dilate, emptyMask, erode, fillPolygon, label, type Mask } from "@/lib/projects/building/raster";
+import { dilate, drawLine, emptyMask, erode, fillPolygon, label, type Mask } from "@/lib/projects/building/raster";
 import { adoptOrphanRooms, DWF_FLOOR_UNITS_PER_METRE, houseUnitMarks } from "@/lib/projects/dwf-building";
 import { readDwfFloor, type DwfFloor, type DwfRoom } from "@/lib/projects/dwf-floor";
 import { levelMarks } from "@/lib/projects/floor-split";
@@ -270,7 +270,7 @@ export function besideRecess(floor: DwfFloor, i: number, recess: Set<number>): b
  * 45 cm apart and running side by side for most of their length, each pair
  * filled between its lines.
  */
-export function doubleLineWalls(sheet: { segments: Array<{ x1: number; y1: number; x2: number; y2: number }> }, cols: number, rows: number, cm: number, minM = 0.1): Mask {
+export function doubleLineWalls(sheet: { segments: Array<{ x1: number; y1: number; x2: number; y2: number }> }, cols: number, rows: number, cm: number, minM = 0.1, slanted = false): Mask {
   const upm = DWF_FLOOR_UNITS_PER_METRE;
   const k = 100 / upm / cm;
   const mask = emptyMask(cols, rows);
@@ -302,6 +302,33 @@ export function doubleLineWalls(sheet: { segments: Array<{ x1: number; y1: numbe
         const overlap = Math.min(p.b, q.b) - Math.max(p.a, q.a);
         if (overlap >= 0.6 * Math.min(p.b - p.a, q.b - q.a)) fill(horizontal, p, q);
       }
+    }
+  }
+  // And a wall on the slant or on a curve: a curve comes as its chords, and the
+  // two faces of a curved wall are two arcs about one centre, their chords near
+  // parallel. Wolf's curved entrance wing stood without its wall (26/10/2026).
+  // Only the walls' own layer's lines: on a whole sheet the furniture's would pair too.
+  const slant = (slanted ? sheet.segments : [])
+    .filter((s) => Math.abs(s.x2 - s.x1) >= 0.01 * upm && Math.abs(s.y2 - s.y1) >= 0.01 * upm)
+    .map((s) => {
+      const len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+      return { s, len, ux: (s.x2 - s.x1) / len, uy: (s.y2 - s.y1) / len };
+    })
+    .filter((l) => l.len >= 0.08 * upm);
+  for (const p of slant) {
+    for (const q of slant) {
+      if (q === p || Math.abs(p.ux * q.uy - p.uy * q.ux) > Math.sin((6 * Math.PI) / 180)) continue;
+      // q's ends along p and across it.
+      const along = (x: number, y: number) => (x - p.s.x1) * p.ux + (y - p.s.y1) * p.uy;
+      const across = (x: number, y: number) => (x - p.s.x1) * -p.uy + (y - p.s.y1) * p.ux;
+      const [d1, d2] = [across(q.s.x1, q.s.y1), across(q.s.x2, q.s.y2)];
+      const d = (d1 + d2) / 2;
+      if (Math.abs(d) < minM * upm || Math.abs(d) > 0.45 * upm || Math.sign(d1) !== Math.sign(d2)) continue;
+      const [t1, t2] = [along(q.s.x1, q.s.y1), along(q.s.x2, q.s.y2)];
+      const [a, b] = [Math.max(0, Math.min(t1, t2)), Math.min(p.len, Math.max(t1, t2))];
+      if (b - a < 0.5 * Math.min(p.len, q.len)) continue;
+      const at = (t: number, off: number): [number, number] => [(p.s.x1 + p.ux * t - p.uy * off) * k, (p.s.y1 + p.uy * t + p.ux * off) * k];
+      fillPolygon(mask, [at(a, 0), at(b, 0), at(b, d), at(a, d)]);
     }
   }
   return mask;
@@ -431,7 +458,7 @@ export function readFloorSheet(
   if (cad && sheet.wallLines?.length) {
     let [x0, x1, y0, y1] = [cols, -1, rows, -1];
     for (let i = 0; i < drawn.data.length; i++) if (drawn.data[i]) { const x = i % cols, y = (i - x) / cols; [x0, x1, y0, y1] = [Math.min(x0, x), Math.max(x1, x), Math.min(y0, y), Math.max(y1, y)]; }
-    const lined = doubleLineWalls({ ...sheet, segments: sheet.wallLines }, cols, rows, cm, 0.05);
+    const lined = doubleLineWalls({ ...sheet, segments: sheet.wallLines }, cols, rows, cm, 0.05, true);
     // A partition drawn as a single line on the inner walls' layer — behind a
     // built-in wardrobe, between two wet rooms — is a 10 cm wall along it.
     const px = 100 / DWF_FLOOR_UNITS_PER_METRE / cm;
@@ -503,6 +530,7 @@ export function readFloorSheet(
   // Holes: a courtyard or a light well stays open only if it reaches the edge.
   const holes = label(footprint, 0);
   for (let i = 0; i < footprint.data.length; i++) if (!footprint.data[i] && !holes.touchesEdge[holes.ids[i]!]) footprint.data[i] = 1;
+  if (isPublic && sheet.glassLines?.length) glassWings(footprint, mask, sheet, cm, wing);
   // A ground floor drawn on the site plan — an open lobby, its facade broken
   // by entrances — reads as a few small rooms, and the building would be one
   // of them. Where the rooms cover under half of what the walls close, the
@@ -512,6 +540,37 @@ export function readFloorSheet(
   // Its entrances and lobby fronts are wider than a window: gaps bridged to 8 m.
   if (area(footprint) < 0.5 * area(walled)) return { sheet, floor, level, units, roof, walls, footprint: closedByWalls(mask, 200), walled: true, furnish };
   return { sheet, floor, level, units, roof, walls, footprint, furnish };
+}
+
+/** What a sheet names a part of the plot by: a yard closed by the building's wings is still outside. */
+const YARD_WORDS = /חצר|רחבה|גינה|מגרש|חניה|מדרכה/;
+
+/**
+ * A wing walled in glass: its rooms run out through the glass fronts the
+ * floor reader takes for openings, and the wing is left out. Walls and glass
+ * together close it, doorways to 2 m bridged; what they close is the
+ * building, but for a yard the sheet names. Wolf's curved entrance wing, its
+ * workshop and office behind a glass front (26/10/2026).
+ */
+function glassWings(footprint: Mask, walls: Mask, sheet: DwfGeometry, cm: number, least: number): void {
+  const { cols, rows } = footprint;
+  const px = 100 / DWF_FLOOR_UNITS_PER_METRE / cm;
+  const shell = emptyMask(cols, rows);
+  for (let i = 0; i < shell.data.length; i++) shell.data[i] = walls.data[i] || footprint.data[i] ? 1 : 0;
+  for (const s of sheet.glassLines ?? []) drawLine(shell, s.x1 * px, s.y1 * px, s.x2 * px, s.y2 * px, 2);
+  const reach = Math.round(100 / cm);
+  const sealed = erode(dilate(shell, reach), reach);
+  const parts = label(sealed, 0);
+  const yards = new Set<number>();
+  for (const t of sheet.texts) {
+    if (!YARD_WORDS.test(t.text)) continue;
+    const [x, y] = [Math.round(t.x * px), Math.round(t.y * px)];
+    if (x >= 0 && y >= 0 && x < cols && y < rows) yards.add(parts.ids[y * cols + x]!);
+  }
+  for (let i = 0; i < footprint.data.length; i++) {
+    const id = parts.ids[i]!;
+    if (!sealed.data[i] && !parts.touchesEdge[id] && !yards.has(id) && parts.sizes[id]! >= least) footprint.data[i] = 1;
+  }
 }
 
 /** `f`'s footprint, kept where the floor above stands within `reachM` of it. */

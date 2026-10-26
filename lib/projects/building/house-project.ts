@@ -3,6 +3,7 @@ import { dxfFacades, dxfSheets, modelOf, readDxfHouse, storeyOf, type HouseInven
 import { askDrawing } from "@/lib/projects/building/house-ai";
 import type { ElevationLevels } from "@/lib/projects/building/house-levels";
 import type { HouseSiteLevels } from "@/lib/projects/building/house-yard";
+import type { BuildingPalette } from "@/lib/projects/building/model";
 import { readDwfStrip } from "@/lib/projects/dwf-building";
 import { readDxfDrawing } from "@/lib/projects/dxf-drawing";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
@@ -48,6 +49,8 @@ export type HouseProject = {
   site?: HouseSiteLevels;
   /** The storeys' levels, set by hand. */
   levels?: HouseLevels;
+  /** The building's own look as it stands, set by hand from its photographs: its stone, its frames' colour, its pavers. */
+  palette?: BuildingPalette;
 };
 
 export const HOUSE_STYLE = "haredi_classic";

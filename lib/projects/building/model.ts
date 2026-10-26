@@ -160,5 +160,7 @@ export type BuildingModel = {
    * joints, `redPavers` the paving for red-brown pavers in running bond, `golden` the golden hour (a low warm sun, an amber sky,
    * the exterior lamps lit) for the perspective views.
    */
-  palette?: { colors?: Partial<Record<BuildingMaterial, string>>; limestone?: boolean; redPavers?: boolean; golden?: boolean };
+  palette?: BuildingPalette;
 };
+
+export type BuildingPalette = { colors?: Partial<Record<BuildingMaterial, string>>; limestone?: boolean; redPavers?: boolean; golden?: boolean };

@@ -1,12 +1,12 @@
 import { floorPrimitives, insideAny, insidePolygon, parapet, slab, inset, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
-import type { BuildingMaterial, BuildingModel, Primitive } from "@/lib/projects/building/model";
+import type { BuildingMaterial, BuildingModel, BuildingPalette, Primitive } from "@/lib/projects/building/model";
 import { cutFramedWindows, findOpenings, houseOpenings, fitDrawnDoors, fitDrawnWindows, markDoors, type PlanLeaf, type PlanOpening, type PlanSwing } from "@/lib/projects/building/plan-openings";
 import { PLAN_NORTH, type North } from "@/lib/projects/building/compass";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import type { PlanWalls } from "@/lib/projects/building/plan-walls";
 import { emptyMask, traceOutline, traceOutlines } from "@/lib/projects/building/raster";
 import { readDwfTerraces } from "@/lib/projects/dwf-terrace";
-import { drawnSideFlight, paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
+import { drawnSideFlight, namedCladding, paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
 import { laundryScreens } from "@/lib/projects/building/laundry-screens";
 import { furnishedFlats, railing, railingOfBars, register, topLevel, type ReadFloor } from "@/lib/projects/building/from-dwf-parts";
 import { clipUnder, faceTheWeather, flushFacade, parapetOnWalls, readFloorSheet, settleStoreyLevels, sheetLevel } from "@/lib/projects/building/from-dwf-sheet";
@@ -236,10 +236,14 @@ export function buildingFromDwf(
     haredi?: boolean;
     /** A public building (a school, a clinic): its rooms named as its sheets print them, none guessed into a home's by size. */
     public?: boolean;
+    /** The building's own look, as the site is (HouseProject.palette). */
+    palette?: BuildingPalette;
   },
 ): DwfBuilding {
   const house = options?.finish === "house";
   const north = options?.north ?? PLAN_NORTH;
+  // A house is plastered; a public building whose elevations call for stone is clad in it (Wolf: "חיפוי אבן", 26/10/2026).
+  const body: BuildingMaterial = !house || (options?.public && namedCladding(strip) === "stone") ? "stone" : HOUSE_PLASTER_BODY;
   const read: ReadFloor[] = [];
   let autoLevel = 0;
   for (const s of splitStrip(strip)) {
@@ -448,7 +452,7 @@ export function buildingFromDwf(
       outline,
       parts,
       window: typicalWindow,
-      facade: house ? HOUSE_PLASTER_BODY : "stone",
+      facade: body,
       interior: "plaster",
       ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: HOUSE_WINDOW_FRAME } : {}),
     };
@@ -518,7 +522,7 @@ export function buildingFromDwf(
   for (const part of wingsOf(last)) prims.push(slab(inset(part, 0.06), roofLevel, 0.35, "slab", "roof:slab"));
   if (house) prims.push(slab(inset(last.outline, 0.06), roofLevel - 0.02, 0.01, "ceiling", `${last.id}:inside:ceiling`));
   const topWalls = prims.filter((p) => p.type === "box" && (p.tag === last.id || p.tag?.startsWith(`${last.id}:`)) && p.centre.y + p.size.y / 2 >= roofLevel - 0.05);
-  prims.push(...parapetOnWalls(wingsOf(last).flatMap((part) => parapet(part, roofLevel, parapetTop, 0.25, house ? HOUSE_PLASTER_BODY : "stone", "roof:parapet")), topWalls));
+  prims.push(...parapetOnWalls(wingsOf(last).flatMap((part) => parapet(part, roofLevel, parapetTop, 0.25, body, "roof:parapet")), topWalls));
   const headroom = out.filter((f) => f.roof);
   for (const h of headroom) for (const part of wingsOf(h)) prims.push(slab(inset(part, 0.06), h.level + h.height, 0.3, "slab", "roof:slab"));
   // A house's solar heaters, in the screens its elevations draw over the parapet.
@@ -618,6 +622,7 @@ export function buildingFromDwf(
       north,
       ...(street ? { street } : {}),
       ...(plotBox ? { plot: plotBox } : {}),
+      ...(options?.palette ? { palette: options.palette } : {}),
     },
     floors: out,
     facade,

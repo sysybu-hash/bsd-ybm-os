@@ -70,6 +70,7 @@ export function sheetGeometry(
     ...(strip.walkLines ? { walkLines: strip.walkLines.filter((s) => Math.min(s.x1, s.x2) >= box.x && Math.max(s.x1, s.x2) <= box.x + box.width && Math.min(s.y1, s.y2) >= box.y && Math.max(s.y1, s.y2) <= box.y + box.height).map((s) => ({ x1: s.x1 - box.x, y1: s.y1 - box.y, x2: s.x2 - box.x, y2: s.y2 - box.y })) } : {}),
     ...(strip.plotDrawn ? { plotDrawn: { x0: strip.plotDrawn.x0 - box.x, y0: strip.plotDrawn.y0 - box.y, x1: strip.plotDrawn.x1 - box.x, y1: strip.plotDrawn.y1 - box.y } } : {}),
     ...(strip.parkingDrawn ? { parkingDrawn: strip.parkingDrawn.filter((p) => p.x + p.w / 2 >= box.x && p.x + p.w / 2 <= box.x + box.width && p.y + p.h / 2 >= box.y && p.y + p.h / 2 <= box.y + box.height).map((p) => ({ ...p, x: p.x - box.x, y: p.y - box.y })) } : {}),
+    ...(strip.glassLines ? { glassLines: strip.glassLines.filter((s) => Math.min(s.x1, s.x2) >= box.x && Math.max(s.x1, s.x2) <= box.x + box.width && Math.min(s.y1, s.y2) >= box.y && Math.max(s.y1, s.y2) <= box.y + box.height).map((s) => ({ x1: s.x1 - box.x, y1: s.y1 - box.y, x2: s.x2 - box.x, y2: s.y2 - box.y })) } : {}),
     ...(strip.wallLines ? { wallLines: strip.wallLines.filter((s) => Math.min(s.x1, s.x2) >= box.x && Math.max(s.x1, s.x2) <= box.x + box.width && Math.min(s.y1, s.y2) >= box.y && Math.max(s.y1, s.y2) <= box.y + box.height).map((s) => ({ x1: s.x1 - box.x, y1: s.y1 - box.y, x2: s.x2 - box.x, y2: s.y2 - box.y })) } : {}),
     ...(strip.windowsDrawn
       ? {
@@ -164,6 +165,8 @@ export type DwfGeometry = FloorplanVectorGeometry & {
   wallPen?: number;
   /** A CAD file's wall-layer lines, page units: partitions drawn as two lines, no fill between. */
   wallLines?: Array<{ x1: number; y1: number; x2: number; y2: number; inner?: boolean }>;
+  /** A CAD file's glazing drawn in lines (dxf-house.ts): a glass front closes its rooms as a wall does. */
+  glassLines?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
   /** A CAD file's doors, page units: each one's opening, hinge to far jamb — where a room ends. */
   doorsDrawn?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
   /** A CAD file's stairs-layer lines, page units: its treads and landings, and nothing else read as a stair. */

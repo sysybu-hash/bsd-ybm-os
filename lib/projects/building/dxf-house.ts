@@ -73,6 +73,8 @@ export type HouseInventory = {
   frame: string;
   walls: Array<{ layer: string; kind: "hatch" | "outline"; exterior: boolean; ring: XY[]; areaM2: number }>;
   wallLines: Array<{ layer: string; exterior: boolean; pts: XY[] }>;
+  /** The glazing drawn in lines on the windows' layer, not as blocks: a glass front, a curved ribbon window. */
+  glassLines: Array<{ layer: string; pts: XY[] }>;
   doors: Array<InventoryInsert & { widthCm: number | null; leafCm: number | null; opening: { hinge: XY; end: XY; centre: XY; widthM: number } | null }>;
   windows: Array<InventoryInsert & { centre?: XY; widthCm?: number; depthCm?: number; runs?: "x" | "z" }>;
   parking: Array<InventoryInsert & { rings: XY[][]; label?: string }>;
@@ -239,6 +241,28 @@ export function inferUnitsM(drawing: DxfDrawing, pieces: DxfPiece[], profile: Ca
   return UNIT_CANDIDATES.find(fits) ?? drawing.headerUnitsM ?? 0.01;
 }
 
+/**
+ * Metres per drawing unit as a facades sheet's level marks give it: the marks
+ * one over another ("+3.36" over "±0.00") stand as many units apart as their
+ * values are metres. Facades carry no doors to measure, and the titles' span
+ * read Wolf's centimetres as millimetres: its elevations stood a tenth of
+ * their size, titled outside their drawings, and none was read (26/10/2026).
+ */
+export function levelMarkUnitsM(pieces: DxfPiece[]): number | null {
+  const marks = pieces.flatMap((p) => {
+    const m = p.text != null && p.at ? /^\s*([+±-])?\s*(\d{1,3}\.\d{2})\s*\+?\s*$/.exec(p.text) : null;
+    return m ? [{ v: Number(m[2]) * (m[1] === "-" ? -1 : 1), x: p.at!.x, y: p.at!.y }] : [];
+  });
+  const ratios: number[] = [];
+  for (const a of marks) for (const b of marks) if (b.v > a.v && Math.abs(b.x - a.x) < 0.1 * Math.abs(b.y - a.y)) ratios.push((b.v - a.v) / Math.abs(b.y - a.y));
+  if (ratios.length < 3) return null;
+  ratios.sort((a, b) => a - b);
+  const mid = ratios[ratios.length >> 1]!;
+  // Most pairs agree, and on a unit a drawing is drawn in.
+  if (ratios[ratios.length >> 2]! < mid * 0.95 || ratios[(3 * ratios.length) >> 2]! > mid * 1.05) return null;
+  return UNIT_CANDIDATES.find((u) => Math.abs(u - mid) < u * 0.05) ?? null;
+}
+
 /** Hebrew words on a plan that name no room: its fences, its yard, its titles. */
 export const ROOM_EXCLUDE = /גדר|מעקה|חניה|כניסה|קומ|פחי|פילר|שער|גינון|ריצוף|מונה|חזית|חתך|קנ"מ|תכנית/;
 const DIMS = /^\d+(\.\d+)?\s*\*\s*\d+(\.\d+)?/;
@@ -289,6 +313,7 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     frame: "metres; x to the sheet's right, z down the sheet; origin = the sheet's centre",
     walls: [],
     wallLines: [],
+    glassLines: [],
     doors: [],
     windows: [],
     parking: [],
@@ -390,6 +415,8 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
       else if (p.pts) inv.wallLines.push({ layer: p.layer, exterior, pts: p.pts.map(P) });
       continue;
     }
+    // Wolf's glass fronts are lines on "WIN": the windows' blocks the reader counts are not all of its glazing.
+    if (lk === "window" && !inBlock && p.pts && !p.rings) inv.glassLines.push({ layer: p.layer, pts: p.pts.map(P) });
     if (p.type === "HATCH" && p.rings && !inBlock) {
       const kind = hatchKind(profile, p.pattern ?? "", p.layer);
       if ((kind === "wall-ext" || kind === "wall-int") && p.solid) {
@@ -791,6 +818,7 @@ function withZones(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM:
   const zones = inv.hatches
     .filter((h) => (h.kind === "lawn" || h.kind === "paving" || h.kind === "planting") && h.ring.length >= 3 && h.areaM2 >= 0.2)
     .map((h) => ({ kind: h.kind as "lawn" | "paving" | "planting", ring: h.ring.map(([x, z]) => [(x + hw) * k, (z + hh) * k] as [number, number]) }));
+  const glassLines = inv.glassLines.flatMap((l) => l.pts.slice(1).map((b, i) => ({ x1: (l.pts[i]![0] + hw) * k, y1: (l.pts[i]![1] + hh) * k, x2: (b[0] + hw) * k, y2: (b[1] + hh) * k })));
   const wallLines = inv.wallLines.flatMap((l) => l.pts.slice(1).map((b, i) => ({ x1: (l.pts[i]![0] + hw) * k, y1: (l.pts[i]![1] + hh) * k, x2: (b[0] + hw) * k, y2: (b[1] + hh) * k, ...(l.exterior ? {} : { inner: true }) })));
   const stairLines = inv.stairs.flatMap((st) => {
     const pts = st.closed ? [...st.pts, st.pts[0]!] : st.pts;
@@ -831,7 +859,7 @@ function withZones(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM:
     : null;
   const doorsDrawn = inv.doors.flatMap((d) => (d.opening ? [{ x1: (d.opening.hinge[0] + hw) * k, y1: (d.opening.hinge[1] + hh) * k, x2: (d.opening.end[0] + hw) * k, y2: (d.opening.end[1] + hh) * k }] : []));
   const roomsDrawn = inv.rooms.map((r) => ({ x: (r.at[0] + hw) * k, y: (r.at[1] + hh) * k, name: r.name, dims: r.dims }));
-  return { ...g, wallPen: POCHE_PEN, ...(doorsDrawn.length ? { doorsDrawn } : {}), ...(plotDrawn ? { plotDrawn } : {}), ...(stairLines.length ? { stairLines } : {}), ...(walkLines.length ? { walkLines } : {}), ...(parkingDrawn.length ? { parkingDrawn } : {}), ...(wallLines.length ? { wallLines } : {}), ...(zones.length ? { zones } : {}), ...(windowsDrawn.length ? { windowsDrawn } : {}), ...(roomsDrawn.length ? { roomsDrawn } : {}) };
+  return { ...g, wallPen: POCHE_PEN, ...(doorsDrawn.length ? { doorsDrawn } : {}), ...(plotDrawn ? { plotDrawn } : {}), ...(stairLines.length ? { stairLines } : {}), ...(walkLines.length ? { walkLines } : {}), ...(parkingDrawn.length ? { parkingDrawn } : {}), ...(wallLines.length ? { wallLines } : {}), ...(glassLines.length ? { glassLines } : {}), ...(zones.length ? { zones } : {}), ...(windowsDrawn.length ? { windowsDrawn } : {}), ...(roomsDrawn.length ? { roomsDrawn } : {}) };
 }
 
 function withDrawnFurniture(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM: number): DwfGeometry {
@@ -891,6 +919,8 @@ export function drawnFurniture(inv: HouseInventory, sheet: CadSheet, unitsM: num
     else if (/kiyor/.test(name)) add(x0, z0, x1, z1, "sink");
     else if (/sherotim/.test(name)) add(x0, z0, x1, z1, "fixture", "toilet");
     else if (/kvisa/.test(name)) add(x0, z0, x1, z1, "fixture", "washer");
+    // A chair named as one: Wolf's classrooms seat their pupils on "CISE-BAR" and "CHAIR2", 36–64 cm, and stood them up as washbasins (26/10/2026).
+    else if (/chair|cise|kise|kisse/.test(name)) add(x0, z0, x1, z1, "seat");
     else if (s >= 0.8 && s <= 1.0 && l >= 1.85 && l <= 2.15) add(x0, z0, x1, z1, "bed");
     else if (s >= 1.3 && s <= 2.2 && l >= 1.85 && l <= 2.3) add(x0, z0, x1, z1, "bed");
     else if (!sanLayer && s >= 0.6 && s <= 0.85 && l >= 1.45 && l <= 1.9) add(x0, z0, x1, z1, "fixture", "bath");
@@ -1056,7 +1086,7 @@ export function dxfFacades(drawing: DxfDrawing, profile: CadOfficeProfile = prof
     width: Math.max(...xs) - Math.min(...xs) + 1,
     height: 1,
   };
-  const unitsM = inferUnitsM(drawing, pieces, profile, whole);
+  const unitsM = levelMarkUnitsM(pieces) ?? inferUnitsM(drawing, pieces, profile, whole);
   const m = (metres: number) => metres / unitsM;
   return titles.map(({ title, at }, i) => {
     // Half way to the next title each side, a house's plot at most: the drawing over this title, not its neighbour's.

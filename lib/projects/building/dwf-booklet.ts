@@ -6,7 +6,7 @@ import type { HouseSiteLevels, YardHint } from "@/lib/projects/building/house-ya
 import { assembleBookletHtml } from "@/lib/projects/building/dwf-booklet-html";
 import { dwfBuildingViews } from "@/lib/projects/building/dwf-views";
 import { elevationFrame, type ElevationFrame } from "@/lib/projects/building/elevation-frame";
-import type { BuildingModel } from "@/lib/projects/building/model";
+import type { BuildingModel, BuildingPalette } from "@/lib/projects/building/model";
 import { asCutPlan } from "@/lib/projects/building/cut-model";
 import { housePlanPadMetres } from "@/lib/projects/building/plan-geometry-gate";
 import {
@@ -153,6 +153,8 @@ export type StageInput = {
   requireCars?: boolean;
   /** A public building: its rooms named as its sheets print them, none guessed into a home's by size. */
   public?: boolean;
+  /** The building's own look, as the site is (HouseProject.palette). */
+  palette?: BuildingPalette;
   /** Absent: a house when the strip names no apartments, a permit building when it does. */
   finish?: BuildingFinish;
   /** The strip already read. Absent: `source` is read as a DWF. */
@@ -198,7 +200,7 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
     const permit = splitStrip(s).some((d) => d.kind === "floor" && d.units.length > 0);
     const finish = input.finish ?? (permit ? "permit" : "house");
     state.finish = finish;
-    const building = buildingFromDwf(s, { name: input.projectName, finish, site: input.site, yard: input.yard, north: input.north, top: input.top, haredi: input.haredi, public: input.public });
+    const building = buildingFromDwf(s, { name: input.projectName, finish, site: input.site, yard: input.yard, north: input.north, top: input.top, haredi: input.haredi, public: input.public, palette: input.palette });
     if (input.public) state.public = true;
     state.parking = building.model.primitives.filter((p) => p.tag === "yard:car").length;
     state.north = building.model.north;

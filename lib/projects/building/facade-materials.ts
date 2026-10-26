@@ -31,9 +31,28 @@ const FACES: Face[] = [
 
 const MATERIAL_WORDS: Array<[RegExp, BuildingMaterial]> = [
   [/אבן\s*כהה/, "stoneDeep"],
-  [/אבן\s*(גוון|בהיר)/, "stone"],
+  // A public building's sheets name the cladding itself: "חיפוי אבן" (Wolf, 33 times on its elevations).
+  [/אבן\s*(גוון|בהיר)|חיפוי\s*אבן/, "stone"],
   [/טיח/, "render"],
 ];
+
+/**
+ * The cladding a strip's elevations name most: stone where they write it more
+ * than plaster. Null where they name neither.
+ */
+export function namedCladding(strip: DwfGeometry): "stone" | "render" | null {
+  let stone = 0;
+  let render = 0;
+  for (const d of splitStrip(strip)) {
+    if (d.kind !== "elevation") continue;
+    for (const line of textLines(sheetGeometry(strip, d.box).texts)) {
+      const word = MATERIAL_WORDS.find(([re]) => re.test(line.text))?.[1];
+      if (word === "stone" || word === "stoneDeep") stone++;
+      else if (word === "render") render++;
+    }
+  }
+  return stone + render === 0 ? null : stone > render ? "stone" : "render";
+}
 
 export type Sheet = {
   g: DwfGeometry;

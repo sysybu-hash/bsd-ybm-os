@@ -268,6 +268,7 @@ export function houseStageInput(input: {
     // A school's yard is drawn without its cars: the parking gate does not ask for them.
     requireCars: reading.public ? false : input.requireCars,
     ...(reading.public ? { public: true } : {}),
+    ...(project.palette ? { palette: project.palette } : {}),
     finish: "house",
     site: reading.site,
     yard: reading.yard,

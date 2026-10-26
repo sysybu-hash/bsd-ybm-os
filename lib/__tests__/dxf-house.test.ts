@@ -1,5 +1,5 @@
 import { GOTTLIEB_ARCHITECT_PROFILE, profileFor } from "@/lib/projects/building/cad-layers";
-import { dxfFacades, dxfSheets, houseInventory, modelOf, POCHE_PEN, readDxfHouse, sheetGeometryFromDxf, storeyOf } from "@/lib/projects/building/dxf-house";
+import { dxfFacades, dxfSheets, houseInventory, levelMarkUnitsM, modelOf, POCHE_PEN, readDxfHouse, sheetGeometryFromDxf, storeyOf } from "@/lib/projects/building/dxf-house";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import { cleanDxfText, fillTriangles, flattenDxf, readDxfDrawing, type Pt } from "@/lib/projects/dxf-drawing";
 
@@ -253,5 +253,17 @@ describe("dxf-house: a facades file's elevations", () => {
       expect(g.texts.some((t) => t.text.includes("2.97"))).toBe(false);
       expect(g.display!.texts!.map((t) => t.text)).toEqual(["+2.97"]);
     }
+  });
+});
+
+describe("levelMarkUnitsM", () => {
+  const mark = (text: string, x: number, y: number) => ({ type: "TEXT", layer: "0", path: [], colour: 0, weightMm: 0, text, at: { x, y } });
+  it("reads a facades sheet's unit off its level marks, one over another", () => {
+    // Wolf's facades in centimetres: 3.36 m storeys stand 336 units apart.
+    const marks = [0, 1, 2].flatMap((i) => [mark(i ? `+${(i * 3.36).toFixed(2)}` : "±0.00", 1000 + i * 2, 500 + i * 336), mark(`+${(i * 3.36).toFixed(2)}`, 9000, 500 + i * 336)]);
+    expect(levelMarkUnitsM(marks)).toBe(0.01);
+  });
+  it("gives no unit where the marks disagree or are too few", () => {
+    expect(levelMarkUnitsM([mark("+3.00", 0, 0), mark("+6.00", 0, 300)])).toBeNull();
   });
 });
