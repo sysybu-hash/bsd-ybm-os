@@ -352,8 +352,8 @@ export function publicRoomKind(text: string): FloorplanRoomKind | null {
 /** The kind a room's written name gives it, or null for a word that is no room. */
 export function roomLabelKind(text: string): FloorplanRoomKind | null {
   const t = text.replace(/\s+/g, "");
-  // The office's own spelling too: "מ.מ.ד" (Gottlieb).
-  if (/ממ"?ד|מ\.מ\.ד/.test(t)) return "mmd";
+  // The office's own spelling too: "מ.מ.ד" (Gottlieb); a school's shelter is its ממ"מ, "מ.מ.מ" (Wolf).
+  if (/ממ"?[דמ]|מ\.מ\.[דמ]/.test(t)) return "mmd";
   if (/שינה|הורים/.test(t)) return "bedroom";
   if (/סלון|אוכל|מגורים/.test(t)) return "living";
   if (/מטבח/.test(t)) return "kitchen";

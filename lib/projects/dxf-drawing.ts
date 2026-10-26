@@ -327,9 +327,15 @@ export function cleanDxfText(raw: string, type: string, font: string): string {
     .replace(/%%[pP]/g, "±")
     .replace(/%%[cC]/g, "⌀")
     .replace(/%%[dD]/g, "°")
+    .replace(/%%[uUoO]/g, "")
     .trim();
-  // The Israeli keyboard's W key is the geresh: "בז'" is typed "cz w".
-  if (type !== "MTEXT" && SHX_HEBREW.test(font) && /[a-z]/.test(t) && /^[\x20-\x7e]*$/.test(t)) t = decodeShxHebrew(t).replace(/w/g, "'");
+  // The Israeli keyboard's W key is the geresh: "בז'" is typed "cz w"; its Q key is the slash.
+  // The font draws right to left, so a number is typed backwards: "03 n"r" is 30 מ"ר, "006q003" is 300/600.
+  if (type !== "MTEXT" && SHX_HEBREW.test(font) && /[a-z]/.test(t) && /^[\x20-\x7e]*$/.test(t))
+    t = decodeShxHebrew(t)
+      .replace(/w/g, "'")
+      .replace(/q/g, "/")
+      .replace(/[^\u0590-\u05FF\s]{2,}/g, (run) => [...run].reverse().join(""));
   return t;
 }
 

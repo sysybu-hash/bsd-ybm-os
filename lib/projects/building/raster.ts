@@ -240,6 +240,23 @@ export function traceOutline(mask: Mask, tolerancePx = 3): Array<[number, number
   return simplifyRing(best, tolerancePx);
 }
 
+/**
+ * Each part of a mask its own outline, the largest first: a building that
+ * stands in wings — a school's blocks round a courtyard, met by open walks —
+ * is all of them, not the largest one. Parts under `minPx` are left out.
+ */
+export function traceOutlines(mask: Mask, tolerancePx = 3, minPx = 1): Array<Array<[number, number]>> {
+  const parts = label(mask, 1);
+  const ids = parts.sizes.map((n, id) => ({ id, n })).filter(({ id, n }) => id > 0 && n >= minPx).sort((a, b) => b.n - a.n);
+  return ids
+    .map(({ id }) => {
+      const one = emptyMask(mask.cols, mask.rows);
+      for (let i = 0; i < one.data.length; i++) one.data[i] = parts.ids[i] === id ? 1 : 0;
+      return traceOutline(one, tolerancePx);
+    })
+    .filter((ring) => ring.length >= 3);
+}
+
 /** A closed ring with its collinear corners dropped and staircases straightened (Douglas–Peucker). */
 function simplifyRing(ring: Array<[number, number]>, tolerance: number): Array<[number, number]> {
   if (ring.length < 4) return ring;

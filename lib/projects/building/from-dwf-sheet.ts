@@ -9,6 +9,9 @@ import { levelMarks } from "@/lib/projects/floor-split";
 import { sheetGeometry, type DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { unitMarks } from "@/lib/projects/sheet-split";
 
+/** The least a public building's wing is, m²: its stair tower, standing apart, is one. */
+const PUBLIC_WING_M2 = 12;
+
 /**
  * One floor sheet of a permit strip read for the building: its level, its
  * walls (hatched, or in outline on a roof plan), and the building on it —
@@ -17,10 +20,16 @@ import { unitMarks } from "@/lib/projects/sheet-split";
  * is clad.
  */
 export function sheetLevel(sheet: DwfGeometry): number | null {
+  // Absolute heights (the survey's 923.20) are not a floor's.
+  const marks = levelMarks(sheet.texts).filter((mark) => Math.abs(mark.value) <= 200);
+  // Nor are the marks a sheet prints small, round its edges: the Wolf
+  // seminary's sheets mark their corners 0.71 m under the floor, more often
+  // than the floor itself, in a third of its type, and its storeys stood at
+  // +2.65, +6.01, +9.37 for +3.36, +6.72, +10.08 (26/10/2026).
+  const tallest = Math.max(0, ...marks.map((mark) => mark.height));
   const counts = new Map<number, number>();
-  for (const mark of levelMarks(sheet.texts)) {
-    // Absolute heights (the survey's 923.20) are not a floor's.
-    if (Math.abs(mark.value) > 200) continue;
+  for (const mark of marks) {
+    if (mark.height < 0.75 * tallest) continue;
     const v = Math.round(mark.value * 100) / 100;
     counts.set(v, (counts.get(v) ?? 0) + 1);
   }
@@ -32,8 +41,8 @@ export function sheetLevel(sheet: DwfGeometry): number | null {
  * A house's storeys, each at least a storey's least height under the next.
  * A sheet's level is the mark it prints most, and a storey whose stair has
  * its landings marked prints them too: the Wolf seminary's ground floor marks
- * ±0.00 twice and its landing, +1.76, three times, and stood 0.89 m under the
- * first floor (+2.65). Where a storey's level comes that close to the next,
+ * ±0.00 twice and its landing, +1.76, three times, and stood 1.60 m under the
+ * first floor (+3.36). Where a storey's level comes that close to the next,
  * it is the mark it prints most of those a storey's height under it.
  */
 export function settleStoreyLevels<F extends { level: number; roof: boolean; sheet: DwfGeometry }>(floors: F[], least = 2): F[] {
@@ -50,6 +59,18 @@ export function settleStoreyLevels<F extends { level: number; roof: boolean; she
     const best = [...counts].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
     if (best) f.level = best[0];
   }
+  // A roof plan marks its stair tower's top above the roof, and its landing
+  // below: where the storeys stand evenly, the roof is the next step up, if
+  // the sheet marks it — Wolf's roof sheet marks +15.84 most, its roof +13.44.
+  const storeys = sorted.filter((f) => !f.roof).sort((a, b) => a.level - b.level);
+  const [s0, s1, s2] = storeys.slice(-3).reverse();
+  if (s0 && s1 && s2 && Math.abs(s0.level - s1.level - (s1.level - s2.level)) < 0.05)
+    for (const f of sorted) {
+      if (!f.roof) continue;
+      const next = s0.level + (s0.level - s1.level);
+      const mark = levelMarks(f.sheet.texts).find((m) => Math.abs(m.value - next) < 0.05);
+      if (mark) f.level = mark.value;
+    }
   return sorted.sort((a, b) => a.level - b.level);
 }
 
@@ -58,7 +79,9 @@ export function settleStoreyLevels<F extends { level: number; roof: boolean; she
  * face of a wall the outline turns round, a reveal's side — is clad: a face
  * that looks out past the outline is facade, whichever rule laid it.
  */
-export function faceTheWeather(prims: Primitive[], outline: Outline, facade: BuildingMaterial): Primitive[] {
+export function faceTheWeather(prims: Primitive[], outline: Outline | Outline[], facade: BuildingMaterial): Primitive[] {
+  // A floor in wings: outside is outside them all.
+  const rings = isRings(outline) ? outline : [outline];
   return prims.map((p) => {
     if (p.type !== "box" || p.material !== "plaster") return p;
     // Its two faces and its two ends: a partition meeting the facade shows its end.
@@ -70,9 +93,11 @@ export function faceTheWeather(prims: Primitive[], outline: Outline, facade: Bui
       [p.centre.x - hx, p.centre.z],
       [p.centre.x + hx, p.centre.z],
     ];
-    return probes.some(([x, z]) => !insidePolygon(outline, x, z)) ? { ...p, material: facade } : p;
+    return probes.some(([x, z]) => !rings.some((ring) => insidePolygon(ring, x, z))) ? { ...p, material: facade } : p;
   });
 }
+
+const isRings = (o: Outline | Outline[]): o is Outline[] => Array.isArray(o[0]?.[0]);
 
 /**
  * A parapet stands on the walls of the storey under it, and only there: a
@@ -467,8 +492,14 @@ export function readFloorSheet(
   const parts = label(inside, 1);
   let biggest = 0;
   for (let id = 1; id < parts.sizes.length; id++) if (parts.sizes[id]! > parts.sizes[biggest]!) biggest = id;
+  // A public building stands in wings — Wolf's classroom blocks, its entrance
+  // wing and its stair tower, met only by open walks and the courtyard — and
+  // every wing is the building: kept to the largest, its ground floor lost
+  // two classroom wings and the whole curved entrance wing (26/10/2026).
+  const wing = PUBLIC_WING_M2 / (cm / 100) ** 2;
+  const kept = (id: number) => id === biggest || (isPublic === true && id > 0 && parts.sizes[id]! >= wing);
   const footprint = emptyMask(cols, rows);
-  for (let i = 0; i < footprint.data.length; i++) footprint.data[i] = parts.ids[i] === biggest ? 1 : 0;
+  for (let i = 0; i < footprint.data.length; i++) footprint.data[i] = kept(parts.ids[i]!) ? 1 : 0;
   // Holes: a courtyard or a light well stays open only if it reaches the edge.
   const holes = label(footprint, 0);
   for (let i = 0; i < footprint.data.length; i++) if (!footprint.data[i] && !holes.touchesEdge[holes.ids[i]!]) footprint.data[i] = 1;

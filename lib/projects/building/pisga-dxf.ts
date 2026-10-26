@@ -83,12 +83,11 @@ export function dxfPlanPage(drawing: DxfDrawing, sheetLeft: number, options?: { 
   return { width: 2400, height: 1700, paths };
 }
 
-/** The drawing's SHX-Hebrew text comes out in visual order: a number's digits reversed, "מ״ר" as "מר". */
+/** A room label as printed: "מ״ר" the drawing writes "מר" (its figures cleanDxfText has already turned round). */
 export function logicalLabel(raw: string): string {
   return raw
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\d+/g, (n) => [...n].reverse().join(""))
     .replace(/\s*(\d+)\s+מר$/, ' $1 מ"ר')
     .replace(/ממ"מ/g, 'ממ"ד');
 }

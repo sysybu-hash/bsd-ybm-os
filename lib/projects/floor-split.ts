@@ -76,9 +76,9 @@ export function terraceAreas(texts: PlacedText[]): Array<{ x: number; y: number;
  * in metres above the building's ±0.00. The absolute height set under each,
  * "787.30", carries no sign and is left out.
  */
-export function levelMarks(texts: PlacedText[]): Array<{ x: number; y: number; value: number }> {
+export function levelMarks(texts: PlacedText[]): Array<{ x: number; y: number; value: number; height: number }> {
   return textLines(texts)
     .map((line) => ({ line, m: /^(?:\+\s*(\d{1,3}\.\d{2})|(\d{1,3}\.\d{2})\s*\+)$/.exec(line.text) }))
     .filter((hit): hit is { line: TextLine; m: RegExpExecArray } => hit.m != null)
-    .map(({ line, m }) => ({ x: line.x, y: line.y, value: Number(m[1] ?? m[2]) }));
+    .map(({ line, m }) => ({ x: line.x, y: line.y, value: Number(m[1] ?? m[2]), height: line.height }));
 }

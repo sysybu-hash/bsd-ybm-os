@@ -147,6 +147,8 @@ describe("dxf-drawing: the reader", () => {
     expect(pieces.some((p) => p.text === "מטבח בז '")).toBe(true);
     expect(cleanDxfText("{\\fArial|b0;\\C1;סלון}", "MTEXT", "")).toBe("סלון");
     expect(cleanDxfText("%%c50", "TEXT", "")).toBe("⌀50");
+    expect(cleanDxfText("03 n\"r", "TEXT", "sivan.shx")).toBe("30 מ\"ר");
+    expect(cleanDxfText("cpugk 006q003 en\"a", "TEXT", "sivan.shx")).toBe("בפועל 300/600 קמ\"ש");
   });
 
   it("expands a block in a block, a layer-0 piece taking its reference's layer", () => {

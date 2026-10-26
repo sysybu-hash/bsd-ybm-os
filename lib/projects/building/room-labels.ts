@@ -1,4 +1,4 @@
-import { parseRoomDims, ROOM_EXCLUDE } from "@/lib/projects/building/dxf-house";
+import { parseRoomArea, parseRoomDims, ROOM_EXCLUDE, ROOM_WORDS } from "@/lib/projects/building/dxf-house";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 
@@ -17,9 +17,6 @@ export type RoomLabel = {
   /** In the first home of a mirrored pair, or the house is not one. */
   home: boolean;
 };
-
-/** Room words a label's name is taken on without its "W*L": a terrace, a bath the sheet gives no size. */
-const ROOM_WORDS = /סלון|מטבח|שינה|ממ"?ד|מ\.מ\.ד|אמבט|שירות|רחצה|מרפסת|מחסן|מבואה|פרוזדור|מסדרון|כביסה|חדר|הורים|ילדים|עבודה|אוכל|ארונות|מקלחת/;
 
 const ROOM_NAMES: Array<[RegExp, string]> = [
   [/^ח\.?\s*שינה$/, "חדר שינה"],
@@ -44,8 +41,10 @@ export function readRoomLabels(g: DwfGeometry): RoomLabel[] {
   if (g.roomsDrawn?.length) {
     const raw = g.roomsDrawn.flatMap((r) => {
       const dims = r.dims ? parseRoomDims(r.dims.replace(/\s/g, "")) : null;
-      if (!r.name && !dims) return [];
-      return [{ name: r.name, dims: dims ? { w: dims.w, l: dims.l } : null, areaM2: dims?.areaM2 ?? null, x: r.x, y: r.y }];
+      // A public building writes the room's area, not its sides: "36 מ"ר".
+      const area = dims?.areaM2 ?? (r.dims ? parseRoomArea(r.dims) : null);
+      if (!r.name && area == null) return [];
+      return [{ name: r.name, dims: dims ? { w: dims.w, l: dims.l } : null, areaM2: area, x: r.x, y: r.y }];
     });
     return placed(raw, g, unit);
   }

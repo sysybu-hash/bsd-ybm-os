@@ -22,6 +22,7 @@ import {
   type Pt,
 } from "@/lib/projects/dxf-drawing";
 import { levelMarks } from "@/lib/projects/floor-split";
+import { publicRoomKind, roomLabelKind } from "@/lib/projects/floorplan-segment";
 import type { DrawnPiece, DwfArc, DwfGeometry, PlacedText } from "@/lib/projects/floorplan-dwf";
 import type { VectorSegment } from "@/lib/projects/floorplan-vector";
 
@@ -255,6 +256,19 @@ export function parseRoomDims(text: string): { w: number; l: number; areaM2: num
   return { w, l, areaM2: Math.round(w * l * 100) / 100 };
 }
 
+/** A room label's area as a public building's sheet writes it under the name instead: "36 מ"ר". */
+export function parseRoomArea(text: string): number | null {
+  const m = /^(\d+(?:\.\d+)?)\s*מ["״]?ר$/.exec(text.trim());
+  const a = m ? Number(m[1]) : NaN;
+  return a > 0 && a < 2000 ? a : null;
+}
+
+/** Room words a label's name is taken on without its size: a terrace, a bath the sheet gives no size. */
+export const ROOM_WORDS = /סלון|מטבח|שינה|ממ"?ד|מ\.מ\.ד|אמבט|שירות|רחצה|מרפסת|מחסן|מבואה|פרוזדור|מסדרון|כביסה|חדר|הורים|ילדים|עבודה|אוכל|ארונות|מקלחת/;
+
+/** Whether a name on a plan names a room: a home's word for one, or a school's (a classroom, an office). */
+export const namesRoom = (text: string) => ROOM_WORDS.test(text) || roomLabelKind(text) != null || publicRoomKind(text) != null;
+
 /**
  * What one sheet of the drawing holds, in metres: x to the sheet's right, z
  * down it, from the sheet's centre.
@@ -403,22 +417,34 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     }
   }
 
-  // Rooms: a name, and the "W*L" under it.
-  const dims = inv.texts.filter((t) => DIMS.test(t.text.replace(/\s/g, "")));
-  const names = inv.texts.filter((t) => /[\u0590-\u05FF]/.test(t.text) && !ROOM_EXCLUDE.test(t.text) && t.text.length <= 24);
+  // Rooms: a name, and the "W*L" under it \u2014 or a public building's "36 \u05DE"\u05E8".
+  // A name with neither is a room only if it says one: the Wolf seminary's
+  // notes ("\u05DC\u05D5\u05D7 \u05DB\u05EA\u05D4", "\u05DE\u05EA\u05DC\u05D4 \u05D1\u05D2\u05D3\u05D9\u05DD", "\u05E6"\u05D0 8"") stood in its booklet as 251 rooms (26/10/2026).
+  const stated = (text: string) => parseRoomDims(text)?.areaM2 ?? parseRoomArea(text);
+  const dims = inv.texts.filter((t) => DIMS.test(t.text.replace(/\s/g, "")) || parseRoomArea(t.text) != null);
+  const names = inv.texts.filter((t) => /[\u0590-\u05FF]/.test(t.text) && !ROOM_EXCLUDE.test(t.text) && t.text.length <= 24 && parseRoomArea(t.text) == null);
+  // Nearest pairs first, over the whole sheet: taken name by name, a
+  // classroom took the 6 m\u00B2 of the treatment room beside it. And a room's
+  // word before a note at the same distance.
+  const pairs = names
+    .flatMap((n) => dims.map((q) => ({ n, q, d: Math.hypot(q.at[0] - n.at[0], q.at[1] - n.at[1]) })))
+    .filter((p) => p.d < 1.6)
+    .sort((a, b) => a.d - b.d || Number(namesRoom(b.n.text)) - Number(namesRoom(a.n.text)));
   const used = new Set<(typeof dims)[number]>();
+  const sizeOf = new Map<(typeof names)[number], (typeof dims)[number]>();
+  for (const { n, q } of pairs) {
+    if (used.has(q) || sizeOf.has(n)) continue;
+    used.add(q);
+    sizeOf.set(n, q);
+  }
   for (const n of names) {
-    const near = dims
-      .filter((q) => !used.has(q))
-      .map((q) => ({ q, d: Math.hypot(q.at[0] - n.at[0], q.at[1] - n.at[1]) }))
-      .sort((a, b) => a.d - b.d)[0];
-    const dim = near && near.d < 1.6 ? near.q : null;
-    if (dim) used.add(dim);
-    inv.rooms.push({ name: n.text, at: n.at, dims: dim?.text ?? null, statedM2: dim ? (parseRoomDims(dim.text)?.areaM2 ?? null) : null });
+    const dim = sizeOf.get(n) ?? null;
+    if (!dim && !namesRoom(n.text)) continue;
+    inv.rooms.push({ name: n.text, at: n.at, dims: dim?.text ?? null, statedM2: dim ? stated(dim.text) : null });
   }
   for (const d of dims) {
     if (used.has(d)) continue;
-    inv.rooms.push({ name: null, at: d.at, dims: d.text, statedM2: parseRoomDims(d.text)?.areaM2 ?? null });
+    inv.rooms.push({ name: null, at: d.at, dims: d.text, statedM2: stated(d.text) });
   }
 
   const sum = (kind: CadKind) => Math.round(inv.hatches.filter((h) => h.kind === kind).reduce((s, h) => s + h.areaM2, 0) * 10) / 10;

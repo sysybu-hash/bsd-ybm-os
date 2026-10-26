@@ -40,6 +40,13 @@ describe("a floor sheet's level", () => {
     expect(sheetLevel(sheet(["+ 5.90", "+ 5.90", "5.90 +", "+ 2.93", "+ 923.20"]))).toBe(5.9);
   });
 
+  it("leaves out the marks it prints small, though they are more", () => {
+    const marks = sheet(["+ 2.65", "+ 3.36", "+ 3.36", "+ 2.65", "+ 2.65", "+ 2.65"]);
+    expect(sheetLevel(marks)).toBe(2.65);
+    const small = { ...marks, texts: marks.texts.map((t) => (t.text === "+ 2.65" ? { ...t, height: 4 } : t)) };
+    expect(sheetLevel(small)).toBe(3.36);
+  });
+
   it("is unknown on a sheet that marks none", () => {
     expect(sheetLevel(sheet(["סלון"]))).toBeNull();
   });

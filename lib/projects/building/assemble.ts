@@ -21,6 +21,8 @@ export type FloorSpec = {
   height: number;
   /** The floor's outer outline in plan metres. */
   outline: Outline;
+  /** Every wing of the floor, where it stands in several (`outline` the largest): inside is inside any. */
+  parts?: Outline[];
   window: { sill: number; head: number; surround: number };
   /** Where a curtain wall stops below the floor's top, stone above it; the full height when absent. */
   curtainHead?: number;
@@ -43,10 +45,15 @@ export function insidePolygon(ring: Outline, x: number, y: number): boolean {
   return inside;
 }
 
+/** Inside any of a floor's wings. */
+export function insideAny(rings: Outline[], x: number, y: number): boolean {
+  return rings.some((ring) => insidePolygon(ring, x, y));
+}
+
 /** Grow a rectilinear outline's test by a margin: inside, or within `m` of it. */
-function nearOutline(ring: Outline, x: number, y: number, m: number): boolean {
-  if (insidePolygon(ring, x, y)) return true;
-  for (const [dx, dy] of [[m, 0], [-m, 0], [0, m], [0, -m]] as const) if (insidePolygon(ring, x + dx, y + dy)) return true;
+function nearOutline(rings: Outline[], x: number, y: number, m: number): boolean {
+  if (insideAny(rings, x, y)) return true;
+  for (const [dx, dy] of [[m, 0], [-m, 0], [0, m], [0, -m]] as const) if (insideAny(rings, x + dx, y + dy)) return true;
   return false;
 }
 
@@ -94,8 +101,9 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       tag: t,
     });
   };
-  const ring = floor.outline;
-  const within = (b: { x: number; y: number; w: number; h: number }) => nearOutline(ring, b.x + b.w / 2, b.y + b.h / 2, 0.35);
+  const rings = floor.parts?.length ? floor.parts : [floor.outline];
+  const inFloor = (x: number, y: number) => insideAny(rings, x, y);
+  const within = (b: { x: number; y: number; w: number; h: number }) => nearOutline(rings, b.x + b.w / 2, b.y + b.h / 2, 0.35);
 
   /** Which long face of a band faces out: -1 (smaller x/y), +1, or 0 for none. */
   const outerSide = (b: { orientation: "h" | "v"; x: number; y: number; w: number; h: number }): -1 | 0 | 1 => {
@@ -106,12 +114,12 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
     for (const s of samples) {
       if (b.orientation === "h") {
         const x = b.x + b.w * s;
-        if (!insidePolygon(ring, x, b.y - probe)) lo++;
-        if (!insidePolygon(ring, x, b.y + b.h + probe)) hi++;
+        if (!inFloor(x, b.y - probe)) lo++;
+        if (!inFloor(x, b.y + b.h + probe)) hi++;
       } else {
         const y = b.y + b.h * s;
-        if (!insidePolygon(ring, b.x - probe, y)) lo++;
-        if (!insidePolygon(ring, b.x + b.w + probe, y)) hi++;
+        if (!inFloor(b.x - probe, y)) lo++;
+        if (!inFloor(b.x + b.w + probe, y)) hi++;
       }
     }
     if (lo >= 2 && hi < 2) return -1;
@@ -131,7 +139,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       const length = horizontal ? b.w : b.h;
       const steps = Math.max(1, Math.round(length / 0.1));
       const inAt = (t: number) =>
-        insidePolygon(ring, horizontal ? b.x + t : b.x + b.w / 2, horizontal ? b.y + b.h / 2 : b.y + t);
+        inFloor(horizontal ? b.x + t : b.x + b.w / 2, horizontal ? b.y + b.h / 2 : b.y + t);
       let start = 0;
       let inside = inAt((0.5 * length) / steps);
       for (let k = 1; k <= steps; k++) {
@@ -185,7 +193,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
     // footprint guessed: a window is on the outline, a doorway within it.
     const side = outerSide(found);
     // A gap past the outline — a recess's mouth, between two terraces — is open air, not a doorway.
-    if (side === 0 && !insidePolygon(ring, found.x + found.w / 2, found.y + found.h / 2)) continue;
+    if (side === 0 && !inFloor(found.x + found.w / 2, found.y + found.h / 2)) continue;
     const wide = (found.orientation === "h" ? found.w : found.h) >= 6;
     const o: PlanOpening = { ...found, exterior: side !== 0, kind: side === 0 ? "doorway" : wide ? "curtain" : "window" };
     if (o.kind === "doorway") {
@@ -211,7 +219,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       const reach = (t: number) => {
         const mid = o.orientation === "h" ? o.y + o.h / 2 : o.x + o.w / 2;
         const at = (o.orientation === "h" ? o.x : o.y) + t;
-        return o.orientation === "h" ? insidePolygon(ring, at, mid) : insidePolygon(ring, mid, at);
+        return o.orientation === "h" ? inFloor(at, mid) : inFloor(mid, at);
       };
       const room = (from: number, dir: -1 | 1) => {
         for (let e = surround; e > 0.005; e -= 0.01) if (reach(from + dir * (e - 0.005))) return e;
@@ -261,7 +269,7 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
       const reach = (t: number) => {
         const mid = o.orientation === "h" ? o.y + o.h / 2 : o.x + o.w / 2;
         const at = (o.orientation === "h" ? o.x : o.y) + t;
-        return o.orientation === "h" ? insidePolygon(ring, at, mid) : insidePolygon(ring, mid, at);
+        return o.orientation === "h" ? inFloor(at, mid) : inFloor(mid, at);
       };
       const room = (from: number, dir: -1 | 1) => {
         for (let e = surround; e > 0.005; e -= 0.01) if (reach(from + dir * (e - 0.005))) return e;

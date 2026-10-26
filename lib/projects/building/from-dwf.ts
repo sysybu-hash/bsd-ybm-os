@@ -1,10 +1,10 @@
-import { floorPrimitives, insidePolygon, parapet, slab, inset, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
+import { floorPrimitives, insideAny, insidePolygon, parapet, slab, inset, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingMaterial, BuildingModel, Primitive } from "@/lib/projects/building/model";
 import { cutFramedWindows, findOpenings, houseOpenings, fitDrawnDoors, fitDrawnWindows, markDoors, type PlanLeaf, type PlanOpening, type PlanSwing } from "@/lib/projects/building/plan-openings";
 import { PLAN_NORTH, type North } from "@/lib/projects/building/compass";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import type { PlanWalls } from "@/lib/projects/building/plan-walls";
-import { emptyMask, traceOutline } from "@/lib/projects/building/raster";
+import { emptyMask, traceOutline, traceOutlines } from "@/lib/projects/building/raster";
 import { readDwfTerraces } from "@/lib/projects/dwf-terrace";
 import { drawnSideFlight, paintFacades, readElevations, windowHeights } from "@/lib/projects/building/facade-materials";
 import { laundryScreens } from "@/lib/projects/building/laundry-screens";
@@ -56,6 +56,8 @@ export type BuildingFloorMeta = {
   /** Metres to add to this sheet's own coordinates to land in the building's frame. */
   shift: { x: number; y: number };
   outline: Outline;
+  /** Every wing of the floor, the largest (`outline`) first: a public building can stand in several. Absent: `outline` alone. */
+  parts?: Outline[];
   /** Whether it is the roof's small structure (a stair head, an attic) rather than a storey. */
   roof: boolean;
   /** Of this sheet's walls, the share that lands on the neighbour's it was laid on (1 for the typical floor). */
@@ -87,6 +89,9 @@ export type DwfBuilding = {
   /** A private house's balconies (by floor id), entrance flights and roof screens, as house-features.ts found them. */
   features?: { balconies: Record<string, HouseBalcony[]>; flights: StoodFlight[]; screens: RoofScreen[] };
 };
+
+/** A floor's wings: its parts, or its outline where it stands in one. */
+export const wingsOf = (f: { outline: Outline; parts?: Outline[] }): Outline[] => (f.parts?.length ? f.parts : [f.outline]);
 
 /** The level most often marked on a sheet, to the centimetre: its own floor's. */
 
@@ -324,11 +329,12 @@ export function buildingFromDwf(
     const above = floors[i + 1];
     if (f.walled && above) f.footprint = clipUnder(f, shifts.get(f)!, above, shifts.get(above)!, 1.5);
   });
-  const outlines = floors.map((f) => {
+  const partsOf = floors.map((f) => {
     const shift = shifts.get(f)!;
     const m = f.floor.cm / 100;
-    return traceOutline(f.footprint).map(([x, y]) => [x * m + shift.x, y * m + shift.y] as [number, number]);
+    return traceOutlines(f.footprint, 3, 1 / (m * m)).map((ring) => ring.map(([x, y]) => [x * m + shift.x, y * m + shift.y] as [number, number]));
   });
+  const outlines = partsOf.map((parts) => parts[0] ?? []);
   if (house)
     floors.forEach((f, i) => {
       const above = floors[i + 1];
@@ -346,7 +352,7 @@ export function buildingFromDwf(
       });
       if (under.length) f.walls = { ...f.walls, bands: [...f.walls.bands, ...under] };
     });
-  const centre = buildingCentre(floors.map((f, i) => ({ level: f.level, roof: f.roof, outline: outlines[i]! })));
+  const centre = buildingCentre(floors.map((f, i) => ({ level: f.level, roof: f.roof, outline: partsOf[i]!.flat() })));
   const elevations = readElevations(strip, { house, north });
   // The top storey's height, to the roof the elevations mark where they mark it.
   const storeyHeight = (f: ReadFloor, i: number) => {
@@ -389,6 +395,7 @@ export function buildingFromDwf(
     const id = `floor-${i}`;
     const m = f.floor.cm / 100;
     const outline: Outline = outlines[i]!;
+    const parts = partsOf[i]!;
     const moved: PlanWalls = { ...f.walls, bands: f.walls.bands.map((b) => ({ ...b, x: b.x + shift.x, y: b.y + shift.y })) };
     const terraces = readDwfTerraces(f.floor, f.sheet);
     const furnishedRooms: FurnishedRoom[] = [];
@@ -439,18 +446,19 @@ export function buildingFromDwf(
       level: f.level,
       height,
       outline,
+      parts,
       window: typicalWindow,
       facade: house ? HOUSE_PLASTER_BODY : "stone",
       interior: "plaster",
       ...(house ? { surroundMaterial: HOUSE_WINDOW_FRAME, frameMaterial: HOUSE_WINDOW_FRAME } : {}),
     };
-    prims.push(...flushFacade(faceTheWeather(floorPrimitives(moved, openings, spec), outline, spec.facade), outline, spec.facade, id));
-    prims.push(slab(inset(outline, 0.06), f.level - 0.02, 0.3, "slab", `${id}:slab`));
+    prims.push(...parts.reduce((laid, part) => flushFacade(laid, part, spec.facade, id), faceTheWeather(floorPrimitives(moved, openings, spec), parts, spec.facade)));
+    for (const part of parts) prims.push(slab(inset(part, 0.06), f.level - 0.02, 0.3, "slab", `${id}:slab`));
     // A house's ceiling under the slab over a storey, smooth white plaster:
     // seen from inside, the slab's underside and the paving over it read as
     // floor tiles on the ceiling (12/10/2026).
     if (house && i > 0) prims.push(slab(inset(outlines[i - 1] ?? outline, 0.06), f.level - 0.36, 0.01, "ceiling", `${floors[i - 1] ? `floor-${i - 1}` : id}:inside:ceiling`));
-    prims.push(slab(inset(outline, 0.06), f.level, 0.02, "floorStone", `${id}:floor`));
+    for (const part of parts) prims.push(slab(inset(part, 0.06), f.level, 0.02, "floorStone", `${id}:floor`));
 
     // Terraces: their floor, and a glass railing on every edge not against the building.
     for (const t of terraces) {
@@ -464,7 +472,7 @@ export function buildingFromDwf(
         const probe = [rail.centre.x, rail.centre.z] as const;
         // Against the building: a probe 40 cm beyond the edge lands inside it.
         const beyond = [0.4, -0.4].some((d) =>
-          rail.size.x > rail.size.z ? insidePolygon(outline, probe[0], probe[1] + d) && !insidePolygon(ring, probe[0], probe[1] + d) : insidePolygon(outline, probe[0] + d, probe[1]) && !insidePolygon(ring, probe[0] + d, probe[1]),
+          rail.size.x > rail.size.z ? insideAny(parts, probe[0], probe[1] + d) && !insidePolygon(ring, probe[0], probe[1] + d) : insideAny(parts, probe[0] + d, probe[1]) && !insidePolygon(ring, probe[0] + d, probe[1]),
         );
         if (!beyond) prims.push(...railing(rail, bars, `${id}:railing`));
       }
@@ -498,7 +506,7 @@ export function buildingFromDwf(
       }
     }
     // A house's storey is the houses' both: no "apartments" to title its plan by.
-    out.push({ id, level: f.level, height, units: house ? [] : f.units, shift: { x: shift.x, y: shift.y }, outline, roof: f.roof, registration: shift.score, sheet: f.sheet, sheetWidth: f.sheet.pageWidth, sheetHeight: f.sheet.pageHeight, ...(house ? { openings, rooms: furnishedRooms } : {}) });
+    out.push({ id, level: f.level, height, units: house ? [] : f.units, shift: { x: shift.x, y: shift.y }, outline, parts, roof: f.roof, registration: shift.score, sheet: f.sheet, sheetWidth: f.sheet.pageWidth, sheetHeight: f.sheet.pageHeight, ...(house ? { openings, rooms: furnishedRooms } : {}) });
   });
 
   // The roof over the highest storey (not over a stair head standing on it).
@@ -507,12 +515,12 @@ export function buildingFromDwf(
   const roofLevel = last.level + last.height;
   // The parapet's top as the elevations mark it, or a metre over the roof.
   const parapetTop = options?.top && options.top.parapet > roofLevel + 0.3 ? options.top.parapet : roofLevel + DWF_BUILDING_STANDARDS.parapet;
-  prims.push(slab(inset(last.outline, 0.06), roofLevel, 0.35, "slab", "roof:slab"));
+  for (const part of wingsOf(last)) prims.push(slab(inset(part, 0.06), roofLevel, 0.35, "slab", "roof:slab"));
   if (house) prims.push(slab(inset(last.outline, 0.06), roofLevel - 0.02, 0.01, "ceiling", `${last.id}:inside:ceiling`));
   const topWalls = prims.filter((p) => p.type === "box" && (p.tag === last.id || p.tag?.startsWith(`${last.id}:`)) && p.centre.y + p.size.y / 2 >= roofLevel - 0.05);
-  prims.push(...parapetOnWalls(parapet(last.outline, roofLevel, parapetTop, 0.25, house ? HOUSE_PLASTER_BODY : "stone", "roof:parapet"), topWalls));
+  prims.push(...parapetOnWalls(wingsOf(last).flatMap((part) => parapet(part, roofLevel, parapetTop, 0.25, house ? HOUSE_PLASTER_BODY : "stone", "roof:parapet")), topWalls));
   const headroom = out.filter((f) => f.roof);
-  for (const h of headroom) prims.push(slab(inset(h.outline, 0.06), h.level + h.height, 0.3, "slab", "roof:slab"));
+  for (const h of headroom) for (const part of wingsOf(h)) prims.push(slab(inset(part, 0.06), h.level + h.height, 0.3, "slab", "roof:slab"));
   // A house's solar heaters, in the screens its elevations draw over the parapet.
   const roofScreens = house ? houseRoofScreens(houseElevations(strip, north), last.outline, roofLevel, parapetTop) : null;
   if (roofScreens) prims.push(...roofScreens.primitives);
@@ -525,9 +533,9 @@ export function buildingFromDwf(
     const below = storeys[i]!;
     const above = storeys[i + 1]!;
     const top = below.level + below.height;
-    prims.push(slab(inset(below.outline, 0.06), top - 0.03, 0.3, "paving", `roof:${below.id}`));
-    const under = (x: number, z: number) => [0.5, -0.5].some((d) => insidePolygon(above.outline, x + d, z) || insidePolygon(above.outline, x, z + d));
-    for (const edge of parapet(below.outline, top, top + DWF_BUILDING_STANDARDS.railing, 0.04, "metal", `roof:${below.id}:railing`)) {
+    for (const part of wingsOf(below)) prims.push(slab(inset(part, 0.06), top - 0.03, 0.3, "paving", `roof:${below.id}`));
+    const under = (x: number, z: number) => [0.5, -0.5].some((d) => insideAny(wingsOf(above), x + d, z) || insideAny(wingsOf(above), x, z + d));
+    for (const edge of wingsOf(below).flatMap((part) => parapet(part, top, top + DWF_BUILDING_STANDARDS.railing, 0.04, "metal", `roof:${below.id}:railing`))) {
       if (edge.type !== "box" || under(edge.centre.x, edge.centre.z)) continue;
       prims.push(...railing(edge, bars, `roof:${below.id}:railing`));
     }
@@ -540,8 +548,8 @@ export function buildingFromDwf(
   prims.push(...screens);
 
   // Ground: paving round a permit building. A private house stands on its own land.
-  const xs = out.flatMap((f) => f.outline.map(([x]) => x));
-  const ys = out.flatMap((f) => f.outline.map(([, y]) => y));
+  const xs = out.flatMap((f) => wingsOf(f).flat().map(([x]) => x));
+  const ys = out.flatMap((f) => wingsOf(f).flat().map(([, y]) => y));
   const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
   const ground = out[0]!.level;
   const pad = 12;
