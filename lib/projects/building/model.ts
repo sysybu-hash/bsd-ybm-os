@@ -126,6 +126,8 @@ export type Primitive =
        * radians of turn (plan x = cx + ((u − cu)·cos − (v − cv)·sin)·s …, north up when rot is 0).
        */
       photo?: { src: string; pw: number; ph: number; s: number; cu: number; cv: number; cx: number; cz: number; rot: number };
+      /** Plan rectangles this grid leaves undrawn (its heights there still stand for the ground): a finer grid over them draws the ground instead. */
+      holes?: Array<{ x0: number; z0: number; x1: number; z1: number }>;
     }
   | { type: "tree"; at: Vec3; height: number; crown: number; tag?: string }
   /** A plant in a pot: staging beside a sofa, in a terrace's corner. */

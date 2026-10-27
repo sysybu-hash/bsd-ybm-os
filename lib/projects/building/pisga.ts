@@ -1,4 +1,4 @@
-import { kindergartenExits, kindergartenExitsGround } from "@/lib/projects/building/pisga-kg-exits";
+import { kindergartenExitDoors, kindergartenExits, kindergartenExitsGround, kindergartenWestWell } from "@/lib/projects/building/pisga-kg-exits";
 import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, railingPrims, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
@@ -582,22 +582,33 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       order.forEach((z, k) => {
         level -= riser;
         const zc = z + (i % 2 === 0 ? depth / 2 : -depth / 2);
-        prims.push({ type: "box", centre: { x: (f.x0 + f.x1) / 2, y: level, z: zc }, size: { x: f.x1 - f.x0, y: 0.05, z: depth }, material: "metal", tag: "site:emergency-stair" });
-        prims.push({ type: "box", centre: { x: (f.x0 + f.x1) / 2, y: level - riser / 2, z }, size: { x: f.x1 - f.x0, y: riser, z: 0.02 }, material: "metal", tag: "site:emergency-stair" });
-        // The rail on the open side of each flight (the outer edge): a glass pane a step long, its handrail, a post every other step.
-        const edge = i % 2 === 0 ? f.x0 : f.x0;
-        prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc }, size: { x: 0.012, y: 0.9, z: depth }, material: "glass", tag: "site:emergency-stair" });
-        prims.push({ type: "box", centre: { x: edge, y: level + 0.97, z: zc }, size: { x: 0.04, y: 0.04, z: depth }, material: "metal", tag: "site:emergency-stair" });
-        if (k % 2 === 0) prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc }, size: { x: 0.04, y: 1.0, z: 0.04 }, material: "metal", tag: "site:emergency-stair" });
+        // Each tread a folded steel plate, its riser and 25 cm under the nosing (the stepped stringer of the kindergarten's exit stair): thin
+        // plates alone read as steps floating in the air.
+        prims.push({ type: "box", centre: { x: (f.x0 + f.x1) / 2, y: level + 0.025 - (riser + 0.25) / 2, z: zc }, size: { x: f.x1 - f.x0, y: riser + 0.25, z: depth }, material: "frame", tag: "site:emergency-stair" });
+        // The rail on the open (west) side of each flight: upright bars 13 cm apart, a handrail over them, a post every other step.
+        const edge = f.x0 + 0.03;
+        for (const dz of [-depth / 4, depth / 4]) prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc + dz }, size: { x: 0.018, y: 0.95, z: 0.018 }, material: "frame", tag: "site:emergency-stair-rail" });
+        prims.push({ type: "box", centre: { x: edge, y: level + 0.99, z: zc }, size: { x: 0.05, y: 0.05, z: depth + 0.01 }, material: "frame", tag: "site:emergency-stair-rail" });
+        if (k % 2 === 0) prims.push({ type: "box", centre: { x: edge, y: level + 0.5, z: zc }, size: { x: 0.05, y: 1.0, z: 0.05 }, material: "frame", tag: "site:emergency-stair-rail" });
       });
     });
     if (flights.length >= 2) {
       const a = flights[0]!;
       const b = flights[1]!;
       const z = Math.max(...a.treads) + 0.26;
-      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: LEVEL.floorMinus1 - riser * a.treads.length - 0.04, z: z + 0.3 }, size: { x: a.x1 - b.x0, y: 0.08, z: 0.6 }, material: "concrete", tag: "site:emergency-stair" });
+      const mid = LEVEL.floorMinus1 - riser * a.treads.length;
+      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: mid - 0.1, z: z + 0.3 }, size: { x: a.x1 - b.x0, y: 0.2, z: 0.6 }, material: "frame", tag: "site:emergency-stair" });
       const north = Math.min(...a.treads);
-      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: LEVEL.floorMinus1 - 0.04, z: north - 0.6 }, size: { x: a.x1 - b.x0, y: 0.08, z: 1.2 }, material: "concrete", tag: "site:emergency-stair" });
+      prims.push({ type: "box", centre: { x: (b.x0 + a.x1) / 2, y: LEVEL.floorMinus1 - 0.1, z: north - 0.6 }, size: { x: a.x1 - b.x0, y: 0.2, z: 1.2 }, material: "frame", tag: "site:emergency-stair" });
+      // The landings' free edges railed as the flights: the half landing's far end and outer side, the door's landing's north end and outer
+      // side, and its south edge over the lower flight's foot.
+      prims.push(
+        ...railingPrims([b.x0 + 0.03, z + 0.57], [a.x1, z + 0.57], mid, "site:emergency-stair-rail", 1.0),
+        ...railingPrims([b.x0 + 0.03, z], [b.x0 + 0.03, z + 0.57], mid, "site:emergency-stair-rail", 1.0),
+        ...railingPrims([b.x0 + 0.03, north - 1.17], [a.x1, north - 1.17], LEVEL.floorMinus1, "site:emergency-stair-rail", 1.0),
+        ...railingPrims([b.x0 + 0.03, north - 1.17], [b.x0 + 0.03, north], LEVEL.floorMinus1, "site:emergency-stair-rail", 1.0),
+        ...railingPrims([b.x0 + 0.03, north - 0.03], [b.x1, north - 0.03], LEVEL.floorMinus1, "site:emergency-stair-rail", 1.0),
+      );
     }
   }
 
@@ -777,8 +788,17 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   // The site itself, a metre a cell; and the hills round it to the horizon, six metres a cell, 0.6 m under the first so the two never meet in a seam.
   const fine = { x0: -90, z0: -80, dx: 1, nx: 240, nz: 170 };
   const heights: number[] = [];
+  // Where walls stand between metre samples with the ground a storey apart on their two sides, a quarter-metre grid draws the ground instead and
+  // the metre grid leaves those cells out: west of the kindergarten, its cross wall at x −9.5 and the long wall at z 4.17.
+  const detail = [{ x0: -16, z0: -6, x1: -2, z1: 7 }];
   for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true, true));
-  prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground" });
+  prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground", holes: detail });
+  for (const d of detail) {
+    const dx = 0.25, nx = Math.round((d.x1 - d.x0) / dx) + 1, nz = Math.round((d.z1 - d.z0) / dx) + 1;
+    const patch: number[] = [];
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) patch.push(groundAt(d.x0 + i * dx, d.z0 + j * dx, true, true));
+    prims.push({ type: "terrain", x0: d.x0, z0: d.z0, dx, nx, nz, heights: patch, material: "soil", tag: "site:ground" });
+  }
   // The aerial photograph of the plot, laid on the ground. Nothing in the DXF places it; the user drew the plot's outline on the photo (their marking of 2026-10-19: west edge at pixel column ~768,
   // south edge from (768, 387) to (980, 410), east edge at ~1004, top at row ~318) and the fit is a similarity through four plan/photo pairs: the plot's SW corner (−11, 21.3), SE (62, 29.3),
   // NW (−12, −1.3) and NE (67, 7.8) — the DXF's boundary lines (M2602, G110-10) — onto those pixels: 0.3346 m a pixel, turned 2.96°, residual up to 15 px (5 m) at the east corners, which were read by eye.
@@ -919,6 +939,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // An edge a retaining wall or a parapet already guards stands no railing of its own beside it; nor does the bed's, under a metre over the courtyard's paving,
     // nor any hatch's edge inside the bed (the bed's hatch is drawn in pieces whose edges cross it).
     prims.push(...kindergartenExits((x, z) => groundAt(x, z, true)));
+    kindergartenExitDoors(prims);
     const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
     // (Only a guard reaching the edge's level: the kindergarten's long wall at +5.64 does not guard the grating at +9.15 over it.)
     const nearGuard = (x: number, z: number, level: number) => guards.some((b) => b.centre.y + b.size.y / 2 > level - 0.5 && b.centre.y - b.size.y / 2 < level + 1.2 && Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
@@ -926,6 +947,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     const slabs = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism");
     const builtTop = (x: number, z: number, level: number) => Math.max(-Infinity, ...slabs.filter((p) => p.y1 <= level + 0.5 && insidePolygon(p.ring, x, z) && !(p.holes ?? []).some((h) => insidePolygon(h, x, z))).map((p) => p.y1));
     prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z, level) => nearStair(x, z) || nearGuard(x, z, level) || inBed(x, z), eastLanding, builtTop));
+    kindergartenWestWell(prims, (x, z) => groundAt(x, z, true));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();
@@ -1016,6 +1038,16 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     const people: Array<[number, number, number, number]> = [[27.4, 18.5, LEVEL.courtyard, 1.72], [29.5, 17.6, LEVEL.courtyard, 1.66], [14, 15.4, LEVEL.courtyard, 1.75], [36, 22.3, LEVEL.street, 1.7], [38.2, 21.8, LEVEL.street, 1.62], [30, 8.2, LEVEL.floorMinus1, 1.7], [33, 6.9, LEVEL.floorMinus1, 1.64], [48, 12, LEVEL.floorMinus1, 1.7], [46.5, 12.4, LEVEL.floorMinus1, 1.6], [24, 9.5, LEVEL.floorMinus2, 1.7], [38, 9, LEVEL.floorMinus2, 1.68]];
     const shirts = [0x3d5a80, 0xb5543c, 0x5b7f5f, 0xd8c9a0, 0x6d4c7d, 0x2f2f33];
     people.forEach(([x, z, y, h], i) => prims.push({ type: "person", at: { x, y, z }, rotY: rnd() * 6.28, colour: shirts[i % shirts.length]!, height: h, tag: "person" }));
+    // Olive trees on the slopes just past the plot's two ends, as round the site in its photographs (olive terraces west and south): low,
+    // wide crowns, clear of the kindergarten's paths (west to x −15, east from x 71).
+    let olive = 31;
+    const orand = () => ((olive = (olive * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (let k = 0; k < 16; k++) {
+      const east = k % 2 === 1;
+      const x = east ? 71.5 + orand() * 7 : -16 - orand() * 7;
+      const z = -16 + orand() * 22;
+      prims.push({ type: "tree", at: { x, y: groundAt(x, z, true), z }, height: 3.4 + orand() * 1.2, crown: 1.7 + orand() * 0.5, tag: "tree" });
+    }
   }
 
   return {

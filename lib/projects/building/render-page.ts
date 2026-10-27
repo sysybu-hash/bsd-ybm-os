@@ -377,10 +377,21 @@ async function main() {
     }
     for (let k = 0; k < 260000; k++) { g.fillStyle = "rgba(" + (70 + rnd() * 70) + "," + (105 + rnd() * 65) + "," + (35 + rnd() * 30) + "," + (0.3 + rnd() * 0.4) + ")"; g.fillRect(rnd() * w, rnd() * h, 1, 2 + rnd() * 3); }
   }, 8.0);
+  // The site's open ground: a meadow of olive grass, as the hillside round the plot after the rains — bare earth showing in soft patches and
+  // the odd pale stone of the Hebron hills (the user asked for the surroundings greener, 27/10/2026; it was bare sand with green dots).
   const soilTex = canvasTex(512, 512, (g, w, h) => {
-    g.fillStyle = "#b39b78"; g.fillRect(0, 0, w, h);
-    for (let k = 0; k < 7000; k++) { const l = 130 + rnd() * 70; g.fillStyle = "rgba(" + l + "," + (l * 0.86) + "," + (l * 0.66) + ",0.6)"; g.fillRect(rnd() * w, rnd() * h, 2 + rnd() * 4, 2 + rnd() * 4); }
-    for (let k = 0; k < 400; k++) { g.fillStyle = "rgba(" + (80 + rnd() * 40) + "," + (110 + rnd() * 40) + ",60,0.55)"; g.beginPath(); g.arc(rnd() * w, rnd() * h, 2 + rnd() * 6, 0, 7); g.fill(); }
+    g.fillStyle = "#74844a"; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 60; k++) {
+      const r = 20 + rnd() * 50, x = rnd() * w, y = rnd() * h;
+      for (const [ox, oy] of [[0, 0], [-w, 0], [w, 0], [0, -h], [0, h]]) {
+        const grd = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        grd.addColorStop(0, rnd() < 0.35 ? "rgba(150,128,92,0.35)" : "rgba(95,120,60,0.3)");
+        grd.addColorStop(1, "rgba(0,0,0,0)");
+        g.fillStyle = grd; g.fillRect(x + ox - r, y + oy - r, 2 * r, 2 * r);
+      }
+    }
+    for (let k = 0; k < 40000; k++) { g.fillStyle = "rgba(" + (80 + rnd() * 60) + "," + (105 + rnd() * 55) + "," + (40 + rnd() * 30) + "," + (0.35 + rnd() * 0.4) + ")"; g.fillRect(rnd() * w, rnd() * h, 1, 2 + rnd() * 3); }
+    for (let k = 0; k < 90; k++) { const l = 175 + rnd() * 40; g.fillStyle = "rgba(" + l + "," + (l * 0.96) + "," + (l * 0.88) + ",0.8)"; g.beginPath(); g.arc(rnd() * w, rnd() * h, 1.5 + rnd() * 3, 0, 7); g.fill(); }
   }, 6.0);
   const floorStoneTex = canvasTex(512, 512, (g, w, h) => {
     g.fillStyle = "#9f978a"; g.fillRect(0, 0, w, h);
@@ -518,7 +529,7 @@ async function main() {
     paving: new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.72 }),
     grass: new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.95 }),
     soil: new THREE.MeshStandardMaterial({ map: soilTex, roughness: 1 }),
-    soilFar: new THREE.MeshStandardMaterial({ color: 0xbfb393, roughness: 1 }),
+    soilFar: new THREE.MeshStandardMaterial({ color: 0x8a9460, roughness: 1 }),
     rock: new THREE.MeshStandardMaterial({ map: plainTex("#a89a86", 22, 4), roughness: 1 }),
     existing: new THREE.MeshStandardMaterial({ map: stoneTex([-6, -4, 4]), roughness: 0.9, color: 0xd6d2cc }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8c9096, roughness: 0.35, metalness: 0.8 }),
@@ -974,6 +985,17 @@ async function main() {
           uv.setXY(k, ((dx * c + dz * sn) / ph.s + ph.cu) / ph.pw, 1 - ((-dx * sn + dz * c) / ph.s + ph.cv) / ph.ph);
         }
         else uv.setXY(k, x / r, z / r);
+      }
+      if (p.holes?.length) {
+        // A finer grid draws the ground over these: the cells inside them go.
+        const idx = [];
+        for (let b = 0; b < rows - 1; b++) for (let a = 0; a < cols - 1; a++) {
+          const cx = p.x0 + (ia + a + 0.5) * p.dx, cz = p.z0 + (ja + b + 0.5) * p.dx;
+          if (p.holes.some((h) => cx > h.x0 && cx < h.x1 && cz > h.z0 && cz < h.z1)) continue;
+          const [v00, v10, v01, v11] = [b * cols + a, b * cols + a + 1, (b + 1) * cols + a, (b + 1) * cols + a + 1];
+          idx.push(v00, v01, v10, v01, v11, v10);
+        }
+        geo.setIndex(idx);
       }
       geo.computeVertexNormals();
       // From above, a house's plan lights its ground as flat: lit as it

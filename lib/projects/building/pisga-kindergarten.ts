@@ -42,7 +42,8 @@ const GROUND: Outline = [[-3.3, 7.96], [-3.3, 4.17], [1.06, 4.17], [1.06, UPPER_
 const UPPER: Outline = [[-3.3, 7.96], [-3.3, 4.17], [1.06, 4.17], [1.06, UPPER_Z0], [56.69, UPPER_Z0], [56.69, 7.96]];
 const TERRACE: Outline = [...GROUND.slice(4, 15), [56.69, UPPER_Z0]];
 /** The new building's footprint, standing on its roof: no railing along an edge under it. */
-const NEW_BUILDING: Outline = [[0.87, 1.01], [53.93, 1.01], [53.93, 16.6], [0.87, 16.6]];
+// (Its east face is at x 53.70 on the floor sheets: the floor's slab runs on to 53.93 under it.)
+const NEW_BUILDING: Outline = [[0.87, 1.01], [53.7, 1.01], [53.7, 16.6], [0.87, 16.6]];
 
 /**
  * A page for the readers, a point a centimetre, point (500, 1030) the corner
@@ -197,11 +198,13 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
     const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
     const n: [number, number] = Math.abs(q[1] - p[1]) < 0.01 ? [0, insidePolygon(ring, mx, mz + 0.2) ? 0.1 : -0.1] : [insidePolygon(ring, mx + 0.2, mz) ? 0.1 : -0.1, 0];
     let from: number | null = null;
-    for (let k = 0; k <= 40; k++) {
-      const t = k / 40;
+    // Every 10 cm: in forty steps a long edge's railing stopped up to 1.4 m short of the building it meets.
+    const steps = Math.max(40, Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 0.1));
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps;
       const blocked = skip(p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t);
       if (!blocked && from === null) from = t;
-      if ((blocked || k === 40) && from !== null) {
+      if ((blocked || k === steps) && from !== null) {
         const [ax, az] = [p[0] + (q[0] - p[0]) * from + n[0] + SHIFT, p[1] + (q[1] - p[1]) * from + n[1] + SHIFT];
         const [bx, bz] = [p[0] + (q[0] - p[0]) * t + n[0] + SHIFT, p[1] + (q[1] - p[1]) * t + n[1] + SHIFT];
         if (Math.hypot(bx - ax, bz - az) > 0.3) railing(ax, az, bx, bz, level);

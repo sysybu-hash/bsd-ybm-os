@@ -77,6 +77,8 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "kg-east": { camera: { position: { x: 76, y: 14, z: -14 }, target: { x: 60, y: 3.5, z: 3 }, fovDeg: 45 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "kg-west-n": { camera: { position: { x: 0, y: 8, z: -13 }, target: { x: -6, y: 4.5, z: 3.5 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "kg-east-n": { camera: { position: { x: 64, y: 7, z: -11 }, target: { x: 62, y: 4, z: 5 }, fovDeg: 55 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
+  "kg-ne-corner": { camera: { position: { x: 61, y: 12, z: -5 }, target: { x: 55, y: 7.5, z: 3 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
+  "kg-nw-corner": { camera: { position: { x: -7, y: 12, z: -6 }, target: { x: 0.5, y: 6.5, z: 3 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
 };
 const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.includes(id));
 // A tree within 12 m in front of a camera (inside 36 degrees of its view) fills a corner of the frame with a trunk under a cut crown, which
