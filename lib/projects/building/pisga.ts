@@ -741,6 +741,23 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // +0.70 to the north and east, and it is dug into the slope beneath the
     // courtyard.
     if (kindergarten.some(([ring]) => insidePolygon(ring, x, z))) h = Math.min(h, -0.2);
+    // Round its north and west faces the ground is the level its facades draw (blocks 321-F2 north, 321-F1 west): +0.70 (=923.90) along the
+    // west face and the north face to the middle wing (x 24.5), down to ±0.00 at the east end (x 55.7). Two metres out at that level, then the
+    // slope over three more (the hand spots had it 1.4–6.4 m up the west wing's windows; wider, it lifted the site sheet's ±0.00 at (26.8, −12) by
+    // half a metre). Not past z 7.5, where the west platform stands on the ground.
+    else if (fromDxf && x < 53 && z < 7.5) {
+      const d = Math.min(...kindergarten.flatMap(([ring]) => ring.map((p, i) => {
+        const q = ring[(i + 1) % ring.length]!;
+        const l2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 || 1;
+        const t = Math.max(0, Math.min(1, ((x - p[0]) * (q[0] - p[0]) + (z - p[1]) * (q[1] - p[1])) / l2));
+        return Math.hypot(x - p[0] - (q[0] - p[0]) * t, z - p[1] - (q[1] - p[1]) * t);
+      })));
+      if (d < 5) {
+        const face = x <= 24.5 ? 0.7 : 0.7 * Math.max(0, 55.7 - x) / (55.7 - 24.5);
+        const w = d <= 2 ? 1 : 1 - ((d - 2) / 3) ** 2 * (3 - 2 * ((d - 2) / 3));
+        h = h * (1 - w) + face * w;
+      }
+    }
     // East of the entrance the plot falls from the street to the east
     // plaza — the accessible ramp's slope.
     // (The site sheet marks +8.27 at (54.6, 14.3): the plaza stays level to z 14.5 and the fall to the street starts there — scripts/verify-pisga-terrain.mts.)
