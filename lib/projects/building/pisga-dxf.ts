@@ -521,8 +521,16 @@ export function dxfEmergencyStair(drawing: DxfDrawing): StairFlight[] {
   return [...flights.values()].map((f) => ({ ...f, treads: f.treads.sort((a, b) => a - b) })).filter((f) => f.treads.length >= 8).sort((a, b) => b.x1 - a.x1);
 }
 
-/** Furniture: the furniture layer, and blocks on layer 0 (the office desks, the reception counter, the hall's seating). */
-const isFurn = (p: DxfPiece) => /^(רהיטים|furniture)/.test(p.layer) || (p.layer === "0" && p.path.length > 0 && !/chets|miflas|miplas|^_/.test(p.path.join(">")) && p.type !== "ATTRIB" && p.type !== "TEXT" && p.type !== "MTEXT");
+/** The layers furniture is drawn on: the sheet's own, the imported lounge blocks (ARREDI …), and layer 0. */
+const FURN_LAYERS = /^(0|רהיטים|furniture|ARREDI)/;
+/**
+ * Furniture: the furniture layers, blocks on layer 0 (the office desks, the hall's seating), and layer 0's loose lines — the teachers'
+ * desks with their two chairs and the reception counter are drawn loose on layer 0 (2026-10-27); the lift's car, drawn there too, is
+ * dropped by the lift's room (dxfFurnitureShapes).
+ */
+const isFurn = (p: DxfPiece) =>
+  /^(רהיטים|furniture|ARREDI)/.test(p.layer) ||
+  (p.layer === "0" && (p.path.length === 0 || !/chets|miflas|miplas|^_/.test(p.path.join(">"))) && p.type !== "ATTRIB" && p.type !== "TEXT" && p.type !== "MTEXT");
 
 export type FurnitureShape = {
   /** Centre in the plan frame, metres. */
@@ -588,8 +596,66 @@ export function groupsOf(drawing: DxfDrawing, floor: PisgaDxfFloor, layer: RegEx
     const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
     const um = (u0 + u1) / 2;
     const vm = (v0 + v1) / 2;
-    return { cx: um * c - vm * sn, cz: um * sn + vm * c, len: u1 - u0, wid: v1 - v0, ang, hasCircle: Math.max(...g.map((p) => p.circleR)), parts: g.length };
+    // curves: the parts drawn as arcs or polylines (more than two points), not as single LINEs; lines: each part's points.
+    return { cx: um * c - vm * sn, cz: um * sn + vm * c, len: u1 - u0, wid: v1 - v0, ang, hasCircle: Math.max(...g.map((p) => p.circleR)), parts: g.length, curves: g.filter((p) => p.pts.length > 2).length, lines: g.map((p) => p.pts) };
   });
+}
+
+/**
+ * A counter's straight runs among a group's strokes: pairs of parallel edges of 50 cm or more, 20–95 cm apart and sharing 40 cm of
+ * their length, closest pairs first, each edge in two pairs at most (the reception's 25 cm ledge and the 70 cm desk behind it share
+ * the outer face). Each run is the box between its two faces, over their shared length.
+ */
+export function counterRuns(lines: Array<Array<[number, number]>>): Array<{ x: number; z: number; length: number; width: number; angle: number }> {
+  type S = { a: [number, number]; b: [number, number]; ang: number; len: number };
+  const segs: S[] = [];
+  for (const pts of lines) {
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!;
+      const b = pts[i]!;
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len >= 0.5) segs.push({ a, b, ang: Math.atan2(b[1] - a[1], b[0] - a[0]), len });
+    }
+  }
+  const cand: Array<{ i: number; j: number; d: number; run: { x: number; z: number; length: number; width: number; angle: number } }> = [];
+  for (let i = 0; i < segs.length; i++) {
+    for (let j = i + 1; j < segs.length; j++) {
+      const s = segs[i]!;
+      const t = segs[j]!;
+      if (Math.abs(Math.sin(s.ang - t.ang)) > 0.05) continue;
+      const c = Math.cos(s.ang);
+      const sn = Math.sin(s.ang);
+      const u = (q: [number, number]) => q[0] * c + q[1] * sn;
+      const v = (q: [number, number]) => -q[0] * sn + q[1] * c;
+      const d = Math.abs(v(t.a) - v(s.a));
+      if (d < 0.2 || d > 0.95) continue;
+      const lo = Math.max(Math.min(u(s.a), u(s.b)), Math.min(u(t.a), u(t.b)));
+      const hi = Math.min(Math.max(u(s.a), u(s.b)), Math.max(u(t.a), u(t.b)));
+      if (hi - lo < 0.4) continue;
+      const um = (lo + hi) / 2;
+      const vm = (v(s.a) + v(t.a)) / 2;
+      cand.push({ i, j, d, run: { x: um * c - vm * sn, z: um * sn + vm * c, length: hi - lo, width: d, angle: s.ang } });
+    }
+  }
+  const used = new Map<number, number>();
+  const out: Array<{ x: number; z: number; length: number; width: number; angle: number }> = [];
+  for (const k of cand.sort((p, q) => p.d - q.d)) {
+    if ((used.get(k.i) ?? 0) >= 2 || (used.get(k.j) ?? 0) >= 2) continue;
+    // Not a run lying inside one already taken at its angle (the desk's middle stroke against its two faces).
+    const inside = out.some((o) => {
+      if (Math.abs(Math.sin(o.angle - k.run.angle)) > 0.05) return false;
+      const c = Math.cos(o.angle);
+      const sn = Math.sin(o.angle);
+      const du = (k.run.x - o.x) * c + (k.run.z - o.z) * sn;
+      const dv = -(k.run.x - o.x) * sn + (k.run.z - o.z) * c;
+      return Math.abs(du) <= o.length / 2 && Math.abs(dv) <= o.width / 2;
+    });
+    if (inside) continue;
+    used.set(k.i, (used.get(k.i) ?? 0) + 1);
+    used.set(k.j, (used.get(k.j) ?? 0) + 1);
+    out.push(k.run);
+  }
+  return out;
 }
 
 /**
@@ -660,27 +726,45 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
   // Chairs drawn open — a seat and its back as arcs and strokes: each cluster of small open pieces is one chair.
   // Not the stray two-point LINEs: they are a desk's grain, and join a chair to it.
   const small = (p: DxfPiece) => !p.circle && !isClosed(p) && p.type !== "LINE" && !!(p.pts || p.arc);
-  for (const g of groupsOf(drawing, floor, /^(0|רהיטים|furniture)/, (p) => isFurn(p) && small(p), 0.012)) {
+  for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => isFurn(p) && small(p), 0.012)) {
     if (g.len > 0.8 || g.wid > 0.8 || g.len < 0.25 || g.wid < 0.2) continue;
+    if (out.some((o) => Math.abs(o.x - g.cx) < 0.25 && Math.abs(o.z - g.cz) < 0.25)) continue;
+    out.push({ x: g.cx, z: g.cz, length: g.len, width: g.wid, angle: g.ang, round: false, kind: "chair" });
+  }
+  // Chairs drawn round a table as arcs joined by short strokes (the octagonal and trapezoid tables' chairs): the arcs alone fall
+  // apart into a seat's front and its back, so the strokes under 25 cm join them. Two curves at least, so a desk's grain stays out.
+  const shortLine = (p: DxfPiece) => p.type === "LINE" && !!p.pts && p.pts.length === 2 && Math.hypot(p.pts[0]!.x - p.pts[1]!.x, p.pts[0]!.y - p.pts[1]!.y) / 100 < 0.25;
+  for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => isFurn(p) && (small(p) || shortLine(p)), 0.012)) {
+    if (g.curves < 2 || g.len > 0.8 || g.wid > 0.8 || g.len < 0.25 || g.wid < 0.2) continue;
     if (out.some((o) => Math.abs(o.x - g.cx) < 0.25 && Math.abs(o.z - g.cz) < 0.25)) continue;
     out.push({ x: g.cx, z: g.cz, length: g.len, width: g.wid, angle: g.ang, round: false, kind: "chair" });
   }
   // Chairs and monitors drawn in short strokes: clusters of short LINEs (under 25 cm) that make a 30–80 cm piece of 10 strokes or more.
   const strokes = (p: DxfPiece) => p.type === "LINE" && !!p.pts && p.pts.length === 2 && Math.hypot(p.pts[0]!.x - p.pts[1]!.x, p.pts[0]!.y - p.pts[1]!.y) / 100 < 0.25;
-  for (const g of groupsOf(drawing, floor, /^(0|רהיטים|furniture)/, (p) => isFurn(p) && strokes(p), 0.012)) {
+  for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => isFurn(p) && strokes(p), 0.012)) {
     if (g.parts < 10 || g.len > 0.8 || g.wid > 0.8 || g.len < 0.3 || g.wid < 0.25) continue;
     if (out.some((o) => Math.abs(o.x - g.cx) < 0.3 && Math.abs(o.z - g.cz) < 0.3)) continue;
     out.push({ x: g.cx, z: g.cz, length: g.len, width: g.wid, angle: g.ang, round: false, kind: "chair" });
   }
   // Desks and benches drawn open — long strokes in a pair or a frame: each cluster of the long open pieces is one piece of its size.
   const long = (p: DxfPiece) => !p.circle && !isClosed(p) && !!p.pts && p.pts.length >= 2 && Math.hypot(p.pts[0]!.x - p.pts[p.pts.length - 1]!.x, p.pts[0]!.y - p.pts[p.pts.length - 1]!.y) / 100 > 0.5;
-  for (const g of groupsOf(drawing, floor, /^(0|רהיטים|furniture)/, (p) => isFurn(p) && long(p))) {
+  for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => isFurn(p) && long(p))) {
     if (g.len < 0.8 || g.wid < 0.35 || g.len > 6 || g.wid > 3) continue;
     if (out.some((o) => o.kind !== "chair" && Math.abs(o.x - g.cx) < Math.max(0.4, g.len / 3) && Math.abs(o.z - g.cz) < Math.max(0.4, g.wid / 3))) continue;
-    out.push({ x: g.cx, z: g.cz, length: g.len, width: g.wid, angle: g.ang, round: false, kind: classify(g.len, g.wid, false) });
+    // A counter that bends (the reception's two wings): its runs are pairs of parallel faces 35–95 cm apart at more than one angle;
+    // each run stands as its own piece, so the counter does not fill the bend's whole box.
+    const runs = counterRuns(g.lines);
+    if (runs.length >= 2 && runs.some((r) => Math.abs(Math.sin(r.angle - runs[0]!.angle)) > 0.2)) {
+      // A narrow run is the counter's raised ledge, a wider one the desk top behind it.
+      for (const r of runs) out.push({ ...r, round: false, kind: r.width < 0.35 ? "cabinet" : "table" });
+      continue;
+    }
+    // A bare frame of four strokes is a desk or a table: a sofa is drawn with its back and arms inside.
+    const kind = classify(g.len, g.wid, false);
+    out.push({ x: g.cx, z: g.cz, length: g.len, width: g.wid, angle: g.ang, round: false, kind: g.parts <= 4 && g.curves === 0 && (kind === "sofa" || kind === "armchair") ? "table" : kind });
   }
   // Whatever the sheet still draws on a furniture layer that no pass above took: each cluster of any pieces, of a size a piece of furniture is, stands as that piece.
-  for (const g of groupsOf(drawing, floor, /^(0|רהיטים|furniture)/, (p) => isFurn(p), 0.012)) {
+  for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => isFurn(p), 0.012)) {
     const [L, W] = g.len >= g.wid ? [g.len, g.wid] : [g.wid, g.len];
     if (L < 0.3 || L > 3.4 || W < 0.2 || W > 2.2) continue;
     const ang = g.len >= g.wid ? g.ang : g.ang + Math.PI / 2;
@@ -698,7 +782,8 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
   const done = new Set<FurnitureShape>();
   for (const c0 of chairs) {
     if (done.has(c0)) continue;
-    const ring = chairs.filter((c) => !done.has(c) && Math.hypot(c.x - c0.x, c.z - c0.z) < 1.6);
+    // Chairs of one kind (their seats within 30% in area): a desk's two chairs and a neighbour's across a wall are not a ring.
+    const ring = chairs.filter((c) => !done.has(c) && Math.hypot(c.x - c0.x, c.z - c0.z) < 1.6 && Math.max(c.length * c.width, c0.length * c0.width) / Math.min(c.length * c.width, c0.length * c0.width) < 1.3);
     if (ring.length < 3) continue;
     const mx = ring.reduce((a, c) => a + c.x, 0) / ring.length;
     const mz = ring.reduce((a, c) => a + c.z, 0) / ring.length;
@@ -713,7 +798,33 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
     ring.forEach((c) => done.add(c));
     out.push({ x: mx, z: mz, length: 2 * (r - 0.3), width: 2 * (r - 0.3), angle: 0, round: true, kind: "round-table" });
   }
-  return out;
+  // Pieces of one chair the passes found apart (a seat and its arms): overlapping chairs whose union is a chair's size are one.
+  for (let i = 0; i < out.length; i++) {
+    const a = out[i]!;
+    if (a.kind !== "chair") continue;
+    for (let j = i + 1; j < out.length; j++) {
+      const b = out[j]!;
+      if (b.kind !== "chair") continue;
+      const ra = Math.max(a.length, a.width) / 2;
+      const rb = Math.max(b.length, b.width) / 2;
+      if (Math.hypot(a.x - b.x, a.z - b.z) > ra + rb - 0.05) continue;
+      const x0 = Math.min(a.x - ra, b.x - rb), x1 = Math.max(a.x + ra, b.x + rb), z0 = Math.min(a.z - ra, b.z - rb), z1 = Math.max(a.z + ra, b.z + rb);
+      if (x1 - x0 > 0.8 || z1 - z0 > 0.8) continue;
+      // The larger piece is the chair: it keeps its turn; the union's box is its size.
+      const big = a.length * a.width >= b.length * b.width ? a : b;
+      out[i] = { ...big, x: (x0 + x1) / 2, z: (z0 + z1) / 2, length: x1 - x0, width: z1 - z0, angle: 0 };
+      out.splice(j, 1);
+      j = i;
+    }
+  }
+  // Nothing stands in the lift: its car is drawn on layer 0 with the loose furniture. The shaft is the closed concrete ring round its name.
+  const lifts = dxfRoomLabels(drawing, floor).filter((l) => l.kind === "lift");
+  const shafts = sheetPieces(drawing, left)
+    .filter((p) => /^קיר בטון/.test(p.layer) && p.pts && p.pts.length >= 4)
+    .map((p) => p.pts!.map(at))
+    .map((r) => ({ x0: Math.min(...r.map((q) => q[0])), x1: Math.max(...r.map((q) => q[0])), z0: Math.min(...r.map((q) => q[1])), z1: Math.max(...r.map((q) => q[1])) }))
+    .filter((b) => b.x1 - b.x0 < 4 && b.z1 - b.z0 < 4 && lifts.some((l) => l.x > b.x0 && l.x < b.x1 && l.y > b.z0 && l.y < b.z1));
+  return out.filter((s) => !shafts.some((b) => s.x > b.x0 && s.x < b.x1 && s.z > b.z0 && s.z < b.z1) && !lifts.some((l) => Math.hypot(s.x - l.x, s.z - l.y) < 1.2));
 }
 
 export type FixtureShape = { x: number; z: number; length: number; width: number; angle: number; kind: "pan" | "basin" | "counter" | "other" };
@@ -737,7 +848,10 @@ export function dxfFixtures(drawing: DxfDrawing, floor: PisgaDxfFloor): FixtureS
 
 
 /** The pieces of furniture as boxes: each outline extruded to what it is. */
-export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag: string): Array<{ cx: number; cy: number; cz: number; sx: number; sy: number; sz: number; rotY: number; material: "timber" | "seatFabric" | "sofaFabric" | "metal" | "worktop" | "cabinet" | "walnut" }> {
+/** A piece's part: a box, or a disc (`round`: a cylinder `sx` across) for a round table's top and a stool's seat. */
+export type FurniturePart = { cx: number; cy: number; cz: number; sx: number; sy: number; sz: number; rotY: number; round?: boolean; material: "timber" | "seatFabric" | "sofaFabric" | "metal" | "worktop" | "cabinet" | "walnut" };
+
+export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag: string): FurniturePart[] {
   const out: ReturnType<typeof furnitureFromShapes> = [];
   void tag;
   // A chair the sheet draws tucked under a table: the chair's back would stand through the table top. Turn it to face the table and slide it out until its back is just clear of the table's edge;
@@ -768,10 +882,10 @@ export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag
   });
   for (const s of shapes) {
     const base = { rotY: -s.angle };
-    const put = (u: number, v: number, sx: number, sy: number, sz: number, y0: number, material: (typeof out)[number]["material"]) => {
+    const put = (u: number, v: number, sx: number, sy: number, sz: number, y0: number, material: (typeof out)[number]["material"], round = false) => {
       const c = Math.cos(s.angle);
       const sn = Math.sin(s.angle);
-      out.push({ cx: s.x + u * c - v * sn, cy: level + y0 + sy / 2, cz: s.z + u * sn + v * c, sx, sy, sz, material, ...base });
+      out.push({ cx: s.x + u * c - v * sn, cy: level + y0 + sy / 2, cz: s.z + u * sn + v * c, sx, sy, sz, material, ...base, ...(round ? { round } : {}) });
     };
     const { length: L, width: W } = s;
     switch (s.kind) {
@@ -800,12 +914,12 @@ export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag
       case "round-table":
       case "table":
       case "bench":
-        put(0, 0, L, 0.04, W, 0.72, s.kind === "round-table" ? "walnut" : "timber");
+        put(0, 0, L, 0.04, W, 0.72, s.kind === "round-table" ? "walnut" : "timber", s.kind === "round-table");
         if (s.kind === "round-table") put(0, 0, 0.1, 0.72, 0.1, 0, "metal");
         else for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) put(a * (L / 2 - 0.06), b * (W / 2 - 0.06), 0.05, 0.72, 0.05, 0, "metal");
         break;
       case "stool":
-        put(0, 0, L, 0.05, W, 0.45, "walnut");
+        put(0, 0, L, 0.05, W, 0.45, "walnut", true);
         put(0, 0, 0.06, 0.45, 0.06, 0, "metal");
         break;
     }

@@ -10,8 +10,8 @@ import { pisgaStairs, pisgaStreet, pisgaPlotSouthZ, pisgaStreetBays } from "@/li
 import { drawLine } from "@/lib/projects/building/raster";
 import { buildKindergarten, kindergartenOutline, KINDERGARTEN } from "@/lib/projects/building/pisga-kindergarten";
 import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
-import { readPlanRooms, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
-import { cutDxfWindows, dxfColumns, dxfFurnitureShapes, dxfFixtures, dxfHallSeats, furnitureFromShapes, dxfDividers, dxfEmergencyStair, exteriorDoorRects, glazedPartitions, dxfPartitions, dxfPlanPage, dxfRoof, dxfRoomLabels, dxfSymbols, openingsByDxfWindows, PISGA_DXF } from "@/lib/projects/building/pisga-dxf";
+import { readPlanRooms, type PlanRoom, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
+import { cutDxfWindows, dxfColumns, dxfFurnitureShapes, dxfFixtures, dxfHallSeats, furnitureFromShapes, type FurniturePart, type FurnitureShape, dxfDividers, dxfEmergencyStair, exteriorDoorRects, glazedPartitions, dxfPartitions, dxfPlanPage, dxfRoof, dxfRoomLabels, dxfSymbols, openingsByDxfWindows, PISGA_DXF } from "@/lib/projects/building/pisga-dxf";
 import type { DxfDrawing } from "@/lib/projects/dxf-drawing";
 
 /**
@@ -317,6 +317,42 @@ export const LABELS_FUTURE: RoomLabel[] = [
  * The hand-set labels (read off the permit booklet) kept only where the DXF
  * names no room of that kind within 3 m: the DXF's own text wins.
  */
+/** The room whose floor a plan point is on, if any. */
+function roomAt(rooms: PlanRoom[], x: number, z: number): PlanRoom | undefined {
+  return rooms.find((r) => {
+    const row = r.rows.reduce<PlanRoom["rows"][number] | undefined>((best, q) => (!best || Math.abs(q.y - z) < Math.abs(best.y - z) ? q : best), undefined);
+    return !!row && Math.abs(row.y - z) < 0.1 && row.spans.some(([a, b]) => x >= a && x <= b);
+  });
+}
+
+/**
+ * Chairs the sheets leave out (the user's call, 2026-10-27: "the plan's furniture is short; add and arrange the classrooms' as they
+ * need, and make it look good"). A round table in a classroom, learning space or workshop with no chair drawn within 60 cm of its
+ * edge gets its chairs, round it at 75 cm a seat, facing it; a seat goes only where its four corners stand on the room's floor and it
+ * clears every other piece. Built apart from the sheet's own (tag …:inside:furniture-added), so the checks against the sheet keep them apart.
+ */
+export function chairsForBareTables(shapes: FurnitureShape[], rooms: PlanRoom[]): FurnitureShape[] {
+  const out: FurnitureShape[] = [];
+  for (const t of shapes) {
+    if (t.kind !== "round-table" || t.length < 0.85) continue;
+    const room = roomAt(rooms, t.x, t.z);
+    if (!room || !["classroom", "design", "workshop"].includes(room.kind)) continue;
+    const r = t.length / 2;
+    if (shapes.some((c) => c.kind === "chair" && Math.hypot(c.x - t.x, c.z - t.z) < r + 0.6)) continue;
+    const ring = r + 0.32;
+    const n = Math.min(8, Math.max(4, Math.round((2 * Math.PI * ring) / 0.75)));
+    for (let k = 0; k < n; k++) {
+      const th = (2 * Math.PI * (k + 0.5)) / n;
+      const c: FurnitureShape = { x: t.x + ring * Math.cos(th), z: t.z + ring * Math.sin(th), length: 0.45, width: 0.45, angle: th + Math.PI / 2, round: false, kind: "chair" };
+      const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([a, b]) => [c.x + a! * 0.3, c.z + b! * 0.3] as const);
+      if (!corners.every(([x, z]) => roomAt(rooms, x, z) === room)) continue;
+      const clear = [...shapes, ...out].every((o) => o === t || Math.hypot(o.x - c.x, o.z - c.z) > Math.max(o.length, o.width) / 2 + 0.3);
+      if (clear) out.push(c);
+    }
+  }
+  return out;
+}
+
 export function mergeLabels(fromDxf: RoomLabel[], byHand: RoomLabel[]): RoomLabel[] {
   const kept = byHand.filter((h) => !fromDxf.some((d) => d.kind === h.kind && Math.hypot(d.x - h.x, d.y - h.y) < 3));
   return [...fromDxf, ...kept];
@@ -411,9 +447,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
           for (let i = 0; i < n; i++) put(-f.length / 2 + ((i + 0.5) * f.length) / n, 0, 0.4, 0.06, Math.min(0.34, f.width - 0.1), 0.84, "ceramic");
         } else put(0, 0, f.length, 0.45, f.width, 0, "ceramic");
       }
-      for (const b of furnitureFromShapes(dxfFurnitureShapes(dxf, spec.id as "floor-2" | "floor-1"), spec.level, spec.id)) {
-        prims.push({ type: "box", centre: { x: b.cx, y: b.cy, z: b.cz }, size: { x: b.sx, y: b.sy, z: b.sz }, rotY: b.rotY, material: b.material, tag: `${spec.id}:inside:furniture` });
-      }
+      const shapes = dxfFurnitureShapes(dxf, spec.id as "floor-2" | "floor-1");
+      const put = (b: FurniturePart, tag: string) =>
+        prims.push(b.round ? { type: "cylinder", centre: { x: b.cx, y: b.cy, z: b.cz }, radius: b.sx / 2, height: b.sy, material: b.material, tag } : { type: "box", centre: { x: b.cx, y: b.cy, z: b.cz }, size: { x: b.sx, y: b.sy, z: b.sz }, rotY: b.rotY, material: b.material, tag });
+      for (const b of furnitureFromShapes(shapes, spec.level, spec.id)) put(b, `${spec.id}:inside:furniture`);
+      for (const b of furnitureFromShapes(chairsForBareTables(shapes, rooms), spec.level, spec.id)) put(b, `${spec.id}:inside:furniture-added`);
     }
     if (spec.id === "floor-1") {
       prims.push(...auditorium(spec.level, !dxf, dxf ? { rows: 8, pitch: 1.0, z0: 4.1 } : undefined), ...(dxf ? [] : reception()));

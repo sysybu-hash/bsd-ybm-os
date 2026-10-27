@@ -68,9 +68,21 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "end-w": { camera: { position: { x: -22, y: 22, z: -14 }, target: { x: -2, y: 5, z: 1 }, fovDeg: 40 }, sun: { azimuthDeg: 120, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "east-side": { camera: { position: { x: 84, y: 20, z: -6 }, target: { x: 60, y: 6.5, z: 9 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "west-side": { camera: { position: { x: -32, y: 20, z: 28 }, target: { x: -1, y: 9, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
-  courtyard: { camera: { position: { x: 2.2, y: 9.9, z: 19.2 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
+  // Between the drawn row of trees (z 19.6, x −2.2 and 2.6) and the colonnade: the camera stood 0.6 m from a trunk, inside its crown.
+  courtyard: { camera: { position: { x: 0.2, y: 9.9, z: 17.8 }, target: { x: 28, y: 11.2, z: 14.6 }, fovDeg: 58 }, sun: { azimuthDeg: 180, elevationDeg: 55 }, exposure: 0.66, ao: true },
 };
 const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.includes(id));
+// A tree within 12 m in front of a camera (inside 36 degrees of its view) fills a corner of the frame with a trunk under a cut crown, which
+// a painter "corrects" every time (Wolf, 2026-10-26): said before any frame is drawn.
+for (const [id, v] of chosen) {
+  const { position: p, target: t } = v.camera;
+  const dx = t.x - p.x, dz = t.z - p.z, l = Math.hypot(dx, dz);
+  for (const q of model.primitives) {
+    if (q.type !== "tree" || (q.tag ?? "").includes(":inside:")) continue;
+    const d = Math.hypot(q.at.x - p.x, q.at.z - p.z);
+    if (d < 12 && ((q.at.x - p.x) * dx + (q.at.z - p.z) * dz) / (d * l) > Math.cos((36 * Math.PI) / 180)) console.warn(`${id}: a tree ${d.toFixed(1)} m in front of the camera, at (${q.at.x.toFixed(1)}, ${q.at.z.toFixed(1)})`);
+  }
+}
 // NOSIGN=1: the same frames with the lettering left off, for the photographic
 // finish — the system draws the lettering back, never the model.
 const nosign = process.env.NOSIGN === "1";
