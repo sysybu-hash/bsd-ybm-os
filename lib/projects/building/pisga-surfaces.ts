@@ -117,8 +117,6 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     // Against the building's footprint (x 0.88..53.92, z 1.02..16.58, 0.8 m) there is a wall, not a drop.
     if (mx > 0.1 && mx < 54.7 && mz > 0.2 && mz < 17.4) continue;
 
-    // Railings are on the sheets only at the kindergarten's roof and the side exits (the "מעקה" marks at x 5.2, 56.1, 57.6 and the stairs' "מאחז יד"): not along the street-front paving south of z 15, which the drawing leaves open.
-    if (mz > 15) continue;
     // Only where it drops: the ground 0.8 m out from the edge is at least 0.8 m under the deck.
     const dxe = b[0] - a[0], dze = b[1] - a[1], le = Math.hypot(dxe, dze) || 1;
     const outx = mx + (dze / le) * 0.8, outz = mz - (dxe / le) * 0.8, inx = mx - (dze / le) * 0.8, inz = mz + (dxe / le) * 0.8;

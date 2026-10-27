@@ -1,4 +1,4 @@
-import { dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
+import { dxfCourtyardWall, dxfEntrancePrims, dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
@@ -658,7 +658,32 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   // emergency exit's landing at +7.80. The DXF's spot heights +928.93 and +931.00 (5.73 and 7.80 over 923.2) stand at these two decks.
   if (!dxf) prims.push(slab(rect(53.92, 3.8, 60.4, 7.4), 5.73, 0.3, "metal", "site:east"));
   if (!dxf) prims.push(slab(rect(53.92, 7.4, 60.4, 12.0), 7.8, 0.4, "paving", "site:east"));
-  prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
+  // The courtyard's south wall, holding the street back with a parapet over it: where the survey draws it (DXF route), else straight along z 21.15.
+  const courtyardWall = dxf ? dxfCourtyardWall(dxf) : [];
+  if (courtyardWall.length >= 2) {
+    const last = courtyardWall[courtyardWall.length - 1]!;
+    if (last[0] < 24.15) courtyardWall.push([24.15, last[1] + ((24.15 - last[0]) * (last[1] - courtyardWall[courtyardWall.length - 2]![1])) / (last[0] - courtyardWall[courtyardWall.length - 2]![0] || 1)]);
+    for (let i = 1; i < courtyardWall.length; i++) {
+      const [ax, az] = courtyardWall[i - 1]!;
+      const [bx, bz] = courtyardWall[i]!;
+      const len = Math.hypot(bx - ax, bz - az);
+      const ang = Math.atan2(bz - az, bx - ax);
+      // The line is the wall's outer (street) face: the wall is 35 cm thick to the north of it.
+      const nx = Math.sin(ang) * -0.175;
+      const nz = Math.cos(ang) * -0.175;
+      prims.push({ type: "box", centre: { x: (ax + bx) / 2 + nx, y: (LEVEL.courtyard + LEVEL.street + 1.1) / 2, z: (az + bz) / 2 + nz }, size: { x: len + 0.02, y: LEVEL.street + 1.1 - LEVEL.courtyard, z: 0.35 }, rotY: -ang, material: "stone", tag: "site:retaining" });
+    }
+  } else prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
+  // South of that wall the ground is the street's; north of it the courtyard's, right up to the wall's street face (the ground's metre cells
+  // would otherwise lay a bank of earth up the wall's courtyard face).
+  const streetEdgeZ = (x: number) => {
+    for (let i = 1; i < courtyardWall.length; i++) {
+      const [ax, az] = courtyardWall[i - 1]!;
+      const [bx, bz] = courtyardWall[i]!;
+      if (x >= ax && x <= bx) return az + ((bz - az) * (x - ax)) / (bx - ax || 1) + 0.25;
+    }
+    return 21.45;
+  };
   // Trees where the site plan draws them: along the courtyard's retaining
   // wall, and on the plaza by the car park's entrance.
   for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
@@ -670,8 +695,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   upper.forEach((bay, i) => prims.push({ type: "car", at: { x: 36.7 + (bay - 1) * 2.43 + 1.215, y: LEVEL.roof + 0.05, z: 5.1 }, rotY: 0, colour: paint[i % paint.length]!, tag: "car" }));
   [1, 3, 4].forEach((bay, i) => prims.push({ type: "car", at: { x: 41.6 + (bay - 1) * 2.42 + 1.21, y: LEVEL.roof + 0.05, z: 15.6 }, rotY: Math.PI, colour: paint[(i + 5) % paint.length]!, tag: "car" }));
   pisgaStreetBays().forEach((b, i) => prims.push({ type: "car", at: { x: b.x, y: LEVEL.street, z: b.z }, rotY: b.rotY, colour: paint[(i + 2) % paint.length]!, tag: "car" }));
-  // The hand-set west stair (from the permit booklet) gives way to the one the DXF's tread lines build above.
-  prims.push(...pisgaStreet(LEVEL), ...pisgaStairs(LEVEL).filter((p) => !(dxf && p.tag === "site:west-stair")));
+  // The hand-set west stair (from the permit booklet) gives way to the one the DXF's tread lines build above, and the hand-set
+  // entrance flights to the ones the floor −1 sheet draws.
+  const entrance = dxf ? dxfEntrancePrims(dxf, LEVEL.floorMinus1, LEVEL.street) : null;
+  const handGone = (tag: string | undefined) => (dxf && tag === "site:west-stair") || (entrance && (tag === "site:entry-stair" || tag === "floor-1:inside:stair"));
+  prims.push(...pisgaStreet(LEVEL), ...pisgaStairs(LEVEL).filter((p) => !handGone(p.tag)), ...(entrance ?? []));
 
   // People, for scale: in the courtyard, on the roof plaza, at the entrance.
 
@@ -704,7 +732,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // plaza — the accessible ramp's slope.
     // (The site sheet marks +8.27 at (54.6, 14.3): the plaza stays level to z 14.5 and the fall to the street starts there — scripts/verify-pisga-terrain.mts.)
     if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + (Math.max(0, z - 14.5) / (24.2 - 14.5)) * (LEVEL.street - 8.27);
-    if (z > 21.45 && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    if (z > streetEdgeZ(x) && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
     // Under the street's own band (plot line out to 13.5 m) the ground is the road's bed, not a mound the spot heights lift into it.
     { const pz = pisgaPlotSouthZ(x); if (z > pz + 0.45 && z < pz + 13.6) h = LEVEL.street - 0.6; }
     return h;
@@ -793,9 +821,12 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     });
     // The east landing and the grated deck below it are raised on fill with the bank behind: every free edge of theirs is railed, drop or not (the user marked them missing, 2026-10-21).
     const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2;
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, nearStair, eastLanding));
-    // Every run of treads the sheets draw, but the two stairs built above from their own reading (the lobby's and the west exit's): the same run drawn on two sheets is one.
-    const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 17.2);
+    // An edge a retaining wall or a parapet already guards stands no railing of its own beside it.
+    const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet)/.test(p.tag ?? ""));
+    const nearGuard = (x: number, z: number) => guards.some((b) => Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z), eastLanding));
+    // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
+    const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();
     for (const sheet of ["floor-2", "floor-1", "roof"] as const) {
       const spots = dxfSpotHeights(dxf, sheet);

@@ -65,7 +65,9 @@ const inRing = (ring: Array<[number, number]>, x: number, z: number) => {
 const solids: Solid[] = [];
 for (const b of boxes) {
   if (isRailTag(b.tag ?? "") || b.size.y < 0.1 || b.material === "glass") continue;
-  solids.push({ top: topOf(b), foot: b.centre.y - b.size.y / 2, wide: b.size.x >= 0.3 && b.size.z >= 0.3, at: (x, z, pad) => inFoot(b, x, z, pad) });
+  // A wall's head (a parapet 30 cm, a retaining wall 50 cm, both tall) is not a floor to walk on; a paving skin's 25 cm tiles, low, are.
+  const thin = Math.min(b.size.x, b.size.z);
+  solids.push({ top: topOf(b), foot: b.centre.y - b.size.y / 2, wide: thin >= 0.6 || (thin >= 0.2 && b.size.y < 0.8), at: (x, z, pad) => inFoot(b, x, z, pad) });
 }
 for (const p of prims) {
   if (p.type !== "prism" || isRailTag(p.tag ?? "")) continue;
@@ -84,12 +86,14 @@ for (const p of prims) {
     },
   });
 }
+// A rail stands on its deck's very edge: the deck is looked for 12 cm round the point, so the edge counts as on it.
 const levelAt = (x: number, z: number, limit: number) => {
   let best = ground(x, z);
-  for (const s of solids) if (s.wide && s.top <= limit + 0.05 && s.top > best && s.at(x, z, 0)) best = s.top;
+  for (const s of solids) if (s.wide && s.top <= limit + 0.05 && s.top > best && s.at(x, z, 0.12)) best = s.top;
   return best;
 };
-const wallNear = (x: number, z: number, y: number) => solids.some((s) => s.top - s.foot >= 1.2 && s.foot <= y && s.top >= y + 0.9 && s.at(x, z, 0.35));
+// A wall guards an edge when it stands 0.9 m over the walking level: a roof's 1.15 m parapet does.
+const wallNear = (x: number, z: number, y: number) => solids.some((s) => s.top - s.foot >= 0.9 && s.foot <= y + 0.1 && s.top >= y + 0.9 && s.at(x, z, 0.35));
 
 // The top rails: thin boxes in a railing's tag, about 4–6 cm high, long.
 type Run = { tag: string; x1: number; z1: number; x2: number; z2: number; y: number; len: number };
@@ -135,7 +139,9 @@ for (const run of runs) {
       const t = (k + 0.5) / n;
       const x = p.x1 + (p.x2 - p.x1) * t;
       const z = p.z1 + (p.z2 - p.z1) * t;
-      const walk = p.y - 1.0;
+      // The walking level is the surface under the rail 0.9–1.9 m down: railings are 1.0–1.1 m, the kindergarten's raised one 1.7 m.
+      const below = levelAt(x, z, p.y - 0.85);
+      const walk = p.y - below <= 1.9 ? below : p.y - 1.0;
       const sides = [1, -1].map((s) => {
         const sx = x + -dz * s * 1.0;
         const sz = z + dx * s * 1.0;
@@ -197,37 +203,48 @@ for (const sheet of sheets) {
     const key = `${s.kind}|${Math.round(Math.min(...s.ring.map((q) => q[0])) / 2)}|${Math.round(Math.min(...s.ring.map((q) => q[1])) / 2)}|${Math.round(s.areaM2 / 3)}`;
     if (seen.has(key) || s.areaM2 < 4) continue;
     seen.add(key);
-    // The surface's own level: the highest solid top under its middle within a few cm of a deck/slab; the ground where it lies on it.
+    // Each edge point is judged on its own: the level 30 cm in from the edge against the level a metre out, both sides found by the
+    // ring itself (a ring's middle is no guide: a long sidewalk's falls inside the building, and its outward side is not away from it).
     const cx = s.ring.reduce((t, q) => t + q[0], 0) / s.ring.length;
     const cz = s.ring.reduce((t, q) => t + q[1], 0) / s.ring.length;
-    const level = levelAt(cx, cz, 30);
     let gap = 0;
-    let bad = 0;
-    let first: [number, number] | null = null;
+    const stretches: Array<{ a: [number, number]; b: [number, number]; n: number; level: number; drop: number }> = [];
+    let cur: (typeof stretches)[number] | null = null;
     for (let i = 0; i < s.ring.length; i++) {
       const a = s.ring[i]!;
       const b = s.ring[(i + 1) % s.ring.length]!;
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 0.05) continue;
       const n = Math.max(1, Math.round(len / 1.0));
-      // The outward side: away from the centre.
+      const nx = -(b[1] - a[1]) / len;
+      const nz = (b[0] - a[0]) / len;
       for (let k = 0; k < n; k++) {
         const t = (k + 0.5) / n;
         const x = a[0] + (b[0] - a[0]) * t;
         const z = a[1] + (b[1] - a[1]) * t;
-        const ox = x - cx;
-        const oz = z - cz;
-        const ol = Math.hypot(ox, oz) || 1;
-        const outX = x + (ox / ol) * 1.0;
-        const outZ = z + (oz / ol) * 1.0;
+        const sgn = inRing(s.ring, x + nx * 0.3, z + nz * 0.3) ? 1 : -1;
+        const inX = x + nx * 0.3 * sgn;
+        const inZ = z + nz * 0.3 * sgn;
+        const outX = x - nx * 1.0 * sgn;
+        const outZ = z - nz * 1.0 * sgn;
+        if (inRing(s.ring, outX, outZ)) continue;
+        const level = levelAt(inX, inZ, 30);
         const outLevel = levelAt(outX, outZ, level + 0.2);
         gap++;
         if (level - outLevel >= 1.0 && !near(x, z) && !wallNear(x, z, level) && !wallNear(outX, outZ, level)) {
-          bad++;
-          first ??= [x, z];
-        }
+          if (cur && Math.hypot(cur.b[0] - x, cur.b[1] - z) < 1.6) {
+            cur.b = [x, z];
+            cur.n++;
+            cur.drop = Math.max(cur.drop, level - outLevel);
+          } else {
+            cur = { a: [x, z], b: [x, z], n: 1, level, drop: level - outLevel };
+            stretches.push(cur);
+          }
+        } else cur = null;
       }
     }
-    if (bad >= 3) missing.push(`- ${s.kind} ${s.pattern} ${s.areaM2.toFixed(0)} מ"ר סביב (${cx.toFixed(1)}, ${cz.toFixed(1)}) מפלס ${level.toFixed(2)}: ${bad} מ-${gap} נקודות בשפה נופלות מטר ויותר בלי מעקה (הראשונה ב-${first![0].toFixed(1)}, ${first![1].toFixed(1)})`);
+    const bad = stretches.filter((q) => q.n >= 2);
+    if (bad.length) missing.push(`- ${s.kind} ${s.pattern} ${s.areaM2.toFixed(0)} מ"ר סביב (${cx.toFixed(1)}, ${cz.toFixed(1)}): ${bad.map((q) => `(${q.a[0].toFixed(1)}, ${q.a[1].toFixed(1)})→(${q.b[0].toFixed(1)}, ${q.b[1].toFixed(1)}) מפלס ${q.level.toFixed(2)} נפילה ${q.drop.toFixed(1)}`).join("; ")} — ${bad.reduce((t, q) => t + q.n, 0)} מ-${gap} נקודות`);
   }
 }
 out(`## קצה משטח נופל בלי מעקה: ${missing.length}`);
