@@ -20,14 +20,17 @@ import { railingPrims, stairPrims, type TreadSet } from "@/lib/projects/building
 export function kindergartenExitsGround(x: number, z: number): [number, number] | undefined {
   // The east yard's floor.
   if (x > 56.69 && x < 64.6 && z > 3.9 && z < 7.9) return [0, 1];
-  const w = z > -1 ? 1 : (z + 4) / 3;
-  if (z <= -4 || z >= 4.3) return undefined;
+  // (Falling smoothly to 0 over 4 m north of z −1, and over 2.5 m east of x 68.5, where the bank behind the stair's path takes over.)
+  const t = z > -1 ? 1 : Math.max(0, (z + 5) / 4);
+  const w = t * t * (3 - 2 * t) * (x < 68.5 ? 1 : Math.max(0, (71 - x) / 2.5));
+  if (z <= -5 || z >= 4.3) return undefined;
   // North of the yard's wall the ground rises from ±0.00 at the building to the stair's path (+1.08 at x 67.4, the plan's mark).
-  if (x > 56.69 && x < 68.5 && z <= 3.9) return [Math.max(0, Math.min(1.08, (1.08 * (x - 56.7)) / (67.4 - 56.7))), w];
-  // West: +0.70 under and north of the walkway (the facade's ground), the wall at x −9.4 holding the slope at +5.55 past it, the stair cut into it.
-  if (x > -9.4 && x < -2.2) return [0.7, w];
+  if (x > 56.69 && x < 71 && z <= 3.9) return [Math.max(0, Math.min(1.08, (1.08 * (x - 56.7)) / (67.4 - 56.7))), w];
+  // West: +0.70 under and north of the walkway and the terrace (the facade's ground, to the north wing at x 5.2), the wall at x −9.4 holding
+  // the slope past it; the stair cut into the slope, its head at +5.55. North of the stair the slope keeps its own ground.
+  if (x > -9.4 && x < 5.2) return [0.7, w];
   if (x > -10.8 && x <= -9.4 && z > 3.0) return [4.44 + ((-9.3 - x) / 1.5) * 1.06, w];
-  if (x > -14 && x <= -9.4) return [5.55, w];
+  if (x > -13 && x <= -9.4 && z > 2.5) return [5.55, w];
   return undefined;
 }
 
@@ -96,8 +99,8 @@ export function kindergartenExits(groundAt: (x: number, z: number) => number): P
   out.push(slab(64.6, 64.9, 4.1, 7.9, 0, wallTop, "site:retaining-yard", "stone"));
   // Past the yard the plan carries the wall on east to x 68.2, holding the bank south of the stair's path: its top follows the bank, as the
   // facade draws no +5.62 east of the yard.
-  for (let x = 64.9; x < 68.2 - 1e-6; x += 0.55) {
-    const x1 = Math.min(68.2, x + 0.55);
+  for (let x = 64.9; x < 68.2 - 1e-6; x += 0.2) {
+    const x1 = Math.min(68.2, x + 0.2);
     out.push(slab(x, x1, 3.9, 4.1, 0, Math.max(groundAt((x + x1) / 2, 3.8) + 0.4, groundAt((x + x1) / 2, 4.6) + 0.3), "site:retaining-yard", "stone"));
   }
 
@@ -130,7 +133,8 @@ export function kindergartenExits(groundAt: (x: number, z: number) => number): P
   out.push(...railingPrims([-9.3, 3.04], [-2.2, 3.04], 4.54, rail, 0.95));
   // The wall under its west end, holding the slope (+5.55) north of the stair; under the walkway only to the walkway.
   out.push(slab(-9.6, -9.4, 3.0, 4.17, 0.5, 3.97, "site:retaining-kg", "stone"));
-  out.push(slab(-9.6, -9.4, -1, 3.0, 0.5, 5.65, "site:retaining-kg", "stone"));
+  // North of it, holding the slope's own ground: its top 0.3 m over the slope behind it, in half-metre lengths.
+  for (let z = -4.5; z < 3.0 - 1e-6; z += 0.5) out.push(slab(-9.6, -9.4, z, Math.min(3.0, z + 0.5), 0.5, Math.max(1.2, groundAt(-10.1, z + 0.25) + 0.3), "site:retaining-kg", "stone"));
   // Six treads up west to the slope at +5.6, and the pad at their head.
   const west = flight(-10.8, -9.3, 3.585, 1.17, 6, 5.6, 4.54, 4.24);
   out.push(...west.prims);

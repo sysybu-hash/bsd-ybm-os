@@ -1,5 +1,5 @@
 import { kindergartenExits, kindergartenExitsGround } from "@/lib/projects/building/pisga-kg-exits";
-import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
+import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, railingPrims, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
@@ -821,7 +821,10 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         if (seen.has(k)) return false;
         seen.add(k);
         return true;
-      });
+      })
+      // The paving's ring runs out east past the A4-40 stair along a band (z 11–13, to x 66) that floor −1's sheet shows is the north wall of
+      // the tilted structure marked +13.33, not paving: built flat at the platform's level it hung 2.5 m over the slope with a railing round it.
+      .map((sf) => (sf.ring.length > 20 && sf.ring.some(([x, z]) => x > 65.5 && z > 11 && z < 13.5) ? { ...sf, ring: sf.ring.filter(([x, z]) => !(x > 62.5 && z > 10.5 && z < 14)) } : sf));
     // North of the lobby: the terrace the sheets draw at +8.27 (+931.47), its wall rectangle measured off the DXF's block-wall lines (layer קיר בלוק): the long faces at z −3.64/−3.59 and 0.95
     // (the building's north wall), the west faces at x 22.04/22.09 (to z −2.25 only: the wall is cut, which the model keeps open), the east end at x 32.94. So 10.84 m along the facade and 4.55 m out.
     // The wall is a 0.2 m parapet 1.1 m over the floor. (An earlier reading took the lines at z −8.45 for the same terrace and made it twice as deep.)
@@ -918,7 +921,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     prims.push(...kindergartenExits((x, z) => groundAt(x, z, true)));
     const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
     // (Only a guard reaching the edge's level: the kindergarten's long wall at +5.64 does not guard the grating at +9.15 over it.)
-    const nearGuard = (x: number, z: number, level: number) => guards.some((b) => b.centre.y + b.size.y / 2 > level - 0.5 && Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
+    const nearGuard = (x: number, z: number, level: number) => guards.some((b) => b.centre.y + b.size.y / 2 > level - 0.5 && b.centre.y - b.size.y / 2 < level + 1.2 && Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
     // What an edge drops to counts the slabs and roofs already built beside it (the kindergarten's roof against the west platform), those up to half a metre over the edge.
     const slabs = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism");
     const builtTop = (x: number, z: number, level: number) => Math.max(-Infinity, ...slabs.filter((p) => p.y1 <= level + 0.5 && insidePolygon(p.ring, x, z) && !(p.holes ?? []).some((h) => insidePolygon(h, x, z))).map((p) => p.y1));
@@ -946,11 +949,60 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
           use = { ...set, first: set.last, last: set.first, dir: [-set.dir[0], -set.dir[1]] };
         }
         console.warn(`stairs ${sheet}: ${set.n} treads at ${mx.toFixed(1)},${mz.toFixed(1)} ${bottom.toFixed(2)}..${top.toFixed(2)} (${set.layer})`);
-        // Its mass goes down to the lowest ground under it: on a falling slope the default (0.4 m under the bottom tread) leaves it hanging.
+        // Its head meets the floor it lands on: a platform built within 0.6 m of the mark (the A4-40's +7.80 against the paving at +8.18).
+        const len = Math.hypot(use.dir[0], use.dir[1]) || 1;
+        const [ux, uz] = [use.dir[0] / len, use.dir[1] / len];
+        const head: [number, number] = [use.first[0] - ux * use.pitch, use.first[1] - uz * use.pitch];
+        const floorAt = prims.find((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism" && /^site:surface/.test(p.tag ?? "") && Math.abs(p.y1 - top) < 0.6 && insidePolygon(p.ring, head[0], head[1]));
+        if (floorAt) top = floorAt.y1;
+        // Its mass goes down to the lowest ground under it: on a falling slope the default (0.4 m under the bottom tread) leaves it hanging. Stone-clad, as the site's walls.
         const under = Array.from({ length: 9 }, (_, k) => groundAt(use.first[0] + ((use.last[0] - use.first[0]) * k) / 8, use.first[1] + ((use.last[1] - use.first[1]) * k) / 8, true));
-        prims.push(...stairPrims(use, top, bottom, "site:stair-dxf", undefined, Math.min(bottom - 0.4, ...under.map((g) => g - 0.2))));
+        const base = Math.min(bottom - 0.4, ...under.map((g) => g - 0.2));
+        // The sheets draw the run between two walls (A4-40's double lines): stone, a metre over each tread, or a metre over the paving beside
+        // it where that stands higher (the +8.18 platform south of the A4-40) — its parapet, so the paving's edge stands no railing of its own.
+        const rise = (top - bottom) / use.n;
+        for (const side of [-1, 1]) {
+          const [px, pz] = [-uz * side, ux * side];
+          for (let k = 0; k < use.n; k++) {
+            const t = k / Math.max(1, use.n - 1);
+            const [cx, cz] = [use.first[0] + (use.last[0] - use.first[0]) * t, use.first[1] + (use.last[1] - use.first[1]) * t];
+            const h = top - k * rise;
+            const [ox, oz] = [cx + px * (use.width / 2 + 0.6), cz + pz * (use.width / 2 + 0.6)];
+            const beside = prims.find((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism" && /^site:surface/.test(p.tag ?? "") && !/-fill$/.test(p.tag ?? "") && insidePolygon(p.ring, ox, oz));
+            const wallTop = Math.max(h + 1.0, beside ? beside.y1 + 1.0 : groundAt(ox, oz, true) + 0.3);
+            prims.push({ type: "box", centre: { x: cx + px * (use.width / 2 + 0.1), y: (wallTop + base) / 2, z: cz + pz * (use.width / 2 + 0.1) }, size: { x: use.pitch + 0.01, y: wallTop - base, z: 0.2 }, rotY: -Math.atan2(uz, ux), material: "stone", tag: "site:retaining-stair" });
+          }
+        }
+        prims.push(...stairPrims(use, top, bottom, "site:stair-dxf", "stone", base, true));
+        // Its foot lands on a landing ("משטח אחרה" at the A4-40's +5.82) where nothing is laid and the ground lies under it: 1.4 m on, filled to the ground.
+        const foot: [number, number] = [use.last[0] + ux * use.pitch * 0.5, use.last[1] + uz * use.pitch * 0.5];
+        const far: [number, number] = [foot[0] + ux * 1.4, foot[1] + uz * 1.4];
+        const covered = prims.some((p) => p.type === "prism" && /^site:surface/.test(p.tag ?? "") && insidePolygon(p.ring, far[0], far[1]));
+        const low = Math.min(groundAt(foot[0], foot[1], true), groundAt(far[0], far[1], true));
+        if (!covered && low < bottom - 0.3) {
+          const [px, pz] = [-uz * use.width / 2, ux * use.width / 2];
+          prims.push({ type: "prism", ring: [[foot[0] + px, foot[1] + pz], [far[0] + px, far[1] + pz], [far[0] - px, far[1] - pz], [foot[0] - px, foot[1] - pz]], y0: low - 0.3, y1: bottom, material: "stone", tag: "site:stair-dxf-landing" });
+          prims.push(...railingPrims([foot[0] + px * 0.96, foot[1] + pz * 0.96], [far[0] + px * 0.96, far[1] + pz * 0.96], bottom, "site:stair-dxf-rail"), ...railingPrims([far[0] + px * 0.96, far[1] + pz * 0.96], [far[0] - px * 0.96, far[1] - pz * 0.96], bottom, "site:stair-dxf-rail"));
+        }
       }
     }
+    // A paving edge's railing beside a stair's side wall that stands as high is the wall's to guard (the walls come after the paving, which
+    // needs their levels): its pieces within 0.6 m of a wall reaching over them go.
+    const stairWalls = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && p.tag === "site:retaining-stair");
+    // (A top rail is one long bar: most of its length must lie by the walls.)
+    const byWall = (p: Primitive) => {
+      if (p.type !== "box" || p.tag !== "site:surface-rail") return false;
+      const n = Math.max(1, Math.round(p.size.x / 0.3));
+      const [cx, sx] = [Math.cos(-(p.rotY ?? 0)), Math.sin(-(p.rotY ?? 0))];
+      let near = 0;
+      for (let k = 0; k <= n; k++) {
+        const d = (k / n - 0.5) * p.size.x;
+        const [x, z] = [p.centre.x + cx * d, p.centre.z + sx * d];
+        if (stairWalls.some((w) => Math.hypot(x - w.centre.x, z - w.centre.z) < w.size.x / 2 + 0.6 && w.centre.y + w.size.y / 2 >= p.centre.y + p.size.y / 2 - 0.3)) near++;
+      }
+      return near >= 0.7 * (n + 1);
+    };
+    for (let i = prims.length - 1; i >= 0; i--) if (byWall(prims[i]!)) prims.splice(i, 1);
   }
 
   // Life round the building (DXF route): trees along the street's far side and the slopes, shrubs by the colonnade, and people for scale

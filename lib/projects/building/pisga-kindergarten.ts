@@ -209,7 +209,8 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
       }
     }
   });
-  edgeRails(TERRACE, KINDERGARTEN.floor + 0.04, (_x, z) => Math.abs(z - UPPER_Z0) < 0.01);
+  // (Nor its west edge where the west terrace (pisga-kg-exits.ts, z −0.2…1.02) lies against it at its own level.)
+  edgeRails(TERRACE, KINDERGARTEN.floor + 0.04, (x, z) => Math.abs(z - UPPER_Z0) < 0.01 || (x < 5.6 && z > -0.2));
   edgeRails(UPPER, KINDERGARTEN.roof, (x, z) => Math.abs(z - 7.96) < 0.01 || insidePolygon(NEW_BUILDING, x, z));
   return shifted(out, -SHIFT, -SHIFT);
 }

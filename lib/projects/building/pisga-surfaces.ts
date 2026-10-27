@@ -121,7 +121,9 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     const dxe = b[0] - a[0], dze = b[1] - a[1], le = Math.hypot(dxe, dze) || 1;
     const outx = mx + (dze / le) * 0.8, outz = mz - (dxe / le) * 0.8, inx = mx - (dze / le) * 0.8, inz = mz + (dxe / le) * 0.8;
     const far = insidePolygon(ring, outx, outz) ? [inx, inz] : [outx, outz];
-    if (level - groundAt(far[0]!, far[1]!) < 0.8 && !force?.(mx, mz)) continue;
+    const drop = level - groundAt(far[0]!, far[1]!);
+    // (Forced or not, an edge flush with a floor beside it — two hatches meeting — is no edge.)
+    if ((drop < 0.8 && !force?.(mx, mz)) || Math.abs(drop) < 0.3) continue;
     // The edge's own railing, but for where a stair's handrail already stands: its runs either side are laid, not the whole edge dropped for the stair's width.
     const step = 0.25;
     const n = Math.max(1, Math.ceil(le / step));
@@ -189,7 +191,9 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
       if (gs.length > 4 && s.kind !== "grate" && Math.max(...gs) - Math.min(...gs) > 2) {
         const sorted = [...gs].sort((a, b) => a - b);
         const top = sorted[Math.floor(sorted.length * 0.8)]! + lift;
-        out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
+        // Its fill shows as walls on the low sides: stone, as the site's retaining walls, under a skin of the hatch's own finish.
+        out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: top - 0.06, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
+        out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top - 0.06, material: "stone", tag: `${tag}:${s.kind}-platform-fill` });
         raised.push({ s, level: top });
         continue;
       }
