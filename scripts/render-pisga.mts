@@ -76,9 +76,12 @@ const chosen = Object.entries(views).filter(([id]) => only.length === 0 || only.
 const nosign = process.env.NOSIGN === "1";
 // Each frame goes down a ladder of sample counts until it comes back neither blank nor too dark to be a frame (an interior needs the longest to settle and
 // the GPU gives up first): the most the GPU holds without spoiling it is what is kept. A cut or a section is rasterised by the page whatever PT says.
-const ladder = [PT, 512, 256, 128, 0].filter((n, k, all) => n <= PT && all.indexOf(n) === k);
+// An interior comes back blank at 1024 (measured 2026-10-19), so it starts at 512 rather than spend a whole failed trace first.
+const ladderOf = (interior: boolean) => [interior ? Math.min(PT, 512) : PT, 512, 256, 128, 0].filter((n, k, all) => n <= PT && all.indexOf(n) === k);
 for (const [id, v] of chosen) {
-  const camera = nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign", "facade:band"] } : v.camera;
+  const ladder = ladderOf(v.camera.interior === true);
+  // The dark band is drawn on the DXF's north elevation and stays; only its lettering is left off.
+  const camera = nosign ? { ...v.camera, hideTags: [...(v.camera.hideTags ?? []), "facade:sign"] } : v.camera;
   let done: { buf: Buffer; pt: number } | null = null;
   for (const pt of ladder) {
     const [buf] = await renderBuildingFrames([{ ...v, camera, model, width: W, height: H, ...(pt ? { pathTrace: { samples: pt } } : {}) }], { outputWidthPx: Number(process.env.OUT ?? 1600), timeoutMs: pt ? 1_800_000 : undefined });
