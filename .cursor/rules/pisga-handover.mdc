@@ -1,0 +1,17 @@
+---
+description: Pisga model handover — read before touching any pisga/kindergarten/terrain/renderer file
+globs: lib/projects/building/pisga*.ts,lib/projects/building/render-page.ts,lib/projects/building/model.ts,scripts/*pisga*
+alwaysApply: true
+---
+
+# Pisga — work carefully, do not break what works
+
+Read `docs/PISGA-HANDOVER.md` (what was done, how to run, the open list) and `CLAUDE.md` before changing anything.
+
+- Branch `feat/pisga-paint` lives only in this worktree, with 19 commits that are not pushed. Never delete the worktree or reset the branch.
+- Before and after every change, run `verify-pisga-fences.mts`, `verify-pisga-terrain.mts` and a free render (`PT=0`). The checks must not get worse than the baseline in the handover. Compare the kindergarten views (kg-*) image by image.
+- Change shared rules (`ringRailing`, `nearGuard`, `groundAt`) only when every site case is understood. Fix a single spot inside a coordinate-bounded region, with a comment saying why.
+- No paid AI calls (Gemini / image painting) without the user's explicit approval. No push, merge or PR unless asked: Vercel bills every push.
+- No bare `git stash`, no `reset --hard`, no killing leftover node/Chrome processes, no DB migrations (local dev hits production), no edits to `.env.local`.
+- Railing tags on stairs must contain "stair", or the fence checker calls them floating.
+- Talk to the user in Hebrew. Write code and commits in English, with the Co-Authored-By line. End every report with a link to the results folder.
