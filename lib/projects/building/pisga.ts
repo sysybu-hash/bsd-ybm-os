@@ -1,3 +1,4 @@
+import { kindergartenExits, kindergartenExitsGround } from "@/lib/projects/building/pisga-kg-exits";
 import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
@@ -758,6 +759,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         h = h * (1 - w) + face * w;
       }
     }
+    // Its two emergency stairs and the east service yard keep the ground their drawings give (pisga-kg-exits.ts).
+    if (fromDxf) {
+      const exit = kindergartenExitsGround(x, z);
+      if (exit) h = h * (1 - exit[1]) + exit[0] * exit[1];
+    }
     // East of the entrance the plot falls from the street to the east
     // plaza — the accessible ramp's slope.
     // (The site sheet marks +8.27 at (54.6, 14.3): the plaza stays level to z 14.5 and the fall to the street starts there — scripts/verify-pisga-terrain.mts.)
@@ -889,7 +895,10 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         const t = Math.max(0, Math.min(1, ((x - p[0]) * (q[0] - p[0]) + (z - p[1]) * (q[1] - p[1])) / l2));
         return Math.hypot(x - p[0] - (q[0] - p[0]) * t, z - p[1] - (q[1] - p[1]) * t) < 0.3;
       });
-      const inside = allSpots.filter((q) => q.level < 12 && onRing(q.x, q.z));
+      // Marks strictly inside come first: one on the edge line can name the thing beside it (the east grating's +5.73 is the yard wall's top
+      // by the kindergarten's facade; its own +4.22 lies inside).
+      const strictly = allSpots.filter((q) => q.level < 12 && insidePolygon(sf.ring, q.x, q.z));
+      const inside = strictly.length ? strictly : allSpots.filter((q) => q.level < 12 && onRing(q.x, q.z));
       if (inside.length) return Math.max(...inside.map((q) => q.level));
       return allSpots.filter((q) => Math.hypot(q.x - cx, q.z - cz) < 6 && q.level < 12).sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz))[0]?.level;
     };
@@ -902,15 +911,18 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       return Math.hypot(x - (ax + (bx - ax) * t), z - (az + (bz - az) * t)) < f.width / 2 + 0.1;
     });
     // The east landing and the grated deck below it are raised on fill with the bank behind: every free edge of theirs is railed, drop or not (the user marked them missing, 2026-10-21).
-    const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2;
+    // (Not the grating over the kindergarten's service yard: walled to +5.62 round it, 1.4 m over the grating — pisga-kg-exits.ts.)
+    const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2 && !(x < 65.7 && z < 8.2);
     // An edge a retaining wall or a parapet already guards stands no railing of its own beside it; nor does the bed's, under a metre over the courtyard's paving,
     // nor any hatch's edge inside the bed (the bed's hatch is drawn in pieces whose edges cross it).
+    prims.push(...kindergartenExits((x, z) => groundAt(x, z, true)));
     const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
-    const nearGuard = (x: number, z: number) => guards.some((b) => Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
+    // (Only a guard reaching the edge's level: the kindergarten's long wall at +5.64 does not guard the grating at +9.15 over it.)
+    const nearGuard = (x: number, z: number, level: number) => guards.some((b) => b.centre.y + b.size.y / 2 > level - 0.5 && Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
     // What an edge drops to counts the slabs and roofs already built beside it (the kindergarten's roof against the west platform), those up to half a metre over the edge.
     const slabs = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism");
     const builtTop = (x: number, z: number, level: number) => Math.max(-Infinity, ...slabs.filter((p) => p.y1 <= level + 0.5 && insidePolygon(p.ring, x, z) && !(p.holes ?? []).some((h) => insidePolygon(h, x, z))).map((p) => p.y1));
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z) || inBed(x, z), eastLanding, builtTop));
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z, level) => nearStair(x, z) || nearGuard(x, z, level) || inBed(x, z), eastLanding, builtTop));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();
@@ -934,7 +946,9 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
           use = { ...set, first: set.last, last: set.first, dir: [-set.dir[0], -set.dir[1]] };
         }
         console.warn(`stairs ${sheet}: ${set.n} treads at ${mx.toFixed(1)},${mz.toFixed(1)} ${bottom.toFixed(2)}..${top.toFixed(2)} (${set.layer})`);
-        prims.push(...stairPrims(use, top, bottom, "site:stair-dxf"));
+        // Its mass goes down to the lowest ground under it: on a falling slope the default (0.4 m under the bottom tread) leaves it hanging.
+        const under = Array.from({ length: 9 }, (_, k) => groundAt(use.first[0] + ((use.last[0] - use.first[0]) * k) / 8, use.first[1] + ((use.last[1] - use.first[1]) * k) / 8, true));
+        prims.push(...stairPrims(use, top, bottom, "site:stair-dxf", undefined, Math.min(bottom - 0.4, ...under.map((g) => g - 0.2))));
       }
     }
   }

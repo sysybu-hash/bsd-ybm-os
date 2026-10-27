@@ -108,7 +108,7 @@ function alreadyLaid(out: Primitive[], a: [number, number], b: [number, number],
 }
 
 /** The railing round a deck or platform: along each edge of its ring that is not against the building (a drop of 0.5 m or more beyond it is assumed on the free sides). */
-function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[], groundAt: (x: number, z: number) => number, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean): void {
+function ringRailing(ring: Array<[number, number]>, level: number, tag: string, out: Primitive[], groundAt: (x: number, z: number) => number, avoid?: (x: number, z: number, level: number) => boolean, force?: (x: number, z: number) => boolean): void {
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i]!;
     const b = ring[(i + 1) % ring.length]!;
@@ -135,7 +135,7 @@ function ringRailing(ring: Array<[number, number]>, level: number, tag: string, 
     };
     for (let k = 0; k <= n; k++) {
       const t = k / n;
-      const blocked = avoid?.(a[0] + dxe * t, a[1] + dze * t) ?? false;
+      const blocked = avoid?.(a[0] + dxe * t, a[1] + dze * t, level) ?? false;
       if (!blocked && from === null) from = t;
       if (blocked && from !== null) { lay(from, t); from = null; }
     }
@@ -151,7 +151,7 @@ const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", conc
  * not its holes) and a metre under it outside, so the paving follows every rise and fall of the
  * site, takes the polygon's edge to a quarter metre, and meets the ground at a kerb's height.
  */
-export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean, builtTop?: (x: number, z: number, level: number) => number): Primitive[] {
+export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number, level: number) => boolean, force?: (x: number, z: number) => boolean, builtTop?: (x: number, z: number, level: number) => number): Primitive[] {
   const out: Primitive[] = [];
   // The railings wait for every deck and platform: what an edge drops to is the highest thing beside it — the ground, a neighbouring platform, a roof
   // (`builtTop`) — not the ground alone (two platforms meeting at one level, a deck against the kindergarten's roof, stood a railing on their shared edge).
@@ -205,8 +205,9 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
     }
     out.push({ type: "terrain", x0, z0, dx, nx, nz, heights, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}` });
   }
-  // (`builtTop` is given the edge's level: a roof well over it is overhead, not a floor beside it.)
-  const below = (level: number) => (x: number, z: number) => Math.max(groundAt(x, z), builtTop?.(x, z, level) ?? -Infinity, ...raised.filter((r) => r.level <= level + 0.5 && insidePolygon(r.s.ring, x, z) && !r.s.holes.some((h) => insidePolygon(h, x, z))).map((r) => r.level));
+  // (`builtTop` is given the edge's level: a roof well over it is overhead, not a floor beside it. A solid platform higher than the edge
+  // stands beside it as a wall, no drop; a grating higher up is overhead.)
+  const below = (level: number) => (x: number, z: number) => Math.max(groundAt(x, z), builtTop?.(x, z, level) ?? -Infinity, ...raised.filter((r) => (r.level <= level + 0.5 || r.s.kind !== "grate") && insidePolygon(r.s.ring, x, z) && !r.s.holes.some((h) => insidePolygon(h, x, z))).map((r) => r.level));
   for (const r of raised) ringRailing(r.s.ring, r.level, tag, out, below(r.level), avoid, force);
   return out;
 }

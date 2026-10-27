@@ -54,7 +54,7 @@ const builtTopNear = (x: number, z: number, level: number): { tag: string; top: 
       const zs = p.ring.map((q) => q[1]);
       const inBox = x > Math.min(...xs) - 1 && x < Math.max(...xs) + 1 && z > Math.min(...zs) - 1 && z < Math.max(...zs) + 1;
       if ((inBox && d < 1) || (inBox && x > Math.min(...xs) && x < Math.max(...xs) && z > Math.min(...zs) && z < Math.max(...zs))) if (Math.abs(p.y1 - level) <= 0.5) return { tag: p.tag ?? "", top: p.y1 };
-    } else if (p.type === "box" && Math.min(p.size.x, p.size.z) >= 0.5) {
+    } else if (p.type === "box" && (Math.min(p.size.x, p.size.z) >= 0.5 || /retaining|parapet/.test(p.tag ?? ""))) {
       const top = p.centre.y + p.size.y / 2;
       if (Math.abs(x - p.centre.x) < p.size.x / 2 + 1 && Math.abs(z - p.centre.z) < p.size.z / 2 + 1 && Math.abs(top - level) <= 0.5) return { tag: p.tag ?? "", top };
     }
