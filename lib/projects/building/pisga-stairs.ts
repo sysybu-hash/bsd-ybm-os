@@ -194,6 +194,18 @@ export function dxfSpotHeights(drawing: DxfDrawing, sheet: keyof typeof PISGA_DX
   return out;
 }
 
+/** The sheet's notes in the plan frame: every text with its anchor. */
+export function dxfNotes(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.sheets): Array<{ x: number; z: number; text: string }> {
+  const at = frame(sheet);
+  const out: Array<{ x: number; z: number; text: string }> = [];
+  for (const p of sheetPieces(drawing, sheet)) {
+    if (!p.text || !p.at) continue;
+    const [x, z] = at(p.at);
+    out.push({ x, z, text: p.text });
+  }
+  return out;
+}
+
 /**
  * A set of treads as a flight of solid steps: from its top at `top` metres down to `bottom`, the
  * steps as wide as the lines, each a block down to the ground.

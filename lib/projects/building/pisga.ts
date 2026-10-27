@@ -1,4 +1,4 @@
-import { dxfCourtyardWall, dxfEntrancePrims, dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
+import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { BuildingModel, Primitive } from "@/lib/projects/building/model";
@@ -812,7 +812,47 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       }
     }
     // The kerbs and low walls the A4-10 layer draws apart from any hatch: 0.1 m wide, 0.3 m over the ground.
-    for (const [ax, az, bx, bz] of dxfKerbLines(dxf, "floor-1", surfaces)) {
+    // But a frame the sheet labels "מצללה RHS" is a pergola of steel sections, its top at the level marked beside the label (+3.20): the lines joined to it
+    // (an end within 35 cm of another line), from those within 4 m of the label, are its beams, each 0.1 × 0.15 m, with a post at each corner of its box down to the ground.
+    // (Read as kerbs they lay on the slope east of the hall as white frames.)
+    let kerbs = dxfKerbLines(dxf, "floor-1", surfaces);
+    const notes = dxfNotes(dxf, "floor-1");
+    const segDist = (x: number, z: number, [ax, az, bx, bz]: [number, number, number, number]) => {
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2));
+      return Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t);
+    };
+    for (const label of notes.filter((n) => /מצללה/.test(n.text))) {
+      const frameLines = kerbs.filter((k) => segDist(label.x, label.z, k) < 4);
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const k of kerbs) {
+          if (frameLines.includes(k)) continue;
+          if (frameLines.some((f) => segDist(k[0], k[1], f) < 0.35 || segDist(k[2], k[3], f) < 0.35)) { frameLines.push(k); grew = true; }
+        }
+      }
+      if (frameLines.length < 3) continue;
+      kerbs = kerbs.filter((k) => !frameLines.includes(k));
+      const xs = frameLines.flatMap((k) => [k[0], k[2]]), zs = frameLines.flatMap((k) => [k[1], k[3]]);
+      const [x0, x1, z0, z1] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+      const mark = notes.map((n) => ({ n, m: /^\+(\d+\.\d\d)$/.exec(n.text.trim()) })).filter((q) => q.m && Math.hypot(q.n.x - label.x, q.n.z - label.z) < 4).sort((a, b) => Math.hypot(a.n.x - label.x, a.n.z - label.z) - Math.hypot(b.n.x - label.x, b.n.z - label.z))[0];
+      const top = mark ? Number(mark.m![1]) : groundAt((x0 + x1) / 2, (z0 + z1) / 2, true) + 2.8;
+      // A pergola with a slab under it and one over it stands inside a storey (the kindergarten's block as the model has it, 3 m further north than
+      // the sheet draws its face east of x 33): not built, the sheet and the model disagree there.
+      const over = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism" && insidePolygon(p.ring, (x0 + x1) / 2, (z0 + z1) / 2));
+      if (over.some((p) => p.y1 <= top && p.y1 > top - 4) && over.some((p) => p.y0 >= top && p.y0 < top + 3)) {
+        console.warn(`pergola at ${((x0 + x1) / 2).toFixed(1)},${((z0 + z1) / 2).toFixed(1)} (+${top.toFixed(2)}) falls inside a built mass: not built`);
+        continue;
+      }
+      for (const [ax, az, bx, bz] of frameLines) {
+        prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: top - 0.075, z: (az + bz) / 2 }, size: { x: Math.hypot(bx - ax, bz - az), y: 0.15, z: 0.1 }, rotY: -Math.atan2(bz - az, bx - ax), material: "metal", tag: "site:pergola" });
+      }
+      for (const [px, pz] of [[x0 + 0.05, z0 + 0.05], [x1 - 0.05, z0 + 0.05], [x0 + 0.05, z1 - 0.05], [x1 - 0.05, z1 - 0.05]] as const) {
+        const g = groundAt(px, pz, true) - 0.2;
+        prims.push({ type: "box", centre: { x: px, y: (top - 0.15 + g) / 2, z: pz }, size: { x: 0.1, y: top - 0.15 - g, z: 0.1 }, material: "metal", tag: "site:pergola-post" });
+      }
+    }
+    for (const [ax, az, bx, bz] of kerbs) {
       const len = Math.hypot(bx - ax, bz - az);
       const gy = groundAt((ax + bx) / 2, (az + bz) / 2, true);
       prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: gy + 0.1, z: (az + bz) / 2 }, size: { x: len, y: 0.5, z: 0.1 }, rotY: -Math.atan2(bz - az, bx - ax), material: "concrete", tag: "site:kerb-dxf" });
@@ -850,7 +890,10 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // nor any hatch's edge inside the bed (the bed's hatch is drawn in pieces whose edges cross it).
     const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
     const nearGuard = (x: number, z: number) => guards.some((b) => Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z) || inBed(x, z), eastLanding));
+    // What an edge drops to counts the slabs and roofs already built beside it (the kindergarten's roof against the west platform), those up to half a metre over the edge.
+    const slabs = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism");
+    const builtTop = (x: number, z: number, level: number) => Math.max(-Infinity, ...slabs.filter((p) => p.y1 <= level + 0.5 && insidePolygon(p.ring, x, z) && !(p.holes ?? []).some((h) => insidePolygon(h, x, z))).map((p) => p.y1));
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z) || inBed(x, z), eastLanding, builtTop));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();

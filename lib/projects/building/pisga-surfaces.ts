@@ -151,8 +151,11 @@ const MATERIAL: Record<SurfaceKind, BuildingMaterial> = { paving: "paving", conc
  * not its holes) and a metre under it outside, so the paving follows every rise and fall of the
  * site, takes the polygon's edge to a quarter metre, and meets the ground at a kerb's height.
  */
-export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean): Primitive[] {
+export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: number) => number, tag: string, lift = 0.08, deckLevel?: (s: DxfSurface) => number | undefined, avoid?: (x: number, z: number) => boolean, force?: (x: number, z: number) => boolean, builtTop?: (x: number, z: number, level: number) => number): Primitive[] {
   const out: Primitive[] = [];
+  // The railings wait for every deck and platform: what an edge drops to is the highest thing beside it — the ground, a neighbouring platform, a roof
+  // (`builtTop`) — not the ground alone (two platforms meeting at one level, a deck against the kindergarten's roof, stood a railing on their shared edge).
+  const raised: Array<{ s: DxfSurface; level: number }> = [];
   for (const s of surfaces) {
     // A grated deck is a deck, level, on its own supports: a slab at the level its spot height gives, not a skin on the slope.
     const level = s.kind === "grate" ? deckLevel?.(s) : undefined;
@@ -169,7 +172,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
           if (level - 0.22 - g > 0.1) out.push({ type: "box", centre: { x: px, y: (level - 0.22 + g) / 2, z: pz }, size: { x: 0.2, y: level - 0.22 - g, z: 0.2 }, material: "metal", tag: `${tag}:grate-post` });
         }
       }
-      ringRailing(s.ring, level, tag, out, groundAt, avoid, force);
+      raised.push({ s, level });
       continue;
     }
     const xs = s.ring.map((q) => q[0]);
@@ -187,7 +190,7 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
         const sorted = [...gs].sort((a, b) => a - b);
         const top = sorted[Math.floor(sorted.length * 0.8)]! + lift;
         out.push({ type: "prism", ring: s.ring, holes: s.holes.length ? s.holes : undefined, y0: Math.min(...gs) - 0.4, y1: top, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}-platform` });
-        ringRailing(s.ring, top, tag, out, groundAt, avoid, force);
+        raised.push({ s, level: top });
         continue;
       }
     }
@@ -202,6 +205,9 @@ export function surfacePrims(surfaces: DxfSurface[], groundAt: (x: number, z: nu
     }
     out.push({ type: "terrain", x0, z0, dx, nx, nz, heights, material: MATERIAL[s.kind], tag: `${tag}:${s.kind}` });
   }
+  // (`builtTop` is given the edge's level: a roof well over it is overhead, not a floor beside it.)
+  const below = (level: number) => (x: number, z: number) => Math.max(groundAt(x, z), builtTop?.(x, z, level) ?? -Infinity, ...raised.filter((r) => r.level <= level + 0.5 && insidePolygon(r.s.ring, x, z) && !r.s.holes.some((h) => insidePolygon(h, x, z))).map((r) => r.level));
+  for (const r of raised) ringRailing(r.s.ring, r.level, tag, out, below(r.level), avoid, force);
   return out;
 }
 
