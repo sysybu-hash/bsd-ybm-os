@@ -674,19 +674,32 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       prims.push({ type: "box", centre: { x: (ax + bx) / 2 + nx, y: (LEVEL.courtyard + LEVEL.street + 1.1) / 2, z: (az + bz) / 2 + nz }, size: { x: len + 0.02, y: LEVEL.street + 1.1 - LEVEL.courtyard, z: 0.35 }, rotY: -ang, material: "stone", tag: "site:retaining" });
     }
   } else prims.push({ type: "box", centre: { x: 11, y: (LEVEL.courtyard + LEVEL.street + 1) / 2, z: 21.15 }, size: { x: 43, y: LEVEL.street + 1 - LEVEL.courtyard, z: 0.5 }, material: "stone", tag: "site:retaining" });
-  // South of that wall the ground is the street's; north of it the courtyard's, right up to the wall's street face (the ground's metre cells
-  // would otherwise lay a bank of earth up the wall's courtyard face).
-  const streetEdgeZ = (x: number) => {
+  // South of that wall the ground is the street's, from its street face. The terrain's metre cells, though, would lay a bank of earth up the
+  // wall's courtyard face across the cell the wall stands in: for them (`cell`) the street's ground starts a metre out, under the sidewalk.
+  const streetEdgeZ = (x: number, cell = false) => {
     for (let i = 1; i < courtyardWall.length; i++) {
       const [ax, az] = courtyardWall[i - 1]!;
       const [bx, bz] = courtyardWall[i]!;
-      if (x >= ax && x <= bx) return az + ((bz - az) * (x - ax)) / (bx - ax || 1) + 0.25;
+      if (x >= ax && x <= bx) return az + ((bz - az) * (x - ax)) / (bx - ax || 1) + (cell ? 1.0 : 0);
     }
     return 21.45;
   };
   // Trees where the site plan draws them: along the courtyard's retaining
   // wall, and on the plaza by the car park's entrance.
-  for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
+  // The bed along the courtyard's south wall (floor −2's sheet): from the paving's edge, (−7.6, 18.3) → (15.7, 18.5) → (24.15, 19.4), to the wall,
+  // raised to the site sheet's +9.27 at (13.4, 20.4) behind a stone kerb; the trees stand in it.
+  const BED_LEVEL = 9.27;
+  const bedEdgeZ = (x: number) => (x < 15.7 ? 18.3 + ((x + 7.6) * 0.2) / 23.3 : 18.5 + ((x - 15.7) * 0.9) / 8.45);
+  const inBed = (x: number, z: number, cell = false) => courtyardWall.length >= 2 && x > -7.6 && x < 24.15 && z > bedEdgeZ(x) && z < streetEdgeZ(x, cell);
+  if (courtyardWall.length >= 2) {
+    for (const [ax, bx] of [[-7.6, 15.7], [15.7, 24.15]] as const) {
+      const az = bedEdgeZ(ax);
+      const bz = bedEdgeZ(bx);
+      const ang = Math.atan2(bz - az, bx - ax);
+      prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: (LEVEL.courtyard + BED_LEVEL + 0.1) / 2, z: (az + bz) / 2 + 0.1 }, size: { x: Math.hypot(bx - ax, bz - az), y: BED_LEVEL + 0.1 - LEVEL.courtyard, z: 0.2 }, rotY: -ang, material: "stone", tag: "site:bed-kerb" });
+    }
+  }
+  for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: inBed(x, 19.6) ? BED_LEVEL : LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
   for (const [x, z] of [[44.6, 22.6], [52.4, 22.9], [59.2, 23.4]] as const) prims.push({ type: "tree", at: { x, y: LEVEL.street, z }, height: 6, crown: 2.2, tag: "tree" });
 
   // Cars: most of the roof's bays taken, and the street's bays 13–18.
@@ -711,7 +724,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   // The survey layers' vertices (dxfSurveyPoints) were tried as spot heights too: they are kerb and boundary lines at the street's +17.9 a metre from the courtyard's +8.2, and the ground rose in a ridge between. The booklet's spots stay the ground's.
   const spots = SPOTS;
   const plane = fitPlane(spots.map(([sx, sz, abs]) => [sx, sz, abs - 923.2] as [number, number, number]));
-  const groundAt = (x: number, z: number, built: boolean) => {
+  const groundAt = (x: number, z: number, built: boolean, cell = false) => {
     let wsum = 0;
     let hsum = 0;
     for (const [sx, sz, abs] of spots) {
@@ -732,7 +745,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // plaza — the accessible ramp's slope.
     // (The site sheet marks +8.27 at (54.6, 14.3): the plaza stays level to z 14.5 and the fall to the street starts there — scripts/verify-pisga-terrain.mts.)
     if (x > 53.92 && x < 66 && z > 12 && z < 24.2) h = 8.27 + (Math.max(0, z - 14.5) / (24.2 - 14.5)) * (LEVEL.street - 8.27);
-    if (z > streetEdgeZ(x) && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    if (z > streetEdgeZ(x, cell) && !(x > 46 && x < 66 && z < 24.2)) h = Math.max(h, LEVEL.street - 0.6);
+    if (inBed(x, z, cell)) h = BED_LEVEL;
     // Under the street's own band (plot line out to 13.5 m) the ground is the road's bed, not a mound the spot heights lift into it.
     { const pz = pisgaPlotSouthZ(x); if (z > pz + 0.45 && z < pz + 13.6) h = LEVEL.street - 0.6; }
     return h;
@@ -740,7 +754,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   // The site itself, a metre a cell; and the hills round it to the horizon, six metres a cell, 0.6 m under the first so the two never meet in a seam.
   const fine = { x0: -90, z0: -80, dx: 1, nx: 240, nz: 170 };
   const heights: number[] = [];
-  for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true));
+  for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true, true));
   prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground" });
   // The aerial photograph of the plot, laid on the ground. Nothing in the DXF places it; the user drew the plot's outline on the photo (their marking of 2026-10-19: west edge at pixel column ~768,
   // south edge from (768, 387) to (980, 410), east edge at ~1004, top at row ~318) and the fit is a similarity through four plan/photo pairs: the plot's SW corner (−11, 21.3), SE (62, 29.3),
@@ -821,8 +835,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     });
     // The east landing and the grated deck below it are raised on fill with the bank behind: every free edge of theirs is railed, drop or not (the user marked them missing, 2026-10-21).
     const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2;
-    // An edge a retaining wall or a parapet already guards stands no railing of its own beside it.
-    const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet)/.test(p.tag ?? ""));
+    // An edge a retaining wall or a parapet already guards stands no railing of its own beside it; nor does the bed's, under a metre over the courtyard's paving.
+    const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
     const nearGuard = (x: number, z: number) => guards.some((b) => Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
     prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z), eastLanding));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
