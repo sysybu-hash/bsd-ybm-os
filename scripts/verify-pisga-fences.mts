@@ -35,6 +35,13 @@ const ground = (x: number, z: number) => {
 
 const boxes = prims.filter((p): p is Box => p.type === "box");
 const isRailTag = (t: string) => /rail|fence|gate|guard|parapet-rail/i.test(t);
+// A guard's top rail, by its shape whatever its tag (the ramp's and the emergency stair's carry none of the words above): a metal or frame bar under
+// 8 cm both across and high, 10 cm long or more (a stair's handrail is laid in short sections), not a window's or a door's frame, not furniture.
+const isRailBar = (b: Box) =>
+  (isRailTag(b.tag ?? "") || /frame|metal/.test(b.material)) &&
+  !/window|door|curtain|sill|glazing|surround|furniture|facade|roof:lines/.test(b.tag ?? "") &&
+  b.size.y <= 0.08 && Math.min(b.size.x, b.size.z) <= 0.08 && Math.max(b.size.x, b.size.z) >= 0.1;
+const isGuardPart = (b: Box) => isRailTag(b.tag ?? "") || isRailBar(b) || (b.material === "glass" && Math.min(b.size.x, b.size.z) <= 0.03 && b.size.y <= 1.3);
 // A box's footprint corners (rotY turns about y).
 const corners = (b: Box): Array<[number, number]> => {
   const a = b.rotY ?? 0;
@@ -64,10 +71,12 @@ const inRing = (ring: Array<[number, number]>, x: number, z: number) => {
 };
 const solids: Solid[] = [];
 for (const b of boxes) {
-  if (isRailTag(b.tag ?? "") || b.size.y < 0.1 || b.material === "glass") continue;
+  // A grated tread or a deck plate is 5 cm thick and walked on: only thin boxes that are narrow too are skipped.
+  if (isGuardPart(b) || (b.size.y < 0.1 && Math.min(b.size.x, b.size.z) < 0.2) || b.material === "glass") continue;
   // A wall's head (a parapet 30 cm, a retaining wall 50 cm, both tall) is not a floor to walk on; a paving skin's 25 cm tiles, low, are.
   const thin = Math.min(b.size.x, b.size.z);
-  solids.push({ top: topOf(b), foot: b.centre.y - b.size.y / 2, wide: thin >= 0.6 || (thin >= 0.2 && b.size.y < 0.8), at: (x, z, pad) => inFoot(b, x, z, pad) });
+  // A stair's tread is a block down to the ground, tall but walked on.
+  solids.push({ top: topOf(b), foot: b.centre.y - b.size.y / 2, wide: thin >= 0.6 || (thin >= 0.2 && (b.size.y < 0.8 || /stair/.test(b.tag ?? ""))), at: (x, z, pad) => inFoot(b, x, z, pad) });
 }
 for (const p of prims) {
   if (p.type !== "prism" || isRailTag(p.tag ?? "")) continue;
@@ -100,8 +109,7 @@ type Run = { tag: string; x1: number; z1: number; x2: number; z2: number; y: num
 const rails: Run[] = [];
 for (const b of boxes) {
   const tag = b.tag ?? "";
-  if (!isRailTag(tag)) continue;
-  if (b.size.y > 0.12 || Math.max(b.size.x, b.size.z) < 0.25) continue;
+  if (!isRailBar(b)) continue;
   const a = b.rotY ?? 0;
   const alongX = b.size.x >= b.size.z;
   const len = alongX ? b.size.x : b.size.z;
@@ -143,12 +151,13 @@ for (const run of runs) {
       const below = levelAt(x, z, p.y - 0.85);
       const walk = p.y - below <= 1.9 ? below : p.y - 1.0;
       const sides = [1, -1].map((s) => {
-        const sx = x + -dz * s * 1.0;
-        const sz = z + dx * s * 1.0;
+        // 60 cm out: a metre out can land on the far side of a gap, on the wall across it.
+        const sx = x + -dz * s * 0.6;
+        const sz = z + dx * s * 0.6;
         return { x: sx, z: sz, level: levelAt(sx, sz, walk + 0.3), wall: wallNear(sx, sz, walk) };
       });
       const under = levelAt(x, z, walk + 0.3);
-      if (walk - under > 0.6) floating++;
+      if (walk - under > 0.6) { floating++; if (process.env.FDBG && run.tag.includes(process.env.FDBG)) console.error("FLOAT", x.toFixed(2), z.toFixed(2), "rail", p.y.toFixed(2), "below", below.toFixed(2), "under", under.toFixed(2)); }
       const drops = sides.map((s) => (s.wall ? 0 : walk - s.level));
       const drop = Math.max(...drops);
       dropMax = Math.max(dropMax, drop);
@@ -157,7 +166,9 @@ for (const run of runs) {
     }
   }
   const share = steps ? low / steps : 0;
-  if (share >= 0.6 && len > 1.5) findings.push({ kind: "unneeded", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', בשני צדדיו הקרקע עד 0.4 מ' מתחת למפלס ההליכה (נפילה מרבית ${dropMax.toFixed(2)})` });
+  // A stair's handrail is wanted whatever the drop (the sheets' "מאחז יד"): it is not judged as a guard.
+  const handrail = /stair/.test(run.tag);
+  if (!handrail && share >= 0.6 && len > 1.5) findings.push({ kind: "unneeded", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', בשני צדדיו הקרקע עד 0.4 מ' מתחת למפלס ההליכה (נפילה מרבית ${dropMax.toFixed(2)})` });
   if (steps && floating / steps >= 0.5 && len > 1.5) findings.push({ kind: "floating", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', מתחת לרצף אין משטח או קרקע בגובה ההליכה (תלוי באוויר ב-${floating} מ-${steps} נקודות)` });
 }
 // Doubled: two runs (or one tag's two pieces) along the same line, overlapping, at a similar height.
@@ -179,6 +190,35 @@ for (let i = 0; i < rails.length; i++) {
     if (overlap > 0.5 * Math.min(a.len, b.len)) findings.push({ kind: "doubled", where: `${a.tag} ${seg(a)} ↔ ${b.tag} ${seg(b)}`, detail: `חפיפה ${overlap.toFixed(1)} מ', מרחק ${off.toFixed(2)} מ' בין הקווים` });
   }
 }
+// Doubled by a wall: a railing beside a wall, parapet or kerb (within 50 cm, along it) whose head is as high as the rail or higher — the wall
+// already guards there. The wall: a box at least 0.9 m tall and 0.6 m thin or less, not glass, not a rail's own post.
+// A run with posts: an upright frame/metal box 0.4–1.3 m tall within 10 cm of its line.
+const posts = boxes.filter((b) => /frame|metal/.test(b.material) && b.size.y >= 0.4 && b.size.y <= 1.3 && Math.max(b.size.x, b.size.z) <= 0.1);
+const posted = (run: { pieces: Run[] }) => run.pieces.some((p) => posts.some((b) => b.centre.y + b.size.y / 2 <= p.y + 0.05 && b.centre.y + b.size.y / 2 >= p.y - 0.15 && Math.hypot(b.centre.x - (p.x1 + p.x2) / 2, b.centre.z - (p.z1 + p.z2) / 2) <= p.len / 2 + 0.1 && Math.abs((b.centre.x - p.x1) * -(p.z2 - p.z1) / p.len + (b.centre.z - p.z1) * (p.x2 - p.x1) / p.len) < 0.1));
+const walls = boxes.filter((b) => !isGuardPart(b) && b.size.y >= 0.9 && Math.min(b.size.x, b.size.z) <= 0.6 && Math.max(b.size.x, b.size.z) >= 0.5 && b.material !== "glass" && !/furniture|fixture|partition|tree|person|car/.test(b.tag ?? ""));
+for (const run of runs) {
+  // A handrail fixed to a stair's side wall is the wall's handrail, not a second guard; its posts would be (they are not built there).
+  if (/stair/.test(run.tag) && !posted(run)) continue;
+  let beside = 0;
+  let total = 0;
+  const by = new Map<string, number>();
+  for (const p of run.pieces) {
+    const n = Math.max(1, Math.round(p.len / 0.5));
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      const x = p.x1 + (p.x2 - p.x1) * t;
+      const z = p.z1 + (p.z2 - p.z1) * t;
+      total++;
+      const w = walls.find((b) => inFoot(b, x, z, 0.5) && topOf(b) >= p.y - 0.25 && b.centre.y - b.size.y / 2 <= p.y - 0.8);
+      if (w) {
+        beside++;
+        by.set(w.tag ?? "", (by.get(w.tag ?? "") ?? 0) + 1);
+      }
+    }
+  }
+  const len = run.pieces.reduce((t, q) => t + q.len, 0);
+  if (total && beside / total >= 0.3 && beside * 0.5 >= 1) findings.push({ kind: "doubled", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', ${beside} מ-${total} נקודות לצד קיר שגובהו כגובה המעקה (${[...by.keys()].join(", ")})` });
+}
 const label = { unneeded: "מעקה שאינו נחוץ (אין נפילה לידו)", floating: "מעקה תלוי באוויר", doubled: "מעקה כפול" } as const;
 for (const kind of ["unneeded", "floating", "doubled"] as const) {
   const list = findings.filter((f) => f.kind === kind);
@@ -189,6 +229,7 @@ for (const kind of ["unneeded", "floating", "doubled"] as const) {
 
 // Missing: along each paved or decked surface's free edge — a 1 m fall outside it and no railing, wall or building within half a metre.
 const sheets = ["floor-2", "floor-1", "roof"] as const;
+const stairBoxes = boxes.filter((b) => /stair/.test(b.tag ?? "") && !isGuardPart(b) && Math.min(b.size.x, b.size.z) >= 0.2);
 const seen = new Set<string>();
 const missing: string[] = [];
 const near = (x: number, z: number) => rails.some((p) => {
@@ -228,6 +269,8 @@ for (const sheet of sheets) {
         const outX = x - nx * 1.0 * sgn;
         const outZ = z - nz * 1.0 * sgn;
         if (inRing(s.ring, outX, outZ)) continue;
+        // A hatch drawn over a stair reads a tread as its level: a stair's edges are its handrails' to guard, judged with the railings above.
+        if (stairBoxes.some((b) => inFoot(b, x, z, 0.3))) continue;
         const level = levelAt(inX, inZ, 30);
         const outLevel = levelAt(outX, outZ, level + 0.2);
         gap++;

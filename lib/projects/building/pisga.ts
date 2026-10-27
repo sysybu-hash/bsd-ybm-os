@@ -823,6 +823,17 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     const deckLevel = (sf: { ring: Array<[number, number]> }) => {
       const cx = sf.ring.reduce((t, q) => t + q[0], 0) / sf.ring.length;
       const cz = sf.ring.reduce((t, q) => t + q[1], 0) / sf.ring.length;
+      // A mark inside the deck names it, the highest of them: under a grating the sheet marks the ground below too (the east deck's +4.22 on
+      // floor −2's sheet beside its +5.73 on all three). Else the nearest mark within 6 m.
+      // (On it or within 30 cm of its edge: a mark's anchor often sits on the deck's edge line.)
+      const onRing = (x: number, z: number) => insidePolygon(sf.ring, x, z) || sf.ring.some((p, i) => {
+        const q = sf.ring[(i + 1) % sf.ring.length]!;
+        const l2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2 || 1;
+        const t = Math.max(0, Math.min(1, ((x - p[0]) * (q[0] - p[0]) + (z - p[1]) * (q[1] - p[1])) / l2));
+        return Math.hypot(x - p[0] - (q[0] - p[0]) * t, z - p[1] - (q[1] - p[1]) * t) < 0.3;
+      });
+      const inside = allSpots.filter((q) => q.level < 12 && onRing(q.x, q.z));
+      if (inside.length) return Math.max(...inside.map((q) => q.level));
       return allSpots.filter((q) => Math.hypot(q.x - cx, q.z - cz) < 6 && q.level < 12).sort((a, b) => Math.hypot(a.x - cx, a.z - cz) - Math.hypot(b.x - cx, b.z - cz))[0]?.level;
     };
     // (A plane through the sheet's level marks was tried for the ramps and sent a patch up the wall behind it: the marks name levels of things beside the paving too. Paving lies on the ground until a mark is tied to its own polygon.)
@@ -835,10 +846,11 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     });
     // The east landing and the grated deck below it are raised on fill with the bank behind: every free edge of theirs is railed, drop or not (the user marked them missing, 2026-10-21).
     const eastLanding = (x: number, z: number) => x > 53.8 && x < 67 && z > 3.5 && z < 14.2;
-    // An edge a retaining wall or a parapet already guards stands no railing of its own beside it; nor does the bed's, under a metre over the courtyard's paving.
+    // An edge a retaining wall or a parapet already guards stands no railing of its own beside it; nor does the bed's, under a metre over the courtyard's paving,
+    // nor any hatch's edge inside the bed (the bed's hatch is drawn in pieces whose edges cross it).
     const guards = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && /^(site:retaining|roof:parapet|site:bed-kerb)/.test(p.tag ?? ""));
     const nearGuard = (x: number, z: number) => guards.some((b) => Math.abs(x - b.centre.x) < b.size.x / 2 + 0.6 && Math.abs(z - b.centre.z) < b.size.z / 2 + 0.6);
-    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z), eastLanding));
+    prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z) => nearStair(x, z) || nearGuard(x, z) || inBed(x, z), eastLanding));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();

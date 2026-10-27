@@ -198,7 +198,7 @@ export function dxfSpotHeights(drawing: DxfDrawing, sheet: keyof typeof PISGA_DX
  * A set of treads as a flight of solid steps: from its top at `top` metres down to `bottom`, the
  * steps as wide as the lines, each a block down to the ground.
  */
-export function stairPrims(set: TreadSet, top: number, bottom: number, tag: string, material: "concrete" | "stone" = "concrete", base = bottom - 0.4): Primitive[] {
+export function stairPrims(set: TreadSet, top: number, bottom: number, tag: string, material: "concrete" | "stone" = "concrete", base = bottom - 0.4, walled = false): Primitive[] {
   const out: Primitive[] = [];
   const rise = (top - bottom) / set.n;
   const ang = Math.atan2(set.dir[1], set.dir[0]);
@@ -221,6 +221,8 @@ export function stairPrims(set: TreadSet, top: number, bottom: number, tag: stri
       const h = top - rise * (t * (set.n - 1)) ;
       out.push({ type: "box", centre: { x: px, y: h + 0.95, z: pz }, size: { x: (set.pitch * set.n) / sub + 0.02, y: 0.05, z: 0.05 }, rotY: -ang, material: "frame", tag: `${tag}-rail` });
     }
+    // Against a side wall (`walled`) the handrail is fixed to the wall: no posts of its own, which would stand a second guard beside it.
+    if (walled && side !== 0) continue;
     for (let k = 0; k < set.n; k += 4) {
       const t = k / Math.max(1, set.n - 1);
       const px = set.first[0] + (set.last[0] - set.first[0]) * t + perp[0] * side * (set.width / 2 - 0.04);
@@ -307,13 +309,13 @@ export function dxfEntrancePrims(drawing: DxfDrawing, floorMinus1: number, stree
     ({ type: "box", centre: { x: cx, y: (y0 + y1) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: y1 - y0, z: z1 - z0 }, material, tag });
   // n tread lines are n + 1 risers: the flight's top block is one riser under the landing.
   const riseCore = (landing - floorMinus1) / (core.n + 1);
-  out.push(...stairPrims(down(core), landing - riseCore, floorMinus1 + riseCore, "floor-1:inside:stair", "stone", floorMinus1));
+  out.push(...stairPrims(down(core), landing - riseCore, floorMinus1 + riseCore, "floor-1:inside:stair", "stone", floorMinus1, true));
   const zLand0 = Math.max(core.first[1], core.last[1]) + core.pitch / 2;
   const zLand1 = Math.min(entry.first[1], entry.last[1]) - entry.pitch / 2;
   out.push(boxOf(zLand0, zLand1, landing - 0.4, landing, "stone", "floor-1:inside:stair"));
   const riseEntry = (top - landing) / (entry.n + 1);
   const zTop = Math.max(entry.first[1], entry.last[1]) + entry.pitch / 2;
-  out.push(...stairPrims(down(entry), top - riseEntry, landing + riseEntry, "site:entry-stair", "stone", landing - 0.4));
+  out.push(...stairPrims(down(entry), top - riseEntry, landing + riseEntry, "site:entry-stair", "stone", landing - 0.4, true));
   // The flight's own head: the street's paving up to the treads.
   out.push(boxOf(zTop, zTop + 0.6, top - 0.4, top, "stone", "site:entry-stair"));
   // Its side walls (the sheet's 20 cm stone walls either side) and the slab under the landing and the entry flight, over the courtyard.

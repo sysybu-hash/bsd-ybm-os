@@ -40,6 +40,27 @@ const outside = marks.filter((m) => {
   if (m.abs - 923.2 >= 14) return false;
   return !nearDeck(m);
 });
+const builtTopNear = (x: number, z: number, level: number): { tag: string; top: number } | undefined => {
+  for (const p of model.primitives) {
+    if (p.type === "prism") {
+      // The distance to the ring's edges (not its corners: a terrace's edge runs long between them).
+      const d = Math.min(...p.ring.map(([ax, az], i) => {
+        const [bx, bz] = p.ring[(i + 1) % p.ring.length]!;
+        const l2 = (bx - ax) ** 2 + (bz - az) ** 2 || 1;
+        const t = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2));
+        return Math.hypot(x - ax - (bx - ax) * t, z - az - (bz - az) * t);
+      }));
+      const xs = p.ring.map((q) => q[0]);
+      const zs = p.ring.map((q) => q[1]);
+      const inBox = x > Math.min(...xs) - 1 && x < Math.max(...xs) + 1 && z > Math.min(...zs) - 1 && z < Math.max(...zs) + 1;
+      if ((inBox && d < 1) || (inBox && x > Math.min(...xs) && x < Math.max(...xs) && z > Math.min(...zs) && z < Math.max(...zs))) if (Math.abs(p.y1 - level) <= 0.5) return { tag: p.tag ?? "", top: p.y1 };
+    } else if (p.type === "box" && Math.min(p.size.x, p.size.z) >= 0.5) {
+      const top = p.centre.y + p.size.y / 2;
+      if (Math.abs(x - p.centre.x) < p.size.x / 2 + 1 && Math.abs(z - p.centre.z) < p.size.z / 2 + 1 && Math.abs(top - level) <= 0.5) return { tag: p.tag ?? "", top };
+    }
+  }
+  return undefined;
+};
 const seen = new Set<string>();
 const rows: string[] = [];
 let sum = 0, n = 0, worst = 0;
@@ -50,6 +71,12 @@ for (const m of outside.sort((a, b) => a.z - b.z)) {
   const want = m.abs - 923.2;
   const have = ground(m.x, m.z);
   const err = have - want;
+  // A mark the ground misses may name what stands there (a terrace, a deck, a landing): a built top within a metre of it, at its level within half a metre.
+  const built = Math.abs(err) > 0.5 ? builtTopNear(m.x, m.z, want) : undefined;
+  if (built) {
+    rows.push(`✓ (${m.x.toFixed(1)}, ${m.z.toFixed(1)}) סימן ${want.toFixed(2)} ← ${built.tag} ${built.top.toFixed(2)} (לא קרקע)  ${m.text}`);
+    continue;
+  }
   sum += Math.abs(err); n++; worst = Math.max(worst, Math.abs(err));
   rows.push(`${Math.abs(err) > 0.5 ? "✗" : "✓"} (${m.x.toFixed(1)}, ${m.z.toFixed(1)}) סימן ${want.toFixed(2)} ← קרקע ${have.toFixed(2)} (${err >= 0 ? "+" : ""}${err.toFixed(2)})  ${m.text}`);
 }
