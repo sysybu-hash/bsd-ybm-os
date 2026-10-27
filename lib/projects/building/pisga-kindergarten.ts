@@ -1,4 +1,4 @@
-import { floorPrimitives, inset, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
+import { floorPrimitives, inset, insidePolygon, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
 import type { Primitive } from "@/lib/projects/building/model";
 import type { PaintedPath, PdfPage } from "@/lib/projects/building/pdf-paths";
 import { readPlanWalls, type PlanWalls } from "@/lib/projects/building/plan-walls";
@@ -31,6 +31,18 @@ export const KINDERGARTEN = { ground: 0, floor: 4.54, roof: 7.99 } as const;
 const BOX = { x0: -3.3, x1: 56.7, z0: -7.2, z1: 8.0 };
 /** The upper floor stands on the south part: the new building's north wall line (1.02) is its north face. */
 const UPPER_Z0 = 1.02;
+/**
+ * Its ground floor's outer face, measured off the plan's outer-face layer (A2-10): not its box. The north face steps — z −7.22 from x 5.57 to
+ * 18.58, back to −4.01 to x 24.34, −7.22 again to 30.72, and −4.01 from there to the east end (the pergola the floor sheets draw at x 33–36.5
+ * stands in front of it); the west end is narrower, the face down x 5.2 to the upper floor's line and the west wing's north face at z 4.17.
+ * (The box stood 113 m² of building where the plan has the yard.)
+ */
+const GROUND: Outline = [[-3.3, 7.96], [-3.3, 4.17], [1.06, 4.17], [1.06, UPPER_Z0], [5.2, UPPER_Z0], [5.2, -2.43], [5.57, -2.43], [5.57, -7.22], [18.58, -7.22], [18.58, -4.01], [24.34, -4.01], [24.34, -7.22], [30.72, -7.22], [30.72, -4.01], [56.69, -4.01], [56.69, 7.96]];
+/** The upper floor: the ground floor's part south of UPPER_Z0. The rest of the ground floor's roof is the north terrace. */
+const UPPER: Outline = [[-3.3, 7.96], [-3.3, 4.17], [1.06, 4.17], [1.06, UPPER_Z0], [56.69, UPPER_Z0], [56.69, 7.96]];
+const TERRACE: Outline = [...GROUND.slice(4, 15), [56.69, UPPER_Z0]];
+/** The new building's footprint, standing on its roof: no railing along an edge under it. */
+const NEW_BUILDING: Outline = [[0.87, 1.01], [53.93, 1.01], [53.93, 16.6], [0.87, 16.6]];
 
 /**
  * A page for the readers, a point a centimetre, point (500, 1030) the corner
@@ -95,15 +107,11 @@ function shifted(prims: Primitive[], dx: number, dz: number): Primitive[] {
   });
 }
 
-const rectRing = (x0: number, z0: number, x1: number, z1: number): Outline => [
-  [x0, z0],
-  [x1, z0],
-  [x1, z1],
-  [x0, z1],
-];
-
-/** Where the ground is dug for it: its box, in the plan frame. */
-export const kindergartenOutline = (): Outline => rectRing(BOX.x0, BOX.z0, BOX.x1, BOX.z1);
+/**
+ * Where the ground is dug for it, in the plan frame: its ground floor's outline and the court between its two north wings (x 18.58–24.34, walled
+ * on three sides, a step drawn down into it on A4-40), which the slope would otherwise fill to its windows' heads.
+ */
+export const kindergartenOutline = (): Outline => GROUND.filter(([x, z]) => !(x > 18 && x < 25 && z > -4.5));
 
 /**
  * The kindergarten: a shell on its box with a band of windows round each
@@ -115,18 +123,21 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
   const walls: PlanWalls = readPlanWalls(wallsPage(drawing), { x: PAGE.x, y: PAGE.y, width: 7600, height: 3000 }, { unitsPerMetre: 100, pens: { colours: [0xff0000] }, closePx: 8 });
   const out: Primitive[] = [];
   // The ground floor under the whole box; above it only the south part, from z 1.02: the north is a terrace at its roof (+4.52 on the sheets).
+  const moved = (ring: Outline): Outline => ring.map(([x, z]) => [x + SHIFT, z + SHIFT] as [number, number]);
   const floors = [
-    { level: KINDERGARTEN.ground, height: KINDERGARTEN.floor - KINDERGARTEN.ground, z0: BOX.z0 },
-    { level: KINDERGARTEN.floor, height: KINDERGARTEN.roof - KINDERGARTEN.floor, z0: UPPER_Z0 },
+    { level: KINDERGARTEN.ground, height: KINDERGARTEN.floor - KINDERGARTEN.ground, ring: GROUND },
+    { level: KINDERGARTEN.floor, height: KINDERGARTEN.roof - KINDERGARTEN.floor, ring: UPPER },
   ];
-  for (const { level, height, z0: nz } of floors) {
-    const [x0, z0, x1, z1] = [BOX.x0 + SHIFT, nz + SHIFT, BOX.x1 + SHIFT, BOX.z1 + SHIFT];
-    const outline = rectRing(x0, z0, x1, z1);
+  for (const { level, height, ring } of floors) {
+    const outline = moved(ring);
+    const xs = outline.map((q) => q[0]);
+    const zs = outline.map((q) => q[1]);
+    const [x0, z0, x1, z1] = [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)];
     const spec: FloorSpec = { id: "kindergarten", level, height, outline, window: { sill: 1.0, head: 2.6, surround: 0.1 }, facade: "existing", interior: "plaster" };
     // The rooms: the plan's walls on this floor's part of the box; the shell: its four walls, a window band on each.
     // A wall that runs on past this floor's outline (the upper floor stands on the south part only) stops at it: the rest would stand out on the terrace as a stone stub.
     const clipped = walls.bands
-      .filter((b) => b.y + b.h > z0 + 0.3 && b.y < z1 - 0.3 && b.x > x0 + 0.3 && b.x + b.w < x1 - 0.3)
+      .filter((b) => b.y + b.h > z0 + 0.3 && b.y < z1 - 0.3 && b.x > x0 + 0.3 && b.x + b.w < x1 - 0.3 && insidePolygon(outline, b.x + b.w / 2, (Math.max(b.y, z0) + Math.min(b.y + b.h, z1)) / 2))
       .map((b) => ({ ...b, y: Math.max(b.y, z0), h: Math.min(b.y + b.h, z1) - Math.max(b.y, z0) }))
       .filter((b) => b.h >= 0.1);
     const rooms = { ...walls, bands: clipped };
@@ -134,7 +145,12 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
     const t = 0.3;
     const wall = (cx: number, cz: number, sx: number, sz: number, y0: number, y1: number) =>
       out.push({ type: "box", centre: { x: cx, y: (y0 + y1) / 2, z: cz }, size: { x: sx, y: y1 - y0, z: sz }, material: "existing", tag: "kindergarten" });
-    for (const [a, b, z, along] of [[x0, x1, z0, "x"], [x0, x1, z1, "x"], [z0, z1, x0, "z"], [z0, z1, x1, "z"]] as const) {
+    // The shell along each of the outline's (square) edges.
+    const sides = outline.map((p, i) => {
+      const q = outline[(i + 1) % outline.length]!;
+      return Math.abs(q[1] - p[1]) < 0.01 ? ([Math.min(p[0], q[0]), Math.max(p[0], q[0]), p[1], "x"] as const) : ([Math.min(p[1], q[1]), Math.max(p[1], q[1]), p[0], "z"] as const);
+    });
+    for (const [a, b, z, along] of sides) {
       // Solid below the sill and above the head; between them piers 1.6 m wide every 3.2 m, glazing in between.
       wall(along === "x" ? (a + b) / 2 : z, along === "x" ? z : (a + b) / 2, along === "x" ? b - a : t, along === "x" ? t : b - a, level, level + 1.0);
       wall(along === "x" ? (a + b) / 2 : z, along === "x" ? z : (a + b) / 2, along === "x" ? b - a : t, along === "x" ? t : b - a, level + 2.6, level + height);
@@ -155,8 +171,8 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
     out.push(slab(inset(outline, 0.06), level - 0.02, 0.3, "slab", "kindergarten:slab"));
   }
   // Its roofs: the south part's at +7.99, the north terrace's at the upper floor's level.
-  out.push(slab(inset(rectRing(BOX.x0 + SHIFT, UPPER_Z0 + SHIFT, BOX.x1 + SHIFT, BOX.z1 + SHIFT), 0.06), KINDERGARTEN.roof, 0.3, "slab", "kindergarten:roof"));
-  out.push(slab(inset(rectRing(BOX.x0 + SHIFT, BOX.z0 + SHIFT, BOX.x1 + SHIFT, UPPER_Z0 + SHIFT), 0.06), KINDERGARTEN.floor + 0.04, 0.3, "paving", "kindergarten:terrace"));
+  out.push(slab(inset(moved(UPPER), 0.06), KINDERGARTEN.roof, 0.3, "slab", "kindergarten:roof"));
+  out.push(slab(inset(moved(TERRACE), 0.06), KINDERGARTEN.floor + 0.04, 0.3, "paving", "kindergarten:terrace"));
   // The railings the sheets' notes call for ("הגבהת מעקה קיים", "no foothold and no climbing"): the plan's marks +5.62 and +6.22 over the terrace's +4.52 are the existing 1.10 m railing and the raised 1.70 m one.
   // Upright bars only, so there is nothing to climb; a post every 1.6 m, a top rail, a kerb at the foot.
   const railing = (ax: number, az: number, bx: number, bz: number, level: number) => {
@@ -174,16 +190,26 @@ export function buildKindergarten(drawing: DxfDrawing): Primitive[] {
       out.push({ type: "box", centre: { x: p.x, y: (level + 0.2 + y1) / 2, z: p.z }, size: { x: post ? 0.07 : 0.018, y: y1 - level - 0.2, z: post ? 0.07 : 0.018 }, material: "frame", tag: "kindergarten:railing" });
     }
   };
-  const [rx0, rx1, rz0, rz1, rzu] = [BOX.x0 + SHIFT + 0.1, BOX.x1 + SHIFT - 0.1, BOX.z0 + SHIFT + 0.1, BOX.z1 + SHIFT - 0.1, UPPER_Z0 + SHIFT];
-  // The north terrace's three open sides, then the upper roof's west and east edges (its north runs under the new building, its south is the building's own wall).
-  const t0 = KINDERGARTEN.floor + 0.04;
-  railing(rx0, rz0, rx1, rz0, t0);
-  railing(rx0, rz0, rx0, rzu, t0);
-  railing(rx1, rz0, rx1, rzu, t0);
-  railing(rx0, rzu, rx0, rz1, KINDERGARTEN.roof);
-  railing(rx1, rzu, rx1, rz1, KINDERGARTEN.roof);
-  // The upper roof's north edge is a 3.5 m drop onto the terrace wherever the new building does not stand against it: the two ends west and east of the building (x 0.88 and 53.92).
-  railing(rx0, rzu, 0.88 + SHIFT, rzu, KINDERGARTEN.roof);
-  railing(53.92 + SHIFT, rzu, rx1, rzu, KINDERGARTEN.roof);
+  // Every open edge of the north terrace (not its line against the upper floor), then of the upper roof (not its south edge, the building's own
+  // wall, nor where the new building stands on it), 10 cm in from the face. The upper roof's north edge drops 3.5 m onto the terrace east of x 53.92.
+  const edgeRails = (ring: Outline, level: number, skip: (x: number, z: number) => boolean) => ring.forEach((p, i) => {
+    const q = ring[(i + 1) % ring.length]!;
+    const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+    const n: [number, number] = Math.abs(q[1] - p[1]) < 0.01 ? [0, insidePolygon(ring, mx, mz + 0.2) ? 0.1 : -0.1] : [insidePolygon(ring, mx + 0.2, mz) ? 0.1 : -0.1, 0];
+    let from: number | null = null;
+    for (let k = 0; k <= 40; k++) {
+      const t = k / 40;
+      const blocked = skip(p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t);
+      if (!blocked && from === null) from = t;
+      if ((blocked || k === 40) && from !== null) {
+        const [ax, az] = [p[0] + (q[0] - p[0]) * from + n[0] + SHIFT, p[1] + (q[1] - p[1]) * from + n[1] + SHIFT];
+        const [bx, bz] = [p[0] + (q[0] - p[0]) * t + n[0] + SHIFT, p[1] + (q[1] - p[1]) * t + n[1] + SHIFT];
+        if (Math.hypot(bx - ax, bz - az) > 0.3) railing(ax, az, bx, bz, level);
+        from = null;
+      }
+    }
+  });
+  edgeRails(TERRACE, KINDERGARTEN.floor + 0.04, (_x, z) => Math.abs(z - UPPER_Z0) < 0.01);
+  edgeRails(UPPER, KINDERGARTEN.roof, (x, z) => Math.abs(z - 7.96) < 0.01 || insidePolygon(NEW_BUILDING, x, z));
   return shifted(out, -SHIFT, -SHIFT);
 }
