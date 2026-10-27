@@ -19,7 +19,7 @@ import { railingPrims, stairPrims, type TreadSet } from "@/lib/projects/building
  */
 export function kindergartenExitsGround(x: number, z: number): [number, number] | undefined {
   // The east yard's floor.
-  if (x > 56.69 && x < 65.5 && z > 3.9 && z < 7.9) return [0, 1];
+  if (x > 56.69 && x < 64.6 && z > 3.9 && z < 7.9) return [0, 1];
   const w = z > -1 ? 1 : (z + 4) / 3;
   if (z <= -4 || z >= 4.3) return undefined;
   // North of the yard's wall the ground rises from ±0.00 at the building to the stair's path (+1.08 at x 67.4, the plan's mark).
@@ -44,16 +44,29 @@ function balusters(a: [number, number], b: [number, number], ya: number, yb: num
   return out;
 }
 
-/** A flight along x at z centre `zc`, `width` wide: its top tread at x `xTop` (level `top`), its last at `xBottom` (one rise over `bottom`). */
-function flight(xTop: number, xBottom: number, zc: number, width: number, n: number, top: number, bottom: number, base: number): { set: TreadSet; prims: Primitive[] } {
+/**
+ * A flight along x at z centre `zc`, `width` wide: its top tread at x `xTop` (level `top`), its last at `xBottom` (one rise over `bottom`).
+ * Walled: the handrail on the wall side is fixed to it; the open side gets its bars apart. `steel`: the light stair the facade draws, each
+ * tread a folded plate 25 cm deep under its nosing (a sloped stringer, stepped), not a mass down to `base`.
+ */
+function flight(xTop: number, xBottom: number, zc: number, width: number, n: number, top: number, bottom: number, base: number, steel = false): { set: TreadSet; prims: Primitive[] } {
   const dir = Math.sign(xBottom - xTop);
   const going = Math.abs(xBottom - xTop) / n;
   const set: TreadSet = { n, width, pitch: going, dir: [dir, 0], first: [xTop + (dir * going) / 2, zc], last: [xBottom - (dir * going) / 2, zc], layer: "A4-40" };
-  // Walled: the handrail on the wall side is fixed to it; the open side gets its bars below.
-  return { set, prims: stairPrims(set, top, bottom, "site:stair-kg-exit", "concrete", base, true) };
+  const prims = stairPrims(set, top, bottom, "site:stair-kg-exit", "concrete", base, true);
+  if (!steel) return { set, prims };
+  const rise = (top - bottom) / n;
+  return {
+    set,
+    prims: prims.map((p, k) => {
+      if (k >= n || p.type !== "box") return p;
+      const h = top - k * rise;
+      return { ...p, centre: { ...p.centre, y: h - (rise + 0.25) / 2 }, size: { ...p.size, y: rise + 0.25 }, material: "metal" as const };
+    }),
+  };
 }
 
-const slab = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, tag: string, material: "concrete" | "stone" | "paving" = "concrete"): Primitive => ({
+const slab = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: number, tag: string, material: "concrete" | "stone" | "paving" | "metal" = "concrete"): Primitive => ({
   type: "box",
   centre: { x: (x0 + x1) / 2, y: (y0 + y1) / 2, z: (z0 + z1) / 2 },
   size: { x: x1 - x0, y: y1 - y0, z: z1 - z0 },
@@ -74,37 +87,46 @@ export function kindergartenExits(groundAt: (x: number, z: number) => number): P
   let from = 56.69;
   for (const [o0, o1] of [[59.3, 60.0], [61.04, 61.86], [62.84, 63.66]] as const) {
     out.push(slab(from, o0, 3.9, 4.1, 0, wallTop, "site:retaining-yard", "stone"));
-    out.push(slab(o0, o1, 3.9, 4.1, 3.05, wallTop, "site:retaining-yard", "stone"));
+    // The facade draws the openings from +0.5 to +2.9: a sill under each, a lintel over.
+    out.push(slab(o0, o1, 3.9, 4.1, 0, 0.5, "site:retaining-yard", "stone"));
+    out.push(slab(o0, o1, 3.9, 4.1, 2.9, wallTop, "site:retaining-yard", "stone"));
     from = o1;
   }
-  out.push(slab(from, 65.6, 3.9, 4.1, 0, wallTop, "site:retaining-yard", "stone"));
-  out.push(slab(65.4, 65.6, 4.1, 7.9, 0, wallTop, "site:retaining-yard", "stone"));
+  out.push(slab(from, 64.9, 3.9, 4.1, 0, wallTop, "site:retaining-yard", "stone"));
+  out.push(slab(64.6, 64.9, 4.1, 7.9, 0, wallTop, "site:retaining-yard", "stone"));
+  // Past the yard the plan carries the wall on east to x 68.2, holding the bank south of the stair's path: its top follows the bank, as the
+  // facade draws no +5.62 east of the yard.
+  for (let x = 64.9; x < 68.2 - 1e-6; x += 0.55) {
+    const x1 = Math.min(68.2, x + 0.55);
+    out.push(slab(x, x1, 3.9, 4.1, 0, Math.max(groundAt((x + x1) / 2, 3.8) + 0.4, groundAt((x + x1) / 2, 4.6) + 0.3), "site:retaining-yard", "stone"));
+  }
 
   // East: the stair, its path, landings and posts.
   const zc = 3.25, w = 1.1, zn = zc - w / 2;
   out.push(slab(66.3, 68.3, 2.7, 3.8, Math.min(groundAt(67.3, 3.25), 1.08) - 0.3, 1.08, "site:kg-exit-path", "paving"));
-  const lower = flight(63.3, 66.3, zc, w, 10, 2.72, 1.08, 0.78);
-  const upper = flight(59.3, 62.4, zc, w, 11, 4.52, 2.72, 2.42);
+  const lower = flight(63.3, 66.3, zc, w, 10, 2.72, 1.08, 0.78, true);
+  const upper = flight(59.3, 62.4, zc, w, 11, 4.52, 2.72, 2.42, true);
   out.push(...lower.prims, ...upper.prims);
-  out.push(slab(62.4, 63.3, 2.7, 3.8, 2.47, 2.72, "site:kg-exit-landing"));
-  out.push(slab(56.69, 59.3, 2.7, 3.8, 4.27, 4.52, "site:kg-exit-landing"));
-  for (const [x, top] of [[57.0, 4.27], [59.2, 4.27], [62.5, 2.47], [63.2, 2.47], [60.9, 2.42]] as const) post(x, zn + 0.1, top);
+  out.push(slab(62.4, 63.3, 2.7, 3.8, 2.47, 2.72, "site:kg-exit-landing", "metal"));
+  out.push(slab(56.69, 59.3, 2.7, 3.8, 4.27, 4.52, "site:kg-exit-landing", "metal"));
+  // The facade draws one post, under the upper landing's free end; the rest hangs between the building, the wall and the path.
+  post(59.2, zn + 0.1, 4.27);
   // The open (north) side: bars up the flights, a railing along the landings.
   out.push(...balusters([59.3, zn + 0.04], [62.4, zn + 0.04], 4.52, 2.72 + (4.52 - 2.72) / 11, rail));
   out.push(...balusters([63.3, zn + 0.04], [66.3, zn + 0.04], 2.72, 1.08 + (2.72 - 1.08) / 10, rail));
   out.push(...railingPrims([56.69, zn + 0.04], [59.3, zn + 0.04], 4.52, rail, 0.95));
   out.push(...railingPrims([62.4, zn + 0.04], [63.3, zn + 0.04], 2.72, rail, 0.95));
 
-  // West: the terrace and its parapet, on two columns at its free corners.
+  // West: the terrace, out to the upper storey's edge the plan draws ("קצה קומה עליונה", z 0 from x −2 to the north wing at x 5.2), its
+  // solid parapet from +3.97 to +6.17 the whole 7.2 m the facade draws; no columns (the facade draws none: it spans from the building).
   out.push(slab(-2.2, 0.88, -0.2, 4.17, 3.97, 4.52, "kindergarten:west-terrace", "paving"));
-  out.push(slab(-2.2, 0.88, -0.2, 0.1, 4.52, 5.62, "kindergarten:west-terrace-parapet", "stone"));
-  out.push(slab(-2.2, -1.9, 0.1, 3.0, 4.52, 5.62, "kindergarten:west-terrace-parapet", "stone"));
-  for (const [x, z] of [[-2.05, -0.05], [0.73, -0.05]] as const) out.push(slab(x - 0.15, x + 0.15, z - 0.15, z + 0.15, groundAt(x, z) - 0.2, 3.97, "kindergarten:west-terrace-column"));
+  out.push(slab(0.88, 5.2, -0.2, 1.02, 3.97, 4.52, "kindergarten:west-terrace", "paving"));
+  out.push(slab(-2.2, 5.2, -0.2, 0.1, 4.52, 6.17, "kindergarten:west-terrace-parapet", "stone"));
+  out.push(slab(-2.2, -1.9, 0.1, 3.0, 4.52, 6.17, "kindergarten:west-terrace-parapet", "stone"));
   // The long wall the walkway runs along (the plan's z 4.17 line, x −11.74…−3.3), to a guard's height over the walkway.
   out.push(slab(-11.74, -3.3, 4.17, 4.47, 0.4, 4.54 + 1.1, "site:retaining-kg", "stone"));
-  // The walkway, posts along its open side, its railing; the wall under its west end.
+  // The walkway, its railing (no posts: the facade hangs it off the long wall); the wall under its west end.
   out.push(slab(-9.3, -2.2, 3.0, 4.17, 3.97, 4.54, "site:kg-exit-landing"));
-  for (const x of [-8.9, -6.4, -3.9]) post(x, 3.12, 3.97);
   out.push(...railingPrims([-9.3, 3.04], [-2.2, 3.04], 4.54, rail, 0.95));
   // The wall under its west end, holding the slope (+5.55) north of the stair; under the walkway only to the walkway.
   out.push(slab(-9.6, -9.4, 3.0, 4.17, 0.5, 3.97, "site:retaining-kg", "stone"));
