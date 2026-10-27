@@ -31,6 +31,10 @@ export function kindergartenExitsGround(x: number, z: number): [number, number] 
   }
   // (Falling smoothly to 0 over 4 m north of z −1.)
   const w = smooth(z > -1 ? 1 : Math.max(0, (z + 5) / 4));
+  // The stair up from the west head path to the +8.84 platform (kindergartenWestLink), cut into the slope between its walls, and the
+  // platform's west strip, which the slope buried, down to its own level behind the plot's west wall.
+  if (x > -13.8 && x < (z > 10.21 ? -11.3 : -12.4) && z > 4.17 && z < 11.3) return [linkLevel(z) - 0.35, 1];
+  if (x >= -12.4 && x < -9.8 && z > 4.4 && z < 11.3) return [8.7, 1];
   // The light well under the west grating (kindergartenWestWell): its floor at the walkway's ground, inside its walls.
   if (x > -9.4 && x < -3.3 && z > 4.3 && z < 6.3) return [0.7, 1];
   if (z <= -5 || z >= 4.3) return undefined;
@@ -85,6 +89,58 @@ const slab = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: nu
   tag,
 });
 
+// The link stair west of the plot's west wall (x −12.1): from the head path's +5.6 at z 4.17, ten treads up south to a half landing at +7.31
+// (z 6.97–7.97), nine more to +8.84 at z 10.21, a landing east through the wall's end onto the platform. 19 risers of 17 cm, 28 cm goings.
+const LINK = { x0: -13.7, x1: -12.55, a0: 4.17, mid0: 6.97, mid1: 7.97, top: 10.49, foot: 5.6, half: 7.31, head: 8.84, going: 0.28 };
+function linkLevel(z: number): number {
+  const L = LINK;
+  if (z <= L.a0) return L.foot;
+  if (z < L.mid0) return Math.min(L.half, L.foot + Math.ceil((z - L.a0) / L.going) * ((L.half - L.foot) / 10));
+  if (z < L.mid1) return L.half;
+  if (z < L.top) return Math.min(L.head, L.half + Math.ceil((z - L.mid1) / L.going) * ((L.head - L.half) / 9));
+  return L.head;
+}
+
+/**
+ * The west exit's way on up (the user's call, 2026-10-27; no sheet draws it): from the head path at +5.6 up to the +8.84 platform by the
+ * plot's emergency exit. The two are 15 cm apart in plan and 3.24 m in height, and the sheet's exit in the plot's west wall (about z 6.5)
+ * is too near the path for any flight, so the stair runs south in a cut in the slope west of that wall — two flights and a half landing,
+ * stone walls each side with the handrails fixed to them — and turns east onto the platform at z 10.2–11.2 where the wall ends. The plot's
+ * west wall stands as the stair's east wall, a parapet a metre over the platform; the slope that buried the platform's west strip is held
+ * behind it, and the platform's own railing along that edge goes.
+ */
+export function kindergartenWestLink(prims: Primitive[], groundAt: (x: number, z: number) => number): void {
+  const L = LINK;
+  for (let i = prims.length - 1; i >= 0; i--) {
+    const p = prims[i]!;
+    if (p.type !== "box") continue;
+    const { x, z } = p.centre;
+    if ((p.tag === "site:retaining-kg" && x > L.x0 - 0.1 && x < L.x1 + 0.1 && z > 4.1 && z < 4.45) || (/^site:surface-rail/.test(p.tag ?? "") && x > -12.0 && x < -11.2 && z > 4.35 && z < 11.3)) prims.splice(i, 1);
+  }
+  const cx = (L.x0 + L.x1) / 2, w = L.x1 - L.x0, tag = "site:stair-kg-link";
+  const flightA: TreadSet = { n: 10, width: w, pitch: L.going, dir: [0, -1], first: [cx, L.mid0 - L.going / 2], last: [cx, L.a0 + L.going / 2], layer: "A4-40" };
+  const flightB: TreadSet = { n: 9, width: w, pitch: L.going, dir: [0, -1], first: [cx, L.top - L.going / 2], last: [cx, L.mid1 + L.going / 2], layer: "A4-40" };
+  prims.push(...stairPrims(flightA, L.half, L.foot, tag, "stone", L.foot - 0.4, true), ...stairPrims(flightB, L.head, L.half, tag, "stone", L.half - 0.4, true));
+  prims.push(
+    slab(L.x0, L.x1, L.mid0, L.mid1, L.half - 0.4, L.half, `${tag}-landing`, "stone"),
+    slab(L.x0, -11.4, L.top, 11.2, L.head - 0.4, L.head, `${tag}-landing`, "paving"),
+    slab(L.x1, -11.4, 10.21, L.top, L.head - 0.4, L.head, `${tag}-landing`, "paving"),
+    // Between the wall and the platform's slanting west edge, and under its north face down to the path: paved, filled solid.
+    slab(-11.95, -10.4, 4.17, 10.21, L.foot - 0.4, L.head - 0.06, `${tag}-fill`, "stone"),
+    slab(-11.95, -10.4, 4.17, 10.21, L.head - 0.06, L.head, `${tag}-landing`, "paving"),
+  );
+  const walls = "site:retaining-link";
+  for (let z = L.a0; z < 11.55 - 1e-6; z += 0.25) {
+    const z1 = Math.min(11.55, z + 0.25), m = (z + z1) / 2;
+    prims.push(slab(-14.05, L.x0, z, z1, L.foot - 0.4, Math.max(groundAt(-14.4, m) + 0.3, linkLevel(m) + 1.0), walls, "stone"));
+    if (z < 10.21 - 1e-6) prims.push(slab(L.x1, -11.95, z, Math.min(10.21, z1), L.foot - 0.4, L.head + 1.05, walls, "stone"));
+  }
+  for (let x = -14.05; x < -10.4 - 1e-6; x += 0.25) {
+    const x1 = Math.min(-10.4, x + 0.25);
+    prims.push(slab(x, x1, 11.2, 11.55, L.head - 0.4, Math.max(L.head + 1.0, groundAt((x + x1) / 2, 11.9) + 0.3), walls, "stone"));
+  }
+}
+
 /**
  * West of the kindergarten's west wing the site sheet draws a rectangle at +9.15 (x −10…−3.25, z 4.65…9.25, the mark +932.35 inside it) whose
  * north strip is the grating it hatches (x −9.3…−3.4, z 4.3…6.2): a light well for the wing's west windows, under a grating, beside a terrace.
@@ -93,7 +149,7 @@ const slab = (x0: number, x1: number, z0: number, z1: number, y0: number, y1: nu
  * paved at +9.15 over its fill, one step over the west platform's +8.84 (paved on to it), six steps down south to the courtyard's +8.12, a
  * railing on its edges over that paving. The posts and railings the surfaces gave the grating and the platform's east edge go.
  */
-export function kindergartenWestWell(prims: Primitive[], groundAt: (x: number, z: number) => number): void {
+export function kindergartenWestWell(prims: Primitive[]): void {
   for (let i = prims.length - 1; i >= 0; i--) {
     const p = prims[i]!;
     if (p.type !== "box") continue;
@@ -106,8 +162,8 @@ export function kindergartenWestWell(prims: Primitive[], groundAt: (x: number, z
     slab(-9.8, -9.2, 4.47, 6.2, 0.4, bear, "site:retaining-well", "stone"),
     slab(-9.8, -3.3, 6.2, 9.2, 0.4, level - 0.06, "site:well-terrace-fill", "stone"),
     slab(-9.8, -3.3, 6.2, 9.2, level - 0.06, level, "site:well-terrace", "paving"),
-    slab(-10.4, -9.8, 4.47, 9.2, Math.min(groundAt(-10.1, 5), groundAt(-10.1, 9)) - 0.4, 8.78, "site:well-terrace-fill", "stone"),
-    slab(-10.4, -9.8, 4.47, 9.2, 8.78, 8.84, "site:well-terrace", "paving"),
+    slab(-10.4, -9.8, 4.17, 9.2, 5.2, 8.78, "site:well-terrace-fill", "stone"),
+    slab(-10.4, -9.8, 4.17, 9.2, 8.78, 8.84, "site:well-terrace", "paving"),
   );
   const down: TreadSet = { n: 6, width: 1.5, pitch: 0.3, dir: [0, 1], first: [-5.65, 9.35], last: [-5.65, 10.85], layer: "A4-40" };
   prims.push(...stairPrims(down, level, 8.12, "site:stair-well", "stone", 7.7));

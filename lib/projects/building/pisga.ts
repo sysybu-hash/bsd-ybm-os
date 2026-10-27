@@ -1,4 +1,4 @@
-import { kindergartenExitDoors, kindergartenExits, kindergartenExitsGround, kindergartenWestWell } from "@/lib/projects/building/pisga-kg-exits";
+import { kindergartenExitDoors, kindergartenExits, kindergartenExitsGround, kindergartenWestLink, kindergartenWestWell } from "@/lib/projects/building/pisga-kg-exits";
 import { dxfCourtyardWall, dxfEntrancePrims, dxfNotes, dxfSpotHeights, dxfTreadSets, railingPrims, stairPrims } from "@/lib/projects/building/pisga-stairs";
 import { dxfKerbLines, dxfSurfaces, surfacePrims } from "@/lib/projects/building/pisga-surfaces";
 import { floorPrimitives, inset, insidePolygon, parapet, slab, type FloorSpec, type Outline } from "@/lib/projects/building/assemble";
@@ -790,7 +790,7 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
   const heights: number[] = [];
   // Where walls stand between metre samples with the ground a storey apart on their two sides, a quarter-metre grid draws the ground instead and
   // the metre grid leaves those cells out: west of the kindergarten, its cross wall at x −9.5 and the long wall at z 4.17.
-  const detail = [{ x0: -16, z0: -6, x1: -2, z1: 7 }];
+  const detail = [{ x0: -16, z0: -6, x1: -2, z1: 12 }];
   for (let j = 0; j < fine.nz; j++) for (let i = 0; i < fine.nx; i++) heights.push(groundAt(fine.x0 + i * fine.dx, fine.z0 + j * fine.dx, true, true));
   prims.push({ type: "terrain", x0: fine.x0, z0: fine.z0, dx: fine.dx, nx: fine.nx, nz: fine.nz, heights, material: "soil", tag: "site:ground", holes: detail });
   for (const d of detail) {
@@ -947,7 +947,8 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     const slabs = prims.filter((p): p is Extract<Primitive, { type: "prism" }> => p.type === "prism");
     const builtTop = (x: number, z: number, level: number) => Math.max(-Infinity, ...slabs.filter((p) => p.y1 <= level + 0.5 && insidePolygon(p.ring, x, z) && !(p.holes ?? []).some((h) => insidePolygon(h, x, z))).map((p) => p.y1));
     prims.push(...surfacePrims(surfaces, (x, z) => groundAt(x, z, true), "site:surface", 0.08, deckLevel, (x, z, level) => nearStair(x, z) || nearGuard(x, z, level) || inBed(x, z), eastLanding, builtTop));
-    kindergartenWestWell(prims, (x, z) => groundAt(x, z, true));
+    kindergartenWestWell(prims);
+    kindergartenWestLink(prims, (x, z) => groundAt(x, z, true));
     // Every run of treads the sheets draw, but the stairs built above from their own reading (the lobby's, the entrance's and the west exit's): the same run drawn on two sheets is one.
     const builtElsewhere = (x: number, z: number) => (x > -2 && x < 1.2 && z > 10 && z < 17) || (x > 22 && x < 31 && z > 9.5 && z < 23);
     const runs = new Set<string>();
