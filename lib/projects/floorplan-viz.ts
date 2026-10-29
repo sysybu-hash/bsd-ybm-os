@@ -317,7 +317,7 @@ async function visualizeWithSpend(
   // a measured run refuses it — once its reading, up to nine paid calls, was
   // made. It is refused before any.
   if (measuredOnly && !nativeCad && !dwf && prepared.mimeType !== "application/pdf") {
-    throw new Error(`לא ניתן למדוד את התוכנית מתמונה — לא הופקה הדמיה מומצאת, ולא בוצעה קריאה בתשלום. ${MEASURED_SOURCES}`);
+    throw new FloorplanCadUnreadableError(`לא ניתן למדוד את התוכנית מתמונה — לא הופקה הדמיה מומצאת, ולא בוצעה קריאה בתשלום. ${MEASURED_SOURCES}`);
   }
 
   const reused =
@@ -612,7 +612,7 @@ async function visualizeWithSpend(
     };
   }
   if (cadResult.outcome === "locked") {
-    throw new Error(
+    throw new FloorplanCadUnreadableError(
       "לא ניתן לנעול את גיאומטריית התוכנית — לא הופקה הדמיה מומצאת",
     );
   }
@@ -623,7 +623,7 @@ async function visualizeWithSpend(
   // name ("ai", "both").
   if (measuredOnly) {
     const why = cadResult.outcome === "skip" && cadResult.reason ? ` (${cadResult.reason})` : "";
-    throw new Error(`לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. ${MEASURED_SOURCES}`);
+    throw new FloorplanCadUnreadableError(`לא ניתן למדוד את התוכנית מהקובץ הזה${why} — לא הופקה הדמיה מומצאת. ${MEASURED_SOURCES}`);
   }
 
   const fallbackSource = cadResult.outcome === "skip" ? cadResult.fallbackRaster ?? prepared : prepared;
