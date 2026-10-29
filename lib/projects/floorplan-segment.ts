@@ -393,6 +393,52 @@ function markedShelter(
   return best ? best.room : null;
 }
 
+/**
+ * Axis lines of one pen that continue one another end to end, as the line
+ * they make together. Each segment maps to its run; a segment with nothing
+ * collinear beside it maps to itself.
+ */
+export function collinearRuns(segments: VectorSegment[], gap: number): Map<VectorSegment, VectorSegment> {
+  const out = new Map<VectorSegment, VectorSegment>();
+  const groups = new Map<string, Array<{ s: VectorSegment; a: number; b: number; at: number; h: boolean }>>();
+  for (const s of segments) {
+    const h = Math.abs(s.y2 - s.y1) < Math.abs(s.x2 - s.x1);
+    const at = h ? (s.y1 + s.y2) / 2 : (s.x1 + s.x2) / 2;
+    const a = h ? Math.min(s.x1, s.x2) : Math.min(s.y1, s.y2);
+    const b = h ? Math.max(s.x1, s.x2) : Math.max(s.y1, s.y2);
+    const key = `${h ? "h" : "v"}:${s.lineWidth}:${Math.round(at * 4)}`;
+    const group = groups.get(key) ?? [];
+    group.push({ s, a, b, at, h });
+    groups.set(key, group);
+  }
+  for (const group of groups.values()) {
+    group.sort((p, q) => p.a - q.a);
+    let run: typeof group = [];
+    let end = -Infinity;
+    const close = () => {
+      if (run.length === 0) return;
+      const first = run[0]!;
+      const a = first.a;
+      const b = run.reduce((m, p) => Math.max(m, p.b), -Infinity);
+      const line: VectorSegment = first.h
+        ? { ...first.s, x1: a, x2: b, y1: first.at, y2: first.at }
+        : { ...first.s, x1: first.at, x2: first.at, y1: a, y2: b };
+      for (const p of run) out.set(p.s, run.length > 1 ? line : p.s);
+    };
+    for (const p of group) {
+      if (p.a > end + gap) {
+        close();
+        run = [];
+        end = -Infinity;
+      }
+      run.push(p);
+      end = Math.max(end, p.b);
+    }
+    close();
+  }
+  return out;
+}
+
 export function segmentRooms(input: {
   bodies: WallBody[];
   openings: Opening[];
@@ -489,9 +535,19 @@ export function segmentRooms(input: {
     }
     return false;
   };
+  // A chain plotted by AutoCAD is one line per figure, each stopping at its
+  // ticks: the Gotlib sheet's "364" runs from wall to wall and crosses none,
+  // and with the "263" beside it cut the living room into four. The chain is
+  // the run its pieces make end to end, and it is the run that crosses walls.
+  const chainOf = collinearRuns(
+    (input.segments ?? []).filter((segment) => segment.lineWidth >= inkCut && isAxisAligned(segment)),
+    unitsPerMetre * 0.05,
+  );
   const ink = (input.segments ?? []).filter((segment) => {
     if (segment.lineWidth < inkCut || !isAxisAligned(segment)) return false;
     if (crossesWalls(segment)) return false;
+    const chain = chainOf.get(segment);
+    if (chain && crossesWalls(chain)) return false;
     if (Math.hypot(segment.x2 - segment.x1, segment.y2 - segment.y1) >= unitsPerMetre * 0.25) return true;
     return nearWall(segment.x1, segment.y1) || nearWall(segment.x2, segment.y2);
   });

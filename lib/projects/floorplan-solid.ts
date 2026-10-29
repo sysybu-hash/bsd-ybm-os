@@ -4199,11 +4199,26 @@ export function doorsFromSwings<T extends Opening & { kind?: string }>(
       const atHinge = endingAt(b < a ? to : from);
       const inLine = [...atJamb, ...atHinge, ...over];
       const wallBehind = !across && inLine.length > 0 ? inLine.reduce((p, q) => (q.thickness > p.thickness ? q : p)) : undefined;
-      return { orientation, line, from, to, tip, index, wallBehind, ends: 2 * Number(atJamb.length > 0) + Number(atHinge.length > 0) + Number(over.length > 0) };
+      // No wall on the doorway's line, but a cross wall at each end of it: a
+      // front door set between two walls that run away from it. The Gotlib
+      // sheet's entrance stands so, between the stair-hall wall and the flat's
+      // own, and unsealed it let the living room out onto the landing.
+      const crossAt = (at: number) => {
+        const p = orientation === "h" ? { x: at, y: line } : { x: line, y: at };
+        const near = unitsPerMetre * 0.15;
+        return bodies.some((w) => {
+          if (w.orientation === orientation) return false;
+          const r = bodyRect(w);
+          return p.x >= r.x - near && p.x <= r.x + r.w + near && p.y >= r.y - near && p.y <= r.y + r.h + near;
+        });
+      };
+      const framed = !across && inLine.length === 0 && crossAt(from) && crossAt(to);
+      return { orientation, line, from, to, tip, index, wallBehind, framed, ends: 2 * Number(atJamb.length > 0) + Number(atHinge.length > 0) + Number(over.length > 0) };
     });
     const pick =
       tries.find((t) => t.index >= 0) ??
-      [...tries].filter((t) => t.wallBehind).sort((p, q) => q.ends - p.ends)[0];
+      [...tries].filter((t) => t.wallBehind).sort((p, q) => q.ends - p.ends)[0] ??
+      tries.find((t) => t.framed);
     if (!pick) continue;
     const leaf = { x: arc.cx, y: arc.cy, dx: pick.tip.x - arc.cx, dy: pick.tip.y - arc.cy };
     if (pick.index >= 0) {
@@ -4224,11 +4239,11 @@ export function doorsFromSwings<T extends Opening & { kind?: string }>(
       claimed.add(pick.index);
       continue;
     }
-    const wall = pick.wallBehind!;
+    const wall = pick.wallBehind;
     const door = {
       orientation: pick.orientation,
-      centre: wall.centre,
-      thickness: wall.thickness,
+      centre: wall ? wall.centre : pick.line,
+      thickness: wall ? wall.thickness : unitsPerMetre * 0.1,
       from: pick.from,
       to: pick.to,
       kind: "door" as const,
