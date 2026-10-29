@@ -289,6 +289,40 @@ export function lockScaleToHint(
 }
 
 /**
+ * The ratios a sheet is plotted at. 1:20 and finer are details, not flats, and
+ * sweeping them costs half a minute on a busy sheet.
+ */
+const PLOT_RATIOS = [50, 100] as const;
+const POINTS_PER_METRE = 72 / 0.0254;
+
+/**
+ * The scale a PDF was plotted at, for a sheet nothing else could measure.
+ *
+ * A plot from AutoCAD draws its SHX text as strokes: the 1:50 in the title
+ * block, the dimension chains and the area are all geometry, with no text
+ * layer to read, and a monochrome sheet marks no doorways in colour. But a
+ * sheet plotted at 1:50 is 56.7 points a metre whatever is written on it, so
+ * each standard ratio is a candidate — checked by the same bed and door gates
+ * as a chain reading, and the one that finds the most beds wins. On the Gotlib
+ * plot that motivated this, 1:50 found five beds and 1:100 none. A
+ * sheet plotted to fit the paper is at no standard ratio, finds nothing, and
+ * stays unmeasured.
+ */
+export function lockScaleToPlotRatio(
+  segments: VectorSegment[],
+  bounds: { x: number; y: number; width: number; height: number },
+  curves?: VectorSegment[],
+): (ScaleLock & { ratio: number }) | null {
+  let best: (ScaleLock & { ratio: number }) | null = null;
+  for (const ratio of PLOT_RATIOS) {
+    const lock = lockScaleToHint(segments, bounds, POINTS_PER_METRE / ratio, curves, 0.03);
+    if (!lock || lock.beds === 0) continue;
+    if (!best || lock.beds > best.beds) best = { ...lock, ratio };
+  }
+  return best;
+}
+
+/**
  * The scale the drawing itself states.
  *
  * $INSUNITS is not a guess to be checked against beds and doors. A shop or a
