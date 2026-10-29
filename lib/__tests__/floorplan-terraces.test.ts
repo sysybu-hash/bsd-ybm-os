@@ -232,6 +232,34 @@ describe("the level mark a terrace carries", () => {
     expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([]);
   });
 
+  it("takes the small marks on a sheet that draws no large one, less the legend's by its diamond", async () => {
+    const { terraceLevelMarks } = await import("@/lib/projects/floorplan-build");
+    // The Gotlib plot: two terraces and the legend, all 10 cm across.
+    const a = mark(823, 671, 5.7);
+    const b = mark(548, 1091, 5.7);
+    const legend = mark(878, 1156, 5.7);
+    const diamond = [seg(903, 1120, 911, 1128), seg(911, 1128, 903, 1136), seg(903, 1136, 895, 1128), seg(895, 1128, 903, 1120)];
+    const found = terraceLevelMarks({
+      curves: [...a.curves, ...b.curves, ...legend.curves],
+      segments: [...a.segments, ...b.segments, ...legend.segments, ...diamond],
+    });
+    expect(found.map(({ x, y }) => ({ x, y }))).toEqual([
+      { x: 823, y: 671 },
+      { x: 548, y: 1091 },
+    ]);
+  });
+
+  it("keeps to the large marks where the sheet draws them", async () => {
+    const { terraceLevelMarks } = await import("@/lib/projects/floorplan-build");
+    const terrace = mark(257, 913, 11.3);
+    const legend = mark(591, 981, 5.7);
+    const found = terraceLevelMarks({
+      curves: [...terrace.curves, ...legend.curves],
+      segments: [...terrace.segments, ...legend.segments],
+    });
+    expect(found.map(({ x, y }) => ({ x, y }))).toEqual([{ x: 257, y: 913 }]);
+  });
+
   it("leaves out a plain circle — a grid bubble has no hatch", () => {
     const m = mark(100, 100, 9, 0);
     expect(findLevelMarks(m.curves, m.segments, upm)).toEqual([]);

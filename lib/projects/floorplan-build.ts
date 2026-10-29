@@ -222,6 +222,25 @@ function centreInsideBody(piece: FurniturePiece, body: WallBody): boolean {
   return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h;
 }
 
+/**
+ * The level marks a sheet sets beside its terraces.
+ *
+ * On the reference sheets a terrace's mark is drawn larger than the one in the
+ * flat's legend, and size alone tells them apart. A sheet that sets them all
+ * at the legend's size — the Gotlib plot's three terraces and its legend are
+ * each 10 cm across the radius — finds none that way. There the small ones
+ * are taken, less the legend's, which stands beside the diamond that numbers
+ * the flat (see findDiamonds).
+ */
+export function terraceLevelMarks(geometry: { segments: VectorSegment[]; curves: VectorSegment[] }) {
+  const marks = findLevelMarks(geometry.curves, geometry.segments, 56);
+  if (marks.length > 0) return marks;
+  const diamonds = findDiamonds(geometry.segments, 56);
+  return findLevelMarks(geometry.curves, geometry.segments, 56, { minRadiusM: 0.08 }).filter(
+    (mark) => !diamonds.some((d) => Math.hypot(d.x - mark.x, d.y - mark.y) < 56),
+  );
+}
+
 const log = createLogger("floorplan-build");
 
 /**
@@ -350,7 +369,7 @@ export async function buildFlatFromGeometry(
   // metre), and its hatch is left out of the evidence tests after the lock —
   // not before it: taken out of the scale sweep, it moved דירה 14's scale and
   // cost the flat a terrace.
-  const levelMarks = findLevelMarks(geometry.curves, geometry.segments, 56);
+  const levelMarks = terraceLevelMarks(geometry);
   const markHatch = new Set(levelMarks.flatMap((mark) => mark.strokes));
   const evidence = geometry.segments.filter((segment) => !markHatch.has(segment));
   const sheet = wallBoundingBox(geometry);
@@ -1100,7 +1119,34 @@ export async function buildFlatFromGeometry(
     const seen = new Set<string>();
     return out.filter((r) => r.rows.length > 1 && !seen.has(key(r)) && seen.add(key(r)));
   };
-  const allTerraces = splitByLevel([...terraceHits, ...markedHits]);
+  // A mark at the flat's own level whose flood stayed a sliver: the footprint
+  // takes in only the inner strip of the Gotlib sheet's 6.4 m² west terrace,
+  // and its mark flooded 0.96 m² of it. The paving says where the terrace is;
+  // kept only where the paving gives a terrace, and none is found already.
+  const ownMissed = ownSeeds.filter(
+    (mark) => ![...terraceHits, ...markedHits].some((terrace) => spansContain(terrace.rows, mark.x, mark.y)),
+  );
+  const pavedFromMarks = ownMissed.flatMap((mark) => {
+    const sliver = findTerracesOnFloor(floor, closed, [mark], unitsPerMetre, {
+      unlabelledM2: { min: 0.3, max: 16 },
+      growRim: true,
+    })[0];
+    if (!sliver) return [];
+    // Seeded by every joint that crosses the sliver: few have their middle in it.
+    // Not past a mark at another level: that paving is another storey's.
+    const onlyOwnLevel = (region: SpanRow[]) =>
+      levelMarks.every((other) => {
+        if (!spansContain(region, other.x, other.y)) return true;
+        const text = levelTextAt(other, geometry.segments, geometry.curves);
+        return text == null || (flatLevel != null && sameLevelText(text, flatLevel));
+      });
+    const paved = terraceFromPaving(sliver.rows, geometry.segments, bodies, notLettering, unitsPerMetre, onlyOwnLevel, true);
+    if (paved === sliver.rows || !deepEnough(paved) || standsIn({ rows: paved }).some((piece) => piece.kind === "bed")) {
+      return [];
+    }
+    return [{ rows: paved }];
+  });
+  const allTerraces = splitByLevel([...terraceHits, ...markedHits, ...pavedFromMarks]);
   const notTheFlats = [
     ...allTerraces.filter((terrace) => elsewhere(terrace) && !doorOnto(terrace)),
     // With the marks the programme already put at another level, which seed
