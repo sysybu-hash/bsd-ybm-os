@@ -9,6 +9,7 @@ import { kitchenSinkBasins, openingGenerationBrief } from "@/lib/projects/viz-ge
 import { placeOpeningsOnPage, type PlacedOpening } from "@/lib/projects/floorplan-wall-openings";
 import { scaleFromDoorways } from "@/lib/projects/floorplan-colour-openings";
 import { readSheetScale } from "@/lib/projects/floorplan-sheet-scale";
+import { lockScaleToPlotRatio } from "@/lib/projects/floorplan-scale";
 import {
   extractFloorplanLayout,
   extractFloorplanRoomsWithVision,
@@ -957,12 +958,20 @@ async function tryCadOverview(input: CadOverviewInput): Promise<CadOverviewAttem
           [chainReading?.unitsPerMetre, 28, 42, 56].filter((n): n is number => typeof n === "number"),
         )
       : null;
-  const unitsPerMetreHint = doorwayReading?.unitsPerMetre ?? chainReading?.unitsPerMetre;
+  // Last: the ratio it was plotted at. Local and free, and it answers the
+  // sheet the other two cannot read — SHX text plotted as strokes, no colour.
+  const plotReading =
+    needScale && extent && sheetGeometry && !doorwayReading && !chainReading
+      ? lockScaleToPlotRatio(sheetGeometry.segments, extent, sheetGeometry.curves)
+      : null;
+  const unitsPerMetreHint =
+    doorwayReading?.unitsPerMetre ?? chainReading?.unitsPerMetre ?? plotReading?.unitsPerMetre;
   if (needScale) {
     log.info("scale for a sheet that prints no area", {
       chains: chainReading?.unitsPerMetre,
       doorways: doorwayReading?.unitsPerMetre,
       doorwayCount: doorwayReading?.doorways,
+      plotRatio: plotReading?.ratio,
       chosen: unitsPerMetreHint,
     });
   }

@@ -1,4 +1,10 @@
-import { lockScale, lockScaleToHint, pickScaleLock, type ScaleLock } from "@/lib/projects/floorplan-scale";
+import {
+  lockScale,
+  lockScaleToHint,
+  lockScaleToPlotRatio,
+  pickScaleLock,
+  type ScaleLock,
+} from "@/lib/projects/floorplan-scale";
 
 /** A hatched wall band, drawn the way CAD draws one. */
 const hatchedWall = (
@@ -152,5 +158,41 @@ describe("picking among scale candidates", () => {
     expect(pickScaleLock([row(54, 5, 0)], Number.NaN)).toBeNull();
     expect(pickScaleLock([row(Number.POSITIVE_INFINITY, 5, 0)], 0.08)).toBeNull();
     expect(pickScaleLock([row(54, 5, Number.NaN)], 0.08)).toBeNull();
+  });
+});
+
+describe("locking a plotted sheet to its ratio", () => {
+  /** The same 10 x 8 m room, drawn at a given number of points a metre. */
+  const plotted = (upm: number) => {
+    const t = 0.24 * upm;
+    const segments = [
+      ...hatchedWall("h", 0, 0, 10 * upm, t),
+      ...hatchedWall("h", 8 * upm, 0, 4 * upm, t),
+      ...hatchedWall("h", 8 * upm, 4.9 * upm, 10 * upm, t),
+      ...hatchedWall("v", 0, 0, 8 * upm, t),
+      ...hatchedWall("v", 10 * upm, 0, 8 * upm, t),
+      ...bed(upm, 2 * upm, 2 * upm),
+      ...bed(upm, 6 * upm, 2 * upm),
+    ];
+    const box = { x: -upm, y: -upm, width: 12 * upm, height: 10 * upm };
+    return { segments, box };
+  };
+  const POINTS_PER_METRE = 72 / 0.0254;
+
+  it("finds 1:50 on a sheet plotted at 1:50", () => {
+    const { segments, box } = plotted(POINTS_PER_METRE / 50);
+    const lock = lockScaleToPlotRatio(segments, box);
+    expect(lock?.ratio).toBe(50);
+    expect(Math.abs(lock!.unitsPerMetre - POINTS_PER_METRE / 50)).toBeLessThan(2);
+  });
+
+  it("finds 1:100 on a sheet plotted at 1:100", () => {
+    const { segments, box } = plotted(POINTS_PER_METRE / 100);
+    expect(lockScaleToPlotRatio(segments, box)?.ratio).toBe(100);
+  });
+
+  it("finds nothing on a sheet plotted to fit the paper", () => {
+    const { segments, box } = plotted(42);
+    expect(lockScaleToPlotRatio(segments, box)).toBeNull();
   });
 });
