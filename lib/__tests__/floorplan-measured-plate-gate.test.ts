@@ -1,4 +1,8 @@
-import { measuredPlateMatchesSheet, measuredPlateQualityFailure } from "@/lib/projects/floorplan-viz-route";
+import {
+  measuredPlateMatchesSheet,
+  measuredPlateMismatch,
+  measuredPlateQualityFailure,
+} from "@/lib/projects/floorplan-viz-route";
 import { parseFloorplanLayout } from "@/lib/projects/floorplan-layout";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
 
@@ -22,6 +26,14 @@ describe("whether a measured plate is a measurement of this flat", () => {
     // anywhere. The plate passed its own audit and was still another flat.
     const plate = [measured("bedroom"), measured("bedroom"), measured("living"), measured("kitchen")];
     expect(measuredPlateMatchesSheet(sheet(), plate)).toBe(false);
+  });
+
+  it("says which rooms differ, and by how many", () => {
+    const short = [measured("bedroom"), measured("bedroom"), measured("living"), measured("kitchen")];
+    expect(measuredPlateMismatch(sheet(), short)).toBe('חדרי שינה וממ"ד: נמדדו 2, בגיליון 3');
+    const noKitchen = [measured("bedroom"), measured("bedroom"), measured("bedroom"), measured("living")];
+    expect(measuredPlateMismatch(sheet(), noKitchen)).toBe("מטבח: נמדדו 0, בגיליון 1");
+    expect(measuredPlateMismatch(sheet(), [...noKitchen, measured("kitchen")])).toBeNull();
   });
 
   it("rejects a plate with no kitchen where the sheet prints one", () => {
