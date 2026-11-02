@@ -41,6 +41,8 @@ export function cutModel(model: BuildingModel, cutM: number): BuildingModel {
       if (p.at.y < cutM) out.push(p);
     } else if (p.type === "text") {
       if (p.at.y < cutM) out.push(p);
+    } else if (p.type === "custom-mesh") {
+      if (p.stations.some((s) => s.yFoot < cutM)) out.push(p);
     }
   }
   return { ...model, primitives: out };
@@ -65,6 +67,10 @@ function topOf(p: Primitive): number {
     case "person":
     case "text":
       return p.at.y + 1;
+    case "custom-mesh":
+      return Math.max(...p.stations.map((s) => s.yTop));
+    case "drape":
+      return Math.max(...p.grid.heights) + p.lift;
   }
 }
 

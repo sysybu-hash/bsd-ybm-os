@@ -16,7 +16,8 @@ const { readDxfDrawing, flattenDxf, entitiesWithin, arcPoints } = await import("
 const { PISGA_DXF } = await import("@/lib/projects/building/pisga-dxf");
 const { buildPisga } = await import("@/lib/projects/building/pisga");
 const dxf = readDxfDrawing(fs.readFileSync(process.argv[2]!))!;
-const model = await buildPisga(null, { dxf });
+// SURVEY=<survey dxf>: the model as the renders build it, with the 2022 survey's ground, stairs and street.
+const model = await buildPisga(null, { dxf, ...(process.env.SURVEY ? { survey: (await import("@/lib/projects/dxf-drawing")).readDxfDrawing((await import("node:fs")).readFileSync(process.env.SURVEY))! } : {}) });
 const X0 = -16, X1 = 74, Z0 = -14, Z1 = 38, PPM = 20;
 const W = (X1 - X0) * PPM, H = (Z1 - Z0) * PPM;
 const foot = new Uint8Array(W * H);
@@ -47,6 +48,13 @@ for (const p of model.primitives) {
     const a = -(p.rotY ?? 0), c = Math.cos(a), s = Math.sin(a);
     fillPoly(([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([u, v]) => [p.centre.x + (u * p.size.x / 2) * c - (v * p.size.z / 2) * s, p.centre.z + (u * p.size.x / 2) * s + (v * p.size.z / 2) * c] as [number, number]));
   } else if (p.type === "prism") fillPoly(p.ring);
+  // A wall strip along its stations, its thickness across; a draped surface by its ring (holes left out).
+  else if (p.type === "custom-mesh") for (let k = 1; k < p.stations.length; k++) {
+    const [a, b] = [p.stations[k - 1]!, p.stations[k]!];
+    const l = Math.hypot(b.x - a.x, b.z - a.z) || 1, nx = (-(b.z - a.z) / l) * (p.thick / 2), nz = ((b.x - a.x) / l) * (p.thick / 2);
+    fillPoly([[a.x + nx, a.z + nz], [b.x + nx, b.z + nz], [b.x - nx, b.z - nz], [a.x - nx, a.z - nz]]);
+  }
+  else if (p.type === "drape") fillPoly(p.ring);
   else if (p.type === "cylinder") fillPoly(Array.from({ length: 16 }, (_, k) => [p.centre.x + p.radius * Math.cos((k * Math.PI) / 8), p.centre.z + p.radius * Math.sin((k * Math.PI) / 8)] as [number, number]));
 }
 // A model part within 20 cm.
@@ -70,6 +78,8 @@ for (const sheet of ["floor-2", "floor-1", "roof"] as const) {
     const e = stat.get(p.layer) ?? { len: 0, hit: 0, n: 0, types: new Set<string>() };
     for (const r of rings) {
       const q = r.map(at);
+      // DUMP=<layer>: that layer's lines in plan metres, sheet by sheet.
+      if (process.env.DUMP === p.layer) console.log(`${sheet} ${p.type}${p.insert ? ` ${p.insert}` : ""}: ${q.map(([x, z]) => `${x.toFixed(1)},${z.toFixed(1)}`).join(" ")}`);
       for (let i = 1; i < q.length; i++) {
         const [ax, az] = q[i - 1]!, [bx, bz] = q[i]!;
         const len = Math.hypot(bx - ax, bz - az);

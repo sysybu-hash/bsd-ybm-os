@@ -284,11 +284,19 @@ export function aciColour(index: number): number {
   return (mix(r) << 16) | (mix(g) << 8) | mix(b);
 }
 
-/** An arc's points, `start` to `end` in radians counter-clockwise, at most 0.15 rad apart. */
+/**
+ * An arc's points, `start` to `end` counter-clockwise.
+ * The step is the angle whose sagitta is 1.5 cm, and never coarser than 0.08 rad,
+ * so a long kerb curve does not become a few chords and a small door swing does not explode.
+ */
 export function arcPoints(c: Pt, r: number, start: number, end: number): Pt[] {
   let e = end;
   while (e <= start) e += Math.PI * 2;
-  const steps = Math.max(6, Math.ceil((e - start) / 0.15));
+  const sag = 0.015;
+  const rr = Math.max(Math.abs(r), sag);
+  const bySag = 2 * Math.acos(Math.max(-1, Math.min(1, 1 - sag / rr)));
+  const step = Math.min(0.08, Math.max(0.035, bySag));
+  const steps = Math.max(8, Math.ceil((e - start) / step));
   return Array.from({ length: steps + 1 }, (_, i) => {
     const a = start + ((e - start) * i) / steps;
     return { x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) };
@@ -307,7 +315,9 @@ function bulgePoints(a: Pt, b: Pt, bulge: number): Pt[] {
   const ny = (b.x - a.x) / chord;
   const c = { x: mid.x + nx * off, y: mid.y + ny * off };
   const a0 = Math.atan2(a.y - c.y, a.x - c.x);
-  const steps = Math.max(2, Math.ceil(Math.abs(theta) / 0.15));
+  const sag = 0.015;
+  const bySag = 2 * Math.acos(Math.max(-1, Math.min(1, 1 - sag / Math.max(Math.abs(r), sag))));
+  const steps = Math.max(4, Math.ceil(Math.abs(theta) / Math.min(0.08, Math.max(0.035, bySag))));
   const out: Pt[] = [];
   for (let i = 1; i < steps; i++) {
     const t = a0 + (theta * i) / steps;

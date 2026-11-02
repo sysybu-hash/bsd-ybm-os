@@ -88,6 +88,7 @@ for (const v of chosen) {
     sun: { azimuthDeg: v.from === "s" ? 180 : v.from === "e" ? 110 : v.from === "w" ? 250 : 300, elevationDeg: 35 },
     exposure: 0.64,
     ao: true,
+    verifyPathway: true,
   };
   const [shot] = await renderBuildingFrames([payload], { outputWidthPx: 99999 });
   // The whole drawing, not the entities anchored in the box: the imported kindergarten sections are blocks anchored far away.

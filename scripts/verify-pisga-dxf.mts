@@ -36,7 +36,8 @@ if (!file || !outDir) throw new Error("usage: <drawing.dxf> <out dir>");
 fs.mkdirSync(outDir, { recursive: true });
 const dxf = readDxfDrawing(fs.readFileSync(file));
 if (!dxf) throw new Error("unreadable DXF");
-const model = await buildPisga(null, { dxf });
+// SURVEY=<survey dxf>: the model as the renders build it, with the 2022 survey's ground, stairs and street.
+const model = await buildPisga(null, { dxf, ...(process.env.SURVEY ? { survey: (await import("@/lib/projects/dxf-drawing")).readDxfDrawing((await import("node:fs")).readFileSync(process.env.SURVEY))! } : {}) });
 
 /** The raster's frame: metres, 2 cm a pixel. */
 const F = { x0: -20, x1: 75, z0: -22, z1: 37, ppm: 50 };
@@ -88,7 +89,7 @@ function modelWallMask(id: FloorId, level: number): Mask {
   const m = emptyMask(COLS, ROWS);
   const cut = level + 1.2;
   for (const p of model.primitives) {
-    if (p.type !== "box" || (p.tag !== id && p.tag !== `${id}:fin`)) continue;
+    if (p.type !== "box" || (p.tag !== id && p.tag !== `${id}:fin` && !(p.tag ?? "").startsWith("site:north-"))) continue;
     if (p.centre.y - p.size.y / 2 > cut || p.centre.y + p.size.y / 2 < cut) continue;
     const a = p.rotY ?? 0;
     const c = Math.cos(a);
@@ -157,14 +158,14 @@ for (const { id, level, outline, labels } of sheets) {
 
   // 2. Windows.
   const sym = dxfSymbols(dxf, id);
-  void windows;
-  const modelOpen: Box[] = openings.filter((o) => o.exterior).map((o) => ({ x0: o.x, x1: o.x + o.w, z0: o.y, z1: o.y + o.h }));
-  const winMissing = sym.windows.filter((w) => !modelOpen.some((m) => near(w, m, 0.3)));
-  const winExtra = modelOpen.filter((m) => !sym.windows.some((w) => near(w, m, 0.3)));
-  say(`**חלונות** — ב-DXF ${sym.windows.length} סמלי חלון; המודל מצא ${modelOpen.length} פתחים בקירות החוץ. חלון DXF בלי פתח במודל: ${winMissing.length}; פתח מודל בלי חלון ב-DXF: ${winExtra.length}.`);
+  const drawnWindows = windows;
+  const modelOpen: Box[] = openings.filter((o) => o.exterior && !o.door).map((o) => ({ x0: o.x, x1: o.x + o.w, z0: o.y, z1: o.y + o.h }));
+  const winMissing = drawnWindows.filter((w) => !modelOpen.some((m) => near(w, m, 0.3)));
+  const winExtra = modelOpen.filter((m) => !drawnWindows.some((w) => near(w, m, 0.3)));
+  say(`**חלונות** — ב-DXF ${drawnWindows.length} סמלי חלון; המודל מצא ${modelOpen.length} פתחים בקירות החוץ. חלון DXF בלי פתח במודל: ${winMissing.length}; פתח מודל בלי חלון ב-DXF: ${winExtra.length}.`);
   for (const w of winMissing.slice(0, 8)) say(`- חסר במודל: ${fmtBox(w)}`);
   for (const w of winExtra.slice(0, 8)) say(`- פתח מודל ללא חלון ב-DXF: ${fmtBox(w)}`);
-  summary.push([`${id} חלונות DXF שנמצאו במודל`, `${sym.windows.length - winMissing.length}/${sym.windows.length}`]);
+  summary.push([`${id} חלונות DXF שנמצאו במודל`, `${drawnWindows.length - winMissing.length}/${drawnWindows.length}`]);
 
   // 3. Doors: hung on a wall of the model, the opening's middle clear of it.
   const wallAt = (x: number, z: number, r: number) => {
@@ -226,7 +227,7 @@ for (const { id, level, outline, labels } of sheets) {
   summary.push([`${id} חדרים בטווח ±10% מהשטח המודפס`, `${roomsOk}/${roomsN}`]);
 
   // 6. The levels the sheet prints.
-  const known = [LEVEL.floorMinus2, LEVEL.floorMinus1, LEVEL.roof, LEVEL.parapet, LEVEL.bulkhead, 11.57, 12.3, 11.86, 12.73, 15.01];
+  const known = [LEVEL.floorMinus2, LEVEL.floorMinus1, LEVEL.roof, LEVEL.parapet, LEVEL.bulkhead, 11.57, 12.3, 11.86, 12.73, 15.01, 13.33];
   const marks = dxfLevelMarks(dxf, id);
   const distinct = new Map<number, number>();
   for (const k of marks) distinct.set(k.value, (distinct.get(k.value) ?? 0) + 1);
@@ -311,7 +312,7 @@ for (const { id, level, outline, labels } of sheets) {
     const EH = Math.round((EW * (E.l1 - E.l0)) / (E.x1 - E.x0));
     const ek = EW / (E.x1 - E.x0);
     const [shot] = await renderBuildingFrames(
-      [{ model, camera: { position: { x: (E.x0 + E.x1) / 2, y: (E.l0 + E.l1) / 2, z: -300 }, target: { x: (E.x0 + E.x1) / 2, y: (E.l0 + E.l1) / 2, z: 0 }, fovDeg: 30, orthoHalfWidth: (E.x1 - E.x0) / 2, hideTags: ["tree", "car"] }, width: EW, height: EH, sun: { azimuthDeg: 300, elevationDeg: 30 }, exposure: 0.66, ao: true }],
+      [{ model, camera: { position: { x: (E.x0 + E.x1) / 2, y: (E.l0 + E.l1) / 2, z: -300 }, target: { x: (E.x0 + E.x1) / 2, y: (E.l0 + E.l1) / 2, z: 0 }, fovDeg: 30, orthoHalfWidth: (E.x1 - E.x0) / 2, hideTags: ["tree", "car", "person"] }, width: EW, height: EH, sun: { azimuthDeg: 300, elevationDeg: 30 }, exposure: 0.66, ao: true, verifyPathway: true }],
       { outputWidthPx: 99999 },
     );
     const shift = northCal.shift ?? 0;
@@ -349,6 +350,7 @@ for (const { id, level } of sheets) {
         sun: { azimuthDeg: 160, elevationDeg: 72 },
         exposure: 0.64,
         ao: true,
+        verifyPathway: true,
       },
     ],
     { outputWidthPx: 99999 },

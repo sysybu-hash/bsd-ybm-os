@@ -68,6 +68,12 @@ export type BuildingRenderPayload = {
    * section is rasterised whatever this says: the tracer clips nothing.
    */
   pathTrace?: { samples: number };
+  /** Visual only; ignored when `verifyPathway` is true. */
+  renderAa?: "smaa" | "msaa" | "ss2";
+  /** When false or 0, primitive cylinders skip metre UV (legacy geometry). */
+  renderCylinderUV?: boolean | 0;
+  /** Headless verify-* renders: deterministic raster at pixelRatio 1, no supersampling. */
+  verifyPathway?: boolean;
 };
 
 export const BUILDING_ORIGIN = "https://building3d.local";
@@ -112,9 +118,19 @@ import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 async function main() {
   while (!window.__payload) await new Promise((r) => setTimeout(r, 5));
   const P = window.__payload;
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+  // Pathway split: verify (deterministic) vs visual (preview / RENDER_AA). Applies to interior and exterior cameras alike.
+  const verifyPathway = P.verifyPathway === true;
+  const renderAa = verifyPathway ? "smaa" : (P.renderAa || "smaa");
+  const cylinderUV = P.renderCylinderUV !== false && P.renderCylinderUV !== 0;
+  const ssScale = verifyPathway || renderAa !== "ss2" ? 1 : 2;
+  const outW = P.width, outH = P.height;
+  const drawW = outW * ssScale, drawH = outH * ssScale;
+  const renderer = new THREE.WebGLRenderer({
+    antialias: !verifyPathway && renderAa === "msaa",
+    preserveDrawingBuffer: true,
+  });
   renderer.setPixelRatio(1);
-  renderer.setSize(P.width, P.height, false);
+  renderer.setSize(drawW, drawH, false);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -203,13 +219,25 @@ async function main() {
   // light, and stood in the studio's grey fill (13/10/2026).
   const fromAbove = P.camera.cutAboveM != null || (P.camera.studio === true && P.camera.orthoHalfWidth != null && P.camera.position.y - P.camera.target.y > 10);
   const housePlan = fromAbove && !inside && (P.camera.planStyle === true || P.model.primitives.some((p) => p.material === "renderBrown" || p.material === "renderGray"));
-  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? (goldenModel ? 0xffd9b4 : 0xffc58c) : houseOut ? 0xffe8cc : 0xfff1dc, housePlan ? 2.05 : golden ? (goldenModel ? 2.8 : 3.4) : houseFlat ? 1.9 : 3.1);
+  // ArchViz raster (not verify): lift IBL and sun so façades read with depth, not flat CAD grey fill.
+  let archSunMul = 1;
+  let archHemiMul = 1;
+  if (!verifyPathway && !P.pathTrace && !housePlan && P.camera.mask !== true) {
+    if (!golden) scene.environmentIntensity *= 1.28;
+    archSunMul = 1.14;
+    archHemiMul = 0.82;
+    if (!golden && !inside) renderer.toneMappingExposure = P.exposure * 1.06;
+  }
+  const sunBase = housePlan ? 2.05 : golden ? (goldenModel ? 2.8 : 3.4) : houseFlat ? 1.9 : 3.1;
+  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? (goldenModel ? 0xffd9b4 : 0xffc58c) : houseOut ? 0xffe8cc : 0xfff1dc, sunBase * archSunMul);
   sun.position.set(cx + sunDir.x * span * 1.5, sunDir.y * span * 1.5, cz + sunDir.z * span * 1.5);
   sun.target.position.set(cx, 8, cz);
   // House plan: no cast sun — wall bands washed the floors (13/10/2026). AO only.
   // Outside / interiors keep soft shadows.
   sun.castShadow = !housePlan;
-  sun.shadow.mapSize.set(4096, 4096);
+  // High-resolution sun map for the raster views. The verify path stays at 4096 so its frames do not grow.
+  const sunMap = verifyPathway ? 4096 : 8192;
+  sun.shadow.mapSize.set(sunMap, sunMap);
   const sc = sun.shadow.camera;
   const shadowHalf = housePlan && P.camera.orthoHalfWidth != null ? P.camera.orthoHalfWidth * 1.15 : span * 0.8;
   if (housePlan && P.camera.orthoHalfWidth != null) {
@@ -219,8 +247,11 @@ async function main() {
   }
   sc.left = -shadowHalf; sc.right = shadowHalf; sc.top = shadowHalf; sc.bottom = -shadowHalf;
   sc.near = 1; sc.far = span * 4;
+  // verifyPathway: engineering baseline — 0.04 m normalBias for deterministic verify renders.
+  // Visual ArchViz: lower bias so thin metal contacts ground; thin frame boxes also get customDepthMaterial below.
   sun.shadow.bias = -0.0004;
-  sun.shadow.normalBias = 0.04;
+  sun.shadow.normalBias = verifyPathway ? 0.04 : 0.003;
+  if (!verifyPathway) sun.shadow.bias = -0.00015;
   // Outside: softer contact shadows (was harsh black on the hero).
   sun.shadow.radius = houseOut && !housePlan ? 6 : 3;
   if (houseOut && !housePlan) { renderer.shadowMap.type = THREE.PCFShadowMap; sun.shadow.blurSamples = 16; }
@@ -236,7 +267,8 @@ async function main() {
       scene.add(l);
     }
   }
-  scene.add(new THREE.HemisphereLight(housePlan ? 0xffffff : inside ? 0xfff3e2 : studioRaster || houseOut ? 0xf6efe4 : 0xdfe9f5, housePlan ? 0xb9b3aa : 0x8a7a66, housePlan ? 1.05 : inside ? 0.18 : studioRaster ? 0.22 : houseFlat ? 1.1 : houseOut ? 0.55 : 0.35));
+  const hemiSky = housePlan ? 1.05 : inside ? 0.18 : studioRaster ? 0.22 : houseFlat ? 1.1 : houseOut ? 0.55 : 0.35;
+  scene.add(new THREE.HemisphereLight(housePlan ? 0xffffff : inside ? 0xfff3e2 : studioRaster || houseOut ? 0xf6efe4 : 0xdfe9f5, housePlan ? 0xb9b3aa : 0x8a7a66, hemiSky * archHemiMul));
   // Inside, the ceiling's panels light the room: a warm light over each.
   // A room photographed lit as a home is in the evening: warm downlights let
   // into its ceiling every metre and a half, and a pendant low over each
@@ -391,7 +423,37 @@ async function main() {
       }
     }
     for (let k = 0; k < 40000; k++) { g.fillStyle = "rgba(" + (80 + rnd() * 60) + "," + (105 + rnd() * 55) + "," + (40 + rnd() * 30) + "," + (0.35 + rnd() * 0.4) + ")"; g.fillRect(rnd() * w, rnd() * h, 1, 2 + rnd() * 3); }
-    for (let k = 0; k < 90; k++) { const l = 175 + rnd() * 40; g.fillStyle = "rgba(" + l + "," + (l * 0.96) + "," + (l * 0.88) + ",0.8)"; g.beginPath(); g.arc(rnd() * w, rnd() * h, 1.5 + rnd() * 3, 0, 7); g.fill(); }
+    for (let k = 0; k < 90; k++) { const l = 125 + rnd() * 30; g.fillStyle = "rgba(" + l + "," + (l * 0.97) + "," + (l * 0.82) + ",0.5)"; g.beginPath(); g.arc(rnd() * w, rnd() * h, 1.5 + rnd() * 3, 0, 7); g.fill(); }
+  }, 6.0);
+  // A dry Judean hillside in late autumn, as the photographs of Pisga show it (29/10/2026): olive-grey grass gone to straw, pale earth
+  // between, and limestone breaking through in flat grey stones — muted, not a meadow.
+  const hillsideTex = canvasTex(512, 512, (g, w, h) => {
+    g.fillStyle = "#6e6a50"; g.fillRect(0, 0, w, h);
+    for (let k = 0; k < 70; k++) {
+      const r = 24 + rnd() * 60, x = rnd() * w, y = rnd() * h, t = rnd();
+      for (const [ox, oy] of [[0, 0], [-w, 0], [w, 0], [0, -h], [0, h]]) {
+        const grd = g.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        grd.addColorStop(0, t < 0.4 ? "rgba(140,128,100,0.4)" : t < 0.75 ? "rgba(84,88,62,0.4)" : "rgba(122,114,82,0.3)");
+        grd.addColorStop(1, "rgba(0,0,0,0)");
+        g.fillStyle = grd; g.fillRect(x + ox - r, y + oy - r, 2 * r, 2 * r);
+      }
+    }
+    for (let k = 0; k < 50000; k++) { const l = rnd(); g.fillStyle = "rgba(" + (90 + l * 60) + "," + (88 + l * 52) + "," + (62 + l * 40) + "," + (0.3 + rnd() * 0.4) + ")"; g.fillRect(rnd() * w, rnd() * h, 1, 2 + rnd() * 3); }
+    for (let k = 0; k < 90; k++) { const l = 118 + rnd() * 30; g.fillStyle = "rgba(" + l + "," + (l * 0.97) + "," + (l * 0.84) + ",0.55)"; g.beginPath(); g.ellipse(rnd() * w, rnd() * h, 1.5 + rnd() * 5, 1 + rnd() * 3, rnd() * 3, 0, 7); g.fill(); }
+  }, 7.0);
+  // A neighbour's facade: cream sawn stone in long courses, and windows three metres apart a storey high — six metres of it a tile.
+  const neighbourTex = canvasTex(512, 512, (g, w, h) => {
+    // The neighbours' Jerusalem stone, warmer and darker than plaster (photographs 13–17: cream ashlar in the evening light).
+    g.fillStyle = "#c4b391"; g.fillRect(0, 0, w, h);
+    const course = h / 12;
+    for (let r = 0; r < 12; r++) { let x = -rnd() * 80; while (x < w) { const l = 60 + rnd() * 70, t = 186 + rnd() * 20; g.fillStyle = "rgb(" + t + "," + (t * 0.93) + "," + (t * 0.8) + ")"; g.fillRect(x + 1, r * course + 1, l - 2, course - 2); x += l; } }
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) {
+      const x = i * w / 2 + w * 0.14, y = j * h / 2 + h * 0.13;
+      g.fillStyle = "#e9e4da"; g.fillRect(x - 5, y - 5, w * 0.24 + 10, h * 0.25 + 10);
+      g.fillStyle = "#3d454c"; g.fillRect(x, y, w * 0.24, h * 0.25);
+      g.fillStyle = "rgba(160,180,195,0.35)"; g.fillRect(x + 3, y + 3, w * 0.1, h * 0.25 - 6);
+    }
+    noise(g, w, h, 6);
   }, 6.0);
   const floorStoneTex = canvasTex(512, 512, (g, w, h) => {
     g.fillStyle = "#9f978a"; g.fillRect(0, 0, w, h);
@@ -504,13 +566,31 @@ async function main() {
   }, 2.4);
   const carpetTex = plainTex("#5f6a78", 18, 1);
 
+  // Image maps. World UVs are metres divided by repeatM, so texture.repeat stays 1.
+  const loadMap = (file, tileM, colour) => new Promise((resolve, reject) => {
+    const tex = new THREE.TextureLoader().load("https://building3d.local/tex/" + file, () => resolve(tex), undefined, reject);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(1, 1);
+    tex.anisotropy = 8;
+    tex.colorSpace = colour ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
+    tex.userData.repeatM = tileM;
+  });
+  const [stoneDiff, stoneNrm, asphaltDiff, asphaltNrm, pavingDiff, pavingNrm] = await Promise.all([
+    loadMap("jerusalem-stone-diffuse.png", 4, true),
+    loadMap("jerusalem-stone-normal.png", 4, false),
+    loadMap("asphalt-diffuse.png", 3, true),
+    loadMap("asphalt-normal.png", 3, false),
+    loadMap("paving-diffuse.png", 2.4, true),
+    loadMap("paving-normal.png", 2.4, false),
+  ]);
+  const stoneMaps = { map: stoneDiff, normalMap: stoneNrm, normalScale: new THREE.Vector2(0.7, 0.7) };
   const MAT = {
-    stone: new THREE.MeshStandardMaterial({ map: stoneTex([0, 0, 0]), roughness: 0.86 }),
-    stoneDeep: new THREE.MeshStandardMaterial({ map: stoneTex([-34, -40, -46]), roughness: 0.88 }),
+    stone: new THREE.MeshStandardMaterial({ ...stoneMaps, roughness: 0.84, metalness: 0.02 }),
+    stoneDeep: new THREE.MeshStandardMaterial({ ...stoneMaps, color: 0xc9c0b0, roughness: 0.86, metalness: 0.02 }),
     render: new THREE.MeshStandardMaterial({ map: plainTex("#ece7dd", 4, 2), roughness: 0.93 }),
     renderGray: new THREE.MeshStandardMaterial({ map: plainTex("#cdbfac", 12, 2), roughness: 0.94 }),
     renderBrown: new THREE.MeshStandardMaterial({ map: plainTex("#86786a", 12, 2), roughness: 0.94 }),
-    jerusalemStone: new THREE.MeshStandardMaterial({ map: stoneTex([14, 8, -4]), roughness: 0.82, metalness: 0.04 }),
+    jerusalemStone: new THREE.MeshStandardMaterial({ ...stoneMaps, roughness: 0.8, metalness: 0.03 }),
     louvre: new THREE.MeshStandardMaterial({ color: 0xc8c6c0, roughness: 0.45, metalness: 0.4 }),
     stoneDark: new THREE.MeshStandardMaterial({ color: 0x55585c, roughness: 0.62, metalness: 0.15 }),
     concrete: new THREE.MeshStandardMaterial({ map: plainTex("#b8b4ac", 16, 3), roughness: 0.92 }),
@@ -524,14 +604,25 @@ async function main() {
     floorVinyl: new THREE.MeshStandardMaterial({ map: vinylTex, roughness: 0.5 }),
     floorWood: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.4, metalness: 0.02 }),
     carpet: new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 1 }),
-    asphalt: new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: 0.95 }),
+    asphalt: new THREE.MeshStandardMaterial({ map: asphaltDiff, normalMap: asphaltNrm, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.92, metalness: 0.04 }),
     parkingLine: new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.7 }),
-    paving: new THREE.MeshStandardMaterial({ map: paverTex, roughness: 0.72 }),
+    kerbRed: new THREE.MeshStandardMaterial({ color: 0xa8322c, roughness: 0.7 }),
+    lineBlue: new THREE.MeshStandardMaterial({ color: 0x2f5fa8, roughness: 0.7 }),
+    kerbBlack: new THREE.MeshStandardMaterial({ color: 0x2b2b2b, roughness: 0.7 }),
+    tactile: new THREE.MeshStandardMaterial({ color: 0x5f6164, roughness: 0.85 }),
+    tactileYellow: new THREE.MeshStandardMaterial({ color: 0xd8a72a, roughness: 0.7 }),
+    brickRed: new THREE.MeshStandardMaterial({ color: 0x8c5048, roughness: 0.85 }),
+    paving: new THREE.MeshStandardMaterial({ map: pavingDiff, normalMap: pavingNrm, normalScale: new THREE.Vector2(0.55, 0.55), roughness: 0.78, metalness: 0.02 }),
     grass: new THREE.MeshStandardMaterial({ map: grassTex, roughness: 0.95 }),
     soil: new THREE.MeshStandardMaterial({ map: soilTex, roughness: 1 }),
     soilFar: new THREE.MeshStandardMaterial({ color: 0x8a9460, roughness: 1 }),
+    hillside: new THREE.MeshStandardMaterial({ map: hillsideTex, roughness: 1 }),
+    fenceBlue: new THREE.MeshStandardMaterial({ color: 0x1f4f9e, roughness: 0.55, metalness: 0.3, side: THREE.DoubleSide }),
+    railGreen: new THREE.MeshStandardMaterial({ color: 0x2f4a36, roughness: 0.5, metalness: 0.4 }),
+    neighbourFacade: new THREE.MeshStandardMaterial({ map: neighbourTex, roughness: 0.85 }),
+    roofTile: new THREE.MeshStandardMaterial({ map: plainTex("#a4513a", 18, 1.5), roughness: 0.8 }),
     rock: new THREE.MeshStandardMaterial({ map: plainTex("#a89a86", 22, 4), roughness: 1 }),
-    existing: new THREE.MeshStandardMaterial({ map: stoneTex([-6, -4, 4]), roughness: 0.9, color: 0xd6d2cc }),
+    existing: new THREE.MeshStandardMaterial({ ...stoneMaps, roughness: 0.88, color: 0xd6d2cc }),
     metal: new THREE.MeshStandardMaterial({ color: 0x8c9096, roughness: 0.35, metalness: 0.8 }),
     timber: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.5 }),
     upholstery: new THREE.MeshStandardMaterial({ color: 0x3e5566, roughness: 0.9 }),
@@ -552,6 +643,13 @@ async function main() {
     leaves1: new THREE.MeshStandardMaterial({ color: 0x6f8a42, roughness: 0.95, vertexColors: true }),
     leaves2: new THREE.MeshStandardMaterial({ color: 0x4a6a32, roughness: 0.95, vertexColors: true }),
     bark: new THREE.MeshStandardMaterial({ color: 0x5a4636, roughness: 1 }),
+    // The hillside's scrub (dark grey-green, mastic and oak) and its olives' silver-green, as the photographs show them.
+    scrub0: new THREE.MeshStandardMaterial({ color: 0x3c4a34, roughness: 1, vertexColors: true }),
+    scrub1: new THREE.MeshStandardMaterial({ color: 0x4a5a3c, roughness: 1, vertexColors: true }),
+    scrub2: new THREE.MeshStandardMaterial({ color: 0x33402e, roughness: 1, vertexColors: true }),
+    olive0: new THREE.MeshStandardMaterial({ color: 0x5f6850, roughness: 0.95, vertexColors: true }),
+    olive1: new THREE.MeshStandardMaterial({ color: 0x525c46, roughness: 0.95, vertexColors: true }),
+    olive2: new THREE.MeshStandardMaterial({ color: 0x6b725a, roughness: 0.95, vertexColors: true }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.95 }),
     seatFabric: new THREE.MeshStandardMaterial({ color: 0x1f5c66, roughness: 0.92 }),
     linen: new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.85 }),
@@ -731,6 +829,76 @@ async function main() {
     return geo;
   };
   const repeatOf = (m) => (m.map && m.map.userData.repeatM) || 1;
+  /**
+   * Metre-scaled UVs on a Y-up cylinder at the origin before mesh.position = centre.
+   * Side: u = arc length along the hoop (seam at theta = ±pi); v = world height above cylinder bottom / repeatM. Caps: world XZ like worldBox tops.
+   */
+  const applyMetreUVToCylinder = (geo, centre, radius, height, repeatM) => {
+    const uv = geo.attributes.uv, nrm = geo.attributes.normal, pos = geo.attributes.position;
+    const yBottom = centre.y - height / 2;
+    const twoPi = Math.PI * 2;
+    const circM = twoPi * radius;
+    for (let i = 0; i < uv.count; i++) {
+      const px = pos.getX(i), py = pos.getY(i), pz = pos.getZ(i);
+      const ny = Math.abs(nrm.getY(i)), nx = Math.abs(nrm.getX(i)), nz = Math.abs(nrm.getZ(i));
+      const wx = px + centre.x, wy = py + centre.y, wz = pz + centre.z;
+      if (ny > 0.5) {
+        uv.setXY(i, wx / repeatM, wz / repeatM);
+        continue;
+      }
+      if (ny > 0.35 || nx * nx + nz * nz < 0.02) {
+        uv.setXY(i, wx / repeatM, wz / repeatM);
+        continue;
+      }
+      const theta = Math.atan2(pz, px);
+      const u = (((theta / twoPi) + 0.5) * circM) / repeatM;
+      const v = (wy - yBottom) / repeatM;
+      uv.setXY(i, u, v);
+    }
+  };
+  const applyBoxRotX = (mesh, p) => {
+    if (p.rotX == null && p.rotY == null) return;
+    // YXZ: yaw in plan then pitch (slope top rail). Never rely on default XYZ — rotY=0 skipped order and left rail horizontal through balusters.
+    mesh.rotation.set(p.rotX ?? 0, p.rotY ?? 0, 0, "YXZ");
+  };
+  // Visual only: MAT.frame shadow pass uses MeshDepthMaterial + polygonOffset (Peter Pan) — verify keeps default depth + 0.04 m normalBias.
+  const frameDepthCache = new Map();
+  const frameShadowDepth = (surfaceMat) => {
+    if (verifyPathway) return null;
+    const ref = Array.isArray(surfaceMat) ? surfaceMat[0] : surfaceMat;
+    const clipped = ref && ref.clippingPlanes && ref.clippingPlanes.length;
+    const key = clipped ? "clip" : "plain";
+    if (!frameDepthCache.has(key)) {
+      const d = new THREE.MeshDepthMaterial({
+        depthPacking: THREE.RGBADepthPacking,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -4,
+      });
+      if (clipped) {
+        d.clippingPlanes = ref.clippingPlanes;
+        d.clipShadows = ref.clipShadows;
+      }
+      frameDepthCache.set(key, d);
+    }
+    return frameDepthCache.get(key);
+  };
+  const attachFrameShadowDepth = (mesh) => {
+    if (verifyPathway || !mesh.castShadow) return;
+    const dm = frameShadowDepth(mesh.material);
+    if (dm) mesh.customDepthMaterial = dm;
+  };
+  const archVizFrameMat = (baseMat) => {
+    if (verifyPathway) return baseMat;
+    const src = Array.isArray(baseMat) ? baseMat[0] : baseMat;
+    const c = src.clone();
+    if (src.clippingPlanes) { c.clippingPlanes = src.clippingPlanes; c.clipShadows = src.clipShadows; }
+    c.polygonOffset = true;
+    c.polygonOffsetFactor = 2;
+    c.polygonOffsetUnits = 2;
+    c.envMapIntensity = 1.35;
+    return c;
+  };
   // An elevation sees the yard's slabs edge on, a band of ground under the
   // house: their joints there are not the drawing's lines, and a painting
   // that smoothed them was refused as one that lost structure. Their sides
@@ -891,9 +1059,99 @@ async function main() {
     geo.setIndex(idx);
     geo.computeVertexNormals();
     const hills = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 1, side: THREE.DoubleSide }));
-    hills.receiveShadow = false;
+    hills.castShadow = true;
+    hills.receiveShadow = true;
     scene.add(hills);
   }
+
+  // One wall from a centreline. Coping and foot are independent. Each face has its own vertices:
+  // shared corners were averaging the side normal into the coping, and the top's UVs collapsed to a line.
+  // UVs are metres (the caller divides by the texture's repeat). Faces stay CCW outward.
+  const wallStripGeometry = (stations, thick) => {
+    const n = stations.length;
+    if (n < 2) return null;
+    const left = [];
+    const right = [];
+    for (let i = 0; i < n; i++) {
+      const a = stations[Math.max(0, i - 1)];
+      const b = stations[Math.min(n - 1, i + 1)];
+      const dx = b.x - a.x;
+      const dz = b.z - a.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const ox = (-dz / len) * (thick / 2);
+      const oz = (dx / len) * (thick / 2);
+      left.push([stations[i].x + ox, stations[i].z + oz]);
+      right.push([stations[i].x - ox, stations[i].z - oz]);
+    }
+    const dist = [0];
+    for (let i = 1; i < n; i++) dist.push(dist[i - 1] + Math.hypot(stations[i].x - stations[i - 1].x, stations[i].z - stations[i - 1].z));
+    const pos = [];
+    const uv = [];
+    const idx = [];
+    const push = (x, y, z, u, v) => {
+      const at = pos.length / 3;
+      pos.push(x, y, z);
+      uv.push(u, v);
+      return at;
+    };
+    const quad = (a, b, c, d) => idx.push(a, b, c, a, c, d);
+    const yAt = (i, top) => {
+      const s = stations[i];
+      const h = Math.max(0.02, s.yTop - s.yFoot);
+      return top ? s.yFoot + h : s.yFoot;
+    };
+    for (let i = 0; i < n - 1; i++) {
+      const u0 = dist[i];
+      const u1 = dist[i + 1];
+      const h0 = Math.max(0.02, stations[i].yTop - stations[i].yFoot);
+      const h1 = Math.max(0.02, stations[i + 1].yTop - stations[i + 1].yFoot);
+      quad(
+        push(left[i][0], yAt(i, false), left[i][1], u0, 0),
+        push(left[i + 1][0], yAt(i + 1, false), left[i + 1][1], u1, 0),
+        push(left[i + 1][0], yAt(i + 1, true), left[i + 1][1], u1, h1),
+        push(left[i][0], yAt(i, true), left[i][1], u0, h0),
+      );
+      quad(
+        push(right[i][0], yAt(i, false), right[i][1], u0, 0),
+        push(right[i][0], yAt(i, true), right[i][1], u0, h0),
+        push(right[i + 1][0], yAt(i + 1, true), right[i + 1][1], u1, h1),
+        push(right[i + 1][0], yAt(i + 1, false), right[i + 1][1], u1, 0),
+      );
+      quad(
+        push(left[i][0], yAt(i, true), left[i][1], u0, 0),
+        push(left[i + 1][0], yAt(i + 1, true), left[i + 1][1], u1, 0),
+        push(right[i + 1][0], yAt(i + 1, true), right[i + 1][1], u1, thick),
+        push(right[i][0], yAt(i, true), right[i][1], u0, thick),
+      );
+      quad(
+        push(left[i][0], yAt(i, false), left[i][1], u0, 0),
+        push(right[i][0], yAt(i, false), right[i][1], u0, thick),
+        push(right[i + 1][0], yAt(i + 1, false), right[i + 1][1], u1, thick),
+        push(left[i + 1][0], yAt(i + 1, false), left[i + 1][1], u1, 0),
+      );
+    }
+    const h0 = Math.max(0.02, stations[0].yTop - stations[0].yFoot);
+    quad(
+      push(left[0][0], yAt(0, false), left[0][1], 0, 0),
+      push(left[0][0], yAt(0, true), left[0][1], 0, h0),
+      push(right[0][0], yAt(0, true), right[0][1], thick, h0),
+      push(right[0][0], yAt(0, false), right[0][1], thick, 0),
+    );
+    const last = n - 1;
+    const hEnd = Math.max(0.02, stations[last].yTop - stations[last].yFoot);
+    quad(
+      push(left[last][0], yAt(last, false), left[last][1], 0, 0),
+      push(right[last][0], yAt(last, false), right[last][1], thick, 0),
+      push(right[last][0], yAt(last, true), right[last][1], thick, hEnd),
+      push(left[last][0], yAt(last, true), left[last][1], 0, hEnd),
+    );
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  };
 
   for (const p of [...M.primitives, ...scenery]) {
     if (hidden(p.tag) || cutBefore(p)) continue;
@@ -905,7 +1163,8 @@ async function main() {
     // From inside, a top storey's ceiling is its roof slab's underside: plastered white, not the concrete's grey.
     const slabOverhead = inside && p.type === "prism" && /slab/.test(p.tag || "") && P.camera.room && p.y0 > P.camera.room.floorY + 2;
     const photoMat = p.type === "terrain" && p.photo ? new THREE.MeshStandardMaterial({ map: PHOTOS.get(p.photo.src), roughness: 1, metalness: 0 }) : null;
-    const mat = photoMat ? photoMat : slabOverhead ? MAT.ceiling : siteTag && P.camera.cutAboveM != null ? unclipped(materialOf(p)) : materialOf(p);
+    let mat = photoMat ? photoMat : slabOverhead ? MAT.ceiling : siteTag && P.camera.cutAboveM != null ? unclipped(materialOf(p)) : materialOf(p);
+    if (!verifyPathway && p.material === "frame") mat = archVizFrameMat(mat);
     let mesh;
     // A thin flat part rounded in plan — a basin's oval bowl, a washer's round
     // door — is a rounded outline extruded to its thickness: a rounded box is
@@ -922,25 +1181,82 @@ async function main() {
       geo.translate(0, p.size.y / 2, 0);
       mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
-      if (p.rotY) mesh.rotation.y = p.rotY;
+      applyBoxRotX(mesh, p);
     } else if (p.type === "box" && p.round) {
       const r = Math.min(p.round, p.size.x / 2.01, p.size.y / 2.01, p.size.z / 2.01);
       mesh = new THREE.Mesh(new RoundedBoxGeometry(p.size.x, p.size.y, p.size.z, 3, r), mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
-      if (p.rotY) mesh.rotation.y = p.rotY;
+      applyBoxRotX(mesh, p);
+    } else if (p.type === "box" && p.span) {
+      // Bottom-centre line is span.start → span.end. Local +Z follows that vector; local +Y is world-up
+      // projected off the slope. Box centre sits half the thickness along that up so the bottom face lands on both points.
+      const start = new THREE.Vector3(p.span.start.x, p.span.start.y, p.span.start.z);
+      const end = new THREE.Vector3(p.span.end.x, p.span.end.y, p.span.end.z);
+      const dir = new THREE.Vector3().subVectors(end, start);
+      const len = dir.length();
+      dir.multiplyScalar(1 / (len || 1));
+      const up = new THREE.Vector3(0, 1, 0).addScaledVector(dir, -dir.y);
+      if (up.lengthSq() < 1e-10) up.set(1, 0, 0);
+      up.normalize();
+      const xAxis = new THREE.Vector3().crossVectors(up, dir).normalize();
+      up.crossVectors(dir, xAxis).normalize();
+      const thick = p.size.y;
+      const wide = Math.min(p.size.x, p.size.z);
+      const center = start.clone().add(end).multiplyScalar(0.5).addScaledVector(up, thick / 2);
+      mesh = new THREE.Mesh(worldBox(wide, thick, len, repeatOf(mat), null), mat);
+      mesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, up, dir));
+      mesh.position.copy(center);
     } else if (p.type === "box") {
-      mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat), p.rotY ? null : p.centre), mat);
+      mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat), p.rotY != null || p.rotX != null ? null : p.centre), mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
-      if (p.rotY) mesh.rotation.y = p.rotY;
+      applyBoxRotX(mesh, p);
     } else if (p.type === "prism") {
-      const shape = new THREE.Shape(p.ring.map(([x, z]) => new THREE.Vector2(x, -z)));
-      for (const h of p.holes || []) shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z))));
-      const y0 = groundFloorOf(p);
-      const geo = new THREE.ExtrudeGeometry(shape, { depth: p.y1 - y0, bevelEnabled: false });
-      geo.rotateX(-Math.PI / 2);
-      geo.translate(0, y0, 0);
-      // UVs in metres from world position, projected by each face's normal.
-      const pos = geo.attributes.position, uv = geo.attributes.uv; geo.computeVertexNormals(); const nrm = geo.attributes.normal;
+      let geo;
+      if (p.ringY0 && p.railThick != null && p.railAxis && p.ringY0.length === p.ring.length) {
+        // Sloped handrail: bottom quad at ringY0, top offset by railThick along railAxis — no Euler rotation.
+        const thick = p.railThick;
+        const { nx, ny, nz } = p.railAxis;
+        const n = p.ring.length;
+        const pos = [];
+        for (let i = 0; i < n; i++) {
+          const [x, z] = p.ring[i];
+          const yb = p.ringY0[i];
+          pos.push(x, yb, z, x + thick * nx, yb + thick * ny, z + thick * nz);
+        }
+        const idx = [];
+        for (let i = 0; i < n; i++) {
+          const b0 = i * 2;
+          const b1 = ((i + 1) % n) * 2;
+          const t0 = b0 + 1;
+          const t1 = b1 + 1;
+          idx.push(b0, b1, t1, b0, t1, t0);
+        }
+        const flat = p.ring.map(([x, z]) => new THREE.Vector2(x, z));
+        // triangulateShape returns faces as [i, j, k] triples, not a flat index list.
+        const tris = THREE.ShapeUtils.triangulateShape(flat, []);
+        for (let t = 0; t < tris.length; t++) {
+          const face = tris[t];
+          const a = face[0] ?? 0;
+          const b = face[1] ?? 0;
+          const c = face[2] ?? 0;
+          idx.push(a * 2, b * 2, c * 2);
+          idx.push(a * 2 + 1, c * 2 + 1, b * 2 + 1);
+        }
+        geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+        geo.setIndex(idx);
+      } else {
+        const shape = new THREE.Shape(p.ring.map(([x, z]) => new THREE.Vector2(x, -z)));
+        for (const h of p.holes || []) shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z))));
+        const y0 = groundFloorOf(p);
+        geo = new THREE.ExtrudeGeometry(shape, { depth: p.y1 - y0, bevelEnabled: false });
+        geo.rotateX(-Math.PI / 2);
+        geo.translate(0, y0, 0);
+      }
+      geo.computeVertexNormals();
+      if (!geo.attributes.uv) geo.setAttribute("uv", new THREE.Float32BufferAttribute(geo.attributes.position.count * 2, 2));
+      const pos = geo.attributes.position, uv = geo.attributes.uv;
+      const nrm = geo.attributes.normal;
       const r = repeatOf(mat);
       for (let i = 0; i < uv.count; i++) {
         const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
@@ -948,8 +1264,57 @@ async function main() {
         uv.setXY(i, ny > 0.5 ? x / r : (nx > 0.5 ? z : x) / r, ny > 0.5 ? z / r : y / r);
       }
       mesh = new THREE.Mesh(geo, groundSide(p, mat));
+    } else if (p.type === "drape") {
+      // The ring triangulated in plan, its triangles halved until no edge is over 1.2 m, each vertex at the grid's level.
+      const G = p.grid;
+      const hAt = (x, z) => {
+        const fi = Math.max(0, Math.min(G.nx - 1.001, (x - G.x0) / G.dx)), fj = Math.max(0, Math.min(G.nz - 1.001, (z - G.z0) / G.dx));
+        const i = Math.floor(fi), j = Math.floor(fj), u = fi - i, v = fj - j, H = (a, b) => G.heights[b * G.nx + a];
+        return H(i, j) * (1 - u) * (1 - v) + H(i + 1, j) * u * (1 - v) + H(i, j + 1) * (1 - u) * v + H(i + 1, j + 1) * u * v;
+      };
+      const dens = (pts) => {
+        const out = [];
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i], b = pts[(i + 1) % pts.length];
+          const k = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.0));
+          for (let j = 0; j < k; j++) out.push(new THREE.Vector2(a[0] + ((b[0] - a[0]) * j) / k, a[1] + ((b[1] - a[1]) * j) / k));
+        }
+        return out;
+      };
+      const C = dens(p.ring), Hs = (p.holes || []).map(dens);
+      const all = C.concat(...Hs);
+      const list = THREE.ShapeUtils.triangulateShape(C, Hs).map((t) => [all[t[0]], all[t[1]], all[t[2]]]);
+      const tri = [];
+      while (list.length) {
+        const [a, b, c] = list.pop();
+        const ab = a.distanceTo(b), bc = b.distanceTo(c), ca = c.distanceTo(a), m = Math.max(ab, bc, ca);
+        if (m <= 1.2) { tri.push(a, b, c); continue; }
+        if (m === ab) { const d = a.clone().lerp(b, 0.5); list.push([a, d, c], [d, b, c]); }
+        else if (m === bc) { const d = b.clone().lerp(c, 0.5); list.push([a, b, d], [a, d, c]); }
+        else { const d = c.clone().lerp(a, 0.5); list.push([a, b, d], [d, b, c]); }
+      }
+      // Upward faces: plan (x, z) turns the other way round from the shape's (x, y).
+      const pos = [], uvs = [], rD = repeatOf(mat);
+      for (let i = 0; i < tri.length; i += 3) {
+        const [a, b, c] = [tri[i], tri[i + 2], tri[i + 1]];
+        for (const v of [a, b, c]) { pos.push(v.x, hAt(v.x, v.y) + p.lift, v.y); uvs.push(v.x / rD, v.y / rD); }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+      geo.computeVertexNormals();
+      if (geo.attributes.normal.count && geo.attributes.normal.getY(0) < 0) {
+        const P = geo.attributes.position;
+        for (let i = 0; i < P.count; i += 3) { const x = P.getX(i + 1), y = P.getY(i + 1), z = P.getZ(i + 1), u = geo.attributes.uv.getX(i + 1), w = geo.attributes.uv.getY(i + 1); P.setXYZ(i + 1, P.getX(i + 2), P.getY(i + 2), P.getZ(i + 2)); geo.attributes.uv.setXY(i + 1, geo.attributes.uv.getX(i + 2), geo.attributes.uv.getY(i + 2)); P.setXYZ(i + 2, x, y, z); geo.attributes.uv.setXY(i + 2, u, w); }
+        geo.computeVertexNormals();
+      }
+      mesh = new THREE.Mesh(geo, mat);
     } else if (p.type === "cylinder") {
-      mesh = new THREE.Mesh(new THREE.CylinderGeometry(p.radius, p.radius, p.height, 32), mat);
+      const geo = new THREE.CylinderGeometry(p.radius, p.radius, p.height, 32);
+      const rM = repeatOf(mat);
+      if (cylinderUV && (mat.map || mat.bumpMap)) applyMetreUVToCylinder(geo, p.centre, p.radius, p.height, rM);
+      geo.computeVertexNormals();
+      mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
     } else if (p.type === "terrain") {
       // An elevation's cut: the slope between the camera and the face, seen
@@ -1023,10 +1388,14 @@ async function main() {
     } else if (p.type === "tree") {
       // A trunk and a crown of overlapping clumps, each its own green.
       const g = new THREE.Group();
-      const trunkH = p.height * 0.42;
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.15, trunkH, 10), MAT.bark);
-      trunk.position.y = trunkH / 2; g.add(trunk);
-      const clumps = 14;
+      // Scrub has no trunk: its clumps sit on the ground, wider than tall. An olive's trunk is short and thick.
+      const trunkH = p.kind === "scrub" ? 0 : p.height * (p.kind === "olive" ? 0.3 : 0.42);
+      if (trunkH > 0) {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(p.kind === "olive" ? 0.14 : 0.09, p.kind === "olive" ? 0.24 : 0.15, trunkH, 10), MAT.bark);
+        trunk.position.y = trunkH / 2; g.add(trunk);
+      }
+      const leafMat = p.kind === "scrub" ? "scrub" : p.kind === "olive" ? "olive" : "leaves";
+      const clumps = p.kind === "scrub" ? 9 : 14;
       for (let k = 0; k < clumps; k++) {
         const r = p.crown * (0.3 + rnd() * 0.2);
         // Welded, so the clump is shaded round rather than in facets, and
@@ -1050,10 +1419,12 @@ async function main() {
         }
         geo.setAttribute("color", new THREE.BufferAttribute(tone, 3));
         geo.computeVertexNormals();
-        const leaf = new THREE.Mesh(geo, MAT["leaves" + (k % 3)]);
+        const leaf = new THREE.Mesh(geo, MAT[leafMat + (k % 3)]);
         const a = (k / clumps) * Math.PI * 2 + rnd();
         const d = k === 0 ? 0 : p.crown * 0.45 * rnd() + p.crown * 0.2;
-        leaf.position.set(Math.cos(a) * d, trunkH + p.crown * 0.55 + (rnd() - 0.3) * p.crown * 0.6, Math.sin(a) * d);
+        if (p.kind === "scrub") leaf.scale.set(1, Math.max(0.5, p.height / (p.crown * 2)), 1);
+        const y = p.kind === "scrub" ? r * 0.7 + rnd() * Math.max(0, p.height - r * 1.6) : trunkH + p.crown * 0.55 + (rnd() - 0.3) * p.crown * 0.6;
+        leaf.position.set(Math.cos(a) * d, y, Math.sin(a) * d);
         leaf.castShadow = true; leaf.receiveShadow = true;
         g.add(leaf);
       }
@@ -1213,7 +1584,7 @@ async function main() {
       head.position.y = h * 0.9; g.add(head);
       g.position.set(p.at.x, p.at.y, p.at.z);
       g.rotation.y = p.rotY;
-      g.traverse((o) => { o.castShadow = true; });
+      g.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
       scene.add(g);
       continue;
     } else if (p.type === "text") {
@@ -1229,20 +1600,31 @@ async function main() {
       mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, p.heightM), new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.35, metalness: 0.4, clippingPlanes: clip }));
       mesh.position.set(p.at.x, p.at.y, p.at.z);
       mesh.rotation.y = Math.atan2(p.facing.x, p.facing.z);
+    } else if (p.type === "custom-mesh") {
+      const geo = wallStripGeometry(p.stations, p.thick);
+      if (!geo) continue;
+      const r = repeatOf(mat);
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / r, uv.getY(i) / r);
+      mesh = new THREE.Mesh(geo, mat);
     }
     if (!mesh) continue;
     // The walls stop at the roof's top face; grey over them, they showed through in streaks.
     if (mat === MAT.roofing) mesh.position.y += 0.02;
-    mesh.castShadow = p.material !== "glass" && p.material !== "railGlass" && p.material !== "stairShade";
+    mesh.castShadow = true;
     mesh.receiveShadow = true;
     if (p.material === "glass" || p.material === "railGlass" || p.material === "stairShade") mesh.renderOrder = 2;
+    if (p.material === "frame") attachFrameShadowDepth(mesh);
     scene.add(mesh);
   }
 
   // The hills round the site, to the horizon, fading into haze.
   if (P.camera.cutAboveM == null && !P.camera.studio) {
     const far = new THREE.Mesh(new THREE.CircleGeometry(2500, 64), MAT.soilFar);
-    far.rotation.x = -Math.PI / 2; far.position.set(cx, -3, cz); far.receiveShadow = true;
+    // Under the lowest ground of the model: at −3 it cut the valley north of the street flat and hid the road's arm running down it (site).
+    let lowest = -3;
+    for (const p of P.model.primitives) if (p.type === "terrain") for (const h of p.heights) if (h < lowest) lowest = h;
+    far.rotation.x = -Math.PI / 2; far.position.set(cx, lowest - 2, cz); far.castShadow = true; far.receiveShadow = true;
     scene.add(far);
     scene.fog = new THREE.Fog(0xb9d3ec, 220, 1600);
   }
@@ -1390,6 +1772,18 @@ async function main() {
     }
   }
 
+  // Photoreal pass: every built mesh casts and receives the sun. MeshStandardMaterial and MeshPhysicalMaterial
+  // already read scene.environment (the sky outside, the room inside). The sky dome itself is not a caster.
+  scene.traverse((o) => {
+    if (!o.isMesh || o === sky) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const mat of mats) {
+      if (mat && mat.isMeshStandardMaterial && (mat.envMapIntensity == null || mat.envMapIntensity === 0)) mat.envMapIntensity = 1;
+    }
+  });
+
   const cam = P.camera.orthoHalfWidth
     ? new THREE.OrthographicCamera(-P.camera.orthoHalfWidth, P.camera.orthoHalfWidth, (P.camera.orthoHalfWidth * P.height) / P.width, (-P.camera.orthoHalfWidth * P.height) / P.width, 0.1, 6000)
     : new THREE.PerspectiveCamera(P.camera.fovDeg, P.width / P.height, 0.1, 6000);
@@ -1410,25 +1804,61 @@ async function main() {
   }
 
   if (P.pathTrace && P.camera.cutAboveM == null && !P.camera.section) {
-    await traceFrame(renderer, scene, cam, sky, sunDir, P);
+    await traceFrame(renderer, scene, cam, sky, sunDir, P, verifyPathway);
     window.__renderDone = true;
     return;
   }
 
   const composer = new EffectComposer(renderer);
-  composer.setSize(P.width, P.height);
+  composer.setSize(drawW, drawH);
   composer.addPass(new RenderPass(scene, cam));
   if (P.ao) {
-    const ao = new GTAOPass(scene, cam, P.width, P.height);
+    const ao = new GTAOPass(scene, cam, drawW, drawH);
     // House plan: very light contact AO — heavier washed walls grey (13/10/2026).
     ao.updateGtaoMaterial({ radius: housePlan ? 0.4 : 0.9, distanceExponent: 1.4, thickness: housePlan ? 0.65 : 1.2, scale: 1.0, samples: housePlan ? 10 : 16 });
     ao.blendIntensity = housePlan ? 0.32 : 0.85;
     composer.addPass(ao);
   }
   composer.addPass(new OutputPass());
-  composer.addPass(new SMAAPass(P.width, P.height));
+  composer.addPass(new SMAAPass(drawW, drawH));
   composer.render();
+  if (ssScale > 1) {
+    // Visual ss2: WebGL buffer drawW×drawH; downscale to outW×outH for screenshot (pixelRatio stayed 1).
+    const dst = document.createElement("canvas");
+    dst.width = outW;
+    dst.height = outH;
+    const ctx = dst.getContext("2d");
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(renderer.domElement, 0, 0, outW, outH);
+    renderer.domElement.replaceWith(dst);
+  }
   window.__renderDone = true;
+}
+/** Visual path trace only: physical glass transmission, brushed metal, aggregate concrete — ArchViz not verify baseline. */
+function tuneMaterialsForPathTrace(scene) {
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    for (const mat of list) {
+      if (!mat) continue;
+      if (mat.transmission != null && mat.transmission > 0.2) {
+        mat.transmission = Math.min(1, Math.max(mat.transmission, 0.95));
+        mat.thickness = Math.max(mat.thickness ?? 0.008, 0.014);
+        mat.roughness = Math.min(mat.roughness ?? 0.05, 0.035);
+        mat.ior = mat.ior ?? 1.52;
+        if (mat.envMapIntensity != null) mat.envMapIntensity = Math.max(mat.envMapIntensity, 1.75);
+      } else if (mat.metalness != null && mat.metalness >= 0.55) {
+        mat.metalness = Math.min(0.92, mat.metalness + 0.08);
+        mat.roughness = Math.max(0.22, Math.min(mat.roughness ?? 0.4, 0.38));
+        if (mat.envMapIntensity != null) mat.envMapIntensity = 1.45;
+      } else if (mat.roughness != null && mat.roughness >= 0.75 && (mat.map || mat.color)) {
+        mat.roughness = Math.min(mat.roughness, 0.82);
+        mat.metalness = Math.min(mat.metalness ?? 0, 0.06);
+      }
+      mat.needsUpdate = true;
+    }
+  });
 }
 /**
  * The frame path-traced. The tracer draws only what has a standard material,
@@ -1437,10 +1867,12 @@ async function main() {
  * bright past white — as background and light both. The fog goes: the
  * tracer's own air is the sky's light.
  */
-async function traceFrame(renderer, scene, cam, sky, sunDir, P) {
+async function traceFrame(renderer, scene, cam, sky, sunDir, P, verifyPathway) {
   const { WebGLPathTracer } = await import("three-gpu-pathtracer");
   scene.remove(sky);
   scene.fog = null;
+  // ArchViz path trace (PT=100…): tune PBR so glass/metal/concrete converge under Monte Carlo, not flat MeshStandard defaults.
+  if (!verifyPathway) tuneMaterialsForPathTrace(scene);
   const W = 1024, H = 512;
   const data = new Float32Array(W * H * 4);
   const zen = [0.12, 0.32, 0.86], hor = [0.5, 0.7, 0.95], gnd = [0.42, 0.4, 0.37];
@@ -1469,14 +1901,18 @@ async function traceFrame(renderer, scene, cam, sky, sunDir, P) {
   scene.background = env;
   scene.environment = env;
   // A room's windows look out on a bright day: the sky that lights and shows through them is brighter than the sky an outside view is lit by.
-  scene.environmentIntensity = P.camera.interior === true ? 1.1 : 1;
-  scene.backgroundIntensity = P.camera.interior === true ? 2.2 : 1;
+  scene.environmentIntensity = P.camera.interior === true ? 1.25 : 1.15;
+  scene.backgroundIntensity = P.camera.interior === true ? 2.35 : 1.12;
+  if (verifyPathway) {
+    scene.environmentIntensity = P.camera.interior === true ? 1.1 : 1;
+    scene.backgroundIntensity = P.camera.interior === true ? 2.2 : 1;
+  }
   // Traced, the light is what reaches the face — no ambient fill the
   // rasteriser adds — so the exposure the plates were set at reads dark.
-  renderer.toneMappingExposure = P.exposure * (P.camera.interior === true ? 1.1 : 1.6);
+  renderer.toneMappingExposure = P.exposure * (P.camera.interior === true ? 1.1 : 1.6) * (verifyPathway ? 1 : 1.08);
   const tracer = new WebGLPathTracer(renderer);
   tracer.tiles.set(2, 2);
-  tracer.filterGlossyFactor = 0.5;
+  tracer.filterGlossyFactor = verifyPathway ? 0.5 : 0.35;
   tracer.setScene(scene, cam);
   const samples = P.pathTrace.samples;
   for (let i = 0; i < samples; i++) {

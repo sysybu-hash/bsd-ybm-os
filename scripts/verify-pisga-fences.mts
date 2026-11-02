@@ -17,7 +17,8 @@ const { dxfSurfaces } = await import("@/lib/projects/building/pisga-surfaces");
 
 type Box = { type: "box"; centre: { x: number; y: number; z: number }; size: { x: number; y: number; z: number }; rotY?: number; material?: string; tag?: string };
 const dxf = readDxfDrawing(fs.readFileSync(process.argv[2]!))!;
-const model = await buildPisga(null, { dxf });
+// SURVEY=<survey dxf>: the model as the renders build it, with the 2022 survey's ground, stairs and street.
+const model = await buildPisga(null, { dxf, ...(process.env.SURVEY ? { survey: (await import("@/lib/projects/dxf-drawing")).readDxfDrawing((await import("node:fs")).readFileSync(process.env.SURVEY))! } : {}) });
 const prims = model.primitives;
 
 // The ground: the fine terrain grid, bilinear.
@@ -95,6 +96,23 @@ for (const p of prims) {
     },
   });
 }
+// A sloped piece (a ramp's slab, a wall with a sloping head) is a run of stations: each span between two is a solid, its top the higher of theirs.
+for (const p of prims) {
+  if (p.type !== "custom-mesh" || isRailTag(p.tag ?? "") || p.material === "glass") continue;
+  for (let i = 1; i < p.stations.length; i++) {
+    const [a, b] = [p.stations[i - 1]!, p.stations[i]!], len = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+    const [ux, uz] = [(b.x - a.x) / len, (b.z - a.z) / len];
+    solids.push({
+      top: Math.max(a.yTop, b.yTop),
+      foot: Math.min(a.yFoot, b.yFoot),
+      wide: p.thick >= 0.6 || (p.thick >= 0.2 && Math.max(a.yTop - a.yFoot, b.yTop - b.yFoot) < 0.8),
+      at: (x, z, pad) => {
+        const [rx, rz] = [x - a.x, z - a.z], along = rx * ux + rz * uz, across = -rx * uz + rz * ux;
+        return along >= -pad && along <= len + pad && Math.abs(across) <= p.thick / 2 + pad;
+      },
+    });
+  }
+}
 // A rail stands on its deck's very edge: the deck is looked for 12 cm round the point, so the edge counts as on it.
 const levelAt = (x: number, z: number, limit: number) => {
   let best = ground(x, z);
@@ -168,7 +186,9 @@ for (const run of runs) {
   const share = steps ? low / steps : 0;
   // A stair's handrail is wanted whatever the drop (the sheets' "מאחז יד"): it is not judged as a guard.
   const handrail = /stair/.test(run.tag);
-  if (!handrail && share >= 0.6 && len > 1.5) findings.push({ kind: "unneeded", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', בשני צדדיו הקרקע עד 0.4 מ' מתחת למפלס ההליכה (נפילה מרבית ${dropMax.toFixed(2)})` });
+  // A surveyed boundary fence or road guard (the kindergarten's sheet fence, M2601; the guard rail, M2438) stands for a line, not a drop.
+  const boundary = /^site:survey-(fence|guard)/.test(run.tag);
+  if (!handrail && !boundary && share >= 0.6 && len > 1.5) findings.push({ kind: "unneeded", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', בשני צדדיו הקרקע עד 0.4 מ' מתחת למפלס ההליכה (נפילה מרבית ${dropMax.toFixed(2)})` });
   if (steps && floating / steps >= 0.5 && len > 1.5) findings.push({ kind: "floating", where: `${run.tag} ${seg(run.pieces[0]!)}…`, detail: `אורך ${len.toFixed(1)} מ', מתחת לרצף אין משטח או קרקע בגובה ההליכה (תלוי באוויר ב-${floating} מ-${steps} נקודות)` });
 }
 // Doubled: two runs (or one tag's two pieces) along the same line, overlapping, at a similar height.
@@ -195,7 +215,7 @@ for (let i = 0; i < rails.length; i++) {
 // A run with posts: an upright frame/metal box 0.4–1.3 m tall within 10 cm of its line.
 const posts = boxes.filter((b) => /frame|metal/.test(b.material) && b.size.y >= 0.4 && b.size.y <= 1.3 && Math.max(b.size.x, b.size.z) <= 0.1);
 const posted = (run: { pieces: Run[] }) => run.pieces.some((p) => posts.some((b) => b.centre.y + b.size.y / 2 <= p.y + 0.05 && b.centre.y + b.size.y / 2 >= p.y - 0.15 && Math.hypot(b.centre.x - (p.x1 + p.x2) / 2, b.centre.z - (p.z1 + p.z2) / 2) <= p.len / 2 + 0.1 && Math.abs((b.centre.x - p.x1) * -(p.z2 - p.z1) / p.len + (b.centre.z - p.z1) * (p.x2 - p.x1) / p.len) < 0.1));
-const walls = boxes.filter((b) => !isGuardPart(b) && b.size.y >= 0.9 && Math.min(b.size.x, b.size.z) <= 0.6 && Math.max(b.size.x, b.size.z) >= 0.5 && b.material !== "glass" && !/furniture|fixture|partition|tree|person|car/.test(b.tag ?? ""));
+const walls = boxes.filter((b) => !isGuardPart(b) && b.size.y >= 0.9 && Math.min(b.size.x, b.size.z) <= 0.6 && Math.max(b.size.x, b.size.z) >= 0.5 && b.material !== "glass" && !/furniture|fixture|partition|tree|person|car/.test(b.tag ?? "") && !/^site:stair/.test(b.tag ?? ""));
 for (const run of runs) {
   // A handrail fixed to a stair's side wall is the wall's handrail, not a second guard; its posts would be (they are not built there).
   if (/stair/.test(run.tag) && !posted(run)) continue;

@@ -14,4 +14,4 @@ Read `docs/PISGA-HANDOVER.md` (what was done, how to run, the open list) and `CL
 - No paid AI calls (Gemini / image painting) without the user's explicit approval. No push, merge or PR unless asked: Vercel bills every push.
 - No bare `git stash`, no `reset --hard`, no killing leftover node/Chrome processes, no DB migrations (local dev hits production), no edits to `.env.local`.
 - Railing tags on stairs must contain "stair", or the fence checker calls them floating.
-- Talk to the user in Hebrew. Write code and commits in English, with the Co-Authored-By line. End every report with a link to the results folder.
+- Talk to the user in full Hebrew only (עברית מלאה): plans, questions, reports, explanations. Do not mix English into user-facing sentences. Keep file paths, shell commands, view IDs, and commit subjects as-is. Code and commit messages stay in English with Co-Authored-By. End every report with a link to the results folder.

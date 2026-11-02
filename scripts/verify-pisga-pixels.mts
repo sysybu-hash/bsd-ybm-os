@@ -87,6 +87,8 @@ for (const sh of sheets) {
       if (!c.tags.test(tag)) continue;
       if (sh.id !== "roof" && !tag.startsWith(sh.id) && !/^(site|roof|kindergarten)/.test(tag) && c.id !== "stairs") continue;
       if (sh.id !== "roof" && /^floor-/.test(tag) && !tag.startsWith(sh.id)) continue;
+      // A drape or a mesh has no one height; the plan check leaves it out.
+      if (!(p.type === "prism" || p.type === "terrain" || "centre" in p)) continue;
       const yc = p.type === "prism" ? (p.y0 + p.y1) / 2 : p.type === "terrain" ? 0 : p.centre.y;
       if (p.type !== "terrain" && (yc < sh.level + c.band[0] - 2 || yc > sh.level + c.band[1] + 2) && !/^site/.test(tag)) continue;
       if (p.type === "box") {

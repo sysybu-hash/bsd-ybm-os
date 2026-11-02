@@ -35,9 +35,30 @@ export type BuildingMaterial =
   | "carpet"
   | "asphalt"
   | "parkingLine"
+  /** Street paint: the red of a red-and-white kerb, the blue of a disabled bay. */
+  | "kerbRed"
+  | "lineBlue"
+  /** The black of a traffic island's black-and-white kerb. */
+  | "kerbBlack"
+  /** A stair head's warning surface ("משטח אזהרה"): dark grey ribbed tile. */
+  | "tactile"
+  /** The yellow locator strip that leads the blind to the lift ("סימן מאתר"). */
+  | "tactileYellow"
+  /** Red concrete pavers: the street's islands and the plaza's walks (Street View, 2012). */
+  | "brickRed"
   | "paving"
   | "grass"
   | "soil"
+  /** A dry Judean hillside after the summer: olive-grey grass, pale earth and limestone (Pisga's photographs, 29/10/2026). */
+  | "hillside"
+  /** The blue sheet a kindergarten's fence carries over its lower part ("גדר פח"). */
+  | "fenceBlue"
+  /** Painted dark green steel: the side stairs' railings. */
+  | "railGreen"
+  /** A neighbour's walls: cream stone with a grid of windows, three metres a storey (context buildings, not the project). */
+  | "neighbourFacade"
+  /** Red clay roof tile. */
+  | "roofTile"
   | "rock"
   | "existing"
   | "metal"
@@ -96,6 +117,13 @@ export type Primitive =
       material: BuildingMaterial;
       tag?: string;
       rotY?: number;
+      /** Pitch about local +x after `rotY` (railing on a stair slope); rotation order YXZ in the page script. */
+      rotX?: number;
+      /**
+       * Sloped rail: bottom-centre at `start` and `end`. The page aligns local +Z along that segment
+       * (Matrix4 basis) and ignores `rotX` / `rotY` for the mesh. `rotY` and `centre` stay for the fence checker.
+       */
+      span?: { start: Vec3; end: Vec3 };
       /** Edges rounded to this radius, metres: a cushion, a mattress. */
       round?: number;
     }
@@ -108,6 +136,12 @@ export type Primitive =
       y1: number;
       material: BuildingMaterial;
       tag?: string;
+      /**
+       * Sloped handrail: bottom face y at each ring vertex; top = bottom + railThick * railAxis (unit vector).
+       */
+      ringY0?: number[];
+      railThick?: number;
+      railAxis?: { nx: number; ny: number; nz: number };
     }
   | { type: "cylinder"; centre: Vec3; radius: number; height: number; material: BuildingMaterial; tag?: string }
   | {
@@ -129,11 +163,36 @@ export type Primitive =
       /** Plan rectangles this grid leaves undrawn (its heights there still stand for the ground): a finer grid over them draws the ground instead. */
       holes?: Array<{ x0: number; z0: number; x1: number; z1: number }>;
     }
-  | { type: "tree"; at: Vec3; height: number; crown: number; tag?: string }
+  /**
+   * A surface draped on a height grid: the plan ring (with holes) triangulated, cut to cells a metre or so across, each vertex at the
+   * grid's level there plus `lift`. A road that follows the slope rather than a flat slab.
+   */
+  | {
+      type: "drape";
+      ring: Array<[number, number]>;
+      holes?: Array<Array<[number, number]>>;
+      grid: { x0: number; z0: number; dx: number; nx: number; nz: number; heights: number[] };
+      lift: number;
+      material: BuildingMaterial;
+      tag?: string;
+    }
+  /** A tree; `kind` draws a hillside olive (short twisted trunk, silver-green crown) or scrub (a dense dark bush from the ground, no trunk). */
+  | { type: "tree"; at: Vec3; height: number; crown: number; kind?: "olive" | "scrub"; tag?: string }
   /** A plant in a pot: staging beside a sofa, in a terrace's corner. */
   | { type: "plant"; at: Vec3; height: number; spread: number; tag?: string }
   | { type: "car"; at: Vec3; rotY: number; colour: number; tag?: string }
   | { type: "person"; at: Vec3; rotY: number; colour: number; height: number; tag?: string }
+  | {
+      /**
+       * One solid wall. `stations` run along the centreline: the coping is `yTop` and the foot is `yFoot`,
+       * so the two edges need not be parallel. The page builds a single BufferGeometry, `thick` metres across.
+       */
+      type: "custom-mesh";
+      stations: Array<{ x: number; z: number; yTop: number; yFoot: number }>;
+      thick: number;
+      material: BuildingMaterial;
+      tag?: string;
+    }
   | {
       type: "text";
       text: string;

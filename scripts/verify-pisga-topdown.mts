@@ -39,7 +39,7 @@ const NOT_WALL = ["site", "tree", "car", "person", "plant", "roof", "kindergarte
 for (const f of floors) {
   const hide = [...NOT_WALL, f.other, ...["slab", "floor", "inside", "window", "door", "curtain", "surround", "sill", "lining"].map((t) => `${f.id}:${t}`)];
   const [png] = await renderBuildingFrames(
-    [{ model, width: W, height: H, sun: { azimuthDeg: 200, elevationDeg: 60 }, exposure: 1, ao: false, camera: { position: { x: CX, y: 120, z: CZ }, target: { x: CX, y: 0, z: CZ }, fovDeg: 30, orthoHalfWidth: HALF, up: { x: 0, y: 0, z: -1 }, cutAboveM: f.level + 1.2, hideTags: hide, mask: true } }],
+    [{ model, width: W, height: H, sun: { azimuthDeg: 200, elevationDeg: 60 }, exposure: 1, ao: false, verifyPathway: true, camera: { position: { x: CX, y: 120, z: CZ }, target: { x: CX, y: 0, z: CZ }, fovDeg: 30, orthoHalfWidth: HALF, up: { x: 0, y: 0, z: -1 }, cutAboveM: f.level + 1.2, hideTags: hide, mask: true } }],
     { outputWidthPx: W },
   );
   const raw = await sharp(png!).resize(W, H).greyscale().raw().toBuffer();

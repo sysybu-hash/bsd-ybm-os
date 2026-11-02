@@ -16,7 +16,8 @@ const { readDxfDrawing, flattenDxf } = await import("@/lib/projects/dxf-drawing"
 const { buildPisga } = await import("@/lib/projects/building/pisga");
 
 const dxf = readDxfDrawing(fs.readFileSync(process.argv[2]!))!;
-const model = await buildPisga(null, { dxf });
+// SURVEY=<survey dxf>: the model as the renders build it, with the 2022 survey's ground, stairs and street.
+const model = await buildPisga(null, { dxf, ...(process.env.SURVEY ? { survey: (await import("@/lib/projects/dxf-drawing")).readDxfDrawing((await import("node:fs")).readFileSync(process.env.SURVEY))! } : {}) });
 const g = model.primitives.find((p) => p.type === "terrain" && p.tag === "site:ground") as Extract<(typeof model.primitives)[number], { type: "terrain" }>;
 const ground = (x: number, z: number) => {
   const fx = (x - g.x0) / g.dx, fz = (z - g.z0) / g.dx;

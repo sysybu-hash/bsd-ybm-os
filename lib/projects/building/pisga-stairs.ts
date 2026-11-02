@@ -246,9 +246,146 @@ export function stairPrims(set: TreadSet, top: number, bottom: number, tag: stri
   return out;
 }
 
+/** One point on a stair that is not a single straight flight: a tread run arrives here, and `landing` is a flat pad in metres. */
+export type StairNode = { x: number; z: number; y: number; landing?: number };
 
-/** A railing along a line at `level`: 1.1 m, a top rail, a post every 1.6 m, bars every 12 cm. */
-export function railingPrims(a: [number, number], b: [number, number], level: number, tag: string, height = 1.1): Primitive[] {
+/**
+ * Treads along a polyline of explicit levels, with a flat pad at each node that asks for one.
+ * A DXF flight is still `stairPrims` (one run, one rise). This is for a path the sheet does not draw as one straight slope:
+ * the level changes only between nodes, and a node with `landing` is horizontal.
+ * The bars are 11 cm deep, so the fence check keeps judging the surveyed guards only.
+ */
+export function stairPath(nodes: StairNode[], width: number, tag: string, material: "stone" | "concrete" = "stone"): Primitive[] {
+  const out: Primitive[] = [];
+  // A turn is an axis-aligned pad. A rotated pad at a U-turn sat on the diagonal and
+  // occupied the same plan as the flat connector, so the two slabs fought.
+  const pad = (n: StairNode) => {
+    const s = n.landing ?? width;
+    out.push({
+      type: "box",
+      centre: { x: n.x, y: n.y - 0.08, z: n.z },
+      size: { x: s, y: 0.16, z: Math.max(s, width + 0.08) },
+      material,
+      tag,
+    });
+  };
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const a = nodes[i]!;
+    const b = nodes[i + 1]!;
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const len = Math.hypot(dx, dz);
+    const dy = b.y - a.y;
+    if (len < 0.08) continue;
+    // Stop the flight at the pad edge. Two pads that meet omit the stub between them.
+    const insetA = Math.min((a.landing ?? 0) / 2, len * 0.45);
+    const insetB = Math.min((b.landing ?? 0) / 2, len * 0.45);
+    const span = len - insetA - insetB;
+    if (span < 0.15) continue;
+    const ux = dx / len;
+    const uz = dz / len;
+    const ax = a.x + ux * insetA;
+    const az = a.z + uz * insetA;
+    const bx = b.x - ux * insetB;
+    const bz = b.z - uz * insetB;
+    const ang = Math.atan2(bz - az, bx - ax);
+    if (Math.abs(dy) < 0.12) {
+      out.push({
+        type: "box",
+        centre: { x: (ax + bx) / 2, y: Math.max(a.y, b.y) - 0.08, z: (az + bz) / 2 },
+        size: { x: span, y: 0.16, z: width },
+        rotY: -ang,
+        material,
+        tag,
+      });
+      continue;
+    }
+    const n = Math.max(1, Math.round(Math.abs(dy) / 0.17));
+    const rise = dy / n;
+    const going = span / n;
+    const px = -uz;
+    const pz = ux;
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n;
+      const top = a.y + dy * ((k + 1) / n);
+      out.push({
+        type: "box",
+        centre: { x: ax + (bx - ax) * t, y: top - Math.abs(rise) / 2, z: az + (bz - az) * t },
+        size: { x: Math.max(going, 0.08), y: Math.abs(rise), z: width },
+        rotY: -ang,
+        material,
+        tag,
+      });
+    }
+    out.push(...slopedTopRail(
+      [ax + px * (width / 2 - 0.05), az + pz * (width / 2 - 0.05)],
+      [bx + px * (width / 2 - 0.05), bz + pz * (width / 2 - 0.05)],
+      a.y + rise, b.y, `${tag}-bar`, 0.95, 0.11,
+    ));
+  }
+  for (const n of nodes) if (n.landing) pad(n);
+  return out;
+}
+
+/**
+ * One wall between two design levels. The coping follows the path (a terrace edge, or a metre above a stair).
+ * The foot is the lower terrace of that path, one horizontal level, not a sample of the hillside every half metre.
+ * `rock` is a flat ledge: both ends share one elevation, and the coping stands 0.85 m above it.
+ * Tags must not contain rail, fence, gate, guard, or stair.
+ */
+export function slopedWall(
+  path: { x: number; z: number; y: number }[],
+  tag: string,
+  mode: "cheek" | "rock",
+  thick = 0.35,
+): Primitive[] {
+  if (path.length < 2) return [];
+  const yFoot = Math.min(...path.map((p) => p.y)) - (mode === "cheek" ? 1 : 0);
+  const stations = path.map((p) => ({
+    x: p.x,
+    z: p.z,
+    yTop: mode === "rock" ? p.y + 0.85 : p.y,
+    yFoot,
+  }));
+  return [{ type: "custom-mesh", stations, thick, material: "stone", tag }];
+}
+
+/**
+ * Sloped top rail. `span.start` / `span.end` are the bottom-centre of the rail on the first and last
+ * baluster tops. The renderer places the mesh with a basis matrix (local +Z = start→end); `rotY` is only
+ * the plan yaw the fence checker reads.
+ */
+export function slopedTopRail(
+  a: [number, number],
+  b: [number, number],
+  ya: number,
+  yb: number,
+  tag: string,
+  balusterHeight = 0.95,
+  railThick = 0.05,
+): Primitive[] {
+  const start = { x: a[0], y: ya + balusterHeight, z: a[1] };
+  const end = { x: b[0], y: yb + balusterHeight, z: b[1] };
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const dz = end.z - start.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len < 0.08) return [];
+  return [
+    {
+      type: "box",
+      centre: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 + railThick / 2, z: (start.z + end.z) / 2 },
+      size: { x: len, y: railThick, z: 0.06 },
+      rotY: -Math.atan2(dz, dx),
+      span: { start, end },
+      material: "frame",
+      tag,
+    },
+  ];
+}
+
+/** A railing along a line at `level`: 1.1 m, a top rail, a post every 1.6 m, bars every 12 cm. `posts` drops the post at an end that already has a corner post. */
+export function railingPrims(a: [number, number], b: [number, number], level: number, tag: string, height = 1.1, posts: { start?: boolean; end?: boolean } = {}): Primitive[] {
   const out: Primitive[] = [];
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
   if (len < 0.3) return out;
@@ -256,8 +393,12 @@ export function railingPrims(a: [number, number], b: [number, number], level: nu
   const mid = { x: (a[0] + b[0]) / 2, z: (a[1] + b[1]) / 2 };
   out.push({ type: "box", centre: { x: mid.x, y: level + height, z: mid.z }, size: { x: len, y: 0.05, z: 0.06 }, rotY: -ang, material: "frame", tag });
   const n = Math.max(1, Math.round(len / 0.12));
+  const startPost = posts.start !== false;
+  const endPost = posts.end !== false;
   for (let k = 0; k <= n; k++) {
     const t = k / n;
+    const want = k === 0 ? startPost : k === n ? endPost : true;
+    if (!want) continue;
     const post = k % 13 === 0 || k === n;
     out.push({ type: "box", centre: { x: a[0] + (b[0] - a[0]) * t, y: level + height / 2, z: a[1] + (b[1] - a[1]) * t }, size: { x: post ? 0.07 : 0.018, y: height, z: post ? 0.07 : 0.018 }, material: "frame", tag });
   }
@@ -320,18 +461,56 @@ export function dxfEntrancePrims(drawing: DxfDrawing, floorMinus1: number, stree
   const boxOf = (z0: number, z1: number, y0: number, y1: number, material: "stone" | "concrete", tag: string): Primitive =>
     ({ type: "box", centre: { x: cx, y: (y0 + y1) / 2, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: y1 - y0, z: z1 - z0 }, material, tag });
   // n tread lines are n + 1 risers: the flight's top block is one riser under the landing.
+  // `stairPrims` also lays a handrail of horizontal chips on the tread line. On this well those chips
+  // read as one slope and run into the cheek walls (the walls stand on the tread ends). Treads only here;
+  // each flight gets its own sloped rail, and the landing between them is flat.
+  const bare = (prims: Primitive[]) => prims.filter((p) => !(p.type === "box" && (p.tag ?? "").endsWith("-rail")));
   const riseCore = (landing - floorMinus1) / (core.n + 1);
-  out.push(...stairPrims(down(core), landing - riseCore, floorMinus1 + riseCore, "floor-1:inside:stair", "stone", floorMinus1, true));
+  const coreDown = down(core);
+  const coreTop = landing - riseCore;
+  const coreBottom = floorMinus1 + riseCore;
+  out.push(...bare(stairPrims(coreDown, coreTop, coreBottom, "floor-1:inside:stair", "stone", floorMinus1, true)));
   const zLand0 = Math.max(core.first[1], core.last[1]) + core.pitch / 2;
   const zLand1 = Math.min(entry.first[1], entry.last[1]) - entry.pitch / 2;
-  out.push(boxOf(zLand0, zLand1, landing - 0.4, landing, "stone", "floor-1:inside:stair"));
+  if (zLand1 > zLand0 + 0.2) out.push(boxOf(zLand0, zLand1, landing - 0.4, landing, "stone", "floor-1:inside:stair"));
   const riseEntry = (top - landing) / (entry.n + 1);
   const zTop = Math.max(entry.first[1], entry.last[1]) + entry.pitch / 2;
-  out.push(...stairPrims(down(entry), top - riseEntry, landing + riseEntry, "site:entry-stair", "stone", landing - 0.4, true));
-  // The flight's own head: the street's paving up to the treads.
-  out.push(boxOf(zTop, zTop + 0.6, top - 0.4, top, "stone", "site:entry-stair"));
-  // Its side walls (the sheet's 20 cm stone walls either side) and the slab under the landing and the entry flight, over the courtyard.
-  for (const x of [x0 - 0.2, x1]) out.push({ type: "box", centre: { x: x + 0.1, y: (8.2 + top + 1) / 2, z: (zLand0 + zTop) / 2 }, size: { x: 0.2, y: top + 1 - 8.2, z: zTop - zLand0 }, material: "stone", tag: "site:entry-stair" });
+  const entryDown = down(entry);
+  const entryTop = top - riseEntry;
+  const entryBottom = landing + riseEntry;
+  out.push(...bare(stairPrims(entryDown, entryTop, entryBottom, "site:entry-stair", "stone", landing - 0.4, true)));
+  // 75 cm inside the opening, and the street end stops short of the cheek. A rail on the tread line, or run out to the
+  // cheek's end, reads as buried in the stone.
+  const inset = 0.75;
+  // Where the sheet draws them: the rails are its long thin outlines along the flight (5 cm, 4 m and more) — one on each wall, and the double
+  // rail down the middle ("מאחז יד כפול", x 27.22 and 27.42). Without them, one 75 cm in from each side.
+  const at = frame("floor-1");
+  const drawn: number[] = [];
+  for (const p of sheetPieces(drawing, "floor-1")) {
+    if (!/^מדרג/.test(p.layer) || !p.pts || p.pts.length < 2) continue;
+    const q = p.pts.map(at);
+    const xs = q.map((v) => v[0]), zs = q.map((v) => v[1]);
+    const w = Math.max(...xs) - Math.min(...xs);
+    const x = (Math.max(...xs) + Math.min(...xs)) / 2;
+    if (w > 0.07 || Math.max(...zs) - Math.min(...zs) < 3 || x < x0 - 0.2 || x > x1 + 0.2 || drawn.some((d) => Math.abs(d - x) < 0.04)) continue;
+    drawn.push(x);
+  }
+  const railXs = drawn.length >= 2 ? drawn : [x0 + inset, x1 - inset];
+  const yAt = (flightTop: number, flightBottom: number, n: number, k: number) => flightTop - k * ((flightTop - flightBottom) / n);
+  const rails = (tag: string, zA: number, yA: number, zB: number, yB: number) => {
+    if (Math.abs(zB - zA) < 0.12) return;
+    for (const x of railXs) out.push(...slopedTopRail([x, zA], [x, zB], yA, yB, `${tag}-rail`));
+  };
+  rails("floor-1:inside:stair", coreDown.last[1], yAt(coreTop, coreBottom, coreDown.n, coreDown.n - 1), zLand0, landing);
+  if (zLand1 > zLand0 + 0.2) rails("floor-1:inside:stair", zLand0, landing, zLand1, landing);
+  const zStop = zTop - 0.35;
+  const yStop = landing + ((top - landing) * (zStop - zLand1)) / (zTop - zLand1 || 1);
+  rails("site:entry-stair", zLand1, landing, zStop, yStop);
+  // The flight's own head, up to the sidewalk so the mouth is not a step.
+  out.push(boxOf(zTop, zTop + 0.6, top - 0.4, Math.max(top, street + 0.15), "stone", "site:entry-stair"));
+  // Side walls from the opened roof (z 14.2) to the street, so both flights sit in one well. The slab under the landing and the entry flight only.
+  const zCheek0 = 14.15;
+  for (const x of [x0 - 0.2, x1]) out.push({ type: "box", centre: { x: x + 0.1, y: (8.2 + Math.max(top, street + 0.15) + 1) / 2, z: (zCheek0 + zTop) / 2 }, size: { x: 0.2, y: Math.max(top, street + 0.15) + 1 - 8.2, z: zTop - zCheek0 }, material: "stone", tag: "site:entry-stair" });
   out.push(boxOf(zLand0, zTop, 8.2, landing - 0.4, "concrete", "site:entry-stair"));
   return out;
 }

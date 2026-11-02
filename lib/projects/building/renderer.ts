@@ -86,6 +86,19 @@ export async function renderBuildingFrames(
         if (name === "" || name === "index.html") {
           return void req.respond({ status: 200, contentType: "text/html; charset=utf-8", body: html });
         }
+        if (name.startsWith("tex/") && name.endsWith(".png") && !name.includes("..")) {
+          const texRoot = path.join(process.cwd(), "lib", "projects", "building", "textures");
+          const texFile = path.normalize(path.join(texRoot, name.slice("tex/".length)));
+          if (!texFile.startsWith(texRoot)) return void req.respond({ status: 404, body: "" });
+          void readFile(texFile).then(
+            (body) => req.respond({ status: 200, contentType: "image/png", body }),
+            () => {
+              process.stderr.write(`[page] missing ${texFile}\n`);
+              return req.respond({ status: 404, body: "" });
+            },
+          );
+          return;
+        }
         const file = name.startsWith("three/")
           ? path.join(three, "build", name.slice("three/".length))
           : name.startsWith("jsm/")
