@@ -82,6 +82,24 @@ describe("doors from the swings", () => {
     expect(out[0]).toMatchObject({ kind: "door", orientation: "h", from: 200, to: 240 });
   });
 
+  // A front door as the Gotlib sheet draws it: the leaf swings up along the
+  // hatched wall it is hinged on, and the jamb stands against another cross
+  // wall. Neither runs along the doorway's own line.
+  const upSwing = { cx: 200, cy: 100, r: 40, a0: -90, a1: 0, strokes: 15 };
+  const hingeWall = wall("v", 200, 40, 100);
+  const hatch = [75, 78, 81, 84].map((my) => seg(195, my - 5, 205, my + 5));
+
+  it("hangs a door between two cross walls when no wall runs along its line", () => {
+    const cross = [hingeWall, wall("v", 245, 100, 200)];
+    const out = doorsFromSwings([], [upSwing], cross, hatch, U, () => true);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ kind: "door", orientation: "h", centre: 100, from: 200, to: 240 });
+  });
+
+  it("does not hang a door where only one end meets a wall", () => {
+    expect(doorsFromSwings([], [upSwing], [hingeWall], hatch, U, () => true)).toHaveLength(0);
+  });
+
   it("leaves a door no swing is drawn for as a doorway with no leaf", () => {
     const door: Opening & { kind: string } = {
       orientation: "h",

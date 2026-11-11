@@ -462,8 +462,31 @@ export function measuredPlateMatchesSheet(
   measured: SegmentedRoom[],
   truth?: PrintedUnitTruth,
 ): boolean {
+  return measuredPlateMismatch(sheet, measured, truth) == null;
+}
+
+const KIND_LABEL_HE: Record<string, string> = {
+  living: "סלון",
+  kitchen: "מטבח",
+  bedroom: "חדרי שינה",
+  mmd: 'ממ"ד',
+  bathroom: "חדרי רחצה",
+  balcony: "מרפסות",
+};
+
+/**
+ * Which part of the sheet's programme the measured plate does not reproduce,
+ * in words a user can check against the drawing: "מרפסות: נמדדו 3, בגיליון 2".
+ * Null when it does. A refusal that says only that something differs sends
+ * the user back to upload the same file again.
+ */
+export function measuredPlateMismatch(
+  sheet: FloorplanLayout,
+  measured: SegmentedRoom[],
+  truth?: PrintedUnitTruth,
+): string | null {
   const wanted = roomsForVisualization(sheet);
-  if (wanted.length === 0) return true;
+  if (wanted.length === 0) return null;
   const countKind = (rooms: Array<{ kind?: string; name?: string }>, kind: string) =>
     rooms.filter((room) => (room.kind ?? (room.name ? inferRoomKind(room.name) : "other")) === kind)
       .length;
@@ -488,7 +511,7 @@ export function measuredPlateMatchesSheet(
     const found = countKind(measured, kind);
     if ((kind === "bedroom" || kind === "mmd") && !readsShelter) {
       if (coreMatches) continue;
-      return false;
+      return `חדרי שינה וממ"ד: נמדדו ${sleeping(measured)}, בגיליון ${sleeping(wanted)}`;
     }
     // Terraces counted two ways, and either can fall short: the figures the
     // sheet prints as text (דירה 14 prints two of its three areas as text and
@@ -511,9 +534,9 @@ export function measuredPlateMatchesSheet(
       countKind(measured, "living") >= 1 &&
       measured.some((room) => holdsKitchen(room))
     ) continue;
-    if (expected > 0 && found !== expected) return false;
+    if (expected > 0 && found !== expected) return `${KIND_LABEL_HE[kind] ?? kind}: נמדדו ${found}, בגיליון ${expected}`;
   }
-  return true;
+  return null;
 }
 
 /**
@@ -527,8 +550,9 @@ export function measuredPlateQualityFailure(
   confidence: ConfidenceReport,
   truth?: PrintedUnitTruth,
 ): string | null {
-  if (!measuredPlateMatchesSheet(sheet, measured, truth)) {
-    return "הלוח המדוד לא משחזר את מספר וסוג החללים שבגיליון";
+  const mismatch = measuredPlateMismatch(sheet, measured, truth);
+  if (mismatch) {
+    return `הלוח המדוד לא משחזר את מספר וסוג החללים שבגיליון: ${mismatch}`;
   }
   if (!confidence.ok) {
     return `הלוח המדוד לא עבר את בקרת האיכות (${confidence.hard.join(", ") || "ללא פירוט"})`;
