@@ -126,7 +126,15 @@ type Box = { x0: number; y0: number; x1: number; y1: number };
  * its floors read so: the building reader missed half their walls, while this
  * one closes every flat of the same drawing.
  */
-export function unitByDoors(drawing: DxfDrawing, number: number, options?: { floor?: Box }): UnitPlan | UnitPlanFailure {
+export function unitByDoors(
+  drawing: DxfDrawing,
+  number: number,
+  options?: {
+    floor?: Box;
+    /** The office's profile as a person confirmed its layers (withLayerMap); by the drawing's own layers when absent. */
+    profile?: CadOfficeProfile;
+  },
+): UnitPlan | UnitPlanFailure {
   const unitsM = drawing.headerUnitsM;
   if (!unitsM) return { number, reason: "no-units" };
   const marks = apartmentMarks(drawing);
@@ -149,7 +157,7 @@ export function unitByDoors(drawing: DxfDrawing, number: number, options?: { flo
     return X >= 0 && Y >= 0 && X < cols && Y < rows ? Y * cols + X : -1;
   };
 
-  const profile = profileFor(drawing.layers.keys());
+  const profile = options?.profile ?? profileFor(drawing.layers.keys());
   const pieces = flattenDxf(drawing, entitiesWithin(drawing, { centre: mark, width: 2 * R, height: 2 * R }));
 
   const grid = new Uint8Array(N);
