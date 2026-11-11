@@ -1,6 +1,6 @@
-import { blockKind, hatchKind, layerKind, profileFor } from "@/lib/projects/building/cad-layers";
+import { blockKind, hatchKind, layerKind, profileFor, type CadKind } from "@/lib/projects/building/cad-layers";
 import { dropReport, resetDrops } from "@/lib/projects/drop-log";
-import { flattenDxf, readDxfDrawing, type DxfPiece } from "@/lib/projects/dxf-drawing";
+import { flattenDxf, IDENTITY, readDxfDrawing, type DxfDrawing, type DxfPiece } from "@/lib/projects/dxf-drawing";
 
 /**
  * How much of a sheet the system read, counted off the drawing itself: per kind (layers, blocks, entities, hatches) what
@@ -49,18 +49,36 @@ const REASON_BY_FILTER: Array<[RegExp, UnreadReason]> = [
 /** "dxf-drawing:unsupported-MTEXT" → MTEXT; other filters keep their own name after the colon. */
 const dropName = (filter: string) => filter.replace(/^[^:]*:/, "").replace(/^unsupported-/, "");
 
+export type ScanOptions = {
+  /** Layers the user agreed to read as a part (second round); an off or frozen layer in it is read too. */
+  layerMap?: Record<string, CadKind>;
+  /** How deep block references are followed; the second round goes past the reader's 8. */
+  maxDepth?: number;
+};
+
 /** Reads one DXF and counts what the readers take. Null when the bytes are not a DXF the reader opens. */
-export function scanDxf(input: string | Uint8Array): ScanResult | null {
+export function scanDxf(input: string | Uint8Array, opts: ScanOptions = {}): ScanResult | null {
   const drawing = readDxfDrawing(input);
-  if (!drawing) return null;
+  return drawing ? scanDrawing(drawing, opts) : null;
+}
+
+/** The drawing with the mapped layers switched on, so the flattener emits what the user asked to read. */
+export function withLayersOn(drawing: DxfDrawing, names: (name: string) => boolean): DxfDrawing {
+  const layers = new Map([...drawing.layers].map(([n, l]) => [n, names(n) ? { ...l, off: false, frozen: false } : l]));
+  return { ...drawing, layers };
+}
+
+export function scanDrawing(source: DxfDrawing, opts: ScanOptions = {}): ScanResult {
+  const map = opts.layerMap ?? {};
+  const drawing = Object.keys(map).length ? withLayersOn(source, (n) => n in map) : source;
   const profile = profileFor(drawing.layers.keys());
   // The drop log is process-wide; flattening is synchronous, so nothing else writes to it between reset and read.
   resetDrops();
-  const pieces = flattenDxf(drawing);
+  const pieces = flattenDxf(drawing, drawing.entities, { m: IDENTITY, path: [], depth: 0, maxDepth: opts.maxDepth });
   const drops = dropReport();
 
   const readLayer = new Map<string, boolean>();
-  const isReadLayer = (layer: string) => readLayer.get(layer) ?? readLayer.set(layer, layerKind(profile, layer) != null).get(layer)!;
+  const isReadLayer = (layer: string) => readLayer.get(layer) ?? readLayer.set(layer, layer in map || layerKind(profile, layer) != null).get(layer)!;
   const pieceRead = (p: DxfPiece) => {
     if (isReadLayer(p.layer)) return true;
     if (p.rings && hatchKind(profile, p.pattern ?? "", p.layer) != null) return true;

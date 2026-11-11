@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, Loader2, RotateCcw } from "lucide-react";
+import { AlertTriangle, ChevronDown, Loader2, RotateCcw, Sparkles } from "lucide-react";
+import { RescanBox, type RescanLabels } from "@/components/vmb/scan/RescanBox";
 import type { ScanView } from "@/lib/vmb/scan-view";
 
 export type ScanLabels = {
@@ -25,6 +26,10 @@ export type ScanLabels = {
   notScannedYet: string;
   empty: string;
   errors: Record<string, string>;
+  rescanMore: string;
+  /** {n} */
+  round: string;
+  rescanBox: RescanLabels;
 };
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -36,8 +41,27 @@ const fill = (t: string, vars: Record<string, string | number>) => Object.entrie
 export type RowState = { status: "waiting" | "scanning" | "failed"; error?: string } | null;
 
 /** One file's scan: the read share, the counts by kind, and the list of what was left out. */
-export function ScanFileRow({ name, scan, state, labels, onRescan }: { name: string; scan: ScanView | null; state: RowState; labels: ScanLabels; onRescan: () => void }) {
+export function ScanFileRow({
+  projectId,
+  fileId,
+  name,
+  scan,
+  state,
+  labels,
+  onRescan,
+  onUpdated,
+}: {
+  projectId: string;
+  fileId: string;
+  name: string;
+  scan: ScanView | null;
+  state: RowState;
+  labels: ScanLabels;
+  onRescan: () => void;
+  onUpdated: (s: ScanView) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [more, setMore] = useState(false);
   const [all, setAll] = useState(false);
   const busy = state?.status === "scanning" || state?.status === "waiting";
   const unread = scan ? (all ? scan.unread : scan.unread.slice(0, 6)) : [];
@@ -61,8 +85,11 @@ export function ScanFileRow({ name, scan, state, labels, onRescan }: { name: str
             </button>
           </span>
         ) : scan?.share != null ? (
-          <span className="vmb-mono text-sm font-bold" style={{ color: tone(scan.share) }}>
-            {fill(labels.read, { pct: pct(scan.share) })}
+          <span className="flex items-center gap-2">
+            {scan.round > 1 ? <span className="vmb-mono rounded-full border border-[color:var(--vmb-line)] px-2 py-0.5 text-[10px] text-[color:var(--vmb-muted)]">{fill(labels.round, { n: scan.round })}</span> : null}
+            <span className="vmb-mono text-sm font-bold" style={{ color: tone(scan.share) }}>
+              {fill(labels.read, { pct: pct(scan.share) })}
+            </span>
           </span>
         ) : null}
       </div>
@@ -82,9 +109,9 @@ export function ScanFileRow({ name, scan, state, labels, onRescan }: { name: str
               </div>
             ))}
           </dl>
-          <div className="mt-2 flex items-center justify-between">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             {scan.unread.length ? (
-              <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--vmb-warn)]">
+              <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-[color:var(--vmb-warn)]">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
                 {fill(labels.unreadTitle, { n: scan.unread.length })}
                 <ChevronDown className={`h-3.5 w-3.5 transition ${open ? "rotate-180" : ""}`} aria-hidden />
@@ -92,11 +119,31 @@ export function ScanFileRow({ name, scan, state, labels, onRescan }: { name: str
             ) : (
               <span className="text-xs text-[color:var(--vmb-pass)]">{labels.allRead}</span>
             )}
-            <button type="button" onClick={onRescan} className="flex items-center gap-1 text-[11px] text-[color:var(--vmb-muted)] hover:text-[color:var(--vmb-ink)]">
-              <RotateCcw className="h-3 w-3" aria-hidden />
-              {labels.rescan}
-            </button>
+            <span className="flex items-center gap-3">
+              {scan.unread.length && !more ? (
+                <button type="button" onClick={() => setMore(true)} className="flex items-center gap-1 whitespace-nowrap text-[11px] font-semibold text-[color:var(--vmb-accent)]">
+                  <Sparkles className="h-3 w-3" aria-hidden />
+                  {labels.rescanMore}
+                </button>
+              ) : null}
+              <button type="button" onClick={onRescan} className="flex items-center gap-1 whitespace-nowrap text-[11px] text-[color:var(--vmb-muted)] hover:text-[color:var(--vmb-ink)]">
+                <RotateCcw className="h-3 w-3" aria-hidden />
+                {labels.rescan}
+              </button>
+            </span>
           </div>
+          {more ? (
+            <RescanBox
+              projectId={projectId}
+              fileId={fileId}
+              labels={labels.rescanBox}
+              onClose={() => setMore(false)}
+              onDone={(s) => {
+                setMore(false);
+                onUpdated(s);
+              }}
+            />
+          ) : null}
           {open && scan.unread.length ? (
             <ul className="mt-2 space-y-1.5 rounded-xl bg-[color:var(--vmb-bg-sunk)] p-3 text-xs">
               {unread.map((u) => (

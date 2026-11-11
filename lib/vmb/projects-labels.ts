@@ -5,6 +5,8 @@ import type { BoardLabels } from "@/components/vmb/projects/ProjectsBoard";
 import type { ProgressText } from "@/components/vmb/projects/types";
 import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
 import type { ScanLabels } from "@/components/vmb/scan/ScanFileRow";
+import type { CadKind } from "@/lib/projects/building/cad-layers";
+import { SUGGEST_VIA } from "@/lib/vmb/rescan";
 
 const p = (k: string) => vmbStudioT(`vmb.projects.${k}`);
 const pick = (prefix: string, keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, p(`${prefix}_${k}`)]));
@@ -78,6 +80,8 @@ export function uploadLabels(): UploadLabels {
   };
 }
 
+const CAD_KIND_KEYS = ["wall-ext", "wall-int", "door", "window", "parking", "lawn", "planting", "tree", "paving", "fence", "railing", "stairs", "plot", "gate", "bins", "sanitary", "furniture", "overhead", "text", "dimension", "group", "ignore"] as const satisfies readonly CadKind[];
+
 const SCAN_ERRORS = ["generic", "not_found", "kind_not_scanned", "fetch_failed", "unreadable"] as const;
 const UNREAD_REASON_KEYS = ["no_reader", "off_layer", "frozen_layer", "unsupported", "invisible", "too_dense", "other"] as const;
 
@@ -101,5 +105,19 @@ export function scanLabels(): ScanLabels {
     notScannedYet: s("notScannedYet"),
     empty: s("empty"),
     errors: by("err", SCAN_ERRORS),
+    rescanMore: s("rescanMore"),
+    round: s("round"),
+    rescanBox: {
+      loading: s("rb_loading"),
+      found: s("rb_found"),
+      deeper: s("rb_deeper"),
+      nothing: s("rb_nothing"),
+      approve: s("rb_approve"),
+      cancel: s("rb_cancel"),
+      readsAs: s("rb_readsAs"),
+      failed: s("rb_failed"),
+      kinds: by("cadkind", CAD_KIND_KEYS),
+      via: by("via", SUGGEST_VIA),
+    },
   };
 }

@@ -78,7 +78,12 @@ export function ScanPanel({ projectId, files, initial, labels }: { projectId: st
       {scannable.length ? (
         <ul className="mt-3 divide-y divide-[color:var(--vmb-line)]" aria-live="polite">
           {scannable.map((f) => (
-            <ScanFileRow key={f.id} name={f.relPath} scan={states[f.id]?.status === "scanning" ? null : scanOf(f)} state={stateOf(f)} labels={labels} onRescan={() => rescan(f)} />
+            <ScanFileRow
+              key={f.id}
+              projectId={projectId}
+              fileId={f.id}
+              onUpdated={(s) => setLocal((l) => ({ ...l, [f.id]: s }))}
+              name={f.relPath} scan={states[f.id]?.status === "scanning" ? null : scanOf(f)} state={stateOf(f)} labels={labels} onRescan={() => rescan(f)} />
           ))}
         </ul>
       ) : (
