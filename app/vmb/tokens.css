@@ -1,0 +1,164 @@
+/* VisualModuBuild design tokens: "Cinematic".
+ * Dark is the brand: near-black stage, renders full-bleed, one copper accent.
+ * Sky blue is functional only: dimension lines and measured numbers.
+ * Light mode exists for the working studio (long sessions in daylight). */
+
+.vmb {
+  --vmb-bg: #050506;
+  --vmb-bg-raised: #0f1012;
+  --vmb-bg-sunk: #000000;
+  --vmb-ink: #f4f2ee;
+  --vmb-ink-soft: rgba(244, 242, 238, 0.72);
+  --vmb-muted: rgba(244, 242, 238, 0.5);
+  --vmb-line: rgba(244, 242, 238, 0.1);
+  --vmb-line-strong: rgba(244, 242, 238, 0.24);
+  --vmb-accent: #ff8a4c;
+  --vmb-accent-ink: #120700;
+  --vmb-accent-soft: rgba(255, 138, 76, 0.14);
+  --vmb-measure: #7dd3fc;
+  --vmb-measure-soft: rgba(125, 211, 252, 0.14);
+  --vmb-pass: #4ade80;
+  --vmb-warn: #fbbf24;
+  --vmb-fail: #fb7185;
+  --vmb-grid: rgba(125, 211, 252, 0.06);
+  --vmb-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 30px 60px -30px rgba(0, 0, 0, 0.9);
+  --vmb-radius: 18px;
+
+  background: var(--vmb-bg);
+  color: var(--vmb-ink);
+  font-family: var(--font-vmb-display), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.vmb[data-theme="light"] {
+  --vmb-bg: #f6f4f0;
+  --vmb-bg-raised: #ffffff;
+  --vmb-bg-sunk: #ebe7e0;
+  --vmb-ink: #0b0b0c;
+  --vmb-ink-soft: rgba(11, 11, 12, 0.72);
+  --vmb-muted: rgba(11, 11, 12, 0.5);
+  --vmb-line: rgba(11, 11, 12, 0.1);
+  --vmb-line-strong: rgba(11, 11, 12, 0.24);
+  --vmb-accent: #e0621f;
+  --vmb-accent-ink: #ffffff;
+  --vmb-accent-soft: rgba(224, 98, 31, 0.1);
+  --vmb-measure: #0369a1;
+  --vmb-measure-soft: rgba(3, 105, 161, 0.1);
+  --vmb-pass: #15803d;
+  --vmb-warn: #b45309;
+  --vmb-fail: #be123c;
+  --vmb-grid: rgba(3, 105, 161, 0.06);
+  --vmb-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 20px 40px -20px rgba(0, 0, 0, 0.2);
+}
+
+/* The platform's global heading colours must not leak into VMB. */
+.vmb :is(h1, h2, h3, h4) {
+  color: inherit;
+}
+
+.vmb-display {
+  font-family: var(--font-vmb-display), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.vmb-mono {
+  font-family: var(--font-vmb-mono), ui-monospace, "Cascadia Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+
+/* Blueprint grid behind drawings and the studio canvas. */
+.vmb-grid {
+  background-image:
+    linear-gradient(var(--vmb-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--vmb-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.vmb-card {
+  background: var(--vmb-bg-raised);
+  border: 1px solid var(--vmb-line);
+  border-radius: var(--vmb-radius);
+  box-shadow: var(--vmb-shadow);
+}
+
+/* Glass panel laid over a picture. */
+.vmb-glass {
+  background: rgba(10, 10, 12, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+/* Measurement chip: a dimension label as on a drawing. */
+.vmb-chip {
+  display: inline-block;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--vmb-measure) 92%, transparent);
+  color: #062033;
+  padding: 2px 8px;
+  font: 600 11px/1.6 var(--font-vmb-mono), ui-monospace, monospace;
+  direction: ltr;
+  white-space: nowrap;
+}
+
+/* Outlined giant numerals (step numbers, section indices). */
+.vmb-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px var(--vmb-line-strong);
+}
+
+.vmb-rise {
+  animation: vmb-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes vmb-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.vmb-kenburns {
+  animation: vmb-kenburns 26s ease-in-out infinite alternate;
+}
+
+@keyframes vmb-kenburns {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1.14) translate(-1.5%, -1%);
+  }
+}
+
+.vmb-progress-bar {
+  background-image: linear-gradient(
+    90deg,
+    var(--vmb-accent) 0%,
+    color-mix(in srgb, var(--vmb-accent) 60%, white) 50%,
+    var(--vmb-accent) 100%
+  );
+  background-size: 200% 100%;
+  animation: vmb-shimmer 2.2s linear infinite;
+}
+
+@keyframes vmb-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vmb-rise,
+  .vmb-kenburns,
+  .vmb-progress-bar {
+    animation: none;
+  }
+}

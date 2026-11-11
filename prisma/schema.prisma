@@ -1819,3 +1819,44 @@ model HouseBookletJob {
   @@index([organizationId, createdAt])
   @@index([status, updatedAt])
 }
+
+// ─── VisualModuBuild (vmb.bsd-ybm.co.il) ─────────────────────────────────────
+// A separate product with its own accounts: no relation to User/Organization.
+
+model VmbUser {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  /// Stored lower-cased.
+  email         String    @unique
+  name          String?
+  image         String?
+  /// Google's stable subject id, once the user signed in with Google.
+  googleSub     String?   @unique
+  /// True once Google vouched for the address.
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+
+  password VmbPasswordCredential?
+  sessions VmbSession[]
+}
+
+model VmbPasswordCredential {
+  userId    String   @id
+  hash      String
+  updatedAt DateTime @updatedAt
+  user      VmbUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VmbSession {
+  /// sha256 of the cookie token; the token itself is never stored.
+  id         String   @id
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  user       VmbUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}

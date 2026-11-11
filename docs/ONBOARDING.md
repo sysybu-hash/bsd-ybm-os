@@ -134,6 +134,12 @@ GOOGLE_CLIENT_SECRET="..."
 # אופציונלי — Client נפרד לכניסה בלבד (מומלץ להסרת אזהרת Google ב-login)
 # GOOGLE_SIGNIN_CLIENT_ID="..."
 # GOOGLE_SIGNIN_CLIENT_SECRET="..."
+
+# VisualModuBuild (vmb.bsd-ybm.co.il) — Client נפרד, חשבונות נפרדים מהפלטפורמה.
+# Redirect URI: https://vmb.bsd-ybm.co.il/api/vmb/auth/google/callback
+# (ולפיתוח: http://localhost:3000/api/vmb/auth/google/callback). בלי שניהם הכפתור כבוי.
+# VMB_GOOGLE_CLIENT_ID="..."
+# VMB_GOOGLE_CLIENT_SECRET="..."
 ```
 
 - **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.

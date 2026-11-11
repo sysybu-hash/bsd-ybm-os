@@ -45,6 +45,8 @@ const publicApiPrefixes = [
   "/api/health",
   "/api/leads",
   "/api/unsubscribe",
+  // VisualModuBuild: its own sessions (vmb_session), checked by withVmbAuth.
+  "/api/vmb",
 ] as const;
 
 function isPublicApi(pathname: string): boolean {
@@ -56,7 +58,10 @@ export default async function middleware(request: NextRequest, _event: NextFetch
 
   const pathname = request.nextUrl.pathname;
 
-  if (pathname === "/") {
+  // VisualModuBuild's host has its own landing at "/"; platform sessions never redirect it.
+  const onVmbHost = (request.headers.get("host") ?? "").toLowerCase().startsWith("vmb.");
+
+  if (pathname === "/" && !onVmbHost) {
     const secret = edgeEnv.nextAuthSecret;
     const hasSessionCookie =
       request.cookies.has("next-auth.session-token") ||

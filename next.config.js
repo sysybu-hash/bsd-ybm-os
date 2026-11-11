@@ -34,6 +34,20 @@ const LEGACY_REDIRECTS = [
   },
 ];
 
+/**
+ * VisualModuBuild: its own host (prod `vmb.bsd-ybm.co.il`, dev `vmb.localhost`)
+ * serves the `app/vmb` tree at the root. API, Next internals, static files and
+ * already-prefixed paths pass through untouched.
+ */
+const VMB_HOST_REWRITES = [
+  { source: "/", has: [{ type: "host", value: "vmb\\..+" }], destination: "/vmb" },
+  {
+    source: "/:path((?!api/|_next/|vmb(?:/|$)|favicon\\.ico|.*\\.[a-z0-9]+$).*)",
+    has: [{ type: "host", value: "vmb\\..+" }],
+    destination: "/vmb/:path",
+  },
+];
+
 /** Allow common local dev ports to avoid Next dev cross-origin warnings. */
 function buildAllowedDevOrigins() {
   const set = new Set([
@@ -201,7 +215,12 @@ const nextConfig = {
   },
   // The visualizer's handler, at a path no other route contains (see above).
   async rewrites() {
-    return [{ source: "/api/projects/visualize-floorplan", destination: "/api/projects/visualize-floorplan-run" }];
+    return {
+      // Before the filesystem, so the VMB host's "/" never reaches app/page.tsx.
+      beforeFiles: VMB_HOST_REWRITES,
+      afterFiles: [{ source: "/api/projects/visualize-floorplan", destination: "/api/projects/visualize-floorplan-run" }],
+      fallback: [],
+    };
   },
   transpilePackages: ["react-signature-canvas", "signature_pad", "@hebcal/core"],
   serverExternalPackages: [

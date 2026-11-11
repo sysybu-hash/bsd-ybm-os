@@ -97,6 +97,9 @@ const serverSchema = z.object({
   /** אופציונלי — Client נפרד לכניסה בלבד (openid, email, profile) ללא אזהרת scopes רגישים */
   GOOGLE_SIGNIN_CLIENT_ID: optStr,
   GOOGLE_SIGNIN_CLIENT_SECRET: optStr,
+  /** VisualModuBuild (vmb.bsd-ybm.co.il): its own OAuth client, separate accounts from the platform. */
+  VMB_GOOGLE_CLIENT_ID: optStr,
+  VMB_GOOGLE_CLIENT_SECRET: optStr,
 
   // --- Google Cloud / Document AI ---
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optStr,
