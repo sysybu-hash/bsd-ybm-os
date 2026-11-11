@@ -6,10 +6,10 @@ import { VmbLink } from "@/components/vmb/VmbLink";
 import { K, Kicker, SectionHead, WRAP } from "@/components/vmb/landing/LandingSections";
 
 const SHOTS = [
-  { src: "jerusalem_stone", key: "g1", chip: "±0.03 m", span: "lg:col-span-7 aspect-[4/3]" },
-  { src: "contemporary", key: "g2", chip: "±0.04 m", span: "lg:col-span-5 aspect-[4/3] lg:aspect-auto" },
-  { src: "luxury", key: "g3", chip: "±0.02 m", span: "lg:col-span-5 aspect-[4/3] lg:aspect-auto" },
-  { src: "scandi", key: "g4", chip: "±0.03 m", span: "lg:col-span-7 aspect-[4/3]" },
+  { src: "jerusalem_stone", key: "g1", span: "lg:col-span-7 aspect-[4/3]" },
+  { src: "contemporary", key: "g2", span: "lg:col-span-5 aspect-[4/3] lg:aspect-auto" },
+  { src: "luxury", key: "g3", span: "lg:col-span-5 aspect-[4/3] lg:aspect-auto" },
+  { src: "scandi", key: "g4", span: "lg:col-span-7 aspect-[4/3]" },
 ];
 
 export function GallerySection({ t }: { t: TFunction }) {
@@ -31,7 +31,6 @@ export function GallerySection({ t }: { t: TFunction }) {
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
             <figcaption className="absolute inset-x-6 bottom-5 flex items-end justify-between gap-4">
               <span className="text-2xl font-bold">{t(`${K}gallery.${s.key}`)}</span>
-              <span className="vmb-chip">{s.chip}</span>
             </figcaption>
           </figure>
         ))}
