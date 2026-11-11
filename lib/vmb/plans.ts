@@ -45,7 +45,7 @@ export function nextPeriod(now: Date, currentEnd: Date | null): { start: Date; e
 }
 
 /**
- * What a booklet costs in credits — PLACEHOLDERS until the owner sets them (live research doc, item 18).
+ * What a booklet costs in credits. Launch numbers, approved by the owner as temporary on 2026-11-11 (live research doc, item 18).
  *
  * One credit is one painted picture delivered. A picture the deviation gate refuses twice goes out as the free render
  * (rule 13.6) and costs nothing, so the hold is the ceiling (every picture painted) and the bill is what was delivered.
