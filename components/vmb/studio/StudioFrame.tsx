@@ -3,7 +3,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Coins, Moon, Sun } from "lucide-react";
 import { VmbLink } from "@/components/vmb/VmbLink";
-import { VmbMark } from "@/components/vmb/VmbWordmark";
+import { VmbMark, VmbWordmark } from "@/components/vmb/VmbWordmark";
 
 export type FrameLabels = {
   projects: string;
@@ -71,8 +71,11 @@ export function StudioFrame({
     <div className="vmb min-h-screen" data-theme={theme} dir="rtl" lang="he">
       <header className="sticky top-0 z-30 border-b border-[color:var(--vmb-line)] bg-[color:var(--vmb-bg)]/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-4">
-          <VmbLink href="/" aria-label="home">
-            <VmbMark />
+          <VmbLink href="/" aria-label="home" className="shrink-0">
+            <VmbMark className="h-8 w-auto sm:hidden" />
+            <span className="hidden sm:block">
+              <VmbWordmark className="h-8 w-auto" />
+            </span>
           </VmbLink>
           <nav className="flex items-center gap-1 text-sm">
             <VmbLink href="/app" className={tab(active === "projects")} aria-current={active === "projects" ? "page" : undefined}>

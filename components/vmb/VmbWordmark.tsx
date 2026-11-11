@@ -1,43 +1,27 @@
+import Image from "next/image";
 import { VMB_BRAND } from "@/lib/vmb/brand";
 
-/** Mark: a plan corner with a dimension tick — the product's precision idea in 20px. */
-export function VmbMark({ className = "h-7 w-7" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 28 28" className={className} aria-hidden>
-      <rect x="1" y="1" width="26" height="26" rx="7" fill="var(--vmb-ink)" />
-      <path d="M8 20 V8 H20" fill="none" stroke="var(--vmb-bg)" strokeWidth="2.6" strokeLinecap="square" />
-      <path d="M12 23 H20 M12 21.5 V24.5 M20 21.5 V24.5" stroke="var(--vmb-accent)" strokeWidth="1.2" />
-      <circle cx="20" cy="20" r="2" fill="var(--vmb-accent)" />
-    </svg>
-  );
+const { logo } = VMB_BRAND;
+
+/** The cube alone, for tight spaces (studio top bar). */
+export function VmbMark({ className = "h-8 w-auto" }: { className?: string }) {
+  return <Image src={logo.mark} alt={VMB_BRAND.name} width={logo.markWidth} height={logo.markHeight} className={className} priority />;
 }
 
-/** The brand name with its accent segment coloured (both from lib/vmb/brand). */
-function wordParts() {
-  const { name, accentPart } = VMB_BRAND;
-  const at = accentPart ? name.indexOf(accentPart) : -1;
-  if (at < 0) return name;
+/**
+ * The full lockup. Both theme versions are in the page; CSS in tokens.css
+ * shows the one matching the nearest [data-theme], so there is no flash.
+ */
+export function VmbWordmark({ byline, className = "h-10 w-auto" }: { byline?: string; className?: string }) {
   return (
-    <>
-      {name.slice(0, at)}
-      <span className="text-[color:var(--vmb-accent)]">{accentPart}</span>
-      {name.slice(at + accentPart.length)}
-    </>
-  );
-}
-
-export function VmbWordmark({ byline }: { byline?: string }) {
-  return (
-    <span className="flex items-center gap-2.5" dir="ltr">
-      <VmbMark />
-      <span className="flex flex-col leading-none">
-        <span className="text-[15px] font-bold tracking-tight">{wordParts()}</span>
-        {byline ? (
-          <span className="mt-1 text-[10px] font-medium text-[color:var(--vmb-muted)]" dir="rtl">
-            {byline}
-          </span>
-        ) : null}
-      </span>
+    <span className="flex flex-col items-start gap-1" dir="ltr">
+      <Image src={logo.dark} alt={VMB_BRAND.name} width={logo.width} height={logo.height} className={`vmb-logo-dark ${className}`} priority />
+      <Image src={logo.light} alt="" aria-hidden width={logo.width} height={logo.height} className={`vmb-logo-light ${className}`} priority />
+      {byline ? (
+        <span className="ps-1 text-[10px] font-medium text-[color:var(--vmb-muted)]" dir="rtl">
+          {byline}
+        </span>
+      ) : null}
     </span>
   );
 }

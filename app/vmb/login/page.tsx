@@ -23,7 +23,7 @@ export default async function VmbLoginPage({ searchParams }: { searchParams: Pro
     <div className="vmb grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]" data-theme="dark" dir="rtl" lang="he">
       <div className="flex flex-col px-6 py-7 sm:px-14">
         <VmbLink href="/" className="self-start">
-          <VmbWordmark byline={t("vmb.brand.byline")} />
+          <VmbWordmark byline={t("vmb.brand.byline")} className="h-14 w-auto" />
         </VmbLink>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-14">
           <h1 className="vmb-display text-5xl leading-[1.02] font-extrabold">{t("vmb.login.title")}</h1>

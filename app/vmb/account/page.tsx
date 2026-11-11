@@ -60,7 +60,7 @@ export default async function VmbAccountPage() {
             <ArrowRight className="h-4 w-4 ltr:rotate-180" aria-hidden />
             {a("back")}
           </VmbLink>
-          <VmbWordmark />
+          <VmbWordmark className="h-9 w-auto" />
           <AccountMenu name={user.name ?? user.email} image={user.image} logoutLabel={t("vmb.studio.logout")} />
         </div>
       </header>

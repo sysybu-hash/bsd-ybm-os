@@ -25,6 +25,8 @@ export const metadata: Metadata = {
   title: { absolute: t("vmb.meta.title"), template: `%s · ${VMB_BRAND.name}` },
   description: t("vmb.meta.description"),
   applicationName: VMB_BRAND.name,
+  // Its own tab icon; without this the platform's icons are inherited.
+  icons: { icon: [{ url: VMB_BRAND.logo.icon, type: "image/png", sizes: "256x256" }], apple: VMB_BRAND.logo.appleIcon },
   openGraph: {
     title: t("vmb.meta.title"),
     description: t("vmb.meta.description"),

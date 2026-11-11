@@ -46,7 +46,7 @@ export function LandingNav({ labels }: { labels: NavLabels }) {
     >
       <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-5 sm:px-10">
         <VmbLink href="/" className="shrink-0" aria-label={VMB_BRAND.name}>
-          <VmbWordmark byline={labels.byline} />
+          <VmbWordmark byline={labels.byline} className="h-12 w-auto" />
         </VmbLink>
         <ul className="hidden items-center gap-8 text-sm text-white/75 md:flex">
           {links.map((l) => (

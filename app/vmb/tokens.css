@@ -162,3 +162,14 @@
     animation: none;
   }
 }
+
+/* Logo: both theme versions are rendered; the theme picks one (no flash, no JS). */
+.vmb .vmb-logo-light {
+  display: none;
+}
+.vmb[data-theme="light"] .vmb-logo-dark {
+  display: none;
+}
+.vmb[data-theme="light"] .vmb-logo-light {
+  display: block;
+}

@@ -85,7 +85,7 @@ export default function VmbLandingPage() {
       </main>
       <footer className="border-t border-[color:var(--vmb-line)]">
         <div className={`${WRAP} flex flex-col items-start justify-between gap-6 py-12 sm:flex-row sm:items-center`}>
-          <VmbWordmark byline={t("vmb.brand.byline")} />
+          <VmbWordmark byline={t("vmb.brand.byline")} className="h-14 w-auto" />
           <nav className="flex flex-wrap gap-8 text-sm text-[color:var(--vmb-muted)]">
             <a href={`mailto:${SITE_CONTACT.email}`} className="hover:text-[color:var(--vmb-ink)]">
               {t("vmb.footer.contact")}

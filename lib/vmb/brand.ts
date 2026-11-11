@@ -5,8 +5,26 @@
 export const VMB_BRAND = {
   /** Full product name, shown in the wordmark and titles. */
   name: "VisualModuBuild",
-  /** Segment of the name drawn in the accent colour in the wordmark ("" = none). */
-  accentPart: "Modu",
+  /**
+   * Logo files, all in public/vmb-brand.
+   * The lockup already spells the name, so text is only alt/titles.
+   */
+  logo: {
+    /** Full lockup for dark backgrounds (the default theme). */
+    dark: "/vmb-brand/logo-dark.png",
+    /** Same lockup with navy lettering, for the light theme. */
+    light: "/vmb-brand/logo-light.png",
+    /** Pixel size of both lockups. */
+    width: 685,
+    height: 254,
+    /** The cube alone, for tight spaces. */
+    mark: "/vmb-brand/mark.png",
+    markWidth: 222,
+    markHeight: 254,
+    /** Tab icon (256 px, transparent) and home-screen icon (180 px, on black). */
+    icon: "/vmb-brand/icon.png",
+    appleIcon: "/vmb-brand/apple-icon.png",
+  },
   /** Short name for tight spaces (tabs, badges). */
   shortName: "VMB",
   /** Parent company line under the wordmark. */
