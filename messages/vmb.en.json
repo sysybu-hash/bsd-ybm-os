@@ -292,8 +292,6 @@
       "etaSoon": "Under a minute",
       "etaUnknown": "Estimating time…",
       "failedTitle": "The job stopped",
-      "uploadTitle": "Upload files",
-      "uploadBody": "Drop the whole project folder here: sheets, plans and photos of the existing site. Upload opens in the next step.",
       "nextTitle": "How it works",
       "next1": "Upload all the project's files in one folder.",
       "next2": "The system finds sheets, scale and levels, and shows how much of each file it read.",
@@ -304,6 +302,30 @@
       "body": "This page did not load. Your jobs are kept on the server and were not affected.",
       "retry": "Try again",
       "home": "To projects"
+    },
+    "upload": {
+      "dropTitle": "Drop the project folder here",
+      "dropBody": "All files at once: sheets, plans and photos of the existing site. Subfolders are kept as they are.",
+      "dropActive": "Release to upload",
+      "pickFolder": "Choose folder",
+      "pickFiles": "Choose files",
+      "summary": "{n} files in the project · {size}",
+      "skipped": "{n} files were skipped because the system does not read their type:",
+      "queued": "Waiting",
+      "uploading": "Uploading",
+      "saving": "Saving…",
+      "done": "Uploaded",
+      "retry": "Try again",
+      "remove": "Remove file",
+      "err_generic": "Upload failed",
+      "err_storage_off": "Storage not set up",
+      "err_too_many_files": "Too many files",
+      "err_project_too_large": "Project is full",
+      "err_file_too_large": "File too large",
+      "err_bad_kind": "Type not supported",
+      "err_bad_path": "Invalid name",
+      "err_not_found": "Project not found",
+      "err_refused": "Upload refused"
     }
   }
 }

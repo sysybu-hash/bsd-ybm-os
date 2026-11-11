@@ -3,6 +3,7 @@ import { VMB_PROJECT_KINDS } from "@/lib/validation/schemas/vmb-projects";
 import { vmbStudioT } from "@/lib/vmb/studio-context";
 import type { BoardLabels } from "@/components/vmb/projects/ProjectsBoard";
 import type { ProgressText } from "@/components/vmb/projects/types";
+import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
 
 const p = (k: string) => vmbStudioT(`vmb.projects.${k}`);
 const pick = (prefix: string, keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, p(`${prefix}_${k}`)]));
@@ -51,5 +52,27 @@ export function boardLabels(): BoardLabels {
       cancel: p("cancel"),
       fail: p("createFail"),
     },
+  };
+}
+
+const ERROR_CODES = ["generic", "storage_off", "too_many_files", "project_too_large", "file_too_large", "bad_kind", "bad_path", "not_found", "refused"] as const;
+
+export function uploadLabels(): UploadLabels {
+  const u = (k: string) => vmbStudioT(`vmb.upload.${k}`);
+  return {
+    dropTitle: u("dropTitle"),
+    dropBody: u("dropBody"),
+    dropActive: u("dropActive"),
+    pickFolder: u("pickFolder"),
+    pickFiles: u("pickFiles"),
+    summary: u("summary"),
+    skipped: u("skipped"),
+    queued: u("queued"),
+    uploading: u("uploading"),
+    saving: u("saving"),
+    done: u("done"),
+    retry: u("retry"),
+    remove: u("remove"),
+    errors: Object.fromEntries(ERROR_CODES.map((c) => [c, u(`err_${c}`)])),
   };
 }

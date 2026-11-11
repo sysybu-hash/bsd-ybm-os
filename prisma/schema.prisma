@@ -1969,6 +1969,7 @@ model VmbProject {
   workspace     VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   jobs          VmbJob[]
   scans         VmbScanReport[]
+  files         VmbProjectFile[]
 
   @@index([workspaceId, updatedAt])
 }
@@ -2018,4 +2019,23 @@ model VmbScanReport {
   project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, fileName, round])
+}
+
+/// One uploaded source file of a project, stored in Blob under vmb/{projectId}/.
+model VmbProjectFile {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  projectId   String
+  /// Path inside the dropped folder, as the client named it (made safe).
+  relPath     String
+  /// dxf | dwg | pdf | dwf | image
+  kind        String
+  size        Int
+  contentType String
+  blobUrl     String
+  blobPath    String
+  uploadedBy  String?
+  project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relPath])
 }

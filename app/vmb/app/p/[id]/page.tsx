@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { UploadCloud } from "lucide-react";
 import { AccountMenu } from "@/components/vmb/studio/AccountMenu";
 import { StudioShell } from "@/components/vmb/studio/StudioShell";
 import { LiveJobCard } from "@/components/vmb/projects/LiveJobCard";
+import { UploadZone } from "@/components/vmb/upload/UploadZone";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
-import { kindLabels, progressText } from "@/lib/vmb/projects-labels";
+import { kindLabels, progressText, uploadLabels } from "@/lib/vmb/projects-labels";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
 
 export const dynamic = "force-dynamic";
@@ -39,15 +39,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
       }}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <section className="vmb-card relative flex min-h-[320px] flex-col items-center justify-center overflow-hidden px-6 py-14 text-center">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,var(--vmb-accent-soft),transparent_70%)]" />
-          <span className="relative grid h-16 w-16 place-items-center rounded-2xl border border-dashed border-[color:var(--vmb-line-strong)] text-[color:var(--vmb-accent)]">
-            <UploadCloud className="h-7 w-7" aria-hidden />
-          </span>
-          <h2 className="vmb-display relative mt-5 text-2xl font-extrabold">{p("uploadTitle")}</h2>
-          <p className="relative mt-2 max-w-md text-sm text-[color:var(--vmb-ink-soft)]">{p("uploadBody")}</p>
-          <p className="vmb-mono relative mt-4 text-xs text-[color:var(--vmb-muted)]">DXF · DWG · PDF · DWF · JPG</p>
-        </section>
+        <UploadZone projectId={project.id} initial={project.files} labels={uploadLabels()} />
         <div className="space-y-4">
           {showJob && latest ? (
             <LiveJobCard

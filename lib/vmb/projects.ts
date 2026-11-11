@@ -66,6 +66,7 @@ export async function getProject(userId: string, projectId: string) {
       createdAt: true,
       updatedAt: true,
       jobs: { orderBy: { createdAt: "desc" }, take: 20, select: jobSelect },
+      files: { orderBy: { relPath: "asc" }, select: { id: true, relPath: true, kind: true, size: true } },
       scans: {
         orderBy: [{ fileName: "asc" }, { round: "asc" }],
         select: { fileName: true, round: true, counts: true, inkCoverage: true, unread: true, createdAt: true },
