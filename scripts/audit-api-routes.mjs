@@ -46,6 +46,13 @@ const ALLOWLIST_NO_WRAPPER = [
    * reach it, so this is not a public endpoint.
    */
   "app/api/app-builder/preview/route.ts",
+  // VisualModuBuild sign-in: public by design (no session yet), rate-limited,
+  // same-origin checked; Google's callback verifies state, PKCE and nonce.
+  "app/api/vmb/auth/login/route.ts",
+  "app/api/vmb/auth/register/route.ts",
+  "app/api/vmb/auth/google/route.ts",
+  "app/api/vmb/auth/google/callback/route.ts",
+  "app/api/vmb/auth/logout/route.ts",
 ];
 
 async function walk(dir, acc = []) {
@@ -82,7 +89,9 @@ for (const file of files) {
   const hasAuthWrapper =
     src.includes("withWorkspacesAuth") ||
     src.includes("withOSAdmin") ||
-    src.includes("withWorkspacesAuthDynamic");
+    src.includes("withWorkspacesAuthDynamic") ||
+    // VisualModuBuild routes: its own accounts and session (lib/vmb/api.ts).
+    (rel.startsWith("app/api/vmb/") && src.includes("withVmbAuth("));
 
   if (!hasAuthWrapper && !isAllowlisted(rel)) {
     unprotected.push(rel);
