@@ -18,7 +18,7 @@ concurrency:
 jobs:
   e2e-nightly:
     name: Playwright nightly (full suite)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.59 has no chromium for ubuntu-latest (26.04) — 2026-11-11
     timeout-minutes: 120
     services:
       postgres:
