@@ -1875,6 +1875,8 @@ model VmbWorkspace {
   subscription VmbSubscription?
   ledger       VmbCreditLedger[]
   payments     VmbPayment[]
+  projects     VmbProject[]
+  jobs         VmbJob[]
 }
 
 model VmbMembership {
@@ -1946,4 +1948,74 @@ model VmbPayment {
 
   @@unique([gateway, txId])
   @@index([workspaceId, createdAt])
+}
+
+/// A client project: the uploaded files, what was read from them, and its outputs.
+model VmbProject {
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workspaceId   String
+  createdById   String?
+  name          String
+  /// flat | house | building | industrial | public
+  kind          String       @default("building")
+  /// draft | identified | running | done | failed
+  status        String       @default("draft")
+  /// The project file: sheets, roles, units, scale, answers, assumptions.
+  manifest      Json?
+  /// Uploaded source files are deleted at this time (privacy policy, 13.11).
+  filesDeleteAt DateTime?
+  workspace     VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  jobs          VmbJob[]
+  scans         VmbScanReport[]
+
+  @@index([workspaceId, updatedAt])
+}
+
+/// One unit of work with live progress; the server is the truth, so a closed tab loses nothing.
+model VmbJob {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspaceId String
+  projectId   String
+  /// scan | rescan | build | render | paint | booklet
+  kind        String
+  /// queued | running | done | failed | cancelled
+  status      String       @default("queued")
+  /// Stage list with done/total per stage (see lib/vmb/progress.ts).
+  progress    Json?
+  percent     Int          @default(0)
+  etaSeconds  Int?
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  costCredits Int?
+  computeMs   Int?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     VmbProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([workspaceId, status])
+}
+
+/// What one scan round read from one file, and what it did not.
+model VmbScanReport {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  projectId   String
+  jobId       String?
+  fileName    String
+  /// 1 = first scan, 2+ = an extra scan of what the earlier rounds missed.
+  round       Int        @default(1)
+  /// Per kind (layers, blocks, entities, hatches): { read, total }.
+  counts      Json
+  /// Share of the sheet's ink that has a counterpart in the model, 0..1.
+  inkCoverage Float?
+  /// Items not read: name, count, reason.
+  unread      Json
+  project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, fileName, round])
 }
