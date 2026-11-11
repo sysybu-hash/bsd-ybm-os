@@ -5,6 +5,8 @@ import type { BoardLabels } from "@/components/vmb/projects/ProjectsBoard";
 import type { ProgressText } from "@/components/vmb/projects/types";
 import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
 import type { ScanLabels } from "@/components/vmb/scan/ScanFileRow";
+import type { QuestionsLabels } from "@/components/vmb/questions/QuestionsForm";
+import type { Question } from "@/lib/vmb/questions";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { SUGGEST_VIA } from "@/lib/vmb/rescan";
 
@@ -12,7 +14,7 @@ const p = (k: string) => vmbStudioT(`vmb.projects.${k}`);
 const pick = (prefix: string, keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, p(`${prefix}_${k}`)]));
 
 export const STAGE_KEYS = ["upload", "scan", "rescan", "read", "build", "render", "paint", "booklet"] as const;
-const STATUS_KEYS = ["draft", "identified", "running", "done", "failed"] as const;
+const STATUS_KEYS = ["draft", "identified", "answered", "running", "done", "failed"] as const;
 
 export function kindLabels(): Record<string, string> {
   return pick("kind", VMB_PROJECT_KINDS);
@@ -119,5 +121,34 @@ export function scanLabels(): ScanLabels {
       kinds: by("cadkind", CAD_KIND_KEYS),
       via: by("via", SUGGEST_VIA),
     },
+  };
+}
+
+/** The questions form's text, for the questions this project asks. */
+export function questionsLabels(questions: Question[]): QuestionsLabels {
+  const q = (k: string) => vmbStudioT(`vmb.questions.${k}`);
+  return {
+    title: q("title"),
+    subtitle: q("subtitle"),
+    fromFiles: q("fromFiles"),
+    sources: { header_units: q("src_header_units"), level_marks: q("src_level_marks") },
+    change: q("change"),
+    isDefault: q("isDefault"),
+    save: q("save"),
+    skip: q("skip"),
+    saved: q("saved"),
+    update: q("update"),
+    metres: q("metres"),
+    failed: q("failed"),
+    questions: Object.fromEntries(
+      questions.map((x) => [
+        x.id,
+        {
+          title: q(`q_${x.id}_title`),
+          hint: q(`q_${x.id}_hint`),
+          options: x.type === "number" ? {} : Object.fromEntries(x.options.map((o) => [o, q(`o_${x.id}_${o}`)])),
+        },
+      ]),
+    ),
   };
 }

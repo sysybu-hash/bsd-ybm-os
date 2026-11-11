@@ -1,4 +1,5 @@
 import { blockKind, hatchKind, layerKind, profileFor, type CadKind } from "@/lib/projects/building/cad-layers";
+import { levelValue } from "@/lib/projects/building/cad-levels";
 import { dropReport, resetDrops } from "@/lib/projects/drop-log";
 import { flattenDxf, IDENTITY, readDxfDrawing, type DxfDrawing, type DxfPiece } from "@/lib/projects/dxf-drawing";
 
@@ -19,9 +20,18 @@ export type UnreadReason = (typeof UNREAD_REASONS)[number];
 export type Holds = { lines: number; hatches: number; texts: number; arcs: number; blocks: number };
 export type UnreadItem = { name: string; count: number; reason: UnreadReason; holds?: Holds };
 
+/** What the sheet itself states, so the questions form does not ask it. */
+export type ScanFacts = {
+  /** Metres per drawing unit from the header's $INSUNITS; null when the header does not say. */
+  headerUnitsM: number | null;
+  /** Distinct level marks written with a sign (+3.20, ±0.00, −0.45), ascending, in metres. */
+  levels: number[];
+};
+
 export type ScanResult = {
   counts: Record<ScanKind, ScanCount>;
   unread: UnreadItem[];
+  facts: ScanFacts;
   /** The office profile the layer names matched. */
   profile: string;
 };
@@ -37,6 +47,8 @@ const holdsOf = (pieces: DxfPiece[]): Holds => {
   }
   return h;
 };
+
+const SIGNED_LEVEL = /^s*[+-±−–]s*d{1,3}[.,]d{2}s*$/;
 
 const REASON_BY_FILTER: Array<[RegExp, UnreadReason]> = [
   [/:off-layer$/, "off_layer"],
@@ -123,7 +135,16 @@ export function scanDrawing(source: DxfDrawing, opts: ScanOptions = {}): ScanRes
   const hiddenLayers = [...drawing.layers.values()].filter((l) => (l.off || l.frozen) && !byLayer.has(l.name)).length;
   const otherDropped = drops.filter((d) => !/:(off|frozen)-layer$/.test(d.filter) && !/hatch-/.test(d.filter)).reduce((a, d) => a + d.count, 0);
 
+  // A level mark carries its sign; a bare "3.20" is as likely a dimension.
+  const levels = new Set<number>();
+  for (const p of pieces) {
+    if (p.text == null || !SIGNED_LEVEL.test(p.text)) continue;
+    const v = levelValue(p.text);
+    if (v != null) levels.add(Math.round(v * 100) / 100);
+  }
+
   return {
+    facts: { headerUnitsM: drawing.headerUnitsM ?? null, levels: [...levels].sort((a, b) => a - b).slice(0, 200) },
     profile: profile.id,
     counts: {
       layers: { read: layerNames.filter(isReadLayer).length, total: layerNames.length + hiddenLayers },

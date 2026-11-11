@@ -5,9 +5,11 @@ import { StudioShell } from "@/components/vmb/studio/StudioShell";
 import { LiveJobCard } from "@/components/vmb/projects/LiveJobCard";
 import { UploadZone } from "@/components/vmb/upload/UploadZone";
 import { ScanPanel } from "@/components/vmb/scan/ScanPanel";
+import { QuestionsForm } from "@/components/vmb/questions/QuestionsForm";
+import { questionsState } from "@/lib/vmb/answers-store";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
-import { kindLabels, progressText, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
+import { kindLabels, progressText, questionsLabels, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
 import { toScanViews } from "@/lib/vmb/scan-view";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
 
@@ -26,6 +28,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
 
   const latest = project.jobs[0] ? (JSON.parse(JSON.stringify(project.jobs[0])) as JobItem) : null;
   const showJob = latest && (latest.status === "queued" || latest.status === "running" || latest.status === "failed");
+  const questions = questionsState(project);
   const created = project.createdAt.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
 
   return (
@@ -44,6 +47,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
         <div className="min-w-0 space-y-4">
           <UploadZone projectId={project.id} initial={project.files} labels={uploadLabels()} />
           {project.files.length ? <ScanPanel projectId={project.id} files={project.files} initial={toScanViews(project.scans)} labels={scanLabels()} /> : null}
+          {project.files.length ? <QuestionsForm projectId={project.id} initial={questions} labels={questionsLabels(questions.questions)} /> : null}
         </div>
         <div className="space-y-4">
           {showJob && latest ? (

@@ -38,7 +38,7 @@ async function openFile(userId: string, projectId: string, fileId: string): Prom
 }
 
 async function storeRound(projectId: string, fileName: string, round: number, result: ScanResult): Promise<ScanOutcome> {
-  const data = { counts: result.counts, unread: result.unread, inkCoverage: null };
+  const data = { counts: result.counts, unread: result.unread, facts: result.facts, inkCoverage: null };
   const row = await prisma.vmbScanReport.upsert({
     where: { projectId_fileName_round: { projectId, fileName, round } },
     create: { projectId, fileName, round, ...data },
@@ -56,6 +56,8 @@ export async function scanProjectFile(userId: string, projectId: string, fileId:
   const started = Date.now();
   const result = scanDrawing(f.drawing);
   await prisma.vmbScanReport.deleteMany({ where: { projectId, fileName: f.relPath, round: { gt: 1 } } });
+  // The first sheet read moves a new project on to its questions.
+  await prisma.vmbProject.updateMany({ where: { id: projectId, status: "draft" }, data: { status: "identified" } });
   log.info("scanned", { projectId, ms: Date.now() - started, entities: result.counts.entities.total });
   return storeRound(projectId, f.relPath, 1, result);
 }

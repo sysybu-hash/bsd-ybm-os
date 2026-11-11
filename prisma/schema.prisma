@@ -2016,6 +2016,8 @@ model VmbScanReport {
   inkCoverage Float?
   /// Items not read: name, count, reason.
   unread      Json
+  /// What the sheet states that the questions form need not ask: header units, level marks.
+  facts       Json?
   project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, fileName, round])

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ScanSearch } from "lucide-react";
 import { ScanFileRow, type RowState, type ScanLabels } from "@/components/vmb/scan/ScanFileRow";
 import type { StoredFile } from "@/components/vmb/upload/useUploadQueue";
@@ -14,6 +15,7 @@ const SCANNABLE = new Set(["dxf"]);
  * and a scan can be run again. What was left out is listed with its reason — nothing is dropped silently.
  */
 export function ScanPanel({ projectId, files, initial, labels }: { projectId: string; files: StoredFile[]; initial: ScanView[]; labels: ScanLabels }) {
+  const router = useRouter();
   const [local, setLocal] = useState<Record<string, ScanView>>({});
   const [states, setStates] = useState<Record<string, RowState>>({});
   const tried = useRef(new Set<string>());
@@ -35,13 +37,15 @@ export function ScanPanel({ projectId, files, initial, labels }: { projectId: st
           const scan = data.scan;
           setLocal((l) => ({ ...l, [f.id]: scan }));
           setStates((s) => ({ ...s, [f.id]: null }));
+          // What a sheet states (units, level marks) answers questions: let the server re-render the form.
+          router.refresh();
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "generic";
           setStates((s) => ({ ...s, [f.id]: { status: "failed", error: /^[a-z_]+$/.test(msg) ? msg : "generic" } }));
         }
       });
     },
-    [projectId],
+    [projectId, router],
   );
 
   // A sheet with no scan yet is scanned once, on its own; a failure waits for the user's retry.

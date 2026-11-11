@@ -38,3 +38,9 @@ export const vmbScanUnreadSchema = z.array(
     holds: z.object({ lines: z.number(), hatches: z.number(), texts: z.number(), arcs: z.number(), blocks: z.number() }).optional(),
   }),
 );
+
+/** VmbScanReport.facts as stored (see ScanFacts in lib/vmb/scan.ts). */
+export const vmbScanFactsSchema = z.object({ headerUnitsM: z.number().nullable(), levels: z.array(z.number()) });
+
+/** The questions form as sent: answers by question id; each is checked against its question on the server. */
+export const vmbAnswersBodySchema = z.object({ answers: z.record(z.string(), z.unknown()) });

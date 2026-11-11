@@ -32,6 +32,8 @@ export function railStep(status: string): number {
   switch (status) {
     case "identified":
       return 2;
+    case "answered":
+      return 3;
     case "running":
     case "failed":
       return 4;

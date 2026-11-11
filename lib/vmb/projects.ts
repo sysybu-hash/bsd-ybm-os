@@ -69,7 +69,7 @@ export async function getProject(userId: string, projectId: string) {
       files: { orderBy: { relPath: "asc" }, select: { id: true, relPath: true, kind: true, size: true } },
       scans: {
         orderBy: [{ fileName: "asc" }, { round: "asc" }],
-        select: { fileName: true, round: true, counts: true, inkCoverage: true, unread: true, createdAt: true },
+        select: { fileName: true, round: true, counts: true, inkCoverage: true, unread: true, facts: true, createdAt: true },
       },
     },
   });
