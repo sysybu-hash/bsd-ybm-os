@@ -256,7 +256,28 @@
       "retentionDays": "{n} ימים",
       "retentionNever": "לא למחוק",
       "retentionOwnerOnly": "רק בעלי המשרד יכולים לשנות.",
-      "retentionFailed": "לא נשמר. נסו שוב."
+      "retentionFailed": "לא נשמר. נסו שוב.",
+      "membersTitle": "משתמשי המשרד",
+      "m_owner": "בעלים",
+      "m_member": "משתמש",
+      "m_you": "את/ה",
+      "m_pending": "הוזמן",
+      "m_invitePlaceholder": "כתובת מייל להזמנה",
+      "m_invite": "הזמנה",
+      "m_invited": "ההזמנה נשלחה. המשתמש יצטרף למשרד בכניסה הראשונה עם Google.",
+      "m_remove": "הסרה מהמשרד",
+      "m_revoke": "ביטול ההזמנה",
+      "m_ownerOnly": "רק בעלי המשרד מזמינים ומסירים משתמשים.",
+      "m_err_not_owner": "רק בעלי המשרד יכולים.",
+      "m_err_already_member": "הכתובת כבר במשרד.",
+      "m_err_has_office": "לכתובת הזו כבר יש משרד ב־VisualModuBuild. כרגע אפשר להשתייך למשרד אחד בלבד.",
+      "m_err_not_found": "לא נמצא.",
+      "m_err_self": "אי אפשר להסיר את עצמך.",
+      "m_err_bad_request": "כתובת המייל לא תקינה.",
+      "m_err_failed": "לא בוצע. נסו שוב.",
+      "usageTitle": "שימוש לפי פרויקט",
+      "usageLine": "{n} קרדיטים · {b} חוברות",
+      "usageEmpty": "עדיין לא נוצלו קרדיטים."
     },
     "projects": {
       "title": "פרויקטים",
@@ -580,7 +601,11 @@
       "doneTitle": "החוברת מוכנה",
       "doneBody": "אפשר לפתוח אותה, להוריד אותה ולשתף אותה מדף הפרויקט. דף ההנחות נמצא לידה.",
       "stopSubject": "ההרצה של {project} נעצרה",
-      "stopTitle": "ההרצה נעצרה"
+      "stopTitle": "ההרצה נעצרה",
+      "inviteSubject": "הוזמנת למשרד {office}",
+      "inviteTitle": "הוזמנת להצטרף למשרד",
+      "inviteBody": "היכנסו עם חשבון Google של הכתובת הזו, ותצטרפו למשרד אוטומטית.",
+      "inviteCta": "כניסה"
     }
   }
 }

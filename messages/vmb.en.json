@@ -256,7 +256,28 @@
       "retentionDays": "{n} days",
       "retentionNever": "Keep them",
       "retentionOwnerOnly": "Only the office owner can change this.",
-      "retentionFailed": "Not saved. Try again."
+      "retentionFailed": "Not saved. Try again.",
+      "membersTitle": "Office users",
+      "m_owner": "Owner",
+      "m_member": "Member",
+      "m_you": "You",
+      "m_pending": "Invited",
+      "m_invitePlaceholder": "Email to invite",
+      "m_invite": "Invite",
+      "m_invited": "Invitation sent. They join the office at their first Google sign-in.",
+      "m_remove": "Remove from office",
+      "m_revoke": "Cancel invitation",
+      "m_ownerOnly": "Only the office owner invites and removes users.",
+      "m_err_not_owner": "Only the office owner can.",
+      "m_err_already_member": "Already in the office.",
+      "m_err_has_office": "This address already has an office on VisualModuBuild. For now a user belongs to one office.",
+      "m_err_not_found": "Not found.",
+      "m_err_self": "You cannot remove yourself.",
+      "m_err_bad_request": "The email address is not valid.",
+      "m_err_failed": "Not done. Try again.",
+      "usageTitle": "Usage by project",
+      "usageLine": "{n} credits · {b} booklets",
+      "usageEmpty": "No credits used yet."
     },
     "projects": {
       "title": "Projects",
@@ -580,7 +601,11 @@
       "doneTitle": "The booklet is ready",
       "doneBody": "Open, download and share it from the project page. The assumptions page is next to it.",
       "stopSubject": "The run for {project} stopped",
-      "stopTitle": "The run stopped"
+      "stopTitle": "The run stopped",
+      "inviteSubject": "You were invited to {office}",
+      "inviteTitle": "You were invited to an office",
+      "inviteBody": "Sign in with the Google account of this address and you join the office automatically.",
+      "inviteCta": "Sign in"
     }
   }
 }

@@ -14,6 +14,8 @@ import { VmbWordmark } from "@/components/vmb/VmbWordmark";
 import { AccountMenu } from "@/components/vmb/studio/AccountMenu";
 import { VmbPayPalButton } from "@/components/vmb/account/VmbPayPalButton";
 import { RetentionPicker } from "@/components/vmb/account/RetentionPicker";
+import { MembersCard } from "@/components/vmb/account/MembersCard";
+import { creditsByProject, officeMembers } from "@/lib/vmb/members";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +32,7 @@ export default async function VmbAccountPage() {
   const user = await getVmbPageUser();
   if (!user) redirect(await vmbServerPath("/login"));
   const ws = await ensureWorkspace(user);
-  const [ent, ledger, payments, policy] = await Promise.all([
+  const [ent, ledger, payments, policy, people, usage] = await Promise.all([
     getEntitlement(ws.id),
     prisma.vmbCreditLedger.findMany({
       where: { workspaceId: ws.id },
@@ -45,7 +47,10 @@ export default async function VmbAccountPage() {
       select: { id: true, createdAt: true, kind: true, packId: true, amountMinor: true },
     }),
     prisma.vmbWorkspace.findUnique({ where: { id: ws.id }, select: { fileRetentionDays: true } }),
+    officeMembers(ws.id),
+    creditsByProject(ws.id),
   ]);
+  const memberErrors = Object.fromEntries(["not_owner", "already_member", "has_office", "not_found", "self", "bad_request", "failed"].map((c) => [c, a(`m_err_${c}`)]));
   const paypalOn = isPayPalServerConfigured();
   const status = ent.active
     ? a("statusActive", { date: day(ent.subscription!.periodEnd) })
@@ -168,6 +173,46 @@ export default async function VmbAccountPage() {
             )}
           </div>
         </section>
+        <section className="grid gap-4 md:grid-cols-2">
+          <MembersCard
+            me={user.id}
+            isOwner={ws.role === "owner"}
+            members={people.members}
+            invites={people.invites}
+            labels={{
+              title: a("membersTitle"),
+              owner: a("m_owner"),
+              member: a("m_member"),
+              you: a("m_you"),
+              pending: a("m_pending"),
+              invitePlaceholder: a("m_invitePlaceholder"),
+              invite: a("m_invite"),
+              invited: a("m_invited"),
+              remove: a("m_remove"),
+              revoke: a("m_revoke"),
+              ownerOnly: a("m_ownerOnly"),
+              errors: memberErrors,
+            }}
+          />
+          <div className="vmb-card p-7">
+            <h2 className="text-xl font-bold">{a("usageTitle")}</h2>
+            {usage.length === 0 ? (
+              <p className="mt-4 text-sm text-[color:var(--vmb-muted)]">{a("usageEmpty")}</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-[color:var(--vmb-line)] text-sm">
+                {usage.map((u) => (
+                  <li key={u.projectId} className="flex items-center justify-between gap-3 py-3">
+                    <VmbLink href={`/app/p/${u.projectId}`} className="min-w-0 truncate hover:text-[color:var(--vmb-accent)]">
+                      {u.name}
+                    </VmbLink>
+                    <span className="shrink-0 text-xs text-[color:var(--vmb-ink-soft)]">{a("usageLine", { n: u.credits.toLocaleString("en-US"), b: String(u.booklets) })}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
         <RetentionPicker
           initial={policy?.fileRetentionDays ?? null}
           canEdit={ws.role === "owner"}

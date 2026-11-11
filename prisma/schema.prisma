@@ -1879,6 +1879,22 @@ model VmbWorkspace {
   payments     VmbPayment[]
   projects     VmbProject[]
   jobs         VmbJob[]
+  invites      VmbInvite[]
+}
+
+/// An address an office owner invited; the user joins the office when they first sign in.
+model VmbInvite {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  /// Stored lower-cased.
+  email       String
+  invitedById String?
+  acceptedAt  DateTime?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([email])
 }
 
 model VmbMembership {

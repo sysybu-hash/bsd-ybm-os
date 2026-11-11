@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { VmbSessionUser } from "@/lib/vmb/session";
+import { acceptInvite } from "@/lib/vmb/members";
 
 export type VmbWorkspaceRef = { id: string; name: string; role: string };
 
@@ -15,6 +16,8 @@ export async function ensureWorkspace(user: VmbSessionUser): Promise<VmbWorkspac
     select: { role: true, workspace: { select: { id: true, name: true } } },
   });
   if (m) return { ...m.workspace, role: m.role };
+  const invited = await acceptInvite(user.id, user.email);
+  if (invited) return { ...invited, role: "member" };
   const name = user.name?.trim() || user.email.split("@")[0] || "Office";
   const ws = await prisma.vmbWorkspace.create({
     data: { name, members: { create: { userId: user.id, role: "owner" } } },
