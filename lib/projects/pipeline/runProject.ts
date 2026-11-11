@@ -80,7 +80,8 @@ export type RunDeps = {
 
 const MAX_FILE_BYTES = 200 * 1024 * 1024;
 
-const realDeps: RunDeps = {
+/** The platform deps: Blob in, Blob out. The local Studio keeps the pipelines and swaps fetchFile/putBooklet for the disk. */
+export const realDeps: RunDeps = {
   async fetchFile(url) {
     if (!isFloorplanBlobUrl(url)) throw new RunProjectError("fetch-failed", "קובץ שלא נמצא באחסון של הפרויקט");
     const res = await fetch(url, { cache: "no-store" });
@@ -135,15 +136,49 @@ const NAMES: Record<AnswerId, string> = {
   furniture: "ריהוט",
   views: "מבטים",
 };
-const shown = (v: RunAnswer["value"]) => (Array.isArray(v) ? v.join(", ") : String(v));
+/**
+ * The questions form's option values in the form's own words (messages/vmb.he.json, vmb.questions.o_*), by question: the
+ * same value means different things in different questions ("full" furniture, "full" surroundings).
+ */
+const VALUE_NAMES: Record<string, string> = {
+  "units.mm": "מילימטר",
+  "units.cm": "סנטימטר",
+  "units.m": "מטר",
+  "facade.stone": "אבן ירושלמית",
+  "facade.plaster": "טיח",
+  "facade.concrete": "בטון חשוף",
+  "facade.metal": "חיפוי מתכת",
+  "facade.glass": "זכוכית ואלומיניום",
+  "facade.mixed": "משולב",
+  "north.unknown": "לא ידוע",
+  "north.up": "למעלה",
+  "north.right": "ימינה",
+  "north.down": "למטה",
+  "north.left": "שמאלה",
+  "surroundings.none": "רק הבניין",
+  "surroundings.simple": "מגרש ורחוב פשוטים",
+  "surroundings.full": "רחוב, צמחייה ושכנים",
+  "furniture.none": "בלי",
+  "furniture.basic": "בסיסי",
+  "furniture.full": "מלא",
+  "views.exterior_day": "חוץ ביום",
+  "views.exterior_dusk": "חוץ בערב",
+  "views.aerial": "מבט מלמעלה",
+  "views.interior": "פנים",
+};
+/** Where a sheet or inferred value came from (lib/vmb/questions.ts), said for the client. */
+const FROM_NAMES: Record<string, string> = { header_units: "כותרת הקובץ", level_marks: "סימוני המפלס", kind: "סוג המבנה" };
+const word = (id: AnswerId, v: string | number) => (typeof v === "string" ? (VALUE_NAMES[`${id}.${v}`] ?? v) : String(v));
+const shown = (id: AnswerId, v: RunAnswer["value"]) => (Array.isArray(v) ? v.map((x) => word(id, x)).join(", ") : word(id, v));
+const fromText = (from?: string) => (from ? ` (${FROM_NAMES[from] ?? from})` : "");
 
 /** Rule 13.2: an answer the client did not give is an assumption, said as such. */
 export function answerAssumptions(answers: Partial<Record<AnswerId, RunAnswer>>, used: AnswerId[]): string[] {
   return used.flatMap((id) => {
     const a = answers[id];
     if (!a || a.source === "user") return [];
-    const why = a.source === "default" ? "ברירת מחדל" : a.source === "inferred" ? `הוסק${a.from ? ` (${a.from})` : ""}` : `מהגיליון${a.from ? ` (${a.from})` : ""}`;
-    return [`${NAMES[id]}: ${shown(a.value)} — ${why}`];
+    const why = a.source === "default" ? "ברירת מחדל" : a.source === "inferred" ? `הוסק${fromText(a.from)}` : `מהגיליון${fromText(a.from)}`;
+    return [`${NAMES[id]}: ${shown(id, a.value)} — ${why}`];
   });
 }
 

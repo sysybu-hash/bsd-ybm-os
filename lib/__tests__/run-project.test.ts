@@ -38,7 +38,7 @@ describe("chooseRoute — which pipeline the files take", () => {
 describe("answerAssumptions — rule 13.2", () => {
   it("lists what the client did not say, and only the answers the route used", () => {
     const out = answerAssumptions(answers, ["units", "floorHeight", "furniture", "views"]);
-    expect(out).toEqual(["יחידות השרטוט: cm — מהגיליון (header_units)", "גובה קומה: 3 — ברירת מחדל", "מבטים: exterior_day, aerial — הוסק (kind)"]);
+    expect(out).toEqual(["יחידות השרטוט: סנטימטר — מהגיליון (כותרת הקובץ)", "גובה קומה: 3 — ברירת מחדל", "מבטים: חוץ ביום, מבט מלמעלה — הוסק (סוג המבנה)"]);
   });
 });
 

@@ -35,6 +35,7 @@ const STYLE_LABELS = { contemporary: "עכשווי", luxury: "יוקרה", scand
  * straight to the local FLUX.
  */
 const KINDS = {
+  flatdxf: { title: "דירה מדודה מקובץ DXF (המנוע של VMB)", note: "אותו מנוע כמו באתר: קריאה מדודה, רינדור חינמי וחוברת PDF. בקומה עם כמה דירות צריך מספר דירה", accepts: [".dxf"], views: [] },
   house: { title: "בית או בניין משרטוטי קומות וחזיתות", note: "כל קובץ מקבל תפקיד (קרקע, קומה 1…, חזיתות). יוצאת חוברת עם הדמיות", accepts: [".dxf", ".dwf"], group: true, views: [] },
   permit: { title: "בניין ממערכת היתר (DWF)", note: "גרמושקה שלמה: מודל הבניין, חזיתות ודירות, חוברת PDF", accepts: [".dwf"], needs: ["name"], views: [] },
   unit: { title: "דירה אחת ממערכת היתר (DWF)", note: "הדירה לפי המספר שלה בגרמושקה", accepts: [".dwf"], needs: ["unit", "style"], views: ["overview", "dollhouse"] },
@@ -42,7 +43,7 @@ const KINDS = {
   image: { title: "תמונה (רק FLUX)", note: "תמונה קיימת, בלי רנדר: מנוע FLUX מעבד אותה", accepts: [".jpg", ".jpeg", ".png", ".webp"], views: ["image"] },
 };
 /** Which kinds an extension can be: the first is the default for a single file. */
-const EXT_KINDS = { ".dxf": ["house"], ".dwf": ["permit", "unit", "house"], ".pdf": ["pdf"], ".jpg": ["image"], ".jpeg": ["image"], ".png": ["image"], ".webp": ["image"] };
+const EXT_KINDS = { ".dxf": ["flatdxf", "house"], ".dwf": ["permit", "unit", "house"], ".pdf": ["pdf"], ".jpg": ["image"], ".jpeg": ["image"], ".png": ["image"], ".webp": ["image"] };
 const NOT_SUPPORTED = {
   ".dwg": "DWG: צריך להמיר ל-DXF (בתוכנת השרטוט: שמירה בשם → DXF) ואז לבחור את הקובץ שוב.",
   ".dwfx": "DWFX: פורמט שונה מ-DWF. יש לייצא מחדש כ-DWF, או להמיר ל-DXF.",
@@ -156,6 +157,10 @@ async function doRender(job) {
     }
     if (!copies.length) throw new Error("לא נבחרו קבצים לבנייה");
     args = ["tsx", "--conditions=react-server", "scripts/studio/run-house.mts", tmp, p.name || "בית", ...copies];
+  } else if (kind === "flatdxf") {
+    // runProject itself (scripts/studio/run-project.mts): the site's engine entry, on this computer's disk.
+    if (!file) throw new Error("לא נבחר קובץ DXF");
+    args = ["tsx", "--conditions=react-server", "scripts/studio/run-project.mts", tmp, p.name || path.basename(file, path.extname(file)), "flat", ...(p.unit ? ["--unit", String(p.unit)] : []), file];
   } else if (kind === "permit") {
     if (!file) throw new Error("לא נבחר קובץ DWF");
     args = ["tsx", "--conditions=react-server", "scripts/booklet-dwf.mts", "--dwf", file, "--name", p.name || path.basename(file, path.extname(file)), "--out", path.join(tmp, "booklet.pdf")];
@@ -174,6 +179,9 @@ async function doRender(job) {
   const code = await run(NPX, shell ? args.map((x) => (/\s/.test(x) ? `"${x}"` : x)) : args, { env, shell }, job);
   if (job.cancelled) throw new Error("בוטל");
   if (code !== 0) {
+    // The engine's own stop (a flat to pick, a DWG to convert) is the message, word for word.
+    const stop = /^stop [\w-]+: (.+)$/m.exec(job.log);
+    if (stop) throw new Error(stop[1]);
     const known = KNOWN_ERRORS.find(([re]) => re.test(job.log));
     throw new Error(`הבנייה נכשלה (קוד ${code}). ${known ? known[1] : "הפרטים בלוג."}`);
   }
@@ -281,7 +289,7 @@ function listResults(all) {
 function enqueueBuild(items, flux, batch = stamp()) {
   const ids = [];
   for (const it of items) {
-    const single = it.project !== "house" && it.project !== "permit";
+    const single = it.project !== "house" && it.project !== "permit" && it.project !== "flatdxf";
     const j = makeJob("render", { ...it, thenFlux: !!flux && single, flux: flux ?? undefined }, batch);
     queue.push(j);
     ids.push(j.id);
