@@ -4,9 +4,11 @@ import { AccountMenu } from "@/components/vmb/studio/AccountMenu";
 import { StudioShell } from "@/components/vmb/studio/StudioShell";
 import { LiveJobCard } from "@/components/vmb/projects/LiveJobCard";
 import { UploadZone } from "@/components/vmb/upload/UploadZone";
+import { ScanPanel } from "@/components/vmb/scan/ScanPanel";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
-import { kindLabels, progressText, uploadLabels } from "@/lib/vmb/projects-labels";
+import { kindLabels, progressText, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
+import { toScanViews } from "@/lib/vmb/scan-view";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +41,10 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
       }}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <UploadZone projectId={project.id} initial={project.files} labels={uploadLabels()} />
+        <div className="min-w-0 space-y-4">
+          <UploadZone projectId={project.id} initial={project.files} labels={uploadLabels()} />
+          {project.files.length ? <ScanPanel projectId={project.id} files={project.files} initial={toScanViews(project.scans)} labels={scanLabels()} /> : null}
+        </div>
         <div className="space-y-4">
           {showJob && latest ? (
             <LiveJobCard

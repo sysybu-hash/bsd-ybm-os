@@ -66,6 +66,8 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
   });
   await prisma.vmbProject.update({ where: { id: project.id }, data: { updatedAt: new Date() } });
   if (previous && previous.blobUrl !== blob.url) {
+    // A new version of the sheet: its old scan no longer describes it.
+    await prisma.vmbScanReport.deleteMany({ where: { projectId: project.id, fileName: rel } });
     await del(previous.blobUrl).catch((err: unknown) => log.warn("old_blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
   }
   return { ok: true, file };
@@ -75,10 +77,13 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
 export async function deleteProjectFile(userId: string, projectId: string, fileId: string): Promise<boolean> {
   const file = await prisma.vmbProjectFile.findFirst({
     where: { id: fileId, projectId, project: projectsOfUser(userId) },
-    select: { id: true, blobUrl: true },
+    select: { id: true, blobUrl: true, relPath: true },
   });
   if (!file) return false;
-  await prisma.vmbProjectFile.delete({ where: { id: file.id } });
+  await prisma.$transaction([
+    prisma.vmbProjectFile.delete({ where: { id: file.id } }),
+    prisma.vmbScanReport.deleteMany({ where: { projectId, fileName: file.relPath } }),
+  ]);
   await del(file.blobUrl).catch((err: unknown) => log.warn("blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
   return true;
 }

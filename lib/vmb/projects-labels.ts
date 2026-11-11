@@ -4,6 +4,7 @@ import { vmbStudioT } from "@/lib/vmb/studio-context";
 import type { BoardLabels } from "@/components/vmb/projects/ProjectsBoard";
 import type { ProgressText } from "@/components/vmb/projects/types";
 import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
+import type { ScanLabels } from "@/components/vmb/scan/ScanFileRow";
 
 const p = (k: string) => vmbStudioT(`vmb.projects.${k}`);
 const pick = (prefix: string, keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, p(`${prefix}_${k}`)]));
@@ -74,5 +75,31 @@ export function uploadLabels(): UploadLabels {
     retry: u("retry"),
     remove: u("remove"),
     errors: Object.fromEntries(ERROR_CODES.map((c) => [c, u(`err_${c}`)])),
+  };
+}
+
+const SCAN_ERRORS = ["generic", "not_found", "kind_not_scanned", "fetch_failed", "unreadable"] as const;
+const UNREAD_REASON_KEYS = ["no_reader", "off_layer", "frozen_layer", "unsupported", "invisible", "too_dense", "other"] as const;
+
+export function scanLabels(): ScanLabels {
+  const s = (k: string) => vmbStudioT(`vmb.scan.${k}`);
+  const by = <K extends string>(prefix: string, keys: readonly K[]) => Object.fromEntries(keys.map((k) => [k, s(`${prefix}_${k}`)])) as Record<K, string>;
+  return {
+    title: s("title"),
+    subtitle: s("subtitle"),
+    read: s("read"),
+    kinds: by("kind", ["layers", "blocks", "entities", "hatches"] as const),
+    unreadTitle: s("unreadTitle"),
+    allRead: s("allRead"),
+    reasons: by("reason", UNREAD_REASON_KEYS),
+    holds: by("holds", ["lines", "hatches", "texts", "arcs", "blocks"] as const),
+    scanning: s("scanning"),
+    waiting: s("waiting"),
+    rescan: s("rescan"),
+    showMore: s("showMore"),
+    showLess: s("showLess"),
+    notScannedYet: s("notScannedYet"),
+    empty: s("empty"),
+    errors: by("err", SCAN_ERRORS),
   };
 }

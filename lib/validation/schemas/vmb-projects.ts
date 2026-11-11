@@ -23,3 +23,18 @@ export const vmbJobProgressSchema = z.object({
   startedAt: z.number(),
   stages: z.array(vmbStageSchema),
 });
+
+const scanCount = z.object({ read: z.number(), total: z.number() });
+
+/** VmbScanReport.counts as stored (see lib/vmb/scan.ts). */
+export const vmbScanCountsSchema = z.object({ layers: scanCount, blocks: scanCount, entities: scanCount, hatches: scanCount });
+
+/** VmbScanReport.unread as stored: every left-out thing with its reason. */
+export const vmbScanUnreadSchema = z.array(
+  z.object({
+    name: z.string(),
+    count: z.number(),
+    reason: z.string(),
+    holds: z.object({ lines: z.number(), hatches: z.number(), texts: z.number(), arcs: z.number(), blocks: z.number() }).optional(),
+  }),
+);

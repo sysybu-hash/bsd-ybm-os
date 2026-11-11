@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, FolderUp, Loader2, RotateCcw, Trash2, UploadCloud } from "lucide-react";
 import { filesFromDrop, filesFromInput } from "@/components/vmb/upload/folder-drop";
@@ -55,6 +55,13 @@ export function UploadZone({ projectId, initial, labels }: { projectId: string; 
   const q = useUploadQueue(projectId, (f) => {
     setFiles((all) => [...all.filter((x) => x.relPath !== f.relPath), f].sort((a, b) => a.relPath.localeCompare(b.relPath)));
   });
+
+  // When a batch finishes, the page reloads its server data so the scan card sees the new sheets.
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (wasBusy.current && !q.busy) router.refresh();
+    wasBusy.current = q.busy;
+  }, [q.busy, router]);
 
   const onDrop = async (e: DragEvent) => {
     e.preventDefault();

@@ -9,6 +9,8 @@ jest.mock("@vercel/blob", () => ({
 const mockDb = {
   vmbProject: { findFirst: jest.fn(), update: jest.fn() },
   vmbProjectFile: { aggregate: jest.fn(), findUnique: jest.fn(), upsert: jest.fn(), findFirst: jest.fn(), delete: jest.fn() },
+  vmbScanReport: { deleteMany: jest.fn() },
+  $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
 };
 jest.mock("@/lib/prisma", () => ({
   get prisma() {
@@ -69,15 +71,20 @@ describe("VMB project files on the server", () => {
     mockDb.vmbProjectFile.findUnique.mockResolvedValue({ blobUrl: "https://store/old.dxf" });
     await registerUploadedFile(base);
     expect(mockBlob.del).toHaveBeenCalledWith("https://store/old.dxf");
+    // The old version's scan is dropped with it.
+    expect(mockDb.vmbScanReport.deleteMany).toHaveBeenCalledWith({ where: { projectId: "p1", fileName: "plans/a.dxf" } });
   });
 
   it("deletes only a file of the user's own project", async () => {
     mockDb.vmbProjectFile.findFirst.mockResolvedValue(null);
     await expect(deleteProjectFile("u1", "p1", "f9")).resolves.toBe(false);
     expect(mockBlob.del).not.toHaveBeenCalled();
-    mockDb.vmbProjectFile.findFirst.mockResolvedValue({ id: "f1", blobUrl: URL1 });
+    mockDb.vmbProjectFile.findFirst.mockResolvedValue({ id: "f1", blobUrl: URL1, relPath: "plans/a.dxf" });
+    mockDb.$transaction.mockImplementation((ops: unknown[]) => Promise.all(ops));
     await expect(deleteProjectFile("u1", "p1", "f1")).resolves.toBe(true);
     expect(mockDb.vmbProjectFile.delete).toHaveBeenCalledWith({ where: { id: "f1" } });
     expect(mockBlob.del).toHaveBeenCalledWith(URL1);
+    // Its scan goes with it.
+    expect(mockDb.vmbScanReport.deleteMany).toHaveBeenCalledWith({ where: { projectId: "p1", fileName: "plans/a.dxf" } });
   });
 });
