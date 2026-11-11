@@ -4,9 +4,8 @@ import { DEFAULT_VAT_RATE_PERCENT } from "@/lib/vat-config";
  * VisualModuBuild price list: the one place prices, included credits and
  * credit packs live. Amounts are in agorot before VAT; VAT is added at checkout.
  *
- * The credit numbers below are launch defaults, still to be confirmed by the
- * owner (see the live research doc, item 16: a credit must cover the paid
- * painting cost of ~3.4–5¢ per image).
+ * Launch numbers, approved by the owner on 2026-11-11. A credit must cover the
+ * paid painting cost of ~3.4–5¢ per image (live research doc, item 16).
  */
 export const VMB_ANNUAL_PLAN = {
   id: "office",
