@@ -18,6 +18,10 @@ jest.mock("@/lib/paypal-capture-apply", () => ({
   applyPayPalCaptureResult: jest.fn(),
 }));
 
+jest.mock("@/lib/vmb/billing", () => ({
+  applyVmbPayment: jest.fn().mockResolvedValue({ applied: true }),
+}));
+
 jest.mock("@/lib/invoice-mailer", () => ({
   sendInvoiceEmail: jest.fn().mockResolvedValue(true),
 }));
@@ -37,6 +41,7 @@ import {
   verifyPayPalWebhookSignature,
 } from "@/lib/paypal-server";
 import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
+import { applyVmbPayment } from "@/lib/vmb/billing";
 
 const VALID_HEADERS = {
   "paypal-transmission-id": "txn-1",
@@ -138,5 +143,41 @@ describe("POST /api/webhooks/paypal", () => {
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(applyPayPalCaptureResult).not.toHaveBeenCalled();
+  });
+
+  it("routes a VMB purchase to VMB billing, never to an organization", async () => {
+    (verifyPayPalWebhookSignature as jest.Mock).mockResolvedValue(true);
+
+    const req = new Request("http://localhost/api/webhooks/paypal", {
+      method: "POST",
+      headers: VALID_HEADERS,
+      body: captureCompletedPayload("VMB|cmwsabcdef123456|CREDITS|p500"),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(applyPayPalCaptureResult).not.toHaveBeenCalled();
+    expect(applyVmbPayment).toHaveBeenCalledWith({
+      purchase: { workspaceId: "cmwsabcdef123456", kind: "credits", packId: "p500" },
+      gateway: "paypal",
+      txId: "cap_123",
+      amountMinor: 9900,
+      currency: "ILS",
+    });
+  });
+
+  it("drops a malformed VMB custom_id without touching either ledger", async () => {
+    (verifyPayPalWebhookSignature as jest.Mock).mockResolvedValue(true);
+
+    const req = new Request("http://localhost/api/webhooks/paypal", {
+      method: "POST",
+      headers: VALID_HEADERS,
+      body: captureCompletedPayload("VMB|x|CREDITS|nope"),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(applyPayPalCaptureResult).not.toHaveBeenCalled();
+    expect(applyVmbPayment).not.toHaveBeenCalled();
   });
 });

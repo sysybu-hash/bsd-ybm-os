@@ -1837,8 +1837,9 @@ model VmbUser {
   emailVerified Boolean   @default(false)
   lastLoginAt   DateTime?
 
-  password VmbPasswordCredential?
-  sessions VmbSession[]
+  password    VmbPasswordCredential?
+  sessions    VmbSession[]
+  memberships VmbMembership[]
 }
 
 model VmbPasswordCredential {
@@ -1859,4 +1860,90 @@ model VmbSession {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+/// An office (the paying customer). engineOrgId is the hidden platform
+/// Organization the shared engine bills AI usage to; created on first run.
+model VmbWorkspace {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  engineOrgId String?  @unique
+
+  members      VmbMembership[]
+  subscription VmbSubscription?
+  ledger       VmbCreditLedger[]
+  payments     VmbPayment[]
+}
+
+model VmbMembership {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  userId      String
+  /// owner | member
+  role        String       @default("member")
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        VmbUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model VmbSubscription {
+  workspaceId     String       @id
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  /// office (the annual plan)
+  plan            String       @default("office")
+  /// active | frozen | cancelled
+  status          String       @default("active")
+  periodStart     DateTime
+  periodEnd       DateTime
+  includedCredits Int
+  workspace       VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([status, periodEnd])
+}
+
+/// Every credit movement. The balance is the sum of delta.
+/// (workspaceId, reason, refId) is unique so a replayed event cannot count twice.
+model VmbCreditLedger {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  delta       Int
+  /// grant | purchase | hold | release | adjust
+  reason      String
+  /// What this movement answers to: a payment txId, a job id, an admin action id.
+  refId       String
+  jobId       String?
+  note        String?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, reason, refId])
+  @@index([workspaceId, createdAt])
+}
+
+model VmbPayment {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  /// paypal | manual
+  gateway     String
+  /// The gateway capture id, or the admin reference for a bank transfer.
+  txId        String
+  /// annual | credits
+  kind        String
+  packId      String?
+  /// Agorot (ILS * 100), VAT included.
+  amountMinor Int
+  currency    String       @default("ILS")
+  /// completed | refunded
+  status      String       @default("completed")
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([gateway, txId])
+  @@index([workspaceId, createdAt])
 }

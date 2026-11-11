@@ -75,7 +75,9 @@ export function StudioShell({
           </VmbLink>
           <nav className="flex items-center gap-1 text-sm">
             <span className="rounded-full bg-[color:var(--vmb-bg-sunk)] px-3 py-1.5 font-semibold">{labels.projects}</span>
-            <span className="rounded-full px-3 py-1.5 text-[color:var(--vmb-muted)]">{labels.account}</span>
+            <VmbLink href="/account" className="rounded-full px-3 py-1.5 text-[color:var(--vmb-muted)] hover:text-[color:var(--vmb-ink)]">
+              {labels.account}
+            </VmbLink>
           </nav>
           <div className="ms-auto flex items-center gap-2">
             <span className="flex items-center gap-1.5 rounded-full border border-[color:var(--vmb-line)] px-3 py-1.5 text-xs">
