@@ -17,7 +17,7 @@ import {
   type PlanGeometryGateResult,
 } from "@/lib/projects/building/plan-geometry-gate";
 import type { PlanVisualGateResult } from "@/lib/projects/building/plan-visual-gate";
-import { assertElevationsAllowed, readPlansReady, type PlansReadyFile } from "@/lib/projects/building/plans-ready";
+import { assertPaintGate, type PlansReadyFile } from "@/lib/projects/building/plans-ready";
 import type { AnswerMemo, PaintingCache } from "@/lib/projects/building/house-store";
 import { readHouseRoomUses } from "@/lib/projects/building/house-rooms-ai";
 import { splitDrawings, stackHouseGeometries } from "@/lib/projects/building/house-strip";
@@ -29,6 +29,7 @@ import {
   HOUSE_STYLE,
   isPublicBuilding,
   houseSheetReader,
+  inferRequireCars,
   levelsFromMarks,
   readNorthArrow,
   standardLevels,
@@ -439,7 +440,7 @@ export async function runPrivateHouseBooklet(input: {
   measured?: (model: MeasuredHouseModel) => Promise<void>;
   /** Which sheet is which, and what the hand knows of the house (house-project.ts); the Gottlieb house where none is given. */
   project?: HouseProject;
-  /** False where the drawings have no parking (a school, an office): the geometry gate then passes with no cars. Default true. */
+  /** False where the drawings have no parking (a school, an office): the geometry gate then passes with no cars. Absent: inferred from the sheets (inferRequireCars). */
   requireCars?: boolean;
   /** The vision model's answers already had, by the picture asked about: the same sheets are read as before (house-store.ts). */
   answers?: AnswerMemo;
@@ -448,6 +449,7 @@ export async function runPrivateHouseBooklet(input: {
   const useAi = input.ai !== false;
   const project = input.project ?? GOTTLIEB_HOUSE;
   const sheets = houseSheetReader(input.load);
+  const requireCars = input.requireCars ?? (await inferRequireCars(project, sheets)).requireCars;
   const groundPlan = await sheets.geometry(project.models[0]!.floors[0]!);
   const { north, northKnown } = await houseNorth({ project, groundPlan, ai: useAi, say });
   const facades = await readHouseFacades({ facades: await sheets.facades(project.facades), groundPlan, ai: useAi, say, project, north, answers: input.answers });
@@ -460,7 +462,7 @@ export async function runPrivateHouseBooklet(input: {
     const { levels, reading, truth, openings, lawnM2 } = await readHouseModelSheets({ model, project, sheets, facades, ai: useAi, say });
     const projectName = `${input.projectName ?? "בית פרטי"} — ${model.name}`;
     const { state, artefacts } = await runWholeBooklet({
-      ...houseStageInput({ model, project, projectName, reading, levels, north, northKnown, ai: useAi, requireCars: input.requireCars, traceSamples: input.traceSamples, say }),
+      ...houseStageInput({ model, project, projectName, reading, levels, north, northKnown, ai: useAi, requireCars, traceSamples: input.traceSamples, say }),
       subtitle: houseSubtitle(style),
       ai: reading.ai,
       beforeAssemble: async (pics) => {
@@ -482,7 +484,6 @@ export async function runPrivateHouseBooklet(input: {
           geometryGate,
           visualGate,
           plansOnly: houseKnob("HOUSE_PAINT_ONLY") === "plans",
-          plansReady: readPlansReady(process.cwd()),
         });
         painted += done.painted.length;
         return { painted: done.painted, audit, budget: done.budget };
@@ -576,7 +577,9 @@ async function paintModel(
      * Default true when HOUSE_PAINT_ONLY=plans.
      */
     plansOnly?: boolean;
-    /** Optional project plans-ready — elev paint blocked until ok. */
+    /** The accuracy certificate, where one was made: a failing one keeps the elevations unpainted. */
+    certificate?: { grade: "pass" | "warn" | "fail" } | null;
+    /** Optional signed plans-ready file (a local sign-off): opens the gate on its own. */
     plansReady?: PlansReadyFile | null;
     paint?: {
       models?: string[];
@@ -595,12 +598,10 @@ async function paintModel(
   const prod = assertProductionPlanPaintEnv();
   if (!prod.ok) throw new Error(`production plan paint blocked: ${prod.faults.join(", ")}`);
   const plansOnly = input.plansOnly === true || houseKnob("HOUSE_PAINT_ONLY") === "plans";
-  // Elevations / rooms / hero: hard skip until plans-ready, unless HOUSE_PAINT_ONLY=all (explicit override).
+  // Elevations / rooms / hero: behind what the measured stage proved (geometry, pixel QA, the accuracy certificate), unless HOUSE_PAINT_ONLY=all (explicit override).
   if (!plansOnly && houseKnob("HOUSE_PAINT_ONLY") !== "all") {
-    const elev = assertElevationsAllowed(input.plansReady);
-    if (!elev.ok) {
-      throw new Error("elevations/rooms blocked until plans-ready.json ok (use HOUSE_PAINT_ONLY=plans for plans, or =all after sign-off)");
-    }
+    const elev = assertPaintGate({ geometry: input.geometryGate, visual: input.visualGate, certificate: input.certificate, plansReady: input.plansReady });
+    if (!elev.ok) throw new Error(`elevations/rooms blocked: ${elev.faults.join(", ")}`);
   }
   const only = plansOnly
     ? (name: string) => housePaintPlansOnly(name) && (input.paint?.only?.(name) ?? true)
@@ -674,7 +675,6 @@ export async function paintMeasuredModel(
     geometryGate,
     visualGate,
     plansOnly: houseKnob("HOUSE_PAINT_ONLY") === "plans",
-    plansReady: readPlansReady(process.cwd()),
     paint: {
       models: input.images?.models,
       cache: input.images?.cache,

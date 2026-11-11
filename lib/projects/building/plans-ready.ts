@@ -67,6 +67,29 @@ export function assertElevationsAllowed(plansReady: PlansReadyFile | null | unde
   return { ok: false, faults: ["plansNotReady"] };
 }
 
+/**
+ * The gate the elevations, rooms and hero are painted behind on the website
+ * and in the Studio alike: what the measured stage itself proved, not a
+ * sign-off file on disk (plans-ready.json is read from the working folder,
+ * which a server does not have). Open when the plan geometry gate passed, the
+ * pixel QA (where it ran) passed, and the accuracy certificate (where one was
+ * made) did not fail. A signed plans-ready file still opens it.
+ */
+export function assertPaintGate(input: {
+  geometry?: { ok: boolean } | null;
+  visual?: { ok: boolean } | null;
+  certificate?: { grade: "pass" | "warn" | "fail" } | null;
+  plansReady?: PlansReadyFile | null;
+}): { ok: boolean; faults: string[] } {
+  if (plansReadyOk(input.plansReady)) return { ok: true, faults: [] };
+  const faults: string[] = [];
+  if (!input.geometry) faults.push("geometryGateMissing");
+  else if (!input.geometry.ok) faults.push("geometryGateBlocked");
+  if (input.visual && !input.visual.ok) faults.push("visualGateBlocked");
+  if (input.certificate?.grade === "fail") faults.push("accuracyCertificateFail");
+  return { ok: faults.length === 0, faults };
+}
+
 /** Build a measured-stage plans-ready stub (paint/judge still false). */
 export function measuredPlansReadyStub(input: {
   model: string;

@@ -423,3 +423,24 @@ export function houseProjectFromFiles(files: Map<string, Buffer>, options?: { wh
 }
 
 export { PLAN_NORTH };
+
+/**
+ * Whether a project's plans are held to the cars gate: a house's parking is a
+ * gate (a missed parking reading), but a building whose floors are all DXF
+ * tabs that draw no parking at all (a school, an office) is not. A DWF strip
+ * cannot say, so a project with one is held to it. The same inference the
+ * Studio runs (scripts/studio/run-house.mts).
+ */
+export async function inferRequireCars(
+  project: Pick<HouseProject, "models">,
+  reader: Pick<ReturnType<typeof houseSheetReader>, "inventory">,
+): Promise<{ requireCars: boolean; parkingDrawn: number }> {
+  let parkingDrawn = 0;
+  for (const m of project.models) {
+    for (const ref of m.floors) {
+      if (!/\.dxf$/i.test(ref.file)) return { requireCars: true, parkingDrawn };
+      parkingDrawn += (await reader.inventory(ref))?.counts.parking ?? 0;
+    }
+  }
+  return { requireCars: parkingDrawn > 0, parkingDrawn };
+}
