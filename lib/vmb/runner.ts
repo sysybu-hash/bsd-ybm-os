@@ -174,6 +174,24 @@ export async function failJob(jobId: string, error: string): Promise<boolean> {
 }
 
 /**
+ * A running job that has not written anything for this long is dead: no function lives past its maxDuration (300 s), so
+ * nothing is still working on it.
+ */
+export const STALLED_AFTER_MS = 15 * 60_000;
+
+/** Fails every running booklet job that stopped reporting, giving back what it held. Returns how many were failed. */
+export async function reapStalledJobs(now = Date.now()): Promise<number> {
+  const stalled = await prisma.vmbJob.findMany({
+    where: { kind: "booklet", status: "running", updatedAt: { lt: new Date(now - STALLED_AFTER_MS) } },
+    select: { id: true },
+    take: 20,
+  });
+  let failed = 0;
+  for (const j of stalled) if (await failJob(j.id, "stalled")) failed++;
+  return failed;
+}
+
+/**
  * Runs one job end to end with the given engine. Whatever the engine throws fails the job and releases its credits, so a
  * crash never keeps a client's credits held.
  */

@@ -4,7 +4,7 @@ const mockSettle = jest.fn();
 jest.mock("@/lib/vmb/credits", () => ({ settleHold: (...a: unknown[]) => mockSettle(...a) }));
 
 const mockDb = {
-  vmbJob: { findFirst: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
+  vmbJob: { findFirst: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), updateMany: jest.fn() },
   vmbProject: { findUnique: jest.fn(), update: jest.fn() },
 };
 jest.mock("@/lib/prisma", () => ({
@@ -13,7 +13,7 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { claimNextJob, creditsUsed, failJob, finishJob, progressReporter, runClaimed, type RunOutput } from "@/lib/vmb/runner";
+import { claimNextJob, creditsUsed, failJob, finishJob, progressReporter, reapStalledJobs, runClaimed, STALLED_AFTER_MS, type RunOutput } from "@/lib/vmb/runner";
 import type { JobProgress } from "@/lib/vmb/progress";
 
 const project = {
@@ -103,6 +103,17 @@ describe("VMB runner", () => {
     expect(r).toBe("failed");
     expect(mockSettle).toHaveBeenCalledWith("w1", "j1", 0);
     expect(mockDb.vmbProject.update.mock.calls[0][0].data).toEqual({ status: "failed" });
+  });
+
+  it("fails jobs that stopped reporting and gives their credits back", async () => {
+    mockDb.vmbJob.findMany.mockResolvedValue([{ id: "j1" }]);
+    const now = Date.UTC(2026, 10, 11, 12);
+    expect(await reapStalledJobs(now)).toBe(1);
+    const where = mockDb.vmbJob.findMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({ kind: "booklet", status: "running" });
+    expect(where.updatedAt.lt.getTime()).toBe(now - STALLED_AFTER_MS);
+    expect(mockDb.vmbJob.updateMany.mock.calls[0][0].data).toMatchObject({ status: "failed", error: "stalled" });
+    expect(mockSettle).toHaveBeenCalledWith("w1", "j1", 0);
   });
 
   it("an engine that delivers finishes the job", async () => {
