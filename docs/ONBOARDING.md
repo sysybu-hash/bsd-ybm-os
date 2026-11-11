@@ -140,6 +140,8 @@ GOOGLE_CLIENT_SECRET="..."
 # (ולפיתוח: http://localhost:3000/api/vmb/auth/google/callback). בלי שניהם הכפתור כבוי.
 # VMB_GOOGLE_CLIENT_ID="..."
 # VMB_GOOGLE_CLIENT_SECRET="..."
+# מנהלי־על של VMB: רשימה מופרדת בפסיקים. כתובת נחשבת רק אחרי כניסה עם Google (כתובת מאומתת).
+# VMB_SUPERADMIN_EMAILS="a@example.com,b@example.com"
 ```
 
 - **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.

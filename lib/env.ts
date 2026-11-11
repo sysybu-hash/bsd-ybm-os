@@ -100,6 +100,8 @@ const serverSchema = z.object({
   /** VisualModuBuild (vmb.bsd-ybm.co.il): its own OAuth client, separate accounts from the platform. */
   VMB_GOOGLE_CLIENT_ID: optStr,
   VMB_GOOGLE_CLIENT_SECRET: optStr,
+  /** VMB super admins: comma-separated addresses; each counts only once Google verified it. */
+  VMB_SUPERADMIN_EMAILS: optStr,
 
   // --- Google Cloud / Document AI ---
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optStr,
