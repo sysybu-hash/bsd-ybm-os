@@ -44,3 +44,9 @@ export function projectUnit(manifest: unknown): number | null {
   const u = asObject(manifest).unit;
   return typeof u === "number" && Number.isInteger(u) ? u : null;
 }
+
+/** When the source files were deleted by the office policy (rule 13.11), if they were. */
+export function projectFilesDeletedAt(manifest: unknown): string | null {
+  const v = asObject(manifest).filesDeletedAt;
+  return typeof v === "string" ? v : null;
+}

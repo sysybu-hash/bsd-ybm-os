@@ -9,7 +9,7 @@ import { QuestionsForm } from "@/components/vmb/questions/QuestionsForm";
 import { CostCard } from "@/components/vmb/cost/CostCard";
 import { StopCard } from "@/components/vmb/run/StopCard";
 import { BookletCard } from "@/components/vmb/run/BookletCard";
-import { projectBooklet, projectStop, projectUnit } from "@/lib/vmb/outcome";
+import { projectBooklet, projectFilesDeletedAt, projectStop, projectUnit } from "@/lib/vmb/outcome";
 import { projectCost } from "@/lib/vmb/run-store";
 import { questionsState } from "@/lib/vmb/answers-store";
 import type { JobItem } from "@/components/vmb/projects/types";
@@ -73,7 +73,11 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
             />
           ) : null}
           {stop && !showJob ? <StopCard projectId={project.id} stop={stop} labels={stopLabels()} /> : null}
-          {booklet && !showJob ? <BookletCard booklet={booklet} labels={bookletLabels()} /> : null}
+          {booklet && !showJob ? <BookletCard
+              booklet={booklet}
+              files={{ deleteAt: project.filesDeleteAt?.toISOString() ?? null, deletedAt: projectFilesDeletedAt(project.manifest) }}
+              labels={bookletLabels()}
+            /> : null}
           {cost ? <CostCard projectId={project.id} initial={cost} labels={costLabels()} /> : null}
           <section className="vmb-card p-5">
             <h2 className="text-sm font-bold">{p("nextTitle")}</h2>

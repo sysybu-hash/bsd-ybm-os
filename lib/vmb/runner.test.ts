@@ -2,6 +2,7 @@ jest.mock("server-only", () => ({}));
 
 const mockSettle = jest.fn();
 const mockNotify = jest.fn();
+jest.mock("@vercel/blob", () => ({ del: jest.fn() }));
 jest.mock("@/lib/vmb/notify", () => ({ notifyJobEnd: (...a: unknown[]) => mockNotify(...a) }));
 jest.mock("@/lib/vmb/credits", () => ({ settleHold: (...a: unknown[]) => mockSettle(...a) }));
 
@@ -26,7 +27,7 @@ const project = {
   scans: [],
   files: [{ relPath: "a.dxf", kind: "dxf", blobUrl: "https://blob/a.dxf" }],
 };
-const job = { id: "j1", workspaceId: "w1", projectId: "p1", startedAt: new Date(Date.now() - 5000), costCredits: 20, progress: null, project: { kind: "house", manifest: project.manifest } };
+const job = { id: "j1", workspaceId: "w1", projectId: "p1", startedAt: new Date(Date.now() - 5000), costCredits: 20, progress: null, project: { kind: "house", manifest: project.manifest, workspace: { fileRetentionDays: 30 } } };
 const out: RunOutput = { bookletUrl: "https://blob/booklet.pdf", picturesPainted: 7, picturesFree: 2, assumptions: ["north: default"], route: "flat-dxf", unusedAnswers: ["north"] };
 
 describe("VMB runner", () => {
@@ -93,6 +94,7 @@ describe("VMB runner", () => {
     expect(upd.data.manifest.booklet).toMatchObject({ url: out.bookletUrl, route: "flat-dxf", unusedAnswers: ["north"], picturesPainted: 7, picturesFree: 2, creditsUsed: 11 });
     expect(upd.data.manifest.answers).toEqual(project.manifest.answers);
     expect(mockNotify).toHaveBeenCalledWith("p1", { kind: "done" });
+    expect(upd.data.filesDeleteAt.getTime() - Date.now()).toBeGreaterThan(29 * 86_400_000);
   });
 
   it("does not settle twice when the job is no longer running", async () => {

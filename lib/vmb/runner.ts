@@ -6,6 +6,7 @@ import { VMB_PROJECT_KINDS, type VmbProjectKind } from "@/lib/validation/schemas
 import { questionsState } from "@/lib/vmb/answers-store";
 import { settleHold } from "@/lib/vmb/credits";
 import { notifyJobEnd } from "@/lib/vmb/notify";
+import { filesDeleteAt } from "@/lib/vmb/retention";
 import { VMB_BOOKLET_PRICING } from "@/lib/vmb/plans";
 import { advance, etaSeconds, jobPercent, type JobProgress } from "@/lib/vmb/progress";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
@@ -131,7 +132,7 @@ export function progressReporter(jobId: string, initial: JobProgress, opts: { no
 async function jobOf(jobId: string) {
   return prisma.vmbJob.findUnique({
     where: { id: jobId },
-    select: { id: true, workspaceId: true, projectId: true, startedAt: true, costCredits: true, progress: true, project: { select: { kind: true, manifest: true } } },
+    select: { id: true, workspaceId: true, projectId: true, startedAt: true, costCredits: true, progress: true, project: { select: { kind: true, manifest: true, workspace: { select: { fileRetentionDays: true } } } } },
   });
 }
 
@@ -160,7 +161,10 @@ export async function finishJob(jobId: string, out: RunOutput): Promise<boolean>
   };
   const manifest: Record<string, unknown> = { ...asObject(job.project.manifest), booklet };
   delete manifest.stop;
-  await prisma.vmbProject.update({ where: { id: job.projectId }, data: { status: "done", manifest: manifest as Prisma.InputJsonValue } });
+  await prisma.vmbProject.update({
+    where: { id: job.projectId },
+    data: { status: "done", manifest: manifest as Prisma.InputJsonValue, filesDeleteAt: filesDeleteAt(finishedAt, job.project.workspace.fileRetentionDays) },
+  });
   log.info("job done", { jobId, used, painted: out.picturesPainted, free: out.picturesFree });
   await notifyJobEnd(job.projectId, { kind: "done" });
   return true;

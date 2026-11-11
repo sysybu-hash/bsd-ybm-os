@@ -21,15 +21,20 @@ export type BookletLabels = {
   assumptionsNone: string;
   unusedTitle: string;
   answers: Record<string, string>;
+  /** {date} */
+  filesDeleteOn: string;
+  /** {date} */
+  filesDeleted: string;
 };
 
 /**
  * Step 7: the booklet the run delivered — open, download, copy its link — with the assumptions page next to it (rule
  * 13.2): every value the engine took as given, and the answers that did not change this booklet.
  */
-export function BookletCard({ booklet, labels }: { booklet: ProjectBooklet; labels: BookletLabels }) {
+export function BookletCard({ booklet, files, labels }: { booklet: ProjectBooklet; files: { deleteAt: string | null; deletedAt: string | null }; labels: BookletLabels }) {
   const [copied, setCopied] = useState(false);
-  const date = new Date(booklet.at).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+  const day = (iso: string) => new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+  const date = day(booklet.at);
 
   const copy = async () => {
     try {
@@ -73,6 +78,11 @@ export function BookletCard({ booklet, labels }: { booklet: ProjectBooklet; labe
         {labels.pictures.replace("{painted}", String(booklet.picturesPainted)).replace("{free}", String(booklet.picturesFree))} ·{" "}
         {booklet.creditsUsed > 0 ? labels.credits.replace("{n}", String(booklet.creditsUsed)) : labels.free}
       </p>
+      {files.deletedAt || files.deleteAt ? (
+        <p className="mt-1 text-xs text-[color:var(--vmb-muted)]">
+          {files.deletedAt ? labels.filesDeleted.replace("{date}", day(files.deletedAt)) : labels.filesDeleteOn.replace("{date}", day(files.deleteAt!))}
+        </p>
+      ) : null}
 
       <div className="mt-4 rounded-xl bg-[color:var(--vmb-bg-sunk)] p-3">
         <h3 className="text-xs font-bold">{labels.assumptionsTitle}</h3>

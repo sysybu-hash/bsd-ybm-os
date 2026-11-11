@@ -1870,6 +1870,8 @@ model VmbWorkspace {
   updatedAt   DateTime @updatedAt
   name        String
   engineOrgId String?  @unique
+  /// Days after a delivered booklet that the source files are deleted (rule 13.11); null keeps them.
+  fileRetentionDays Int?   @default(30)
 
   members      VmbMembership[]
   subscription VmbSubscription?

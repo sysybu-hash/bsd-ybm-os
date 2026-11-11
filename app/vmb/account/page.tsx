@@ -13,6 +13,7 @@ import { VmbLink } from "@/components/vmb/VmbLink";
 import { VmbWordmark } from "@/components/vmb/VmbWordmark";
 import { AccountMenu } from "@/components/vmb/studio/AccountMenu";
 import { VmbPayPalButton } from "@/components/vmb/account/VmbPayPalButton";
+import { RetentionPicker } from "@/components/vmb/account/RetentionPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function VmbAccountPage() {
   const user = await getVmbPageUser();
   if (!user) redirect(await vmbServerPath("/login"));
   const ws = await ensureWorkspace(user);
-  const [ent, ledger, payments] = await Promise.all([
+  const [ent, ledger, payments, policy] = await Promise.all([
     getEntitlement(ws.id),
     prisma.vmbCreditLedger.findMany({
       where: { workspaceId: ws.id },
@@ -43,6 +44,7 @@ export default async function VmbAccountPage() {
       take: 50,
       select: { id: true, createdAt: true, kind: true, packId: true, amountMinor: true },
     }),
+    prisma.vmbWorkspace.findUnique({ where: { id: ws.id }, select: { fileRetentionDays: true } }),
   ]);
   const paypalOn = isPayPalServerConfigured();
   const status = ent.active
@@ -166,6 +168,11 @@ export default async function VmbAccountPage() {
             )}
           </div>
         </section>
+        <RetentionPicker
+          initial={policy?.fileRetentionDays ?? null}
+          canEdit={ws.role === "owner"}
+          labels={{ title: a("retentionTitle"), body: a("retentionBody"), days: a("retentionDays"), never: a("retentionNever"), ownerOnly: a("retentionOwnerOnly"), failed: a("retentionFailed") }}
+        />
       </main>
     </div>
   );

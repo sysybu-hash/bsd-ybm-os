@@ -250,7 +250,13 @@
       "payFail": "The payment did not complete and you were not charged. Try again.",
       "paypalOff": "PayPal payments are not set up yet. To pay by bank transfer, talk to us.",
       "contact": "Talk to us",
-      "back": "Back to projects"
+      "back": "Back to projects",
+      "retentionTitle": "Deleting source files",
+      "retentionBody": "The sheets you upload are deleted from the server after the booklet is delivered. The booklet itself stays. To keep files from leaving your computer at all, use the local app.",
+      "retentionDays": "{n} days",
+      "retentionNever": "Keep them",
+      "retentionOwnerOnly": "Only the office owner can change this.",
+      "retentionFailed": "Not saved. Try again."
     },
     "projects": {
       "title": "Projects",
@@ -564,7 +570,9 @@
       "notifyOn": "We will notify you when it ends",
       "notifyDone": "The booklet is ready",
       "notifyFailed": "The run stopped",
-      "projectUnit": "Flat {n}"
+      "projectUnit": "Flat {n}",
+      "filesDeleteOn": "The source files will be deleted on {date}.",
+      "filesDeleted": "The source files were deleted on {date}, per the office policy."
     },
     "mail": {
       "open": "Open the project",

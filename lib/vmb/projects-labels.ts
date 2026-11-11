@@ -204,6 +204,8 @@ export function bookletLabels(): BookletLabels {
     assumptionsNone: r("assumptionsNone"),
     unusedTitle: r("unusedTitle"),
     answers: Object.fromEntries(QUESTION_IDS.map((id) => [id, q(`q_${id}_title`)])),
+    filesDeleteOn: r("filesDeleteOn"),
+    filesDeleted: r("filesDeleted"),
   };
 }
 

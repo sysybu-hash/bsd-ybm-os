@@ -32,6 +32,10 @@
   },
   "crons": [
     {
+      "path": "/api/cron/vmb-files-cleanup",
+      "schedule": "30 3 * * *"
+    },
+    {
       "path": "/api/cron/vmb-runner",
       "schedule": "* * * * *"
     },

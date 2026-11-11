@@ -64,7 +64,8 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
     update: data,
     select: { id: true, relPath: true, kind: true, size: true },
   });
-  await prisma.vmbProject.update({ where: { id: project.id }, data: { updatedAt: new Date() } });
+  // New sheets restart the clock: they are deleted only after the next booklet is delivered.
+  await prisma.vmbProject.update({ where: { id: project.id }, data: { updatedAt: new Date(), filesDeleteAt: null } });
   if (previous && previous.blobUrl !== blob.url) {
     // A new version of the sheet: its old scan no longer describes it.
     await prisma.vmbScanReport.deleteMany({ where: { projectId: project.id, fileName: rel } });
