@@ -14,6 +14,7 @@ const BUILDERS: Record<string, (spec: PieceSpec) => PiecePart[]> = {
   desk: pieces.desk,
   table: pieces.table,
   seat: pieces.seat,
+  stool: pieces.stool,
   storage: pieces.storage,
   counter: pieces.counter,
   hob: pieces.hob,

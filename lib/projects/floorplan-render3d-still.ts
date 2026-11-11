@@ -7,6 +7,7 @@ import type { FloorplanGeometryPayload } from "@/lib/projects/floorplan-geometry
 import type { FloorplanVizImage } from "@/lib/projects/floorplan-layout";
 import type { FloorplanVizStyleKit } from "@/lib/projects/floorplan-viz-styles";
 import { stampFloorplanStill } from "@/lib/projects/floorplan-viz-stamp";
+import { cyclesEnabled, photographWithCycles } from "@/lib/projects/scene3d/blender-cycles";
 import { measurementCoverage } from "@/lib/projects/scene3d/coverage";
 import { buildSceneFromPayload, sceneInputFromPayload } from "@/lib/projects/scene3d/from-payload";
 import { flatPieces, inventoryByPlace, listedKind, openFloorSquares, planPlace, type ListedKind } from "@/lib/projects/scene3d/inventory";
@@ -209,23 +210,43 @@ export async function renderMeasuredStill(options: Render3dStillOptions): Promis
     const started = Date.now();
     const view = dollhouseView(scene);
     // Traced on a machine that has the tracer (a development dependency);
-    // rasterised on the platform.
+    // rasterised on the platform. FLOORPLAN_TRACE_ENGINE=cycles sends the
+    // same dollhouse camera to Blender instead of the three.js tracer.
     const samples = env.NODE_ENV === "production" ? 0 : Number(env.FLOORPLAN_TRACE_SAMPLES ?? 0);
+    let cyclesFrame: Buffer | null = null;
+    if (cyclesEnabled()) {
+      const shot = await photographWithCycles(scene, style, {
+        // 16:10 preview for a CPU-only laptop. About half the pixels of 1920×1200.
+        width: 1280,
+        height: 800,
+        position: view.payload.camera.position,
+        target: view.payload.camera.target,
+        up: view.payload.camera.up ?? { x: 0, y: 0, z: -1 },
+        fovDeg: view.payload.camera.fovDeg,
+        cutAboveM: view.cutAboveM,
+        sunAzimuthDeg: view.payload.sun.azimuthDeg,
+        sunElevationDeg: view.payload.sun.elevationDeg,
+        samples: Number.isFinite(samples) && samples > 0 ? samples : 32,
+        deadlineMs: options.deadlineMs,
+      });
+      if (shot) cyclesFrame = Buffer.from(shot.base64, "base64");
+    }
     // Ambient occlusion is a full-screen pass. On the platform it runs in
     // SwiftShader and does not finish inside the function, so the request
     // is killed at 300s. The raster without it still shows the measured flat.
-    const [frame, wallsFrame] = await renderBuildingFrames(
+    const [rasterFrame, wallsFrame] = await renderBuildingFrames(
       [
         {
           ...view.payload,
           ao: env.VERCEL ? false : view.payload.ao,
           model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM }),
-          ...(samples > 0 ? { pathTrace: { samples } } : {}),
+          ...(samples > 0 && !cyclesFrame ? { pathTrace: { samples } } : {}),
         },
         { ...view.payload, ao: false, model: flatToPrimitives(scene, { cutAboveM: view.cutAboveM, wallsOnly: true }), camera: { ...view.payload.camera, mask: true } },
       ],
       { outputWidthPx: OUTPUT_WIDTH_PX, timeoutMs: FRAME_MS },
     );
+    const frame = cyclesFrame ?? rasterFrame;
     if (!frame) return null;
     const crop = await contentFrame(frame, "auto");
     const plain = await applyContentFrame(frame, crop);

@@ -216,6 +216,7 @@ export async function renderFlatFromGeometry(
     segments: geometry.segments,
     shelterMarks: flat.shelterMarks,
     programme: options.programme?.rooms,
+    openingMarks: geometry.openingMarks,
     page: { width: geometry.pageWidth, height: geometry.pageHeight },
   });
   const plate = await sharp(Buffer.from(flat.svg), { density: 200 })

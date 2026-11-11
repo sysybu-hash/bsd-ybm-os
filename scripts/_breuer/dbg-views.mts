@@ -1,0 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dwfBuildingViews } from "@/lib/projects/building/dwf-views";
+const dir = process.argv[2]!;
+const model = JSON.parse(readFileSync(dir + "/model.json", "utf8"));
+const state = JSON.parse(readFileSync(dir + "/state.json", "utf8"));
+const vs = dwfBuildingViews({ floors: state.floors, model: { extent: model.extent, primitives: model.primitives } }, undefined, {}, { house: false, public: true, ...(model.street ? { street: model.street } : {}), ...(model.plot ? { plot: model.plot } : {}) });
+console.log("extent", JSON.stringify(model.extent), "palette", JSON.stringify(model.palette), "street", JSON.stringify(model.street)?.slice(0, 400), "plot", JSON.stringify(model.plot)?.slice(0, 300));
+for (const v of vs) console.log(v.id, JSON.stringify({ cam: v.payload.camera, sun: v.payload.sun, exp: v.payload.exposure, w: v.payload.width, h: v.payload.height }));
+const mats: Record<string, number> = {}; for (const p of model.primitives) mats[p.material] = (mats[p.material] ?? 0) + 1; console.log(JSON.stringify(mats));
+const tags: Record<string, number> = {}; for (const p of model.primitives) { const t = String(p.tag ?? "").split(":").slice(0, 2).join(":"); tags[t] = (tags[t] ?? 0) + 1; } console.log(JSON.stringify(tags).slice(0, 1500));

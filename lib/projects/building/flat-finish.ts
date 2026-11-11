@@ -44,6 +44,8 @@ export function apartmentFinish(mesh: SceneBox, roomKind: (id: string) => SceneR
     case "steel":
       // A hob is black glass; a sink and a tap are steel.
       return { material: part === "plate" || part === "ring" ? "screen" : part === "basin" || part === "drain" || part === "door" ? "darkSteel" : "metal", round };
+    case "lamp":
+      return { material: "lightPanel" };
     case "glass":
       return { material: mesh.kind === "railing" || part === "screen" ? "railGlass" : "glass" };
     case "wall":

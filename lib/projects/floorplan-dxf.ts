@@ -1,7 +1,11 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import sharp from "sharp";
 
 import { blockKind, hatchKind, layerKind, profileFor, type CadKind, type CadOfficeProfile } from "@/lib/projects/building/cad-layers";
+import { apartmentMarks } from "@/lib/projects/dxf-apartment";
+import { doorMarksOnWalls } from "@/lib/projects/dxf-seal-openings";
 import { flattenDxf, readDxfDrawing, type DxfDrawing, type DxfPiece, type Pt } from "@/lib/projects/dxf-drawing";
+import { isUnitFailure, unitByDoors, unitContains, type UnitPlan } from "@/lib/projects/dxf-unit-by-doors";
 import { createLogger } from "@/lib/logger";
 import {
   WALL_MIN_LINE_WIDTH,
@@ -37,7 +41,7 @@ const log = createLogger("floorplan-dxf");
 type Point = Pt;
 
 /** Layer names that mean "wall" in the Hebrew and English drawings we see. */
-const WALL_LAYER = /(^|[-_ ])(wall|walls|a-wall|קיר|קירות|מחיצ)/iu;
+const WALL_LAYER = /(^|[-_ ])(wall|walls|a-wall|a-wl|קיר|קירות|מחיצ)/iu;
 
 export function isWallLayer(layer?: string): boolean {
   return Boolean(layer && WALL_LAYER.test(layer));
@@ -133,7 +137,7 @@ export type DxfReadReport = {
 /** Entity types flattenDxf turns into geometry or text; everything else is reported. */
 const HANDLED = new Set([
   "LINE", "LWPOLYLINE", "POLYLINE", "ARC", "CIRCLE", "ELLIPSE", "SPLINE", "SOLID", "TRACE",
-  "HATCH", "TEXT", "MTEXT", "ATTRIB", "INSERT", "DIMENSION", "POINT", "VIEWPORT", "ATTDEF",
+  "HATCH", "TEXT", "MTEXT", "ATTRIB", "INSERT", "DIMENSION", "POINT", "VIEWPORT", "ATTDEF", "3DFACE",
 ]);
 
 const NON_PLOTTING = /^defpoints$/i;
@@ -362,7 +366,8 @@ type ReadDrawing = {
 
 function readPieces(drawing: DxfDrawing): ReadDrawing {
   const profile = profileFor(drawing.layers.keys());
-  const pieces = flattenDxf(drawing).map((p) => {
+  const flat = flattenDxf(drawing);
+  const pieces = flat.map((p) => {
     const kind = kindOf(profile, p);
     // A wall is a wall's outline or its fill. A column drawn as a circle on a
     // wall layer is a column, and is left to the furniture pass as a curve;
@@ -383,7 +388,11 @@ function readPieces(drawing: DxfDrawing): ReadDrawing {
     return { drawing, profile, pieces, unitsM, unitsFrom: units?.from ?? "unknown", plans: [], otherWallClusters: 0 };
   }
   // Sheets stand tens of metres apart; the parts of one plan, a corridor apart at most.
-  const clusters = wallClusters(walls, 4 / unitsM).filter((c) => c.wallLength * unitsM >= 8);
+  const clusters = wallClusters(walls, 4 / unitsM).filter((c) => {
+    if (c.wallLength * unitsM >= 8) return true;
+    noteDrop("floorplan-dxf:wall-cluster-under-8m", () => `${(c.wallLength * unitsM).toFixed(1)} m of wall`);
+    return false;
+  });
   const swings = doors.filter((s) => s.r * unitsM >= 0.6 && s.r * unitsM <= 1.2).map((s) => s.c);
   const margin = 1.5 / unitsM;
   const counted = clusters.map((c) => ({
@@ -405,18 +414,26 @@ function readPieces(drawing: DxfDrawing): ReadDrawing {
 }
 
 /** The pieces of one plan, on its page, with the report of what was taken. */
-function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeometry | null {
-  const { pieces, unitsM } = read;
-  const plan = read.plans[planIndex];
+function planGeometry(read: ReadDrawing, planIndex: number, unit?: UnitPlan): FloorplanVectorGeometry | null {
+  const { pieces } = read;
+  // One flat's page is in the units it was found in.
+  const unitsM = unit ? unit.unitsM : read.unitsM;
+  const plan = unit ? undefined : read.plans[planIndex];
   // A drawing with no wall the reader can see is still a drawing: the whole of
   // it is the page, in its own units, as before.
-  const all = plan == null;
-  const pad = plan && unitsM ? 2 / unitsM : 0;
-  const window = plan
-    ? { x0: plan.x0 - pad, y0: plan.y0 - pad, x1: plan.x1 + pad, y1: plan.y1 + pad }
+  const all = plan == null && !unit;
+  const pad = unitsM ? (unit ? 1 : 2) / unitsM : 0;
+  const frame = unit?.bounds ?? plan;
+  const window = frame
+    ? { x0: frame.x0 - pad, y0: frame.y0 - pad, x1: frame.x1 + pad, y1: frame.y1 + pad }
     : boxOf(pieces.flatMap((row) => (row.p.text == null ? piecePoints(row.p) : [])));
   if (!window) return null;
-  const within = (q: Point) => q.x >= window.x0 && q.x <= window.x1 && q.y >= window.y0 && q.y <= window.y1;
+  const inWindow = (q: Point) => q.x >= window.x0 && q.x <= window.x1 && q.y >= window.y0 && q.y <= window.y1;
+  // A flat keeps what lies on it and the walls around it; its neighbour's
+  // rooms inside the same window are not its own.
+  const onUnit = unit ? unitContains(unit) : null;
+  const within = onUnit ? (q: Point) => inWindow(q) && onUnit(q) : inWindow;
+  const runsOn = (pts: Point[]): Point[][] => (onUnit ? clipRuns(pts, within, unitsM ? 0.05 / unitsM : 5) : [pts]);
 
   // Page units: points at 1:50 when the unit is known, the drawing's own otherwise.
   const k = unitsM ? unitsM * DXF_PAGE_UNITS_PER_METRE : 1;
@@ -425,6 +442,9 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
   const segments: VectorSegment[] = [];
   const curves: VectorSegment[] = [];
   const labels: DxfLabel[] = [];
+  const openingMarks: Array<{ x: number; y: number; width?: number }> = [];
+  const doorSegs: VectorSegment[] = [];
+  const glazing: VectorSegment[] = [];
   const report: DxfReadReport["read"] = { walls: 0, lines: 0, curves: 0, texts: 0 };
   const skipped: DxfReadReport["skipped"] = { dimensions: 0, hatches: {}, nonPlotting: 0 };
   let offPage = 0;
@@ -440,7 +460,13 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
   };
 
   for (const { p, kind, wall } of pieces) {
-    if (p.insert) continue;
+    if (p.insert) {
+      if ((kind === "door" || kind === "window") && p.at && (all || within(p.at))) {
+        const at = toPage(p.at);
+        openingMarks.push({ x: at.x, y: at.y });
+      }
+      continue;
+    }
     const anchor = piecePoints(p)[0];
     if (!anchor) continue;
     if (!all && !within(anchor)) {
@@ -467,7 +493,10 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
       // pairs. Any other fill — paving, lawn, earth — is a surface the plan
       // does not build, and is reported by pattern.
       if (wall) {
-        for (const ring of p.rings) push(segments, ring, WALL_MIN_LINE_WIDTH, true);
+        for (const ring of p.rings) {
+          if (onUnit && ring.filter(within).length * 2 < ring.length) continue;
+          push(segments, ring, WALL_MIN_LINE_WIDTH, true);
+        }
         report.walls += 1;
       } else {
         const name = p.pattern || "?";
@@ -476,20 +505,25 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
       continue;
     }
     if (!p.pts || p.pts.length < 2) continue;
+    // On one flat's page a line is cut where it leaves the flat.
+    const runs = onUnit ? runsOn(p.closed && p.pts.length > 2 ? [...p.pts, p.pts[0]!] : p.pts) : [p.pts];
+    const closed = !onUnit && Boolean(p.closed);
+    if (kind === "window") for (const run of runs) push(glazing, run, 1, closed);
     if (wall) {
       // A curved wall too: its chords are short faces, paired like any other.
-      push(segments, p.pts, WALL_MIN_LINE_WIDTH);
+      for (const run of runs) push(segments, run, WALL_MIN_LINE_WIDTH);
       report.walls += 1;
       continue;
     }
+    if (kind === "door") for (const run of runs) push(doorSegs, run, 1);
     const curved = Boolean(p.arc || p.circle || p.type === "ELLIPSE" || p.type === "SPLINE");
     // A curve reaches the pipeline as the chords a PDF's curves give: a swing,
     // a basin, a pan. Kept apart from the segments, as on a PDF.
     if (curved) {
-      push(curves, p.pts, 1);
+      for (const run of runs) push(curves, run, 1);
       report.curves += 1;
     } else {
-      push(segments, p.pts, 1);
+      for (const run of runs) push(segments, run, 1);
       report.lines += 1;
     }
   }
@@ -502,6 +536,9 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
     Math.abs(seg.x1 - seg.x2) <= Math.abs(seg.y1 - seg.y2) * 1e-6 + 1e-6 ||
     Math.abs(seg.y1 - seg.y2) <= Math.abs(seg.x1 - seg.x2) * 1e-6 + 1e-6;
   const walls = segments.filter((seg) => seg.lineWidth >= WALL_MIN_LINE_WIDTH && axis(seg));
+  if (unitsM) {
+    for (const mark of doorMarksOnWalls(doorSegs, walls, DXF_PAGE_UNITS_PER_METRE)) openingMarks.push(mark);
+  }
 
   const unsupported: Record<string, number> = {};
   for (const e of read.drawing.entities) {
@@ -531,6 +568,8 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
   };
   const unitsPerMetre = unitsM ? DXF_PAGE_UNITS_PER_METRE : undefined;
   const dwellingLabels = countDwellingLabels(labels);
+  const marksHere = apartmentMarks(read.drawing).filter((mark) => (unit ? mark.number === unit.number : within(mark)));
+  const unitMarks = marksHere.map((mark) => ({ number: mark.number, ...toPage(mark) }));
   log.info("dxf geometry read", {
     segments: segments.length,
     curves: curves.length,
@@ -551,8 +590,57 @@ function planGeometry(read: ReadDrawing, planIndex: number): FloorplanVectorGeom
     ...(unitsPerMetre ? { unitsPerMetre } : {}),
     dwellingLabels,
     labels,
+    ...(openingMarks.length ? { openingMarks } : {}),
+    ...(glazing.length ? { glazing } : {}),
+    ...(doorSegs.length ? { doorLines: doorSegs } : {}),
+    ...(unitMarks.length ? { unitMarks } : {}),
+    ...(unit
+      ? {
+          unitArea: {
+            number: unit.number,
+            netM2: unit.netM2,
+            grossM2: unit.grossM2,
+            balconyM2: unit.balconyM2,
+            ...(unit.printedM2 != null ? { printedM2: unit.printedM2 } : {}),
+          },
+        }
+      : {}),
     cad,
   };
+}
+
+/** The stretches of a polyline that lie inside, sampled every `step` drawing units. */
+export function clipRuns(pts: Point[], inside: (q: Point) => boolean, step: number): Point[][] {
+  const runs: Point[][] = [];
+  let run: Point[] = [];
+  // Whether the run's last point is a sample inside the current segment, not one of the polyline's own vertices.
+  let mid = false;
+  const close = () => {
+    if (run.length >= 2) runs.push(run);
+    run = [];
+    mid = false;
+  };
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1]!;
+    const b = pts[i]!;
+    const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / step));
+    mid = false;
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+      const q = { x: a.x + ((b.x - a.x) * k) / n, y: a.y + ((b.y - a.y) * k) / n };
+      if (!inside(q)) {
+        close();
+        continue;
+      }
+      // A straight stretch stays its two ends: a sample within one segment replaces the one before it. Never a
+      // vertex: replacing the corner where two segments met cut it off, and every wall drawn as a polyline came
+      // out a wedge on the booklets' sheets (Weinberg, 04/11/2026).
+      if (mid && run.length >= 2) run[run.length - 1] = q;
+      else run.push(q);
+      mid = k > 0 && k < n;
+    }
+  }
+  close();
+  return runs;
 }
 
 /**
@@ -599,6 +687,28 @@ export async function geometryFromDxf(input: string | Uint8Array): Promise<Floor
   } catch (err: unknown) {
     log.warn("dxf parse failed", { error: err instanceof Error ? err.message : String(err) });
     return null;
+  }
+}
+
+/**
+ * One numbered flat out of a whole-floor DXF, on its own page: the spaces its
+ * front door leads to (see dxf-unit-by-doors.ts), the walls and windows around
+ * them, its furniture and labels. The reason, when it does not close.
+ */
+export function unitGeometryFromDxf(
+  input: string | Uint8Array | DxfDrawing,
+  number: number,
+): { geometry: FloorplanVectorGeometry } | { reason: string } {
+  try {
+    const drawing = typeof input === "object" && "entities" in input ? input : readDxfDrawing(input);
+    if (!drawing) return { reason: "unreadable" };
+    const unit = unitByDoors(drawing, number);
+    if (isUnitFailure(unit)) return { reason: unit.reason };
+    const geometry = planGeometry(readPieces(drawing), -1, unit);
+    return geometry ? { geometry } : { reason: "empty" };
+  } catch (err: unknown) {
+    log.warn("dxf unit read failed", { number, error: err instanceof Error ? err.message : String(err) });
+    return { reason: "unreadable" };
   }
 }
 

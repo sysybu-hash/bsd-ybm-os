@@ -44,6 +44,12 @@ export type BuildingMaterial =
   | "timber"
   | "upholstery"
   | "upholsteryAccent"
+  /** Deep red velvet: a synagogue ark's curtain (parochet). */
+  | "velvet"
+  /** Red foam upholstery: a pew's seat and back cushions. */
+  | "pewCushion"
+  /** Dark tinted glass: a women's gallery front, seen from the hall. */
+  | "glassTint"
   | "whiteboard"
   | "screen"
   | "darkSteel"
@@ -54,6 +60,11 @@ export type BuildingMaterial =
   | "foliage"
   | "ceiling"
   | "lightPanel"
+  /** A lived-in flat's window at dusk, its room lit warm behind the glass (and a dimmer one, a lamp further in). */
+  | "roomGlow"
+  | "roomGlowDim"
+  /** The glass in front of a lit room: thinner, so its light reads through. */
+  | "glassWarm"
   | "seatFabric"
   | "linen"
   /** An apartment's own finishes: a sofa's weave, a rug, oak and porcelain, a wet room's tile. */
@@ -86,7 +97,21 @@ export type BuildingMaterial =
   /** A balustrade's clear glass. */
   | "railGlass"
   /** The cut top of a wall in a plan: drawn solid, as a plan draws it. */
-  | "poche";
+  | "poche"
+  /** Food-plant equipment: brushed stainless steel (tables, trolleys, ovens), light enough to read indoors. */
+  | "stainless"
+  /** A food plant's stacking crate: blue polypropylene. */
+  | "crateBlue"
+  /** Pallet-rack beams and safety rails: industrial orange. */
+  | "safetyOrange"
+  /** Smoked sausages on their sticks: a cured red-brown with a soft sheen. */
+  | "sausage"
+  /** Stretch film round a pallet's load: glossy, milky. */
+  | "wrapFilm"
+  /** Tyres, gaskets, belts: matte black rubber. */
+  | "rubber"
+  /** A food plant's floor: light grey epoxy with a faint sheen. */
+  | "epoxy";
 
 export type Primitive =
   | {
@@ -108,6 +133,17 @@ export type Primitive =
       y1: number;
       material: BuildingMaterial;
       tag?: string;
+      /**
+       * Set: the outline stands upright in a wall's face — its points are (u, y): u along `along` (world x, or world z), y the
+       * height — and it runs through the wall from t0 to t1 on the other axis (an arch's stone round its glass, a round window's
+       * pane). y0 and y1 then only bound it.
+       */
+      side?: { along: "x" | "z"; t0: number; t1: number };
+      /**
+       * A sloped top (a ramp): the top face rises by g·((x, z) − o) metres from y1; `all` lifts the whole prism so (a thin
+       * deck of even thickness on the slope).
+       */
+      rise?: { o: [number, number]; g: [number, number]; all?: boolean };
     }
   | { type: "cylinder"; centre: Vec3; radius: number; height: number; material: BuildingMaterial; tag?: string }
   | {
@@ -131,7 +167,11 @@ export type Primitive =
   /** A plant in a pot: staging beside a sofa, in a terrace's corner. */
   | { type: "plant"; at: Vec3; height: number; spread: number; tag?: string }
   | { type: "car"; at: Vec3; rotY: number; colour: number; tag?: string }
-  | { type: "person"; at: Vec3; rotY: number; colour: number; height: number; tag?: string }
+  | {
+      type: "person"; at: Vec3; rotY: number; colour: number; height: number; tag?: string;
+      /** "worker": a food-plant worker at a bench (coat, boots, gloves, hair net, arms forward). Omitted: the plain scale figure. */
+      style?: "worker";
+    }
   | {
       type: "text";
       text: string;
@@ -154,11 +194,13 @@ export type BuildingModel = {
   street?: "north" | "south" | "east" | "west";
   /** A house's plot, its boundary's box: where its elevations cut the ground. */
   plot?: { x0: number; z0: number; x1: number; z1: number };
+  /** How far round the extent's middle the sun's shadow box reaches, metres, when the model's streets and cars go past the building. */
+  shadowReachM?: number;
   /**
    * A building's own look where the defaults (white-ish stone, grey paving) are not the site's: `colors` replaces a material's
    * colour (its texture becomes a plain one of that colour), `limestone` swaps the stone for honed sand-cream courses with dark
    * joints, `redPavers` the paving for red-brown pavers in running bond, `golden` the golden hour (a low warm sun, an amber sky,
    * the exterior lamps lit) for the perspective views.
    */
-  palette?: { colors?: Partial<Record<BuildingMaterial, string>>; limestone?: boolean; redPavers?: boolean; golden?: boolean };
+  palette?: { colors?: Partial<Record<BuildingMaterial, string>>; limestone?: boolean; /** The stone's course height in metres, as the elevation dimensions it (limestone only; 0.364 when unset). */ courseM?: number; redPavers?: boolean; golden?: boolean };
 };

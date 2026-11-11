@@ -70,6 +70,7 @@ import {
   geometryFromDxf,
   readDxfPlans,
   renderDxfPageJpeg,
+  unitGeometryFromDxf,
 } from "@/lib/projects/floorplan-dxf";
 import { readDxfDrawing } from "@/lib/projects/dxf-drawing";
 import type { StructureKind } from "@/lib/validation/schemas/floorplan-structure";
@@ -232,6 +233,13 @@ type VisualizeFloorplanOptions = {
   structure?: StructureKind;
   /** Which of a DXF's plans to draw (readDxfPlans order); the largest when absent. */
   planIndex?: number;
+  /**
+   * Apartment number on a multi-unit sheet (the diamond by the entrance).
+   *
+   * The floor is read whole, then cut to the face that contains this mark.
+   * Absent, the whole floor is drawn at the file's own units.
+   */
+  unitNumber?: number;
 };
 
 /**
@@ -259,16 +267,35 @@ function dxfPlanAt(dxf: string | Uint8Array, planIndex: number) {
   return readDxfPlans(drawing, planIndex + 1).geometries[planIndex] ?? null;
 }
 
+/** Why a numbered flat did not come out of its floor, as the person reads it. */
+const UNIT_FAILURE: Record<string, string> = {
+  "no-mark": "המספר לא נמצא בשרטוט (מחפשים את המעוין של מספר הדירה ליד דלת הכניסה)",
+  "no-units": "בקובץ לא מוגדרות יחידות מידה",
+  "mark-off-floor": "המספר לא יושב בתוך חלל סגור של קומה",
+  "no-floor": "לא נמצאה רצפה סגורה סביב המספר",
+};
+
 async function rasterizeNativeCadReference(
   prepared: { base64: string; mimeType: string },
   planIndex = 0,
+  unitNumber?: number,
 ): Promise<NativeCadReference> {
   const bytes = Buffer.from(prepared.base64, "base64");
   // A DXF goes in as its bytes: before AutoCAD 2007 its text is in the code
   // page its header names (ANSI_1255 in a Hebrew office), not UTF-8.
   const dxf = prepared.mimeType === DWG_MIME ? await dwgToDxf(bytes) : new Uint8Array(bytes);
   if (!dxf) throw new FloorplanCadUnreadableError("לא ניתן לקרוא את קובץ ה-CAD שהועלה");
-  const geometry = planIndex > 0 ? dxfPlanAt(dxf, planIndex) : await geometryFromDxf(dxf);
+  // A flat asked for by number is cut out of whichever floor holds it.
+  let geometry: FloorplanVectorGeometry | null;
+  if (unitNumber) {
+    const unit = unitGeometryFromDxf(dxf, unitNumber);
+    if ("reason" in unit) {
+      throw new FloorplanCadUnreadableError(`דירה ${unitNumber} לא הופרדה מהקומה: ${UNIT_FAILURE[unit.reason] ?? unit.reason}`);
+    }
+    geometry = unit.geometry;
+  } else {
+    geometry = planIndex > 0 ? dxfPlanAt(dxf, planIndex) : await geometryFromDxf(dxf);
+  }
   if (!geometry) throw new FloorplanCadUnreadableError("קובץ ה-CAD אינו מכיל תוכנית וקטורית קריאה");
   const raster = await renderDxfPageJpeg(geometry);
   if (!raster) throw new FloorplanCadUnreadableError("לא ניתן להפיק תצוגת תוכנית מקובץ ה-CAD");
@@ -294,7 +321,7 @@ async function visualizeWithSpend(
   const prepared = await prepareFloorplanSource(base64, mimeType, { forceDrawing });
   const photo = options?.planKind === "photo" ? true : prepared.sourceKind === "photo";
   const nativeCad = isCadFloorplanMime(prepared.mimeType)
-    ? await rasterizeNativeCadReference(prepared, options?.planIndex ?? 0)
+    ? await rasterizeNativeCadReference(prepared, options?.planIndex ?? 0, options?.unitNumber)
     : null;
   const extractionSource = nativeCad?.raster ?? prepared;
   // A permit strip names its rooms in text the reader has already read, so
@@ -308,11 +335,17 @@ async function visualizeWithSpend(
   // names and printed area are what its measurement is checked against.
   const statesUnits =
     measuredOnly && nativeCad != null && nativeCad.geometry.unitsPerMetre != null && nativeCad.geometry.unitsPerMetre > 0;
+  // A DXF that states centimetres (or any header unit) is already measured.
+  // Asking a paid model for a gross area is what made a whole floor fail to
+  // lock against one apartment's 122.47 m². The text in the file names the rooms.
+  const headerScale =
+    nativeCad?.geometry.cad?.unitsFrom === "header" && (nativeCad.geometry.unitsPerMetre ?? 0) > 0;
   const metricCad =
     statesUnits &&
-    (options?.structure
-      ? options.structure === "commercial"
-      : (nativeCad?.geometry.dwellingLabels ?? 0) === 0);
+    (headerScale ||
+      (options?.structure
+        ? options.structure === "commercial"
+        : (nativeCad?.geometry.dwellingLabels ?? 0) === 0));
   // A picture of a sheet is never measured (tryCadOverview: "not a PDF"), and
   // a measured run refuses it — once its reading, up to nine paid calls, was
   // made. It is refused before any.
@@ -821,12 +854,16 @@ function framedPartLabel(part: { floorM2: number; drawingWidthM: number; drawing
 async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOverviewAttempt> {
   const nativeCad = input.nativeCad;
   if (!nativeCad) return { outcome: "locked" };
-  const { geometry } = nativeCad;
+  const geometry = nativeCad.geometry;
   // The sheet's own coordinates, so a room can be given the label that sits
   // inside it — the extractor reports a label as a fraction of the page.
   const pageSize = { width: geometry.pageWidth, height: geometry.pageHeight };
   const truth = printedTruthFromSheet(input.extractedLayout, { areas: [] });
-  const targetAreaM2 = cadTargetAreaM2(input.extractedLayout, { truth });
+  // Header units are centimetres (or millimetres), already applied to the page.
+  // The 40–72 sweep locks a printed apartment area, and a whole floor has no
+  // single area to match, so that sweep returned null.
+  const fromHeader = geometry.cad?.unitsFrom === "header" && (geometry.unitsPerMetre ?? 0) > 0;
+  const targetAreaM2 = fromHeader ? undefined : cadTargetAreaM2(input.extractedLayout, { truth });
   const drawingUnits = geometry.unitsPerMetre;
   if (targetAreaM2 == null && !(drawingUnits != null && drawingUnits > 0)) {
     log.info("cad drawing has no printed area and no stated units");
@@ -859,7 +896,7 @@ async function tryCadDrawingOverview(input: CadOverviewInput): Promise<CadOvervi
       rendered.confidence,
       truth,
     );
-    if (qualityFailure) {
+    if (qualityFailure && !fromHeader) {
       log.info("native CAD plate failed measured quality checks; using the raster route", {
         measured: rendered.rooms.map((room) => room.kind),
         hard: rendered.confidence.hard,

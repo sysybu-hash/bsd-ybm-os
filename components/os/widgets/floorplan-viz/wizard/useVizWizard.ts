@@ -64,6 +64,7 @@ export function useVizWizard({
   const [staged, setStaged] = useState<StagedPlanRef | null>(null);
   const [structure, setStructure] = useState<StructureKind | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
+  const [unitNumber, setUnitNumber] = useState("");
 
   const reset = useCallback(() => {
     setStep("upload");
@@ -150,7 +151,11 @@ export function useVizWizard({
     // reads that file again to check the choice, since the fingerprint was of all of them.
     const inFile = files.length > 1 && planId ? planInFile(planId, files) : null;
     if (inFile) {
-      return { file: inFile.file, staged: null, fields: { structure, planRef: inFile.planRef } };
+      return {
+        file: inFile.file,
+        staged: null,
+        fields: { structure, planRef: inFile.planRef, ...(unitNumber.trim() ? { unit: unitNumber.trim() } : {}) },
+      };
     }
     return {
       staged,
@@ -158,9 +163,10 @@ export function useVizWizard({
         structure,
         ...(planId && structure !== "building" ? { planRef: planId } : {}),
         ...(fingerprint ? { structureFingerprint: fingerprint } : {}),
+        ...(unitNumber.trim() ? { unit: unitNumber.trim() } : {}),
       },
     };
-  }, [files, fingerprint, planId, staged, structure]);
+  }, [files, fingerprint, planId, staged, structure, unitNumber]);
 
   const canContinue =
     report != null &&
@@ -178,6 +184,8 @@ export function useVizWizard({
     setStructure,
     planId,
     setPlanId,
+    unitNumber,
+    setUnitNumber,
     canContinue,
     identify,
     runFields,

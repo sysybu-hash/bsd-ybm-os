@@ -156,6 +156,10 @@ The AI scanner (Tri-Engine) tries: Gemini → OpenAI → DocumentAI → Mistral.
 
 `FLOORPLAN_TRACE_SAMPLES` (optional, local only): path-trace a flat's measured still with this many samples a pixel (e.g. `128`) — bounced light and soft shadows on this machine's GPU. Leave unset on Vercel: the tracer is a development dependency.
 
+`FLOORPLAN_TRACE_ENGINE` (optional, local only): `cycles` photographs a measured still with Blender's Cycles on this machine. Anything else keeps the Chromium raster, and a numeric `FLOORPLAN_TRACE_SAMPLES` still selects the three.js path tracer.
+
+`BLENDER_BIN` (optional, local only): absolute path to `blender.exe`. Cycles is skipped when this is empty and `blender` is not on PATH.
+
 ### Google Document AI (OCR — optional)
 
 High-accuracy OCR for scanned documents. Requires a Google Cloud project with Document AI API enabled.

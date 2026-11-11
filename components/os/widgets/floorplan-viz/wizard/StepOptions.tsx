@@ -34,6 +34,8 @@ export type StepOptionsProps = {
   projectId?: string;
   onGenerate: (renderMode: "render3d" | "finish") => void;
   onBack: () => void;
+  unitNumber: string;
+  onUnitNumber: (value: string) => void;
 };
 
 /** Step 3: the options that fit the structure confirmed, and the way to produce it. */
@@ -120,6 +122,19 @@ export default function StepOptions(p: StepOptionsProps) {
         <>
           {p.structure === "commercial" ? (
             <p className="text-[11px] text-[color:var(--foreground-muted)]">{w("commercialHint")}</p>
+          ) : null}
+          {p.structure === "apartment" || p.structure === "commercial" ? (
+            <label className="block text-[11px]">
+              <span className="font-bold">{w("unitNumber")}</span>
+              <input
+                value={p.unitNumber}
+                inputMode="numeric"
+                disabled={p.loading}
+                onChange={(e) => p.onUnitNumber(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
+                className="mt-1 w-24 rounded-lg border border-[color:var(--border-main)] bg-[color:var(--background-main)] px-2 py-1"
+              />
+              <span className="mt-1 block text-[10px] text-[color:var(--foreground-muted)]">{w("unitNumberHint")}</span>
+            </label>
           ) : null}
           <ScopePicker t={t} scope={p.scope} onScope={p.onScope} disabled={p.loading} />
           <FloorplanVizStylePicker

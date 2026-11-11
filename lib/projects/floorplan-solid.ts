@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import { buildWallRuns, type WallRun } from "@/lib/projects/floorplan-rooms";
 import {
   WALL_MIN_LINE_WIDTH,
@@ -345,6 +346,77 @@ function overlapAcross(a: WallBody, b: WallBody, share: number): boolean {
   const bHigh = b.centre + b.thickness / 2;
   const across = Math.min(aHigh, bHigh) - Math.max(aLow, bLow);
   return across >= Math.min(a.thickness, b.thickness) * share;
+}
+
+/**
+ * The filler across each collinear gap a caller accepts.
+ *
+ * The filler is only the hole, not the walls either side, so it can be added
+ * to a barrier set or left out when the hole is the wall between two flats.
+ */
+export function bridgesAcrossGaps(
+  bodies: WallBody[],
+  accept: (gap: {
+    orientation: "h" | "v";
+    centre: number;
+    thickness: number;
+    from: number;
+    to: number;
+  }) => boolean,
+): WallBody[] {
+  const bridges: WallBody[] = [];
+  for (const orientation of ["h", "v"] as const) {
+    const line = bodies
+      .filter((b) => b.orientation === orientation)
+      .sort((a, b) => a.centre - b.centre || a.from - b.from);
+    let group: WallBody[] = [];
+    const flush = () => {
+      group.sort((a, b) => a.from - b.from);
+      for (let i = 1; i < group.length; i++) {
+        const prev = group[i - 1]!;
+        const next = group[i]!;
+        const gap = next.from - prev.to;
+        if (gap <= 0) continue;
+        const centre = (prev.centre + next.centre) / 2;
+        const thickness = Math.max(prev.thickness, next.thickness);
+        const opening = { orientation, centre, thickness, from: prev.to, to: next.from };
+        if (accept(opening)) bridges.push(opening);
+      }
+      group = [];
+    };
+    for (const b of line) {
+      const anchor = group[0];
+      if (anchor && !overlapAcross(anchor, b, 0.5)) flush();
+      group.push(b);
+    }
+    flush();
+  }
+  return bridges;
+}
+
+/**
+ * Bridges a gap only when a door or window block stands in it.
+ *
+ * bridgeOpenings joins every gap up to a door's width. A terrace slider is
+ * wider than that, and it is still one opening when the sheet inserts a
+ * window block in the hole. A passage with no block is left open.
+ */
+export function markedOpeningBridges(
+  bodies: WallBody[],
+  marks: Array<{ x: number; y: number }>,
+  maxOpening: number,
+  reach: number,
+): WallBody[] {
+  if (marks.length === 0 || maxOpening <= 0) return [];
+  return bridgesAcrossGaps(bodies, (gap) => {
+    const span = gap.to - gap.from;
+    if (span > maxOpening) return false;
+    return marks.some((m) =>
+      gap.orientation === "h"
+        ? m.x >= gap.from - reach && m.x <= gap.to + reach && Math.abs(m.y - gap.centre) <= gap.thickness / 2 + reach
+        : m.y >= gap.from - reach && m.y <= gap.to + reach && Math.abs(m.x - gap.centre) <= gap.thickness / 2 + reach,
+    );
+  });
 }
 
 export function bridgeOpenings(bodies: WallBody[], maxOpening: number): WallBody[] {
@@ -2585,7 +2657,9 @@ export function dropUnhatchedBodies(
     }
     const lengthCm = Math.max(rect.w, rect.h) / cm;
     if (lengthCm < 1) return true;
-    return (n / lengthCm) * 100 >= minimum;
+    const keep = (n / lengthCm) * 100 >= minimum;
+    if (!keep) noteDrop("floorplan-solid:unhatched-wall-body", () => `${(rect.w / cm).toFixed(0)}×${(rect.h / cm).toFixed(0)} cm, ${((n / lengthCm) * 100).toFixed(1)}/100cm`);
+    return keep;
   });
 }
 

@@ -49,6 +49,24 @@ export type CadOfficeProfile = {
   doorWidthCm?: (block: string) => number | null;
   /** The parts the office's plot style prints in a heavy pen (the strip readers take heavy black lines for walls' faces). */
   heavy?: CadKind[];
+  /**
+   * The office draws its windows and its doors as the same blocks on the same
+   * layer, and only a door draws its leaf's swing: a door block with no swing
+   * is a window (Breuer 21's anonymous blocks on "opens").
+   */
+  doorNeedsSwing?: boolean;
+  /**
+   * The office draws a wall as its two faces and fills nothing between them:
+   * the sheet's reader fills the band between each pair of parallel wall
+   * faces a wall's thickness apart, as a plot's poché (Breuer 21).
+   */
+  wallsAsFaces?: boolean;
+  /**
+   * The office fills its walls with a pattern hatch (by material), not a
+   * solid one, in no particular colour: a wall-kind hatch's ring is the wall
+   * whatever its fill (Revit exports).
+   */
+  patternedPoche?: boolean;
 };
 
 const DOOR_WIDTH = /(?:delet|door|דלת)[\s_-]*(\d{2,3})/i;
@@ -60,8 +78,8 @@ export const GENERIC_CAD_PROFILE: CadOfficeProfile = {
   layers: [
     { match: /(dim|מידות|מידה)/i, kind: "dimension" },
     { match: /(wall.?ext|ext.?wall|קיר.?חוץ|קירות.?חוץ|מעטפת)/i, kind: "wall-ext" },
-    { match: /(^|[-_ ])(a-?wall|wall|walls|קיר|קירות|מחיצ)/i, kind: "wall-int" },
-    { match: /(^|[-_ ])(a-?door|door|doors|דלת|דלתות|delet)/i, kind: "door" },
+    { match: /(^|[-_ ])(a-?wall|a-?wl|wall|walls|קיר|קירות|מחיצ)/i, kind: "wall-int" },
+    { match: /(^|[-_ ])(a-?door|a-?dr|door|doors|dor|דלת|דלתות|delet|פתח)/i, kind: "door" },
     { match: /(^|[-_ ])(a-?glaz|window|windows|win|חלון|חלונות|halon)/i, kind: "window" },
     { match: /(park|חניה|חניות)/i, kind: "parking" },
     { match: /(grass|lawn|דשא|גינון)/i, kind: "lawn" },
@@ -147,7 +165,140 @@ export const GOTTLIEB_ARCHITECT_PROFILE: CadOfficeProfile = {
   heavy: ["wall-ext", "wall-int", "overhead", "plot"],
 };
 
-export const CAD_PROFILES: CadOfficeProfile[] = [GOTTLIEB_ARCHITECT_PROFILE];
+/**
+ * The Weinberg building's office, as its sale drawing "מכר סופי 29.10.26"
+ * reads: walls drawn as faces on "a-wl" with their poché an ANSI31 hatch on
+ * "a-ht" (the same layer holds the small ANSI31 masks behind room names, and
+ * the balcony tiles as AR-BRSTD); doors are blocks on "00-dor", the sliding
+ * balcony doors on "A-DR", "door 80" and "Dr070p07" on "00-win"; the safe
+ * room's steel door is "Shltr02" on "op"; folding balcony doors are
+ * "HARMONIKA" on "KAVIM"; balcony rails on "A-EL" and "2"; each flat's
+ * number is an App_Nom block by its entrance.
+ */
+export const WEINBERG_ARCHITECT_PROFILE: CadOfficeProfile = {
+  id: "weinberg-architect",
+  label: "משרד האדריכל של בניין ויינברג",
+  signature: [/^a-wl$/, /^a-ht$/, /^A-TX2$/, /^KAVIM$/, /^A-EL$/],
+  layers: [
+    { match: /^(00-DIM|MIDA$|a-dm$|dim$)/i, kind: "dimension" },
+    { match: /^a-wl$/, kind: "wall-int" },
+    // The poché layer: a hatch exploded on it is lines, and they are wall too.
+    { match: /^a-ht$/, kind: "wall-int" },
+    // "חלון" holds only the sliding balcony door A-DR draws in flat 14, mirrored for flat 15: missed, it left 15's kitchen an open hole.
+    { match: /^(00-dor|A-DR|חלון)$/, kind: "door" },
+    { match: /^(00-win|KAVIM|op)$/, kind: "window" },
+    { match: /^(A-EL|2)$/, kind: "railing" },
+    { match: /^00-madregot$/, kind: "stairs" },
+    { match: /^00-mabat$/, kind: "overhead" },
+    { match: /^00-SAN$/, kind: "sanitary" },
+    { match: /^(A-TX2|KO-TEXT1|MABAT)$/, kind: "text" },
+  ],
+  blocks: [
+    { match: /^(door\s*\d{2,3}|dr\d{2,3}|shltr)/i, kind: "door" },
+    { match: /^HARMONIKA/i, kind: "window" },
+    { match: /^(App_Nom|MIF_)/i, kind: "ignore" },
+    { match: /(kiyor|sherotim|mekarer|gaz|kvisa|ambatya|bath)/i, kind: "sanitary" },
+  ],
+  hatches: [
+    { pattern: /^ANSI31$/i, layer: /^a-ht$/, kind: "wall-int" },
+    { pattern: /^AR-BRSTD$/i, kind: "paving" },
+  ],
+  doorWidthCm: (block) => {
+    const n = Number(/^(?:door\s*|dr)(\d{2,3})/i.exec(block)?.[1] ?? NaN);
+    return Number.isFinite(n) && n >= 50 && n <= 250 ? n : null;
+  },
+  heavy: ["wall-ext", "wall-int"],
+};
+
+/**
+ * Breuer 21's office (Auerbach, ביצוע 22.10.2026), as its DWG reads: walls
+ * as hairline faces on "wall" with no poché; demolished walls on "wall
+ * harissa" and the existing building's hatches on "h kayam"; door leaves and
+ * swings on "open door" inside "door mmd" blocks; windows as anonymous
+ * blocks whose frames are on "opens" and glass on "open windows"; the floor
+ * above on "mabat" / "mabat dak"; the floors themselves are group blocks
+ * ("טיפוסית א-ג", "טיפוסית ד-ו", "חלונות").
+ */
+export const AUERBACH_ARCHITECT_PROFILE: CadOfficeProfile = {
+  id: "auerbach-architect",
+  label: "משרד האדריכל של ברויאר 21",
+  signature: [/^mabat dak$/, /^line up$/, /^wall harissa$/, /^open windows$/, /^h kayam$/],
+  layers: [
+    { match: /^dim/i, kind: "dimension" },
+    { match: /^(wall harissa|h kayam|hidden|H\d{3}|gvul|Defpoints)$/i, kind: "ignore" },
+    { match: /^wall2?$/i, kind: "wall-int" },
+    // A door and a window are both anonymous blocks on "opens"; the door's swing tells them apart (doorNeedsSwing).
+    { match: /^(open door|-door|opens)$/i, kind: "door" },
+    { match: /^open windows$/i, kind: "window" },
+    { match: /^(mabat|mabat dak|line up)$/i, kind: "overhead" },
+    { match: /^(sanitary|senitar)$/i, kind: "sanitary" },
+    { match: /^ריהוט$/, kind: "furniture" },
+    { match: /^text$/i, kind: "text" },
+  ],
+  blocks: [
+    { match: /^(טיפוסית|חלונות$)/, kind: "group" },
+    { match: /^door mmd$/i, kind: "door" },
+    { match: /^חניה$/, kind: "parking" },
+    { match: /^(dim open|צפון|מפלס|SH1$|xrd$|ntynb$)/i, kind: "ignore" },
+  ],
+  hatches: [{ layer: /^h kayam$/i, kind: "ignore" }],
+  heavy: ["wall-ext", "wall-int"],
+  doorNeedsSwing: true,
+  wallsAsFaces: true,
+};
+
+/** "BW IntSgl - 100_210" → 100; "M_Single-Flush - 0915 x 2134mm" → 91.5 (Revit's family - type names). */
+const REVIT_DOOR_WIDTH = /(?:\s-\s|^)(\d{2,3})_\d{2,3}\b|(\d{4})\s*x\s*\d{4}\s*mm/i;
+
+/**
+ * A plan exported from Revit with the AIA layer names (Damesek Eliezer,
+ * מתי תכנון, 2023): walls' faces on "A_WALL_PRTN" with their poché a
+ * patterned hatch (FP_n, not solid) on "A-WALL-PATT", columns hatched on
+ * "S-COLS"; doors are family blocks "BW IntSgl - 100_210" on "A_DOOR";
+ * windows "BW Standard …", "חלון קשת …", "__חלון עגול" on "A_SEEN_LT" (a
+ * layer that also holds seen edges, so a window is known by its block's
+ * name); stairs on "A-FLOR-STRS", rails on "A-FLOR-HRAL"; tags, grids, levels
+ * and detail lines are annotation.
+ */
+export const REVIT_AIA_PROFILE: CadOfficeProfile = {
+  id: "revit-aia",
+  label: "יצוא Revit (שכבות AIA)",
+  signature: [/^A_WALL_PRTN$/, /^A-WALL-PATT$/, /^A_SEEN_LT$/, /^A-ANNO-IDEN$/, /^S-GRID$/, /^A_FIXT_SANT$/],
+  layers: [
+    { match: /^A-ANNO-DIMS/i, kind: "dimension" },
+    { match: /^(A-ANNO-(?!DIMS)|A-SECT|A-DETL|A-AREA|S-GRID|E-|G-|A-CLNG|Defpoints$|C-TOPO$|L-SITE$)/i, kind: "ignore" },
+    { match: /^(A_WALL_PRTN|A-WALL-PATT|S-COLS)$/i, kind: "wall-int" },
+    { match: /^(A_DOOR|A-DOOR)$/i, kind: "door" },
+    { match: /^(A-GLAZ|A-GLAZ-CWMG|A-GLAZ-FRAM|A_OPEN)$/i, kind: "window" },
+    { match: /^A-FLOR-STRS$/i, kind: "stairs" },
+    { match: /^A-FLOR-HRAL$/i, kind: "railing" },
+    { match: /^A_FIXT_SANT$/i, kind: "sanitary" },
+    { match: /^A_FURN$/i, kind: "furniture" },
+    { match: /^A_HIDN_UP$/i, kind: "overhead" },
+  ],
+  blocks: [
+    { match: /^(Grid|Spot Elevations|Section|Elevation|Level|RC_MULTI_TAG|וונטה|__סימון|Drain Pipe|__צינורות|Tovna_Mamad_Zinor|צ_א_4|RvZ_Shaft|משטחי אזהרה|סימן נכים|Lighting|__תאורת)/i, kind: "ignore" },
+    { match: /^RvZ_Service Cabinet Door/i, kind: "furniture" },
+    { match: /^(BW IntSgl|BW Sliding Door|M_Single-Flush|mamad_door|Revolving_Door|M_Door-Curtain-Wall)/i, kind: "door" },
+    { match: /^(BW Standard|חלון|__חלון|Window-|Tovna_Mamad_Window|System Panel)/i, kind: "window" },
+    { match: /^(Railing|Handrail)/i, kind: "railing" },
+    { match: /^(WC|Urinal|כיור|Bath|M_Shower|Floor_Drain|Grab Rail)/i, kind: "sanitary" },
+  ],
+  // Revit fills its walls with patterns by material (FP_1, FP_2 …), never solid: the hatch's ring is the wall.
+  hatches: [
+    { layer: /^(A-WALL-PATT|S-COLS)$/i, kind: "wall-int" },
+    { layer: /^(A-ANNO|A-DETL|A_PATT|A-GENM|A_SEEN)/i, kind: "ignore" },
+  ],
+  doorWidthCm: (block) => {
+    const m = REVIT_DOOR_WIDTH.exec(block);
+    const n = m?.[1] ? Number(m[1]) : m?.[2] ? Number(m[2]) / 10 : NaN;
+    return Number.isFinite(n) && n >= 50 && n <= 300 ? n : null;
+  },
+  heavy: ["wall-ext", "wall-int"],
+  patternedPoche: true,
+};
+
+export const CAD_PROFILES: CadOfficeProfile[] = [GOTTLIEB_ARCHITECT_PROFILE, WEINBERG_ARCHITECT_PROFILE, AUERBACH_ARCHITECT_PROFILE, REVIT_AIA_PROFILE];
 
 /** The office whose layers the drawing carries most of; the generic profile when none has half its signature. */
 export function profileFor(layers: Iterable<string>): CadOfficeProfile {

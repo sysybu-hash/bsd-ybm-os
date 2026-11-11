@@ -1,4 +1,5 @@
 import {
+  clipRuns,
   countDwellingLabels,
   DXF_PAGE_UNITS_PER_METRE,
   dxfReportLines,
@@ -44,6 +45,15 @@ const room = dxf(
 );
 
 describe("dxf geometry", () => {
+  it("keeps a polyline's corners when it clips it to a flat", () => {
+    // A wall's outline, 3 × 1: thinning each side to its two ends once replaced the corner, and drew a wedge.
+    const wall = [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }];
+    const [run] = clipRuns(wall, () => true, 10);
+    expect(run).toEqual(wall);
+    // Clipped, each kept stretch still runs along the drawn line.
+    const half = clipRuns(wall, (q) => q.x <= 150, 10);
+    expect(half).toEqual([[{ x: 0, y: 0 }, { x: 150, y: 0 }], [{ x: 150, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }]]);
+  });
   it("renders vector geometry and source labels into a JPEG reference", async () => {
     const source = dxf(
       6,
@@ -84,6 +94,8 @@ describe("dxf geometry", () => {
     // The dimension is not drawn as lines, and the report says so.
     expect(geometry.cad?.skipped.dimensions).toBe(1);
     expect(isWallLayer("A-WALL")).toBe(true);
+    expect(isWallLayer("a-wl")).toBe(true);
+    expect(isWallLayer("a-ht")).toBe(false);
     expect(isWallLayer("קירות פנים")).toBe(true);
     expect(isWallLayer("A-DOOR")).toBe(false);
     expect(isWallLayer(undefined)).toBe(false);

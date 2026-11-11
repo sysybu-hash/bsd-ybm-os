@@ -128,6 +128,6 @@ export function buildRenderPayload(
     // The backdrop of a sales still is paper, not sky: the sheet it sits
     // beside in the booklet is white, and a blue horizon behind a cutaway
     // reads as a photograph of a model rather than of a flat.
-    background: 0xf4efe6,
+    background: style.backdrop ?? 0xf4efe6,
   };
 }

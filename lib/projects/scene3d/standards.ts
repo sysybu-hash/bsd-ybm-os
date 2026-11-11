@@ -65,6 +65,14 @@ export const SKIRTING_PROUD_M = 0.015;
 export const FLOOR_T_M = 0.04;
 export const TERRACE_DROP_M = 0.02;
 
+/**
+ * A window wider than this is not one fixed pane: it is divided into casement
+ * leaves about WINDOW_SASH_M wide, each able to open. דירה 20's kitchen window
+ * was a single 3.45 m plate.
+ */
+export const WINDOW_SASH_FROM_M = 1.6;
+export const WINDOW_SASH_M = 0.8;
+
 /** The frame around a door or window opening, and how far it is set in. */
 export const FRAME_T_M = 0.05;
 /** A door leaf's thickness. */

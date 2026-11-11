@@ -1,9 +1,11 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { FurniturePiece } from "@/lib/projects/floorplan-furniture";
 import { inferRoomKind, type FloorplanRoom, type FloorplanRoomKind } from "@/lib/projects/floorplan-layout";
 import {
   bodyRect,
   bridgeGlazedGaps,
   bridgeOpenings,
+  markedOpeningBridges,
   interiorComponents,
   spanArea,
   type Opening,
@@ -421,6 +423,11 @@ export function segmentRooms(input: {
    */
   colouredDoorways?: WallBody[];
   /**
+   * Door and window blocks. A gap wider than a door is still closed when one
+   * of these stands in it — a slider, a window — and left open when none does.
+   */
+  openingMarks?: Array<{ x: number; y: number }>;
+  /**
    * Where the sheet prints the ממ"ד's raised threshold ("+2"). Where the sheet
    * prints one, it decides which bedroom is the shelter; see markedShelter.
    */
@@ -457,6 +464,7 @@ export function segmentRooms(input: {
   const barriers = [
     ...bridgeOpenings(bodies, unitsPerMetre * 1.3),
     ...bridgeGlazedGaps(bodies, input.segments ?? [], unitsPerMetre, { floor }),
+    ...markedOpeningBridges(bodies, input.openingMarks ?? [], unitsPerMetre * 3.2, unitsPerMetre * 1.2),
     ...openings.map((o) => sealOpening(o, seal)),
     ...(input.colouredDoorways ?? []),
   ];
@@ -550,7 +558,10 @@ export function segmentRooms(input: {
             (piece.kind === "fixture" || piece.kind === "sink") &&
             (covers(rows, pitch, piece.x + piece.w / 2, piece.y + piece.h / 2) || bathAlong(piece, rows, pitch)),
         );
-      if (!hasFixture) continue;
+      if (!hasFixture) {
+        noteDrop("floorplan-segment:small-room", () => `${areaM2.toFixed(2)} m²${named.length ? ` (${named[0]!.kind})` : ""}`);
+        continue;
+      }
     }
     const box = boundsOf(rows, pitch);
 

@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import { insidePolygon, parapet, slab, type Outline } from "@/lib/projects/building/assemble";
 import { doubleLineWalls } from "@/lib/projects/building/from-dwf-sheet";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
@@ -289,9 +290,15 @@ export function houseBalconies(
   const kept = emptyMask(cols, rows);
   for (let id = 1; id < parts.sizes.length; id++) {
     const m2 = parts.sizes[id]! * CELL * CELL;
-    if (m2 < 2 || m2 > 60) continue;
+    if (m2 < 2 || m2 > 60) {
+      if (m2 >= 0.5) noteDrop(`house-features:balcony-${m2 < 2 ? "under-2" : "over-60"}m2`, `${m2.toFixed(1)} m²`);
+      continue;
+    }
     const { touches, depth } = extent(parts.ids, id);
-    if (!touches || depth < 0.8) continue;
+    if (!touches || depth < 0.8) {
+      noteDrop(`house-features:balcony-${touches ? "shallower-0.8m" : "touching-no-room"}`, `${m2.toFixed(1)} m², depth ${depth.toFixed(2)}`);
+      continue;
+    }
     for (let k = 0; k < parts.ids.length; k++) if (parts.ids[k] === id) kept.data[k] = 1;
   }
   // Two homes' balconies side by side, the line between them drawn across

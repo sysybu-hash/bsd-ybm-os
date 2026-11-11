@@ -8,6 +8,7 @@ import { buildRenderPayload } from "@/lib/projects/scene3d/render-payload";
 import { renderPageHtml } from "@/lib/projects/scene3d/render-page";
 import type { SceneStyle } from "@/lib/projects/scene3d/style";
 import type { ViewSpec } from "@/lib/projects/scene3d/cameras";
+import { cyclesSceneRenderer } from "@/lib/projects/scene3d/blender-cycles";
 import type { FlatScene } from "@/lib/projects/scene3d/types";
 
 /**
@@ -42,6 +43,18 @@ export type SceneRenderResult = {
 };
 
 export type FlatSceneRenderer = (req: SceneRenderRequest) => Promise<SceneRenderResult | null>;
+
+export type SceneEngine = "chromium" | "cycles";
+
+/**
+ * The renderer the pipeline asked for.
+ *
+ * Chromium rasterises. Cycles path-traces the same scene through Blender.
+ * Callers pass a scene and get an image; which one draws is this choice.
+ */
+export function sceneRendererFor(engine: SceneEngine): FlatSceneRenderer {
+  return engine === "cycles" ? cyclesSceneRenderer : chromiumSceneRenderer;
+}
 
 /** Milliseconds one frame is given, including the browser's first launch. */
 const FRAME_MS = 90_000;

@@ -2,6 +2,7 @@ import type { GoogleGenAI } from "@google/genai";
 import sharp from "sharp";
 
 import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
+import { createLogger } from "@/lib/logger";
 import { getFloorplanVizModelChain } from "@/lib/gemini-model";
 
 /**
@@ -14,6 +15,8 @@ import { getFloorplanVizModelChain } from "@/lib/gemini-model";
  * finish whose edges wander from the render's has moved the building, and is
  * not used.
  */
+const finishLog = createLogger("building-finish");
+
 export type FinishKind = "exterior" | "interior" | "cutaway" | "elevation" | "section" | "photo" | "apartment";
 
 export function finishPrompt(
@@ -151,7 +154,8 @@ function sizingRefused(err: unknown): boolean {
 
 /** A fault no other model mends: the key, the account's quota or billing. */
 function accountFault(err: unknown): boolean {
-  return /\b40[13]\b|api[_ ]key|permission|billing|unauthenticated/.test(errorText(err));
+  // 402 is AI Studio's "prepaid credits are depleted" (Wolf, 2026-10-26): no other model mends it either.
+  return /\b40[123]\b|api[_ ]key|permission|billing|unauthenticated|prepaid|credit/.test(errorText(err));
 }
 
 /**
@@ -190,13 +194,24 @@ export async function finishPass(
           config: { responseModalities: ["IMAGE"], ...(sized ? { imageConfig } : {}), ...(signal ? { abortSignal: signal } : {}) },
         });
       } catch (err: unknown) {
-        if (signal?.aborted || accountFault(err)) return null;
+        if (signal?.aborted) return null;
+        const error = errorText(err).slice(0, 300);
+        if (accountFault(err)) {
+          finishLog.warn("image call refused for the account", { model, error });
+          return null;
+        }
         if (sized && sizingRefused(err)) continue;
+        finishLog.warn("finish pass failed; next model", { model, sized, error });
         break;
       }
       recordAiUsage(model, usageFromGemini(res));
       const part = res.candidates?.[0]?.content?.parts?.find((p) => p.inlineData);
-      return part?.inlineData?.data ? { image: Buffer.from(part.inlineData.data, "base64"), model } : null;
+      if (!part?.inlineData?.data) {
+        const said = res.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text?.slice(0, 200);
+        finishLog.warn("finish pass answered without a picture", { model, finishReason: res.candidates?.[0]?.finishReason, said });
+        return null;
+      }
+      return { image: Buffer.from(part.inlineData.data, "base64"), model };
     }
   }
   return null;
