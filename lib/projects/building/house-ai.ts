@@ -2,10 +2,13 @@ import sharp from "sharp";
 
 import { parseModelJsonText } from "@/lib/ai-document-json";
 import { recordAiUsage, usageFromGemini } from "@/lib/ai-usage";
+import { createLogger } from "@/lib/logger";
 import { getGeminiApiKey } from "@/lib/gemini-api-key";
 import { getBlueprintAnalysisModelChain, isLikelyGeminiModelUnavailable } from "@/lib/gemini-model";
 import { paidAiAllowed, textCallAffordable } from "@/lib/projects/building/house-cost";
 import type { HouseSiteLevelKey, HouseSiteLevels } from "@/lib/projects/building/house-yard";
+
+const houseAiLog = createLogger("house-ai");
 
 /** What the vision model read for a house's booklet, and what of it the sheets bore out. */
 export type HouseAiReport = {
@@ -46,6 +49,8 @@ export async function askDrawing(prompt: string, images: Buffer[]): Promise<Reco
       return text.trim() ? parseModelJsonText(text) : null;
     } catch (err: unknown) {
       if (isLikelyGeminiModelUnavailable(err)) continue;
+      // Logged: a failed check returned null and read as "no faults" with nothing to say why.
+      houseAiLog.warn("drawing question failed", { model, error: (err instanceof Error ? err.message : String(err)).slice(0, 300) });
       return null;
     }
   }

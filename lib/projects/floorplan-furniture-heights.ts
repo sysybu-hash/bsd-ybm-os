@@ -26,5 +26,7 @@ export const FURNITURE_HEIGHTS_M: Record<string, number> = {
   // a wall. Half a metre is what you sit on, and nothing else in the flat is
   // that low.
   seat: 0.45,
+  // A bar stool, seat to a 0.90 worktop.
+  stool: 0.66,
   unknown: 0.5,
 };

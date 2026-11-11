@@ -8,6 +8,7 @@ import {
   type CadKind,
   type CadOfficeProfile,
 } from "@/lib/projects/building/cad-layers";
+import { noteDrop } from "@/lib/projects/drop-log";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import {
   anchorOf,
@@ -296,14 +297,21 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     counts: { doors: 0, doorWidths: {}, windows: 0, parking: 0, rooms: 0, lawnM2: 0, pavingM2: 0, trees: 0, gates: 0, fenceSegments: 0, stairsLines: 0, hatchPatterns: {} },
   };
 
-  const groupOf = (path: string[]) => (path.length === 1 && blockKind(profile, path[0]!, "") === "group" ? path[0] : undefined);
+  // A group may stand in a group: Breuer 21's windows are in "חלונות", itself in the floor's "טיפוסית א-ג".
+  const groupOf = (path: string[]) => (path.length >= 1 && path.every((name) => blockKind(profile, name, "") === "group") ? path[path.length - 1] : undefined);
   const loose = (p: DxfPiece) => p.path.length === 0 || groupOf(p.path) != null;
 
   for (const ins of pieces) {
     if (!ins.insert || !loose(ins)) continue;
-    const kind = blockKind(profile, ins.insert, ins.layer);
+    let kind = blockKind(profile, ins.insert, ins.layer);
     if (kind === "group" || kind === "ignore") continue;
     const local = blockLocal(drawing, ins.insert, ins.layer);
+    // An office that draws doors and windows as the same blocks, on whatever layer it places them (Breuer 21's
+    // windows stand on its furniture layer): a block drawn in door lines is a door with a leaf's swing, else a window.
+    if (profile.doorNeedsSwing && (kind === "door" || local.some((q) => q.pts && layerKind(profile, q.layer) === "door"))) {
+      const scale = Math.sqrt(Math.abs(ins.m!.a * ins.m!.d - ins.m!.b * ins.m!.c));
+      kind = local.some((q) => q.arc && q.arc.r * scale * u >= 0.4 && q.arc.r * scale * u <= 1.3) ? "door" : "window";
+    }
     const pts = local.flatMap((q) => q.pts ?? q.rings?.flat() ?? []);
     const lb = pts.length ? bbox(pts) : null;
     const m = ins.m!;
@@ -378,7 +386,7 @@ export function houseInventory(drawing: DxfDrawing, sheet: CadSheet, options?: {
     }
     if (p.type === "HATCH" && p.rings && !inBlock) {
       const kind = hatchKind(profile, p.pattern ?? "", p.layer);
-      if ((kind === "wall-ext" || kind === "wall-int") && p.solid) {
+      if ((kind === "wall-ext" || kind === "wall-int") && (p.solid || profile.patternedPoche)) {
         for (const r of p.rings) inv.walls.push({ layer: p.layer, kind: "hatch", exterior: kind === "wall-ext", ring: r.map(P), areaM2: m2(r) });
         continue;
       }
@@ -503,6 +511,8 @@ export function sheetGeometryFromDxf(drawing: DxfDrawing, sheet: CadSheet, optio
   const fills: Array<Array<[number, number]>> = [];
   const fillPens: number[] = [];
   const arcs: DwfArc[] = [];
+  // Wall faces, page points, for an office whose walls are drawn unfilled (wallsAsFaces).
+  const faces: Array<[[number, number], [number, number]]> = [];
   const push = (into: VectorSegment[], a: Pt, b: Pt, lineWidth: number, pen: number) => {
     const [x1, y1] = px(a);
     const [x2, y2] = px(b);
@@ -524,7 +534,7 @@ export function sheetGeometryFromDxf(drawing: DxfDrawing, sheet: CadSheet, optio
       // A wall is filled loose (or in a group block) and in grey; a block's own fill — a column symbol — or a coloured one — a counter's wood — is not poché even on a wall layer.
       const wall =
         (hk === "wall-ext" || hk === "wall-int") &&
-        greyFill(p.colour) &&
+        (greyFill(p.colour) || Boolean(profile.patternedPoche)) &&
         (p.path.length === 0 || (p.path.length === 1 && blockKind(profile, p.path[0]!, "") === "group"));
       if (p.solid) for (const tri of fillTriangles(p.rings)) display.fills.push({ pts: tri.map(px), rgb: ink(p.colour) });
       for (const [a, b] of p.strokes ?? []) {
@@ -532,7 +542,7 @@ export function sheetGeometryFromDxf(drawing: DxfDrawing, sheet: CadSheet, optio
         const [x2, y2] = px(b);
         display.lines.push({ x1, y1, x2, y2, rgb: ink(p.colour), w: width(p.weightMm) });
       }
-      if (p.solid) {
+      if (p.solid || (wall && profile.patternedPoche)) {
         // A plot prints an office's other fills in its default pen; a drawing from an unknown office keeps its dark greys, which is how the DWF reader finds poché too.
         const pen = wall ? POCHE_PEN : profile === GENERIC_CAD_PROFILE && pocheLike(p.colour) ? penOf(p.colour) : 0;
         for (const tri of fillTriangles(p.rings)) {
@@ -551,6 +561,7 @@ export function sheetGeometryFromDxf(drawing: DxfDrawing, sheet: CadSheet, optio
     const lineWidth = heavy ? Math.max(HEAVY_PEN_PT, width(p.weightMm)) : width(p.weightMm);
     const pen = heavy ? 0 : linePen(p.colour);
     for (let i = 1; i < p.pts.length; i++) push(curved ? curves : segments, p.pts[i - 1]!, p.pts[i]!, lineWidth, pen);
+    if (profile.wallsAsFaces && !curved && (lk === "wall-int" || lk === "wall-ext")) for (let i = 1; i < p.pts.length; i++) faces.push([px(p.pts[i - 1]!), px(p.pts[i]!)]);
     for (let i = 1; i < p.pts.length; i++) {
       const [x1, y1] = px(p.pts[i - 1]!);
       const [x2, y2] = px(p.pts[i]!);
@@ -567,7 +578,53 @@ export function sheetGeometryFromDxf(drawing: DxfDrawing, sheet: CadSheet, optio
       arcs.push({ cx, cy, r: p.circle.r * k, start: -Math.PI * 2, end: 0 });
     }
   }
+  for (const quad of pairedWallFaces(faces, DWF_FLOOR_UNITS_PER_METRE)) {
+    for (const tri of [[quad[0], quad[1], quad[2]], [quad[0], quad[2], quad[3]]] as Array<Array<[number, number]>>) {
+      fills.push(tri);
+      fillPens.push(POCHE_PEN);
+    }
+  }
   return { pageWidth: sheet.width * k, pageHeight: sheet.height * k, segments, curves, walls: [], texts, fills, fillPens, arcs, display };
+}
+
+/** A wall's thickness, metres: a 7 cm partition to a 45 cm outer wall. */
+const FACE_GAP_M: [number, number] = [0.07, 0.45];
+
+/**
+ * The bands between a wall's two drawn faces, page points: every two parallel
+ * face segments a wall's thickness apart, over the length they share. An
+ * office that fills nothing between its walls' faces (wallsAsFaces) gets its
+ * poché so; a face with no partner — a jamb's end, a frame — fills nothing.
+ */
+export function pairedWallFaces(faces: Array<[[number, number], [number, number]]>, unitsPerMetre: number): Array<[[number, number], [number, number], [number, number], [number, number]]> {
+  const [lo, hi] = [FACE_GAP_M[0] * unitsPerMetre, FACE_GAP_M[1] * unitsPerMetre];
+  const minRun = 0.04 * unitsPerMetre;
+  const lines = faces.flatMap(([a, b]) => {
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return len >= minRun ? [{ a, ux: (b[0] - a[0]) / len, uy: (b[1] - a[1]) / len, len }] : [];
+  });
+  const out: Array<[[number, number], [number, number], [number, number], [number, number]]> = [];
+  for (let i = 0; i < lines.length; i++) {
+    const s = lines[i]!;
+    for (let j = i + 1; j < lines.length; j++) {
+      const t = lines[j]!;
+      // Parallel within a degree, either way round.
+      if (Math.abs(s.ux * t.uy - s.uy * t.ux) > 0.017) continue;
+      const nx = -s.uy;
+      const ny = s.ux;
+      const gap = (t.a[0] - s.a[0]) * nx + (t.a[1] - s.a[1]) * ny;
+      if (Math.abs(gap) < lo || Math.abs(gap) > hi) continue;
+      // The run they share, along s.
+      const t0 = (t.a[0] - s.a[0]) * s.ux + (t.a[1] - s.a[1]) * s.uy;
+      const t1 = t0 + t.len * (s.ux * t.ux + s.uy * t.uy);
+      const from = Math.max(0, Math.min(t0, t1));
+      const to = Math.min(s.len, Math.max(t0, t1));
+      if (to - from < minRun) continue;
+      const at = (d: number, off: number): [number, number] => [s.a[0] + s.ux * d + nx * off, s.a[1] + s.uy * d + ny * off];
+      out.push([at(from, 0), at(to, 0), at(to, gap), at(from, gap)]);
+    }
+  }
+  return out;
 }
 
 /**
@@ -626,7 +683,13 @@ function withHatchedWalls(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, 
       perimeter += Math.hypot(b.x - a.x, b.y - a.y);
     }
     area = Math.abs(area) / 2;
-    if (area < 0.02 || perimeter === 0 || (2 * area) / perimeter > 0.36) continue;
+    // Only slivers go (20 cm²): a jamb or pier of 10×17 cm is still wall. A loose speck is erased later by
+    // plan-walls' scrap rule (<200 cm²) unless it touches a wall. Was 0.02 m²: 150 rings on Gottlieb, 60 on Weinberg.
+    if (area < 0.002 || perimeter === 0) {
+      noteDrop("dxf-house:wall-ring-under-0.002m2", () => `${area.toFixed(4)} m²`);
+      continue;
+    }
+    if ((2 * area) / perimeter > 0.36) continue;
     for (const tri of fillTriangles([ring])) {
       fills.push(tri.map((q) => [(q.x + hw) * k, (q.y + hh) * k] as [number, number]));
       fillPens.push(POCHE_PEN);
@@ -763,7 +826,13 @@ function withZones(g: DwfGeometry, inv: HouseInventory, sheet: CadSheet, unitsM:
     return [{ x: x0, y: y0, w: x1 - x0, h: y1 - y0, runs: w.runs === "x" ? ("x" as const) : ("y" as const) }];
   });
   const zones = inv.hatches
-    .filter((h) => (h.kind === "lawn" || h.kind === "paving" || h.kind === "planting") && h.ring.length >= 3 && h.areaM2 >= 0.2)
+    .filter((h) => {
+      if (!(h.kind === "lawn" || h.kind === "paving" || h.kind === "planting")) return false;
+      // Only slivers go: Pisga's paving came in 85 pieces of 0.01–0.14 m², each a gap in the yard once left out (was 0.2 m²).
+      if (h.ring.length >= 3 && h.areaM2 >= 0.01) return true;
+      noteDrop("dxf-house:yard-zone-under-0.01m2", () => `${h.kind} ${h.areaM2.toFixed(4)} m²`);
+      return false;
+    })
     .map((h) => ({ kind: h.kind as "lawn" | "paving" | "planting", ring: h.ring.map(([x, z]) => [(x + hw) * k, (z + hh) * k] as [number, number]) }));
   const wallLines = inv.wallLines.flatMap((l) => l.pts.slice(1).map((b, i) => ({ x1: (l.pts[i]![0] + hw) * k, y1: (l.pts[i]![1] + hh) * k, x2: (b[0] + hw) * k, y2: (b[1] + hh) * k, ...(l.exterior ? {} : { inner: true }) })));
   const stairLines = inv.stairs.flatMap((st) => {
@@ -959,10 +1028,15 @@ export function wholeSheet(drawing: DxfDrawing, profile: CadOfficeProfile): { sh
   }
   // A plan's wings can lie apart (a courtyard wider than the cell): every mass at least a tenth of the largest is the plan; lone far strays are not.
   const largest = Math.max(...comps.map((c) => c.length));
-  pts = comps.filter((c) => c.length >= largest * 0.1).flat();
+  const kept = comps.filter((c) => c.length >= largest * 0.1);
+  for (const c of comps) if (c.length < largest * 0.1) noteDrop("dxf-house:wholeSheet-small-wall-cluster", () => `${c.length} pts near (${c[0]!.x.toFixed(0)}, ${c[0]!.y.toFixed(0)})`);
+  pts = kept.flat();
   const [x0, x1, y0, y1] = [Math.min(...pts.map((q) => q.x)), Math.max(...pts.map((q) => q.x)), Math.min(...pts.map((q) => q.y)), Math.max(...pts.map((q) => q.y))];
   const sheet: CadSheet = { name: "גיליון", model: "גיליון", storey: null, centre: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, width: (x1 - x0) * 1.1 || 1, height: (y1 - y0) * 1.1 || 1 };
-  const inside = at.filter(({ pt }) => Math.abs(pt.x - sheet.centre.x) <= sheet.width / 2 && Math.abs(pt.y - sheet.centre.y) <= sheet.height / 2).map((v) => v.p);
+  const inBox = ({ pt }: { pt: Pt }) => Math.abs(pt.x - sheet.centre.x) <= sheet.width / 2 && Math.abs(pt.y - sheet.centre.y) <= sheet.height / 2;
+  const inside = at.filter(inBox).map((v) => v.p);
+  const outside = at.filter((v) => !inBox(v));
+  if (outside.length) noteDrop("dxf-house:wholeSheet-outside-plan-box", () => outside.slice(0, 3).map(({ p }) => `${p.type}/${p.layer}`).join(", "), outside.length);
   return { sheet, pieces: inside };
 }
 
@@ -1037,14 +1111,45 @@ export function dxfFacades(drawing: DxfDrawing, profile: CadOfficeProfile = prof
     const gaps = [i > 0 ? at.x - xs[i - 1]! : Infinity, i < xs.length - 1 ? xs[i + 1]! - at.x : Infinity];
     const half = Math.min(m(30), ...gaps.map((g) => g / 2));
     const sheet: CadSheet = { name: title, model: "", storey: null, centre: { x: at.x, y: at.y + m(11) }, width: 2 * half, height: m(26) };
-    const drawn = flattenDxf(drawing, entitiesWithin(drawing, sheet));
-    // Standing taller than the house, those lines were read for its outline (22 m for 16): the sheet shows them, the reading does not.
-    const read = sheetGeometryFromDxf(drawing, sheet, { profile, unitsM, pieces: drawn.filter((p) => !SITE_LINE.test(p.layer) && !p.path.some((b) => SITE_LINE.test(b))) });
-    const shown = sheetGeometryFromDxf(drawing, sheet, { profile, unitsM, pieces: drawn });
-    // A level's lettering stands a quarter metre over its triangle: read as a mark, every opening fell 0.32 m.
-    // The marks are read off the triangles (house-levels.ts), as on a plot, whose lettering is strokes.
-    const lettering = (t: PlacedText) => levelMarks([t]).length > 0;
-    const geometry = { ...read, texts: read.texts.filter((t) => !lettering(t)) };
-    return { title, geometry: shown.display ? { ...geometry, display: { ...shown.display, texts: shown.texts.filter(lettering) } } : geometry };
+    return { title, geometry: facadeGeometry(drawing, profile, unitsM, sheet, flattenDxf(drawing, entitiesWithin(drawing, sheet))) };
   });
+}
+
+/** One elevation's geometry: the drawing in `sheet`, its level marks read off their triangles. */
+function facadeGeometry(drawing: DxfDrawing, profile: CadOfficeProfile, unitsM: number, sheet: CadSheet, drawn: DxfPiece[]): DwfGeometry {
+  // Standing taller than the house, those lines were read for its outline (22 m for 16): the sheet shows them, the reading does not.
+  const read = sheetGeometryFromDxf(drawing, sheet, { profile, unitsM, pieces: drawn.filter((p) => !SITE_LINE.test(p.layer) && !p.path.some((b) => SITE_LINE.test(b))) });
+  const shown = sheetGeometryFromDxf(drawing, sheet, { profile, unitsM, pieces: drawn });
+  // A level's lettering stands a quarter metre over its triangle: read as a mark, every opening fell 0.32 m.
+  // The marks are read off the triangles (house-levels.ts), as on a plot, whose lettering is strokes.
+  const lettering = (t: PlacedText) => levelMarks([t]).length > 0;
+  const geometry = { ...read, texts: read.texts.filter((t) => !lettering(t)) };
+  return shown.display ? { ...geometry, display: { ...shown.display, texts: shown.texts.filter(lettering) } } : geometry;
+}
+
+/**
+ * A file that is one elevation drawn whole in model space, as Revit exports
+ * each view to its own DWG (Damesek Eliezer's "Elevation - חזית מזרחית03"):
+ * it prints no title of its own, so the caller names it — from the file's
+ * name. Its frame is everything it draws but its annotation.
+ */
+export function dxfFacadeWhole(drawing: DxfDrawing, title: string, profile: CadOfficeProfile = profileFor(drawing.layers.keys())): { title: string; geometry: DwfGeometry } | null {
+  const pieces = flattenDxf(drawing);
+  const pts = pieces.flatMap((p) => {
+    if (p.text != null || p.dimension) return [];
+    const k = layerKind(profile, p.layer);
+    if (k === "dimension" || k === "text") return [];
+    const pt = pieceAt(p);
+    return pt && Number.isFinite(pt.x) && Number.isFinite(pt.y) ? [pt] : [];
+  });
+  if (pts.length < 10) return null;
+  const xs = pts.map((q) => q.x).sort((a, b) => a - b);
+  const ys = pts.map((q) => q.y).sort((a, b) => a - b);
+  const q = (v: number[], f: number) => v[Math.floor(f * (v.length - 1))]!;
+  const [x0, x1, y0, y1] = [q(xs, 0.005), q(xs, 0.995), q(ys, 0.005), q(ys, 0.995)];
+  const pad = Math.max(x1 - x0, y1 - y0) * 0.04;
+  const sheet: CadSheet = { name: title, model: "", storey: null, centre: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, width: x1 - x0 + 2 * pad, height: y1 - y0 + 2 * pad };
+  // By the drawing's width, not its doors: an elevation draws a door's leaf face on, and the swing arcs it does draw are not a plan's.
+  const unitsM = inferUnitsM(drawing, [], profile, sheet);
+  return { title, geometry: facadeGeometry(drawing, profile, unitsM, sheet, flattenDxf(drawing, entitiesWithin(drawing, sheet))) };
 }

@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import { insidePolygon, type Outline } from "@/lib/projects/building/assemble";
 import type { ReadFloor } from "@/lib/projects/building/from-dwf-parts";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
@@ -553,7 +554,10 @@ function splitRoomsByWalls(f: DwfFloor, walls: Mask, sheet: DwfGeometry): void {
   const minPx = Math.round(1.5 / ((f.cm / 100) ** 2));
   const byRoom = new Map<number, Array<{ pixels: number[] }>>();
   for (const p of parts) {
-    if (p.pixels.length < minPx) continue;
+    if (p.pixels.length < minPx) {
+      noteDrop("from-dwf-sheet:room-part-under-1.5m2", () => `${((p.pixels.length * f.cm * f.cm) / 10_000).toFixed(2)} m²`);
+      continue;
+    }
     const owner = [...p.votes].sort((a, b) => b[1] - a[1])[0]![0];
     byRoom.set(owner, [...(byRoom.get(owner) ?? []), p]);
   }

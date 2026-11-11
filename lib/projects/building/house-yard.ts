@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import { insidePolygon, slab, type Outline } from "@/lib/projects/building/assemble";
 import { HOUSE_WINDOW_FRAME } from "@/lib/projects/building/house-finish";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
@@ -246,7 +247,10 @@ export function yardRegions(input: { sheet: DwfGeometry; shift: { x: number; y: 
   const max = Math.round(150 / (CELL_M * CELL_M));
   for (const part of parts(minus(open, named), min)) {
     const size = part.data.reduce((n, v) => n + v, 0);
-    if (size > max) continue;
+    if (size > max) {
+      noteDrop("house-yard:open-region-over-150m2", `${(size * CELL_M * CELL_M).toFixed(0)} m²`);
+      continue;
+    }
     const b = bounds(part);
     const ring = traceOutline(part).map(([rx, ry]) => [y.px0 + rx * y.cell, y.py0 + ry * y.cell] as [number, number]);
     if (ring.length < 3) continue;

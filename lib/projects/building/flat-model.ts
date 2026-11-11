@@ -57,6 +57,32 @@ export function flatToPrimitives(scene: FlatScene, options: { cutAboveM?: number
     if (!kept) continue;
     const finish = apartmentFinish(kept, kindOf);
     if (!finish) continue;
+    // The rasteriser draws boxes and cylinders, not a piece's own forms. A tap's
+    // bent tube as its bounding box was a black slab standing on the sink: leave
+    // it out. A turned form (a stool's seat, a drain, a burner) is a cylinder.
+    // The bent tube is laid as beads along its own path instead: a tap reads as a tap.
+    if (kept.shape?.kind === "sweep") {
+      const { path: line, radius } = kept.shape;
+      const turn = kept.rotY ?? 0;
+      const cos = Math.cos(turn);
+      const sin = Math.sin(turn);
+      const world = line.map(([lx, ly, lz]) => ({ x: kept.centre.x + lx * cos + lz * sin, y: kept.centre.y + ly, z: kept.centre.z - lx * sin + lz * cos }));
+      const bead = Math.max(radius * 2, 0.012);
+      for (let i = 1; i < world.length; i++) {
+        const a = world[i - 1]!;
+        const b = world[i]!;
+        const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) / (bead * 0.6)));
+        for (let j = i === 1 ? 0 : 1; j <= n; j++) {
+          const t = j / n;
+          prims.push({ type: "box", centre: { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t }, size: { x: bead, y: bead, z: bead }, material: finish.material, tag: `${kept.kind}:${kept.sourceId}` });
+        }
+      }
+      continue;
+    }
+    if (kept.shape?.kind === "lathe") {
+      prims.push({ type: "cylinder", centre: kept.centre, radius: Math.min(kept.size.x, kept.size.z) / 2, height: kept.size.y, material: finish.material, tag: `${kept.kind}:${kept.sourceId}` });
+      continue;
+    }
     prims.push({ type: "box", centre: kept.centre, size: kept.size, material: finish.material, tag: `${kept.kind}:${kept.sourceId}`, ...(finish.round ? { round: finish.round } : {}) });
     // A wall cut by the plane shows its section solid, as a plan draws it.
     const isWall = kept.kind === "wall" || kept.kind === "wallHead" || kept.kind === "wallSill" || kept.kind === "wallCap";

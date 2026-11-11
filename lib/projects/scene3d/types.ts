@@ -46,12 +46,20 @@ export type MaterialId =
   /** Jerusalem stone around an exterior window. Interior doors stay joinery. */
   | "stoneFrame"
   | "metal"
+  /** Window and balcony-door profiles: slim grey aluminium (a "Belgian" profile). */
+  | "aluminium"
   | "linen"
   | "upholstery"
   | "timber"
   | "worktop"
   | "ceramic"
   | "steel"
+  /** Leaves of a plant or a shrub, outdoors and in. */
+  | "foliage"
+  /** A lawn. */
+  | "grass"
+  /** The lit face of a light fitting: a downlight's lens, a cove's LED strip. */
+  | "lamp"
   | "neutral";
 
 export type SceneBox = {

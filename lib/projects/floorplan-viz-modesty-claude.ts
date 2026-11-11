@@ -236,7 +236,8 @@ export async function auditStillWithClaude(
         body: JSON.stringify({
           model,
           max_tokens: 768,
-          temperature: 0,
+          // The 5-series refuses `temperature` (400): sent, it made every call fall back to a 4.x model.
+          ...(/claude-[a-z]+-4/.test(model) ? { temperature: 0 } : {}),
           messages: [
             {
               role: "user",

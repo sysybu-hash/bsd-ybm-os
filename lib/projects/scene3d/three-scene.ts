@@ -40,12 +40,16 @@ export const DEFAULT_MATERIALS: Record<MaterialId, MaterialSpec> = {
   joinery: { color: 0xeae6df, roughness: 0.5, metalness: 0 },
   stoneFrame: { color: 0xd7c4a4, roughness: 0.9, metalness: 0 },
   metal: { color: 0x9a958c, roughness: 0.35, metalness: 0.8 },
+  aluminium: { color: 0x6c6f73, roughness: 0.42, metalness: 0.55 },
   linen: { color: 0xf3efe6, roughness: 0.85, metalness: 0 },
   upholstery: { color: 0xd8cdba, roughness: 0.9, metalness: 0 },
   timber: { color: 0xa9764a, roughness: 0.6, metalness: 0 },
   worktop: { color: 0xeae6df, roughness: 0.4, metalness: 0 },
   ceramic: { color: 0xf7fbfc, roughness: 0.15, metalness: 0 },
   steel: { color: 0x8e959c, roughness: 0.3, metalness: 0.75 },
+  foliage: { color: 0x4f6b3a, roughness: 0.85, metalness: 0 },
+  grass: { color: 0x6f8f4a, roughness: 0.95, metalness: 0 },
+  lamp: { color: 0xfff3dc, roughness: 0.5, metalness: 0, emissive: 0xffe2b0 },
   neutral: { color: 0xcbb79c, roughness: 0.8, metalness: 0 },
 };
 
@@ -115,6 +119,7 @@ export function buildThreeScene(
       metalness: spec.metalness,
       transparent: spec.opacity != null,
       opacity: spec.opacity ?? 1,
+      emissive: spec.emissive ?? 0x000000,
     });
     // One geometry per material: the boxes are baked into it by position.
     const geometries: ThreeNS.BufferGeometry[] = [];

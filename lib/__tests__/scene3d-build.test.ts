@@ -303,6 +303,15 @@ describe("walls stand only where a wall can", () => {
     expect(out).toHaveLength(0);
   });
 
+  it("keeps a short parapet that closes a terrace's edge", async () => {
+    const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
+    const terrace = box("terrace", 6.2, 2, 2, 4);
+    const parapet = box("wall", 5.05, 2, 0.12, 0.5);
+    const out = wallsBesideFloor([terrace, parapet]).filter((m) => m.kind === "wall");
+    expect(out).toHaveLength(1);
+    expect(out[0]!.size.z).toBeCloseTo(0.5);
+  });
+
   it("drops a wall with nothing on either side", async () => {
     const { wallsBesideFloor } = await import("@/lib/projects/scene3d/build-scene");
     const out = wallsBesideFloor([box("floor", 2, 2, 4, 4), box("wall", 8, 2, 0.2, 3)]);

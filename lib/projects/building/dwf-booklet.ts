@@ -264,7 +264,8 @@ export async function runBookletStage(input: StageInput): Promise<StageResult> {
       };
       // House plans are authored ≥4000px — keep that for the measured booklet.
       const outW = state.finish === "house" ? 4000 : 2000;
-      const frames = await renderBuildingFrames(batch.map(payloadOf), { outputWidthPx: outW, timeoutMs: 1_200_000 });
+      // checked here against the plan-cut reference below, so the renderer does not draw a second plain frame of its own
+      const frames = await renderBuildingFrames(batch.map(payloadOf), { outputWidthPx: outW, timeoutMs: 1_200_000, verifyTrace: false });
       // A traced frame is checked against the plain one of the same view: its
       // masses must be the same. A tracer that ran out of GPU drew floors
       // without walls, and the finish then painted that faithfully.
