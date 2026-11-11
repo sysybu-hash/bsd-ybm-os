@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, Check, Download, Link2 } from "lucide-react";
+import { BookOpen, Box, Check, Download, Link2 } from "lucide-react";
+import { VmbLink } from "@/components/vmb/VmbLink";
 import type { ProjectBooklet } from "@/lib/vmb/outcome";
 
 export type BookletLabels = {
@@ -25,13 +26,14 @@ export type BookletLabels = {
   filesDeleteOn: string;
   /** {date} */
   filesDeleted: string;
+  studio: string;
 };
 
 /**
  * Step 7: the booklet the run delivered — open, download, copy its link — with the assumptions page next to it (rule
  * 13.2): every value the engine took as given, and the answers that did not change this booklet.
  */
-export function BookletCard({ booklet, files, labels }: { booklet: ProjectBooklet; files: { deleteAt: string | null; deletedAt: string | null }; labels: BookletLabels }) {
+export function BookletCard({ booklet, files, studioHref, labels }: { booklet: ProjectBooklet; files: { deleteAt: string | null; deletedAt: string | null }; studioHref?: string; labels: BookletLabels }) {
   const [copied, setCopied] = useState(false);
   const day = (iso: string) => new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
   const date = day(booklet.at);
@@ -72,6 +74,12 @@ export function BookletCard({ booklet, files, labels }: { booklet: ProjectBookle
           {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Link2 className="h-3.5 w-3.5" aria-hidden />}
           {copied ? labels.copied : labels.share}
         </button>
+        {booklet.studio && studioHref ? (
+          <VmbLink href={studioHref} className={btn}>
+            <Box className="h-3.5 w-3.5" aria-hidden />
+            {labels.studio}
+          </VmbLink>
+        ) : null}
       </div>
 
       <p className="mt-3 text-xs text-[color:var(--vmb-ink-soft)]">

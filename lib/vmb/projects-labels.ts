@@ -205,6 +205,7 @@ export function bookletLabels(): BookletLabels {
     unusedTitle: r("unusedTitle"),
     answers: Object.fromEntries(QUESTION_IDS.map((id) => [id, q(`q_${id}_title`)])),
     filesDeleteOn: r("filesDeleteOn"),
+    studio: vmbStudioT("vmb.m3.open"),
     filesDeleted: r("filesDeleted"),
   };
 }

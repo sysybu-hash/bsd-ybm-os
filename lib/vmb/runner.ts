@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logger";
 import { VMB_PROJECT_KINDS, type VmbProjectKind } from "@/lib/validation/schemas/vmb-projects";
 import { questionsState } from "@/lib/vmb/answers-store";
 import { settleHold } from "@/lib/vmb/credits";
+import { projectCameras } from "@/lib/vmb/outcome";
 import { notifyJobEnd } from "@/lib/vmb/notify";
 import { filesDeleteAt } from "@/lib/vmb/retention";
 import { VMB_BOOKLET_PRICING } from "@/lib/vmb/plans";
@@ -78,6 +79,7 @@ async function inputFor(jobId: string, projectId: string): Promise<RunInput | nu
     layerMaps: stringMaps(asObject(p.manifest).layerMaps),
     projectName: p.name,
     ...(typeof unit === "number" && Number.isInteger(unit) ? { unit } : {}),
+    cameras: projectCameras(p.manifest),
   };
 }
 
@@ -158,6 +160,7 @@ export async function finishJob(jobId: string, out: RunOutput): Promise<boolean>
     unusedAnswers: out.unusedAnswers,
     creditsUsed: used,
     at: finishedAt.toISOString(),
+    ...(out.studio ? { studio: out.studio } : {}),
   };
   const manifest: Record<string, unknown> = { ...asObject(job.project.manifest), booklet };
   delete manifest.stop;

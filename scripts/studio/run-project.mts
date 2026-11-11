@@ -71,11 +71,17 @@ try {
         fs.writeFileSync(to, pdf);
         return to;
       },
+      putStudio: async (_jobId, name, body) => {
+        const to = path.join(outDir, name);
+        fs.writeFileSync(to, body);
+        return to;
+      },
     },
   );
   fs.writeFileSync(path.join(outDir, "quality.json"), JSON.stringify({ warnings: [], notes: out.assumptions }, null, 2));
   console.log(`booklet ${out.bookletUrl}`);
   console.log(`route ${out.route} · ${out.picturesFree} free pictures`);
+  if (out.studio) console.log(`studio ${out.studio.dataUrl}`);
 } catch (err: unknown) {
   if (err instanceof RunProjectError) {
     // The flats the drawing marks travel in detail, not in the message: said here so the Studio shows them.

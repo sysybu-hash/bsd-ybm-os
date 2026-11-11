@@ -14,7 +14,7 @@ import { apartmentMarks } from "@/lib/projects/dxf-apartment";
 import { readDxfDrawing, type DxfDrawing } from "@/lib/projects/dxf-drawing";
 import { isUnitFailure, unitByDoors } from "@/lib/projects/dxf-unit-by-doors";
 import { unitSceneInput } from "@/lib/projects/dxf-unit-scene";
-import { renderDxfPageJpeg, unitGeometryFromDxf } from "@/lib/projects/floorplan-dxf";
+import { DXF_PAGE_UNITS_PER_METRE, renderDxfPageJpeg, unitGeometryFromDxf } from "@/lib/projects/floorplan-dxf";
 import { FLOORPLAN_VIZ_PRESETS } from "@/lib/projects/floorplan-viz-styles";
 import { unitInteriorViews } from "@/lib/projects/pipeline/flat-views";
 import { buildScene } from "@/lib/projects/scene3d/build-scene";
@@ -136,8 +136,15 @@ export function measureFlatFromDxf(input: {
 
 /** The flat's own part of the sheet, as the client's sheet draws it. */
 export async function flatSheetPage(bytes: Uint8Array, unit: number): Promise<Buffer | null> {
+  return (await flatSheet(bytes, unit))?.jpeg ?? null;
+}
+
+/** The same page, with its scale: pixels per metre at the width it was drawn. */
+export async function flatSheet(bytes: Uint8Array, unit: number, width = 2200): Promise<{ jpeg: Buffer; pxPerM: number } | null> {
   const read = unitGeometryFromDxf(bytes, unit);
-  return "reason" in read ? null : renderDxfPageJpeg(read.geometry);
+  if ("reason" in read) return null;
+  const jpeg = await renderDxfPageJpeg(read.geometry, width);
+  return jpeg ? { jpeg, pxPerM: (width / read.geometry.pageWidth) * DXF_PAGE_UNITS_PER_METRE } : null;
 }
 
 /** Each view as a raster frame, graded as render-unit grades its free frames. A view that does not draw is left out. */

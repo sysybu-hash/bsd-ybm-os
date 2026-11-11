@@ -16,7 +16,8 @@ import { createLogger } from "@/lib/logger";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { isFloorplanBlobUrl } from "@/lib/projects/floorplan-blob";
 import { flatBookletHtml } from "@/lib/projects/pipeline/flat-booklet";
-import { flatSheetPage, isFlatFailure, measureFlatFromDxf, renderFlatPictures, UNITS_M, type DrawingUnit } from "@/lib/projects/pipeline/flat-measured";
+import { clientViews, sheetOverlay, studioCameras, STUDIO_VERSION, type StudioCamera, type StudioData } from "@/lib/projects/pipeline/flat-studio";
+import { flatSheet, isFlatFailure, measureFlatFromDxf, renderFlatPictures, UNITS_M, type DrawingUnit } from "@/lib/projects/pipeline/flat-measured";
 
 const log = createLogger("run-project");
 
@@ -37,6 +38,8 @@ export type RunInput = {
   projectName?: string;
   /** A flat on a whole-floor DXF: its number. May be left out when the drawing marks one flat only. */
   unit?: number;
+  /** Cameras the client added in the studio: rendered as more pictures of the flat. */
+  cameras?: StudioCamera[];
 };
 
 export type RunStage = "read" | "build" | "render" | "paint" | "booklet";
@@ -52,6 +55,8 @@ export type RunOutput = {
   route: "flat-dxf" | "house" | "building-dwf";
   /** Answers this route has no use for (they did not change the booklet). */
   unusedAnswers: AnswerId[];
+  /** What the studio opens (plan M3): the model and its cameras, and the sheet it was measured against. */
+  studio?: { dataUrl: string; sheetUrl: string | null };
 };
 
 export type RunProjectErrorCode = "no-files" | "fetch-failed" | "unsupported" | "needs-conversion" | "unit-needed" | "not-readable";
@@ -72,6 +77,8 @@ export class RunProjectError extends Error {
 export type RunDeps = {
   fetchFile(url: string): Promise<Buffer>;
   putBooklet(jobId: string, pdf: Buffer): Promise<string>;
+  /** The studio's files next to the booklet; left out where there is no studio (tests, old callers). */
+  putStudio?(jobId: string, name: "studio.json" | "sheet.jpg", body: Buffer): Promise<string>;
   htmlToPdf(html: string): Promise<Buffer>;
   /** The house and DWF building pipelines, unpainted: their booklet's HTML and how many pictures it holds. */
   house(files: Map<string, Buffer>, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; notes: string[] }>;
@@ -93,6 +100,12 @@ export const realDeps: RunDeps = {
   async putBooklet(jobId, pdf) {
     const { put } = await import("@vercel/blob");
     const blob = await put(`vmb-booklets/${jobId}/booklet.pdf`, pdf, { access: "public", contentType: "application/pdf", addRandomSuffix: true });
+    return blob.url;
+  },
+  async putStudio(jobId, name, body) {
+    const { put } = await import("@vercel/blob");
+    const contentType = name === "studio.json" ? "application/json" : "image/jpeg";
+    const blob = await put(`vmb-studio/${jobId}/${name}`, body, { access: "public", contentType, addRandomSuffix: true });
     return blob.url;
   },
   async htmlToPdf(html) {
@@ -202,6 +215,34 @@ export function chooseRoute(kind: RunKind, files: RunInput["files"]): { route: R
   throw new RunProjectError("unsupported", "המבנה נבנה מגיליונות DXF/DWF (תוכניות קומה וגיליון חזיתות); קבצי PDF או תמונות עדיין לא נבנים");
 }
 
+/** The studio's files for a measured flat. A failure here costs the studio, never the booklet. */
+async function saveStudio(
+  jobId: string,
+  flat: { unit: number; wallHeightM: number; scene: StudioData["scene"]; views: Parameters<typeof studioCameras>[0] },
+  sheet: { jpeg: Buffer; pxPerM: number } | null,
+  clientIds: Set<string>,
+  put: NonNullable<RunDeps["putStudio"]>,
+): Promise<RunOutput["studio"]> {
+  try {
+    const fitted = sheet ? await sheetOverlay(flat.scene, sheet.jpeg, sheet.pxPerM) : null;
+    const data: StudioData = {
+      version: STUDIO_VERSION,
+      unit: flat.unit,
+      wallHeightM: flat.wallHeightM,
+      scene: flat.scene,
+      cameras: studioCameras(flat.views, clientIds),
+      sheet: fitted ? { width: fitted.width, height: fitted.height } : null,
+      overlay: fitted?.overlay ?? null,
+    };
+    const sheetUrl = fitted ? await put(jobId, "sheet.jpg", fitted.jpeg) : null;
+    const dataUrl = await put(jobId, "studio.json", Buffer.from(JSON.stringify(data)));
+    return { dataUrl, sheetUrl };
+  } catch (err: unknown) {
+    log.warn("studio not saved", { jobId, error: err instanceof Error ? err.message : String(err) });
+    return undefined;
+  }
+}
+
 export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
   const { route, files } = chooseRoute(input.kind, input.files);
   const projectName = input.projectName?.trim() || fileName(files[0]!.relPath).replace(/\.[^.]+$/, "");
@@ -232,15 +273,27 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
       throw new RunProjectError(flat.reason === "unit-needed" ? "unit-needed" : "not-readable", flat.message, { units: flat.units });
     }
     await report("build", 1, 1, `${flat.scene.rooms.length} חדרים, ${flat.scene.openings.length} פתחים`);
-    const page = await flatSheetPage(bytes.get(file.relPath)!, flat.unit);
+    const added = clientViews(input.cameras ?? [], flat.scene);
+    flat.views.push(...added);
+    const sheet = await flatSheet(bytes.get(file.relPath)!, flat.unit);
+    const page = sheet?.jpeg ?? null;
     const pictures = await renderFlatPictures(flat, (id, done, total) => report("render", done, total, id));
     // The units answer counts only where the drawing's header gave none (the flat then says so itself).
     const used: AnswerId[] = [...(flat.unitsFromAnswer ? (["units"] as const) : []), "floorHeight", "furniture", "views"];
     const assumptions = [...answerAssumptions(input.answers, used.filter((id) => id !== "units")), ...flat.assumptions];
     const html = await flatBookletHtml({ projectName, unit: flat.unit, scene: flat.scene, views: flat.views, pictures, page, assumptions });
     const bookletUrl = await deps.putBooklet(input.jobId, await deps.htmlToPdf(html));
+    const studio = deps.putStudio ? await saveStudio(input.jobId, flat, sheet, new Set(added.map((v) => v.id)), deps.putStudio) : undefined;
     await report("booklet", 1, 1);
-    return { bookletUrl, picturesPainted: 0, picturesFree: pictures.size, assumptions, route, unusedAnswers: (Object.keys(NAMES) as AnswerId[]).filter((k) => !used.includes(k)) };
+    return {
+      bookletUrl,
+      picturesPainted: 0,
+      picturesFree: pictures.size,
+      assumptions,
+      route,
+      unusedAnswers: (Object.keys(NAMES) as AnswerId[]).filter((k) => !used.includes(k)),
+      ...(studio ? { studio } : {}),
+    };
   }
 
   // The house and DWF pipelines read heights, north and the site off the sheets themselves; the answers do not reach them yet.

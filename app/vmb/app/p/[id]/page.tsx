@@ -76,6 +76,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
           {booklet && !showJob ? <BookletCard
               booklet={booklet}
               files={{ deleteAt: project.filesDeleteAt?.toISOString() ?? null, deletedAt: projectFilesDeletedAt(project.manifest) }}
+              studioHref={`/app/p/${project.id}/studio`}
               labels={bookletLabels()}
             /> : null}
           {cost ? <CostCard projectId={project.id} initial={cost} labels={costLabels()} /> : null}
