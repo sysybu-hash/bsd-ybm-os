@@ -91,7 +91,7 @@ for (const file of files) {
     src.includes("withOSAdmin") ||
     src.includes("withWorkspacesAuthDynamic") ||
     // VisualModuBuild routes: its own accounts and session (lib/vmb/api.ts).
-    (rel.startsWith("app/api/vmb/") && src.includes("withVmbAuth("));
+    (rel.startsWith("app/api/vmb/") && /\bwithVmbAuth\s*[<(]/.test(src));
 
   if (!hasAuthWrapper && !isAllowlisted(rel)) {
     unprotected.push(rel);
