@@ -1,6 +1,8 @@
 jest.mock("server-only", () => ({}));
 
 const mockSettle = jest.fn();
+const mockNotify = jest.fn();
+jest.mock("@/lib/vmb/notify", () => ({ notifyJobEnd: (...a: unknown[]) => mockNotify(...a) }));
 jest.mock("@/lib/vmb/credits", () => ({ settleHold: (...a: unknown[]) => mockSettle(...a) }));
 
 const mockDb = {
@@ -90,6 +92,7 @@ describe("VMB runner", () => {
     expect(upd.data.status).toBe("done");
     expect(upd.data.manifest.booklet).toMatchObject({ url: out.bookletUrl, route: "flat-dxf", unusedAnswers: ["north"], picturesPainted: 7, picturesFree: 2, creditsUsed: 11 });
     expect(upd.data.manifest.answers).toEqual(project.manifest.answers);
+    expect(mockNotify).toHaveBeenCalledWith("p1", { kind: "done" });
   });
 
   it("does not settle twice when the job is no longer running", async () => {
@@ -97,6 +100,7 @@ describe("VMB runner", () => {
     expect(await finishJob("j1", out)).toBe(false);
     expect(await failJob("j1", "x")).toBe(false);
     expect(mockSettle).not.toHaveBeenCalled();
+    expect(mockNotify).not.toHaveBeenCalled();
   });
 
   it("an engine that throws fails the job and gives every credit back", async () => {
@@ -120,6 +124,7 @@ describe("VMB runner", () => {
     const data = mockDb.vmbProject.update.mock.calls[0][0].data;
     expect(data.status).toBe("answered");
     expect(data.manifest.stop).toMatchObject({ code: "unit-needed", message: "בקומה כמה דירות", units: [14, 15, 16] });
+    expect(mockNotify).toHaveBeenCalledWith("p1", { kind: "stopped", message: "בקומה כמה דירות" });
   });
 
   it("fails jobs that stopped reporting and gives their credits back", async () => {

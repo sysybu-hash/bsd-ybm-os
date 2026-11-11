@@ -565,6 +565,14 @@
       "notifyDone": "The booklet is ready",
       "notifyFailed": "The run stopped",
       "projectUnit": "Flat {n}"
+    },
+    "mail": {
+      "open": "Open the project",
+      "doneSubject": "The booklet for {project} is ready",
+      "doneTitle": "The booklet is ready",
+      "doneBody": "Open, download and share it from the project page. The assumptions page is next to it.",
+      "stopSubject": "The run for {project} stopped",
+      "stopTitle": "The run stopped"
     }
   }
 }

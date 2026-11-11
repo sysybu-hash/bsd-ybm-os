@@ -5,6 +5,7 @@ import { createLogger } from "@/lib/logger";
 import { VMB_PROJECT_KINDS, type VmbProjectKind } from "@/lib/validation/schemas/vmb-projects";
 import { questionsState } from "@/lib/vmb/answers-store";
 import { settleHold } from "@/lib/vmb/credits";
+import { notifyJobEnd } from "@/lib/vmb/notify";
 import { VMB_BOOKLET_PRICING } from "@/lib/vmb/plans";
 import { advance, etaSeconds, jobPercent, type JobProgress } from "@/lib/vmb/progress";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
@@ -161,6 +162,7 @@ export async function finishJob(jobId: string, out: RunOutput): Promise<boolean>
   delete manifest.stop;
   await prisma.vmbProject.update({ where: { id: job.projectId }, data: { status: "done", manifest: manifest as Prisma.InputJsonValue } });
   log.info("job done", { jobId, used, painted: out.picturesPainted, free: out.picturesFree });
+  await notifyJobEnd(job.projectId, { kind: "done" });
   return true;
 }
 
@@ -184,6 +186,7 @@ export async function failJob(jobId: string, error: string, stop?: { code: RunPr
     data: { status: stop ? "answered" : "failed", manifest: { ...asObject(job.project.manifest), stop: record } as Prisma.InputJsonValue },
   });
   log.warn("job failed", { jobId, error: error.slice(0, 200) });
+  await notifyJobEnd(job.projectId, { kind: "stopped", message: stop ? record.message : null });
   return true;
 }
 

@@ -565,6 +565,14 @@
       "notifyDone": "החוברת מוכנה",
       "notifyFailed": "ההרצה נעצרה",
       "projectUnit": "דירה {n}"
+    },
+    "mail": {
+      "open": "לפתיחת הפרויקט",
+      "doneSubject": "החוברת של {project} מוכנה",
+      "doneTitle": "החוברת מוכנה",
+      "doneBody": "אפשר לפתוח אותה, להוריד אותה ולשתף אותה מדף הפרויקט. דף ההנחות נמצא לידה.",
+      "stopSubject": "ההרצה של {project} נעצרה",
+      "stopTitle": "ההרצה נעצרה"
     }
   }
 }
