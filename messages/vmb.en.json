@@ -452,6 +452,30 @@
       "o_views_exterior_dusk": "Exterior, dusk",
       "o_views_aerial": "Aerial",
       "o_views_interior": "Interior"
+    },
+    "cost": {
+      "title": "Run cost",
+      "subtitle": "An estimate before anything runs. The ceiling is held at the start; every picture that does not come out painted (and goes out as the free render) comes back to you at the end.",
+      "line": "{n} pictures · {c} credits",
+      "base": "Reading, model and booklet",
+      "expected": "About {n} credits",
+      "cap": "Ceiling: {n} credits, never more",
+      "balance": "Balance {now} → after the hold {after}",
+      "start": "Start — up to {n} credits",
+      "block_questions_pending": "Answer the questions first, or skip them.",
+      "block_no_files": "Upload the project files first.",
+      "block_no_subscription": "Running needs an active subscription.",
+      "block_insufficient_credits": "Not enough credits.",
+      "block_already_running": "This project's booklet is already on its way.",
+      "block_runner_not_ready": "Running opens once the engine is connected to the site. The estimate already follows your answers.",
+      "block_not_found": "Project not found.",
+      "missing": "{n} credits short.",
+      "buy": "Buy",
+      "queued": "Queued. You can cancel and get all the credits back.",
+      "cancel": "Cancel and refund",
+      "failed": "That did not work, try again",
+      "balanceNow": "Balance {now}",
+      "held": "{n} held for this booklet"
     }
   }
 }

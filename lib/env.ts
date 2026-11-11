@@ -102,6 +102,8 @@ const serverSchema = z.object({
   VMB_GOOGLE_CLIENT_SECRET: optStr,
   /** VMB super admins: comma-separated addresses; each counts only once Google verified it. */
   VMB_SUPERADMIN_EMAILS: optStr,
+  /** "1" once the VMB booklet runner is connected: until then the start button holds no credits and starts nothing. */
+  VMB_RUNNER_READY: optStr,
 
   // --- Google Cloud / Document AI ---
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optStr,

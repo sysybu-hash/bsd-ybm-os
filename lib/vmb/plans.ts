@@ -43,3 +43,25 @@ export function nextPeriod(now: Date, currentEnd: Date | null): { start: Date; e
   end.setUTCMonth(end.getUTCMonth() + VMB_ANNUAL_PLAN.periodMonths);
   return { start, end };
 }
+
+/**
+ * What a booklet costs in credits — PLACEHOLDERS until the owner sets them (live research doc, item 18).
+ *
+ * One credit is one painted picture delivered. A picture the deviation gate refuses twice goes out as the free render
+ * (rule 13.6) and costs nothing, so the hold is the ceiling (every picture painted) and the bill is what was delivered.
+ * `base` covers reading, the model and the booklet itself, by building kind.
+ */
+export const VMB_BOOKLET_PRICING = {
+  creditsPerPicture: 1,
+  base: { flat: 2, house: 4, building: 6, industrial: 4, public: 6 },
+  /** Pictures each chosen view yields, by building kind. */
+  picturesPerView: {
+    flat: { exterior_day: 0, exterior_dusk: 0, aerial: 0, interior: 6 },
+    house: { exterior_day: 4, exterior_dusk: 2, aerial: 2, interior: 6 },
+    building: { exterior_day: 4, exterior_dusk: 2, aerial: 2, interior: 3 },
+    industrial: { exterior_day: 4, exterior_dusk: 2, aerial: 2, interior: 2 },
+    public: { exterior_day: 4, exterior_dusk: 2, aerial: 2, interior: 4 },
+  },
+  /** Share of pictures expected to come out painted rather than as the free render (target ≥ 80%, rule 13.9). */
+  expectedPaintedShare: 0.85,
+} as const;

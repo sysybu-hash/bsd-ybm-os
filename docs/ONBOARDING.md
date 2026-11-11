@@ -142,6 +142,8 @@ GOOGLE_CLIENT_SECRET="..."
 # VMB_GOOGLE_CLIENT_SECRET="..."
 # מנהלי־על של VMB: רשימה מופרדת בפסיקים. כתובת נחשבת רק אחרי כניסה עם Google (כתובת מאומתת).
 # VMB_SUPERADMIN_EMAILS="a@example.com,b@example.com"
+# "1" רק אחרי שמריץ החוברות של VMB מחובר. עד אז כפתור ההרצה לא מחזיק קרדיטים ולא יוצר עבודה.
+# VMB_RUNNER_READY="1"
 ```
 
 - **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.

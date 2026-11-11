@@ -6,6 +6,7 @@ import type { ProgressText } from "@/components/vmb/projects/types";
 import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
 import type { ScanLabels } from "@/components/vmb/scan/ScanFileRow";
 import type { QuestionsLabels } from "@/components/vmb/questions/QuestionsForm";
+import type { CostLabels } from "@/components/vmb/cost/CostCard";
 import type { Question } from "@/lib/vmb/questions";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { SUGGEST_VIA } from "@/lib/vmb/rescan";
@@ -150,5 +151,30 @@ export function questionsLabels(questions: Question[]): QuestionsLabels {
         },
       ]),
     ),
+  };
+}
+
+const RUN_BLOCKS = ["questions_pending", "no_files", "no_subscription", "insufficient_credits", "already_running", "runner_not_ready"] as const;
+
+export function costLabels(): CostLabels {
+  const c = (k: string) => vmbStudioT(`vmb.cost.${k}`);
+  return {
+    title: c("title"),
+    subtitle: c("subtitle"),
+    line: c("line"),
+    base: c("base"),
+    expected: c("expected"),
+    cap: c("cap"),
+    balance: c("balance"),
+    balanceNow: c("balanceNow"),
+    held: c("held"),
+    start: c("start"),
+    blocks: Object.fromEntries(RUN_BLOCKS.map((b) => [b, c(`block_${b}`)])) as CostLabels["blocks"],
+    missing: c("missing"),
+    buy: c("buy"),
+    queued: c("queued"),
+    cancel: c("cancel"),
+    failed: c("failed"),
+    views: Object.fromEntries(["exterior_day", "exterior_dusk", "aerial", "interior"].map((v) => [v, vmbStudioT(`vmb.questions.o_views_${v}`)])),
   };
 }

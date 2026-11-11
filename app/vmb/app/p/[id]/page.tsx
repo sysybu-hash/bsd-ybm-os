@@ -6,10 +6,12 @@ import { LiveJobCard } from "@/components/vmb/projects/LiveJobCard";
 import { UploadZone } from "@/components/vmb/upload/UploadZone";
 import { ScanPanel } from "@/components/vmb/scan/ScanPanel";
 import { QuestionsForm } from "@/components/vmb/questions/QuestionsForm";
+import { CostCard } from "@/components/vmb/cost/CostCard";
+import { projectCost } from "@/lib/vmb/run-store";
 import { questionsState } from "@/lib/vmb/answers-store";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
-import { kindLabels, progressText, questionsLabels, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
+import { costLabels, kindLabels, progressText, questionsLabels, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
 import { toScanViews } from "@/lib/vmb/scan-view";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
 
@@ -29,6 +31,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
   const latest = project.jobs[0] ? (JSON.parse(JSON.stringify(project.jobs[0])) as JobItem) : null;
   const showJob = latest && (latest.status === "queued" || latest.status === "running" || latest.status === "failed");
   const questions = questionsState(project);
+  const cost = project.files.length ? await projectCost(user.id, project.id) : null;
   const created = project.createdAt.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
 
   return (
@@ -61,6 +64,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
               }}
             />
           ) : null}
+          {cost ? <CostCard projectId={project.id} initial={cost} labels={costLabels()} /> : null}
           <section className="vmb-card p-5">
             <h2 className="text-sm font-bold">{p("nextTitle")}</h2>
             <ol className="mt-3 space-y-2.5 text-sm text-[color:var(--vmb-ink-soft)]">
