@@ -124,6 +124,8 @@ export type HouseBookletRecord = {
   /** True north, as the first step read it, and whether it was read or taken for the sheet's up. */
   north?: North;
   northKnown?: boolean;
+  /** Whether the plans are held to the cars gate, inferred from the sheets at the first step (inferRequireCars); absent on older jobs: held. */
+  requireCars?: boolean;
   /** The facades as read, in the store (house-booklet.ts, StoredHouseFacades). */
   facadesRef?: string;
   /** The model being measured: its reading in the store, its levels and truth, and its booklet's state so far. */

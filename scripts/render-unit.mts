@@ -54,7 +54,7 @@ const { sceneStyleFor } = await import("@/lib/projects/scene3d/style");
 const { buildScene } = await import("@/lib/projects/scene3d/build-scene");
 const { outlineEdges } = await import("@/lib/projects/scene3d/floors");
 const { dollhouseView, flatToPrimitives } = await import("@/lib/projects/building/flat-model");
-const { unitInteriorViews } = await import("./_unit-views.mts");
+const { unitInteriorViews } = await import("@/lib/projects/pipeline/flat-views");
 const { renderBuildingFrames } = await import("@/lib/projects/building/renderer");
 const { photographWithCycles } = await import("@/lib/projects/scene3d/blender-cycles");
 

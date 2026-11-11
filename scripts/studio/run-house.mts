@@ -45,17 +45,8 @@ if (!project) throw new Error(`אי אפשר לבנות בית מהקבצים ה
 }
 
 // A house's cars are a gate (a missed parking reading); a building whose DXF floors draw no parking at all (a school) is not held to it.
-const { houseSheetReader } = await import("@/lib/projects/building/house-project");
-const reader = houseSheetReader(async (name) => files.get(name)!);
-let parkingDrawn = 0;
-let allDxf = true;
-for (const m of project.models) {
-  for (const ref of m.floors) {
-    if (!/\.dxf$/i.test(ref.file)) { allDxf = false; continue; }
-    parkingDrawn += (await reader.inventory(ref))?.counts.parking ?? 0;
-  }
-}
-const requireCars = !(allDxf && parkingDrawn === 0);
+const { houseSheetReader, inferRequireCars } = await import("@/lib/projects/building/house-project");
+const { requireCars, parkingDrawn } = await inferRequireCars(project, houseSheetReader(async (name) => files.get(name)!));
 console.log(`parking drawn: ${parkingDrawn}${requireCars ? "" : " — none, so the cars gate is not applied"}`);
 
 // What the model is checked against: the drawing's own counts (doors, windows, rooms). A mismatch is told to the architect, not buried in the log.

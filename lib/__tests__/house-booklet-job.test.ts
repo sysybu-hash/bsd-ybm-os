@@ -49,6 +49,7 @@ jest.mock("@/lib/pdf/render-html-pdf-chromium", () => ({ renderHtmlSectionsPdf: 
 jest.mock("@/lib/projects/building/booklet-html", () => ({ BUILDING_BOOKLET_PAGE: {} }));
 jest.mock("@/lib/projects/building/house-project", () => ({
   houseSheetReader: (load: (n: string) => Promise<Buffer>) => ({ geometry: async (ref: { file: string }) => ({ file: (await load(ref.file)).toString() }), facades: async () => ({}) }),
+  inferRequireCars: async () => ({ requireCars: true, parkingDrawn: 0 }),
 }));
 
 /** The clock the job's calls read: each step moves it on as long as the step would take. */

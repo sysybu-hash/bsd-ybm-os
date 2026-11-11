@@ -341,3 +341,17 @@ export function hatchKind(profile: CadOfficeProfile, pattern: string, layer: str
 export function doorWidthCm(profile: CadOfficeProfile, block: string): number | null {
   return profile.doorWidthCm?.(block) ?? GENERIC_CAD_PROFILE.doorWidthCm?.(block) ?? null;
 }
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * The office's profile with the layers a person confirmed put first: a layer
+ * named in `map` is that part whatever the profile would have called it, and
+ * every other layer reads as before. Blocks on a confirmed layer follow the
+ * layer the way blockKind already lets them.
+ */
+export function withLayerMap(profile: CadOfficeProfile, map: Record<string, CadKind>): CadOfficeProfile {
+  const confirmed: Rule[] = Object.entries(map).map(([layer, kind]) => ({ match: new RegExp(`^${escapeRegExp(layer)}$`, "i"), kind }));
+  if (!confirmed.length) return profile;
+  return { ...profile, id: `${profile.id}+confirmed`, layers: [...confirmed, ...profile.layers] };
+}
