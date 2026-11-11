@@ -193,7 +193,7 @@ function gridOver(rings: Ring[], levelAt: (x: number, z: number) => number) {
 }
 
 /** A railing or fence along a polyline: posts, rails and bars, its foot on `footAt`; `panel` hangs a sheet over its lower part. */
-function fencePrims(pts: Pt[], footAt: (x: number, z: number) => number, height: number, material: BuildingMaterial, tag: string, panel?: { material: BuildingMaterial; height: number }): Primitive[] {
+export function fencePrims(pts: Pt[], footAt: (x: number, z: number) => number, height: number, material: BuildingMaterial, tag: string, panel?: { material: BuildingMaterial; height: number }): Primitive[] {
   const out: Primitive[] = [];
   for (let i = 1; i < pts.length; i++) {
     const [a, b] = [pts[i - 1]!, pts[i]!];
@@ -217,7 +217,7 @@ function fencePrims(pts: Pt[], footAt: (x: number, z: number) => number, height:
 }
 
 /** One line per railing: the survey draws a rail's two faces 20–40 cm apart; a chain within half a metre of one kept is its other face. */
-function singleFaces(lines: Array<{ pts: Pt[] }>): Pt[][] {
+export function singleFaces(lines: Array<{ pts: Pt[] }>): Pt[][] {
   const kept: Pt[][] = [];
   const near = (p: Pt, line: Pt[]) => line.some((q, i) => {
     const r = line[i + 1];
@@ -318,8 +318,9 @@ export function surveyStreetPrims(survey: PisgaSurvey, street: SurveyStreet, gro
     for (const r of runs) if (r.length >= 2) out.push(...fencePrims(r, groundAt, 1.0, "railGreen", "site:survey-stair-railing"));
   }
   // Street lights behind the south kerb, about every 28 m (Street View, 2012; photographs 1–7): a grey pole 8 m high, its arm reaching
-  // 1.5 m over the road, a lamp head at its end. None on a stair's path.
-  {
+  // 1.5 m over the road, a lamp head at its end. None on a stair's path. Only where the survey marks none: its own lights (M4402) stand
+  // where it puts them (pisga-survey-furniture.ts).
+  if (!survey.marks.some((m) => m.layer === "M4402")) {
     const run = street.southRun;
     let s = 0, next = 6;
     for (let i = 1; i < run.length; i++) {

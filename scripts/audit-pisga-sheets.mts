@@ -246,6 +246,8 @@ for (const sheet of SHEETS) {
   for (const l of labels) {
     const m = /^(?:%%)?\s*([+-]?\d+\.\d\d)(?:\s*=\s*\d{3}\.\d\d)?$/.exec(l.t.trim());
     if (!m) continue;
+    // A bare absolute number (936.53, no "%%" and no sign) is the ground as it stood before digging, not a level the design builds.
+    if (/^\d{3}\.\d\d$/.test(l.t.trim())) { levels.push(`| ${sheet.id} | ${l.q[0].toFixed(1)} | ${l.q[1].toFixed(1)} | ${(Number(l.t) - 923.2).toFixed(2)} | — | קרקע קיימת, לא נבדק |`); continue; }
     const v = Number(m[1]);
     const rel = Math.abs(v) < 100 ? v : v - 923.2;
     const tops = topsAt(l.q[0], l.q[1]);

@@ -74,6 +74,8 @@ export type BuildingMaterial =
   | "planter"
   | "foliage"
   | "ceiling"
+  /** A suspended ceiling's T-bar grid, under its tiles. */
+  | "ceilingGrid"
   | "lightPanel"
   | "seatFabric"
   | "linen"

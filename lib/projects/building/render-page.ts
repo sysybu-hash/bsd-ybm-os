@@ -651,6 +651,7 @@ async function main() {
     olive1: new THREE.MeshStandardMaterial({ color: 0x525c46, roughness: 0.95, vertexColors: true }),
     olive2: new THREE.MeshStandardMaterial({ color: 0x6b725a, roughness: 0.95, vertexColors: true }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xefede8, roughness: 0.95 }),
+    ceilingGrid: new THREE.MeshStandardMaterial({ color: 0xcfccc5, roughness: 0.55, metalness: 0.15 }),
     seatFabric: new THREE.MeshStandardMaterial({ color: 0x1f5c66, roughness: 0.92 }),
     linen: new THREE.MeshStandardMaterial({ color: 0xf6f3ec, roughness: 0.85 }),
     sofaFabric: new THREE.MeshStandardMaterial({ map: weaveTex("#8f8476"), roughness: 0.95 }),

@@ -1,4 +1,5 @@
 import { arcPoints, entitiesWithin, flattenDxf, type DxfDrawing, type DxfPiece, type Pt } from "@/lib/projects/dxf-drawing";
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { PaintedPath, PdfPage } from "@/lib/projects/building/pdf-paths";
 import { bandsOf, type PlanWalls } from "@/lib/projects/building/plan-walls";
 import { inset, insidePolygon } from "@/lib/projects/building/assemble";
@@ -166,6 +167,153 @@ export function dxfPartitions(drawing: DxfDrawing, floor: PisgaDxfFloor): Seg[] 
   return out;
 }
 
+/**
+ * The lowered ceilings' lines of a floor (layer "הנמכת תקרה"), in the plan frame. The architect left the layer OFF, so the
+ * flattener skips it; it is turned on here for the one read and put back. Each polyline comes whole, with whether it closes.
+ */
+export function dxfLoweredCeilingLines(drawing: DxfDrawing, floor: PisgaDxfFloor): Array<{ pts: Array<[number, number]>; closed: boolean }> {
+  return dxfLayerLines(drawing, floor, /^הנמכת תקרה/);
+}
+
+/**
+ * The suspended ceiling's grid on a floor (60 cm tiles): its lines (each open line on the layer, on an axis, as a segment) and where the
+ * grid runs. A point is under the grid when a line of each direction passes within 0.65 m of it and spans it; the void a double-height
+ * space leaves is simply where the sheet draws no grid (floor −2 under floor −1's void). The thin closed rings on the layer are doors the
+ * sheet repeats on the ceiling plan, not ceiling.
+ */
+export function dxfCeilingGrid(drawing: DxfDrawing, floor: PisgaDxfFloor): { segs: Seg[]; under: (x: number, z: number) => boolean; doorMarks: number; stairs: Array<{ x0: number; x1: number; z0: number; z1: number }>; treads: number } {
+  const lines = dxfLoweredCeilingLines(drawing, floor);
+  const all: Seg[] = [];
+  let doorMarks = 0;
+  for (const l of lines) {
+    if (l.closed) {
+      const xs = l.pts.map((p) => p[0]), zs = l.pts.map((p) => p[1]);
+      if (Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) < 0.25) { doorMarks++; continue; }
+    }
+    for (let i = 1; i < l.pts.length; i++) {
+      const [x1, z1] = l.pts[i - 1]!;
+      const [x2, z2] = l.pts[i]!;
+      if (Math.hypot(x2 - x1, z2 - z1) < 0.05) continue;
+      all.push([x1, z1, x2, z2]);
+    }
+  }
+  // A stair (or the lift's car) drawn on the ceiling plan: a run of four or more parallel lines of one span, 15–40 cm apart — its treads,
+  // not tiles. It is a hole in the ceiling: no panel, no bar over it.
+  const stairs: Array<{ x0: number; x1: number; z0: number; z1: number }> = [];
+  const treadSet = new Set<Seg>();
+  for (const eastWest of [true, false]) {
+    const pos = (s: Seg) => (eastWest ? s[1] : s[0]);
+    const span = (s: Seg): [number, number] => (eastWest ? [Math.min(s[0], s[2]), Math.max(s[0], s[2])] : [Math.min(s[1], s[3]), Math.max(s[1], s[3])]);
+    const list = all.filter((s) => (eastWest ? Math.abs(s[1] - s[3]) < 0.01 : Math.abs(s[0] - s[2]) < 0.01)).sort((a, b) => pos(a) - pos(b));
+    const used = new Set<Seg>();
+    for (const s of list) {
+      if (used.has(s)) continue;
+      const run = [s];
+      for (;;) {
+        const last = run[run.length - 1]!;
+        const [l0, l1] = span(last);
+        const next = list.find((t) => !used.has(t) && !run.includes(t) && pos(t) - pos(last) >= 0.15 && pos(t) - pos(last) <= 0.4 && Math.min(l1, span(t)[1]) - Math.max(l0, span(t)[0]) >= 0.8 * Math.max(l1 - l0, span(t)[1] - span(t)[0]));
+        if (!next) break;
+        run.push(next);
+      }
+      if (run.length < 4) continue;
+      run.forEach((t) => { used.add(t); treadSet.add(t); });
+      const a0 = Math.min(...run.map((t) => span(t)[0])), a1 = Math.max(...run.map((t) => span(t)[1]));
+      const p0 = pos(run[0]!), p1 = pos(run[run.length - 1]!);
+      stairs.push(eastWest ? { x0: a0, x1: a1, z0: p0, z1: p1 } : { x0: p0, x1: p1, z0: a0, z1: a1 });
+    }
+  }
+  const inStair = (x: number, z: number) => stairs.some((b) => x > b.x0 - 0.02 && x < b.x1 + 0.02 && z > b.z0 - 0.02 && z < b.z1 + 0.02);
+  // A short line lying in a stair is its stringer or landing, not a tile's edge; a long grid line crossing one is kept (its bars are cut
+  // where no panel is, over the stair).
+  const segs = all.filter((s) => !treadSet.has(s) && (Math.hypot(s[2] - s[0], s[3] - s[1]) > 3 || !inStair((s[0] + s[2]) / 2, (s[1] + s[3]) / 2)));
+  const along = segs.filter((s) => Math.abs(s[1] - s[3]) < 0.01); // run east–west
+  const across = segs.filter((s) => Math.abs(s[0] - s[2]) < 0.01); // run north–south
+  const under = (x: number, z: number) =>
+    !inStair(x, z) &&
+    along.some((s) => Math.abs(s[1] - z) < 0.65 && x >= Math.min(s[0], s[2]) - 0.05 && x <= Math.max(s[0], s[2]) + 0.05) &&
+    across.some((s) => Math.abs(s[0] - x) < 0.65 && z >= Math.min(s[1], s[3]) - 0.05 && z <= Math.max(s[1], s[3]) + 0.05);
+  return { segs, under, doorMarks, stairs, treads: treadSet.size };
+}
+
+/**
+ * The ceiling's tiles as the electrical consultant lays them (layer E24-10, left OFF; block `e_plafon 60x60`): each tile a closed square,
+ * 60 cm in the rooms and 30 cm in the WCs. Anything else on the layer on this sheet is counted, not built.
+ */
+export function dxfCeilingTiles(drawing: DxfDrawing, floor: PisgaDxfFloor): Array<{ x0: number; x1: number; z0: number; z1: number; size: number }> {
+  const out: Array<{ x0: number; x1: number; z0: number; z1: number; size: number }> = [];
+  for (const l of dxfLayerLines(drawing, floor, /^E24-10$/)) {
+    const xs = l.pts.map((p) => p[0]), zs = l.pts.map((p) => p[1]);
+    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...zs) - Math.min(...zs);
+    if (!l.closed || Math.abs(w - h) > 0.02 || w < 0.25 || w > 0.65) {
+      noteDrop("pisga-dxf:e24-not-a-tile", () => `${floor} ${w.toFixed(2)}×${h.toFixed(2)} m at (${xs[0]!.toFixed(1)}, ${zs[0]!.toFixed(1)})`);
+      continue;
+    }
+    out.push({ x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs), size: +w.toFixed(2) });
+  }
+  return out;
+}
+
+/** The DXF's site sheet (x 256000–268000): model x = (X − 258571)/100, z = (644749 − Y)/100 (its kindergarten ring lands to the centimetre). */
+export const PISGA_SITE_SHEET = { x0: 258571, y0: 644749, xMin: 256000, xMax: 268000, yMin: 640000, yMax: 650000 };
+
+/**
+ * The planting the site sheet draws (layer "סימנים וסמלים"): a tree is a spiky ring (one polyline of 60+ points, 1.1–1.5 m), a shrub a
+ * star of 40+ short strokes (0.9–1.3 m). Each symbol is the pieces of the layer that touch, in the model frame. Any other cluster on the
+ * layer there (the level-mark flags) is counted, not built.
+ */
+export function dxfSitePlants(drawing: DxfDrawing): Array<{ x: number; z: number; kind: "tree" | "shrub"; size: number }> {
+  const S = PISGA_SITE_SHEET;
+  const at = (q: Pt): [number, number] => [(q.x - S.x0) / 100, (S.y0 - q.y) / 100];
+  const parts = flattenDxf(drawing).flatMap((p) => {
+    if (!/^סימנים/.test(p.layer)) return [];
+    const raw = [...(p.pts ?? []), ...(p.arc ? arcPoints(p.arc.c, p.arc.r, p.arc.start, p.arc.end) : []), ...(p.circle ? arcPoints(p.circle.c, p.circle.r, 0, Math.PI * 2) : [])];
+    const q0 = raw[0];
+    if (!q0 || q0.x < S.xMin || q0.x > S.xMax || q0.y < S.yMin || q0.y > S.yMax) return [];
+    const q = raw.map(at);
+    const xs = q.map((v) => v[0]), zs = q.map((v) => v[1]);
+    return [{ x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs), n: raw.length }];
+  });
+  const parent = parts.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+    const a = parts[i]!, b = parts[j]!;
+    if (a.x0 - 0.05 <= b.x1 && b.x0 - 0.05 <= a.x1 && a.z0 - 0.05 <= b.z1 && b.z0 - 0.05 <= a.z1) parent[find(i)] = find(j);
+  }
+  const groups = new Map<number, { x0: number; x1: number; z0: number; z1: number; parts: number; maxN: number; short: number }>();
+  parts.forEach((p, i) => {
+    const k = find(i);
+    const g = groups.get(k) ?? groups.set(k, { x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, parts: 0, maxN: 0, short: 0 }).get(k)!;
+    g.x0 = Math.min(g.x0, p.x0); g.x1 = Math.max(g.x1, p.x1); g.z0 = Math.min(g.z0, p.z0); g.z1 = Math.max(g.z1, p.z1);
+    g.parts++; g.maxN = Math.max(g.maxN, p.n); if (p.n === 2) g.short++;
+  });
+  const out: Array<{ x: number; z: number; kind: "tree" | "shrub"; size: number }> = [];
+  for (const g of groups.values()) {
+    const w = g.x1 - g.x0, h = g.z1 - g.z0, size = Math.max(w, h), x = (g.x0 + g.x1) / 2, z = (g.z0 + g.z1) / 2;
+    const square = Math.abs(w - h) < 0.15;
+    if (square && g.maxN >= 60 && size >= 1.1 && size <= 1.5) out.push({ x, z, kind: "tree", size });
+    else if (square && g.short >= 40 && size >= 0.9 && size <= 1.3) out.push({ x, z, kind: "shrub", size });
+    else noteDrop("pisga-dxf:site-symbol-not-a-plant", () => `(${x.toFixed(1)}, ${z.toFixed(1)}) ${w.toFixed(2)}×${h.toFixed(2)} m, ${g.parts} parts`);
+  }
+  return out;
+}
+
+/** A floor sheet's lines on the layers `layer` matches, in the plan frame, read even where the layer is off or frozen. */
+export function dxfLayerLines(drawing: DxfDrawing, floor: PisgaDxfFloor, layer: RegExp): Array<{ pts: Array<[number, number]>; closed: boolean }> {
+  const left = PISGA_DXF.sheets[floor];
+  const at = frameOf(left);
+  const layers = [...drawing.layers.values()].filter((l) => layer.test(l.name));
+  const was = layers.map((l) => [l.off, l.frozen] as const);
+  for (const l of layers) { l.off = false; l.frozen = false; }
+  try {
+    return sheetPieces(drawing, left)
+      .filter((p) => layer.test(p.layer) && p.pts && p.pts.length >= 2)
+      .map((p) => ({ pts: p.pts!.map(at), closed: !!p.closed }));
+  } finally {
+    layers.forEach((l, i) => { l.off = was[i]![0]; l.frozen = was[i]![1]; });
+  }
+}
+
 /** The roof level's sheet sits 152 units left of the floors' frame (their plot lines register it). */
 const ROOF_SHIFT = -152;
 
@@ -329,7 +477,11 @@ export function dxfSymbols(drawing: DxfDrawing, floor: PisgaDxfFloor): { windows
     });
     return [...groups.values()];
   };
-  return { windows: cluster(/^חלון/), doors: cluster(/^דלטוט/).filter((s) => s.arcs.length > 0) };
+  const doorSymbols = cluster(/^דלטוט/);
+  for (const s of doorSymbols) {
+    if (s.arcs.length === 0) noteDrop("pisga-dxf:door-symbol-without-swing", () => `(${((s.x0 + s.x1) / 2).toFixed(1)}, ${((s.z0 + s.z1) / 2).toFixed(1)}) ${(s.x1 - s.x0).toFixed(2)}×${(s.z1 - s.z0).toFixed(2)} m`);
+  }
+  return { windows: cluster(/^חלון/), doors: doorSymbols.filter((s) => s.arcs.length > 0) };
 }
 
 /**
@@ -634,6 +786,30 @@ export function dxfFloorDetails(drawing: DxfDrawing, floor: PisgaDxfFloor): { co
     if (best && h > 0.5 && h < 1.3) counters.push({ ...best.b, height: h });
   }
   const warnings = shapes.filter((s) => s.closed && s.n <= 5 && sides(s.b)[0] >= 0.8 && sides(s.b)[1] >= 0.3 && sides(s.b)[1] <= 1.0 && texts.some((t) => /משטח אזהרה/.test(t.t) && within(s.b, t.q, 0.05))).map((s) => s.b);
+  // A strip drawn as four loose lines round its name (the emergency stair's foot, A4-40): the nearest line on each side of the name,
+  // each spanning it, make the box.
+  const loose = pieces.filter((p) => p.pts && p.pts.length === 2 && !/^(מידה|טקסט)/.test(p.layer)).map((p) => [at(p.pts![0]!), at(p.pts![1]!)] as const);
+  for (const t of texts) {
+    if (!/משטח אזהרה/.test(t.t) || warnings.some((b) => within(b, t.q, 0.05))) continue;
+    const [qx, qz] = t.q;
+    const side = (horizontal: boolean, sign: 1 | -1) => {
+      let best: number | null = null;
+      for (const [a, b] of loose) {
+        if (horizontal ? Math.abs(a[1] - b[1]) > 0.01 : Math.abs(a[0] - b[0]) > 0.01) continue;
+        const pos = horizontal ? a[1] : a[0];
+        const [lo, hi] = horizontal ? [Math.min(a[0], b[0]), Math.max(a[0], b[0])] : [Math.min(a[1], b[1]), Math.max(a[1], b[1])];
+        const across = horizontal ? qx : qz;
+        const d = (pos - (horizontal ? qz : qx)) * sign;
+        if (d <= 0 || d > 1.6 || across < lo - 0.01 || across > hi + 0.01) continue;
+        if (best == null || d < (best - (horizontal ? qz : qx)) * sign) best = pos;
+      }
+      return best;
+    };
+    const [z0, z1, x0, x1] = [side(true, -1), side(true, 1), side(false, -1), side(false, 1)];
+    if (z0 == null || z1 == null || x0 == null || x1 == null) continue;
+    const b = { x0, x1, z0, z1 };
+    if (sides(b)[0] >= 0.6 && sides(b)[1] >= 0.3 && sides(b)[1] <= 1.0) warnings.push(b);
+  }
   // A name written with no outline round it (floor −2's at the A4-40's two ends): the caller lays the strip across the stair's end it names.
   const warningLabels = texts.filter((t) => /משטח אזהרה/.test(t.t) && !warnings.some((b) => within(b, t.q, 0.05))).map((t) => t.q);
   const locators = shapes.filter((s) => /^צהוב/.test(s.layer) && s.closed && s.n <= 5 && sides(s.b)[0] >= 1 && sides(s.b)[1] <= 0.6).map((s) => s.b);
@@ -868,6 +1044,7 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
       const [cx, cz] = at(p.circle.c);
       const r = p.circle.r / 100;
       if (r >= 0.12 && r <= 1.6) raw.push({ x0: cx - r, x1: cx + r, z0: cz - r, z1: cz + r, cx, cz, len: 2 * r, wid: 2 * r, ang: 0, round: true });
+      else noteDrop("pisga-dxf:furniture-circle-out-of-size", () => `${floor} r ${r.toFixed(2)} m at (${cx.toFixed(1)}, ${cz.toFixed(1)}) on ${p.layer}`);
       continue;
     }
     if (!isClosed(p)) continue;
@@ -886,7 +1063,10 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
     const [u0, u1, v0, v1] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)];
     const len = u1 - u0;
     const wid = v1 - v0;
-    if (len < 0.2 || len > 9 || wid < 0.15) continue;
+    if (len < 0.2 || len > 9 || wid < 0.15) {
+      noteDrop("pisga-dxf:furniture-outline-out-of-size", () => `${floor} ${len.toFixed(2)}×${wid.toFixed(2)} m at (${pts[0]![0].toFixed(1)}, ${pts[0]![1].toFixed(1)}) on ${p.layer}`);
+      continue;
+    }
     const um = (u0 + u1) / 2;
     const vm = (v0 + v1) / 2;
     const xs = pts.map((q) => q[0]);
@@ -958,7 +1138,13 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
   // Whatever the sheet still draws on a furniture layer that no pass above took: each cluster of any pieces, of a size a piece of furniture is, stands as that piece.
   for (const g of groupsOf(drawing, floor, FURN_LAYERS, (p) => furn(p), 0.012)) {
     const [L, W] = g.len >= g.wid ? [g.len, g.wid] : [g.wid, g.len];
-    if (L < 0.3 || L > 3.4 || W < 0.2 || W > 2.2) continue;
+    if (L < 0.3 || L > 3.4 || W < 0.2 || W > 2.2) {
+      // Counted only when no piece already stands there: a cluster an earlier pass took (a 6 m desk pair) is not lost.
+      if (!out.some((o) => Math.abs(o.x - g.cx) < Math.max(0.4, L / 2) && Math.abs(o.z - g.cz) < Math.max(0.4, W / 2))) {
+        noteDrop("pisga-dxf:furniture-cluster-out-of-size", () => `${floor} ${L.toFixed(2)}×${W.toFixed(2)} m at (${g.cx.toFixed(1)}, ${g.cz.toFixed(1)}), ${g.parts} parts`);
+      }
+      continue;
+    }
     const ang = g.len >= g.wid ? g.ang : g.ang + Math.PI / 2;
     const r = Math.max(0.3, W / 2);
     if (out.some((o) => { const d = o.kind === "chair" ? 0.15 : r; return Math.abs(o.x - g.cx) < d && Math.abs(o.z - g.cz) < d; })) continue;
@@ -1039,8 +1225,15 @@ export function dxfFurnitureShapes(drawing: DxfDrawing, floor: PisgaDxfFloor): F
   const { inLift } = liftShafts(drawing, floor);
   // A chair read at a round table's very middle is the table's own drawing (its base, its inner ring), not a seat standing in it.
   const middles = out.filter((t) => t.kind === "round-table");
-  return out.filter((s) => !(s.kind === "chair" && middles.some((t) => Math.hypot(s.x - t.x, s.z - t.z) < t.length / 4)))
-    .filter((s) => !inLift(s.x, s.z));
+  return out.filter((s) => {
+    if (!(s.kind === "chair" && middles.some((t) => Math.hypot(s.x - t.x, s.z - t.z) < t.length / 4))) return true;
+    noteDrop("pisga-dxf:chair-at-round-table-middle", () => `${floor} (${s.x.toFixed(1)}, ${s.z.toFixed(1)})`);
+    return false;
+  }).filter((s) => {
+    if (!inLift(s.x, s.z)) return true;
+    noteDrop("pisga-dxf:furniture-in-lift", () => `${floor} ${s.kind} (${s.x.toFixed(1)}, ${s.z.toFixed(1)})`);
+    return false;
+  });
 }
 
 /**
@@ -1149,7 +1342,32 @@ export function furnitureFromShapes(shapes: FurnitureShape[], level: number, tag
   };
   // One that still stands in a desk after three moves (wedged between two) is left out.
   const inTable = (c: FurnitureShape) => c.kind === "chair" && tables.some((t) => insideShape({ ...t, length: t.length - 0.1, width: t.width - 0.1 }, c.x, c.z));
-  shapes = shapes.map((c) => clear(clear(clear(c)))).filter((c) => !inTable(c));
+  shapes = shapes.map((c) => clear(clear(clear(c))));
+  // A chair the sheet draws is never dropped: one still wedged after three moves (between two desks set edge to edge) goes to the nearest
+  // spot within a metre that is clear of every table top and of the other chairs; only when there is none is it left out, and counted.
+  const wedged = shapes.filter(inTable);
+  for (const c of wedged) {
+    const others = shapes.filter((o) => o !== c && o.kind === "chair");
+    const free = (x: number, z: number) =>
+      !tables.some((t) => insideShape({ ...t, length: t.length + 0.06 + 0.5, width: t.width + 0.06 + 0.5 }, x, z)) &&
+      !others.some((o) => Math.hypot(o.x - x, o.z - z) < 0.5);
+    let spot: [number, number] | null = null;
+    for (let r = 0.1; r <= 1.0001 && !spot; r += 0.05) {
+      for (let k = 0; k < 16; k++) {
+        const a = (k * Math.PI) / 8;
+        const x = c.x + r * Math.cos(a), z = c.z + r * Math.sin(a);
+        if (free(x, z)) { spot = [x, z]; break; }
+      }
+    }
+    const i = shapes.indexOf(c);
+    if (spot) {
+      noteDrop("pisga-dxf:chair-moved-clear-of-desks", () => `${tag} (${c.x.toFixed(1)}, ${c.z.toFixed(1)}) → (${spot![0].toFixed(1)}, ${spot![1].toFixed(1)})`);
+      shapes[i] = { ...c, x: spot[0], z: spot[1] };
+    } else {
+      noteDrop("pisga-dxf:chair-wedged-in-table", () => `${tag} (${c.x.toFixed(1)}, ${c.z.toFixed(1)})`);
+      shapes.splice(i, 1);
+    }
+  }
   // A chair clear of every table faces the nearest one within 75 cm of it, its back away: the turn a sheet's block is drawn at says
   // nothing of which side is the back, and chairs stood side-on at desks and round tables (the user's mark, 2026-11-01).
   const surfaces = tables.filter((t) => t.kind !== "sofa" && t.kind !== "armchair");

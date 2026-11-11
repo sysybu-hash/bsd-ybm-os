@@ -44,6 +44,9 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "aerial-ne": { camera: { position: { x: 88, y: 46, z: -48 }, target: { x: 27, y: 7, z: 8 }, fovDeg: 32 }, sun: { azimuthDeg: 250, elevationDeg: 38 }, exposure: 0.62, ao: true },
   "north-facade": { camera: { position: { x: 27.4, y: 6, z: -48 }, target: { x: 27.4, y: 10.5, z: 6 }, fovDeg: 38 }, sun: { azimuthDeg: 292, elevationDeg: 22 }, exposure: 0.66, ao: true },
   "aerial-sw": { camera: { position: { x: -34, y: 44, z: 62 }, target: { x: 27, y: 12, z: 8 }, fovDeg: 32 }, sun: { azimuthDeg: 200, elevationDeg: 48 }, exposure: 0.62, ao: true },
+  // The four corners from the air, as the user asked on 2026-11-09: NW and SE beside the existing NE and SW, same distance and lens.
+  "aerial-nw": { camera: { position: { x: -34, y: 46, z: -48 }, target: { x: 27, y: 7, z: 8 }, fovDeg: 32 }, sun: { azimuthDeg: 150, elevationDeg: 40 }, exposure: 0.62, ao: true },
+  "aerial-se": { camera: { position: { x: 66, y: 62, z: 64 }, target: { x: 27, y: 6, z: 6 }, fovDeg: 36 }, sun: { azimuthDeg: 200, elevationDeg: 48 }, exposure: 0.62, ao: true },
   "elev-north": { camera: { position: { x: 27.4, y: 11.5, z: -120 }, target: { x: 27.4, y: 11.5, z: 0 }, fovDeg: 30, orthoHalfWidth: 30, hideTags: ["site:ground-far"] }, sun: { azimuthDeg: 300, elevationDeg: 30 }, exposure: 0.66, ao: true },
   "elev-south": { camera: { position: { x: 27.4, y: 12.5, z: 120 }, target: { x: 27.4, y: 12.5, z: 0 }, fovDeg: 30, orthoHalfWidth: 30, section: { axis: "z", at: 20.3, keep: -1 }, hideTags: ["site:neighbour", "site:ground-far", "site:retaining", "site:entrance", "site:sidewalk", "site:street", "site:survey-", "site:aerial-road", "site:stair", "tree", "car"] }, sun: { azimuthDeg: 180, elevationDeg: 45 }, exposure: 0.62, ao: true },
   "dollhouse-1": { camera: { position: { x: 27, y: 44, z: 36 }, target: { x: 27, y: 12.8, z: 8.5 }, fovDeg: 42, cutAboveM: 12.77 + 2.3, hideTags: ["roof", "facade", "kindergarten", "site:stair", "car"] }, sun: { azimuthDeg: 200, elevationDeg: 55 }, exposure: 0.62, ao: true },
@@ -79,7 +82,8 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "section-aa": { camera: { position: { x: 27.4, y: 11, z: 140 }, target: { x: 27.4, y: 11, z: 0 }, fovDeg: 30, orthoHalfWidth: 31, section: { axis: "z", at: 6.3, keep: -1 }, interior: true, hideTags: ["site:neighbour", "site:ground-far", "tree", "car"] }, sun: { azimuthDeg: 200, elevationDeg: 55 }, exposure: 0.62, ao: true },
   "section-bb": { camera: { position: { x: 140, y: 12, z: 6 }, target: { x: 0, y: 12, z: 6 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 49.3, keep: -1 }, interior: true, hideTags: ["site:neighbour", "site:ground-far", "tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
   "section-dd": { camera: { position: { x: 140, y: 12, z: 8 }, target: { x: 0, y: 12, z: 8 }, fovDeg: 30, orthoHalfWidth: 20, section: { axis: "x", at: 28.4, keep: -1 }, interior: true, hideTags: ["site:neighbour", "site:ground-far", "tree", "car"] }, sun: { azimuthDeg: 110, elevationDeg: 50 }, exposure: 0.62, ao: true },
-  "event-hall": { camera: { position: { x: 21.5, y: 12.77 + 1.7, z: 10.2 }, target: { x: 6, y: 12.77 + 0.9, z: 3.5 }, fovDeg: 66, interior: true }, sun: { azimuthDeg: 290, elevationDeg: 25 }, exposure: 0.62, ao: true },
+  // West of the acoustic partition the sheet draws at x 20.31 (z 7.65–10.15): from x 21.5 it filled the frame.
+  "event-hall": { camera: { position: { x: 19.9, y: 12.77 + 1.7, z: 10.2 }, target: { x: 6, y: 12.77 + 0.9, z: 3.5 }, fovDeg: 66, interior: true }, sun: { azimuthDeg: 290, elevationDeg: 25 }, exposure: 0.62, ao: true },
   "north-high": { camera: { position: { x: 27, y: 30, z: -34 }, target: { x: 27, y: 8, z: -2 }, fovDeg: 40 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "west-stair": { camera: { position: { x: -10, y: 24, z: 32 }, target: { x: -1, y: 9.5, z: 12 }, fovDeg: 42 }, sun: { azimuthDeg: 150, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "ne-corner": { camera: { position: { x: 76, y: 18, z: -15 }, target: { x: 55, y: 8.5, z: 3 }, fovDeg: 42 }, sun: { azimuthDeg: 250, elevationDeg: 40 }, exposure: 0.64, ao: true },
@@ -142,6 +146,7 @@ const views: Record<string, Omit<Payload, "model" | "width" | "height">> = {
   "kg-west-wing": { camera: { position: { x: 10, y: 2.2, z: -11.5 }, target: { x: 11, y: 2.2, z: -7 }, fovDeg: 60 }, sun: { azimuthDeg: 292, elevationDeg: 30 }, exposure: 0.64, ao: true },
   "kg-east-n": { camera: { position: { x: 64, y: 7, z: -11 }, target: { x: 62, y: 4, z: 5 }, fovDeg: 55 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "kg-ne-corner": { camera: { position: { x: 61, y: 12, z: -5 }, target: { x: 55, y: 7.5, z: 3 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
+  "kg-door-n": { camera: { position: { x: 40, y: 7, z: -17 }, target: { x: 32, y: 2.6, z: -6 }, fovDeg: 50 }, sun: { azimuthDeg: 300, elevationDeg: 40 }, exposure: 0.64, ao: true },
   "kg-nw-corner": { camera: { position: { x: -7, y: 12, z: -6 }, target: { x: 0.5, y: 6.5, z: 3 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
   "kg-west-link": { camera: { position: { x: -24, y: 16, z: -2 }, target: { x: -12.5, y: 7, z: 7.5 }, fovDeg: 50 }, sun: { azimuthDeg: 250, elevationDeg: 45 }, exposure: 0.64, ao: true },
   // West kindergarten — inner faces (toward the building / along the deck), not only the slope outside.

@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import { decodeShxHebrew } from "@/lib/projects/floorplan-dwf";
 
 /**
@@ -451,7 +452,10 @@ function hatchRings(r: DxfRecord): Pt[][] {
       const sources = Number(values[i++]);
       for (let k = 0; k < sources && codes[i] === 330; k++) i++;
     }
-    if (pts.length > 2) rings.push(pts);
+    // A text box (flag 8) is the gap AutoCAD leaves around a text inside the
+    // hatch, not a boundary: drawn as a ring it filled a stale label's box
+    // solid, a black slab in the middle of a room.
+    if (pts.length > 2 && !(flag & 8)) rings.push(pts);
   }
   return rings;
 }
@@ -497,7 +501,10 @@ export function patternStrokes(rings: Pt[][], lines: PatternLine[]): Array<[Pt, 
     const k0 = Math.ceil(Math.min(...across) / spacing - 1e-9);
     const k1 = Math.floor(Math.max(...across) / spacing + 1e-9);
     const [lo, hi] = k0 <= k1 ? [k0, k1] : [k1, k0];
-    if (hi - lo > 20_000) continue;
+    if (hi - lo > 20_000) {
+      noteDrop("dxf-drawing:hatch-line-family-too-dense", () => `${hi - lo} rows`);
+      continue;
+    }
     const period = line.dashes.reduce((s, d) => s + Math.abs(d), 0);
     for (let k = lo; k <= hi; k++) {
       const o = { x: line.base.x + line.offset.x * k, y: line.base.y + line.offset.y * k };
@@ -538,7 +545,10 @@ export function patternStrokes(rings: Pt[][], lines: PatternLine[]): Array<[Pt, 
           }
         }
       }
-      if (out.length >= MAX_HATCH_STROKES) return out;
+      if (out.length >= MAX_HATCH_STROKES) {
+        noteDrop("dxf-drawing:hatch-strokes-capped", `${MAX_HATCH_STROKES} strokes`);
+        return out;
+      }
     }
   }
   return out;
@@ -551,11 +561,17 @@ export function patternStrokes(rings: Pt[][], lines: PatternLine[]): Array<[Pt, 
  */
 export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.entities, ctx: Ctx = { m: IDENTITY, path: [], depth: 0 }, out: DxfPiece[] = []): DxfPiece[] {
   for (const e of entities) {
-    if (num(e, 60) === 1) continue;
+    if (num(e, 60) === 1) {
+      noteDrop("dxf-drawing:invisible-entity", () => `${e.type} on ${str(e, 8, "0")}`);
+      continue;
+    }
     const own = str(e, 8, "0");
     const layerName = own === "0" && ctx.layer ? ctx.layer : own;
     const layer = drawing.layers.get(layerName);
-    if (layer && (layer.off || layer.frozen)) continue;
+    if (layer && (layer.off || layer.frozen)) {
+      noteDrop(`dxf-drawing:${layer.frozen ? "frozen" : "off"}-layer`, () => `${e.type} on ${layerName}`);
+      continue;
+    }
     const aci = num(e, 62, 256);
     const colour = has(e, 420)
       ? num(e, 420) & 0xffffff
@@ -587,7 +603,10 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
       }
       case "POLYLINE": {
         const flag = num(e, 70);
-        if (flag & (16 | 64)) break;
+        if (flag & (16 | 64)) {
+          noteDrop("dxf-drawing:polyface-or-mesh", () => `POLYLINE flag ${flag} on ${layerName}`);
+          break;
+        }
         const verts = (e.children ?? []).filter((v) => v.type === "VERTEX").map((v) => ({ p: { x: num(v, 10), y: num(v, 20) }, bulge: num(v, 42) }));
         const closed = (flag & 1) === 1;
         out.push({ ...base, pts: polylinePoints(verts, closed).map((p) => apply(flag & 8 ? ctx.m : ocs, p)), closed });
@@ -643,6 +662,13 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
         if (pts.length >= 2) out.push({ ...base, pts, closed: (num(e, 70) & 1) === 1 });
         break;
       }
+      case "3DFACE": {
+        // A face drawn flat in plan (Weinberg's A-BL): its outline, as a closed line, not a fill.
+        const corners = [10, 11, 12, 13].map((code) => apply(ctx.m, { x: num(e, code), y: num(e, code + 10) }));
+        const ring = corners.filter((p, i) => i === 0 || Math.hypot(p.x - corners[i - 1]!.x, p.y - corners[i - 1]!.y) > 1e-9);
+        if (ring.length >= 2) out.push({ ...base, pts: [...ring, ring[0]!], closed: true });
+        break;
+      }
       case "SOLID":
       case "TRACE": {
         const corners = [10, 11, 13, 12].map((code) => apply(ocs, { x: num(e, code), y: num(e, code + 10) }));
@@ -683,7 +709,11 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
       case "INSERT": {
         const name = str(e, 2);
         const blk = drawing.blocks.get(name);
-        if (!blk || ctx.depth >= 8 || ctx.path.includes(name)) break;
+        if (!blk || ctx.depth >= 8 || ctx.path.includes(name)) {
+          const why = !blk ? "missing-block" : ctx.depth >= 8 ? "nested-too-deep" : "self-referencing-block";
+          noteDrop(`dxf-drawing:${why}`, () => `${name} on ${layerName}`);
+          break;
+        }
         const sx = num(e, 41, 1) || 1;
         const sy = num(e, 42, 1) || 1;
         const rot = (num(e, 50) * Math.PI) / 180;
@@ -715,6 +745,9 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
         if (e.children?.length) flattenDxf(drawing, e.children.filter((a) => a.type === "ATTRIB"), { ...ctx, layer: ctx.layer }, out);
         break;
       }
+      default:
+        // Not drawn by this reader (IMAGE, MLINE, MULTILEADER, REGION, 3DFACE, WIPEOUT, proxies…): counted, never silent.
+        noteDrop(`dxf-drawing:unsupported-${e.type}`, () => `on ${layerName}${ctx.path.length ? ` in ${ctx.path.at(-1)}` : ""}`);
     }
   }
   return out;

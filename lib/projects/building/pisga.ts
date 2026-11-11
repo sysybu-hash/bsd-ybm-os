@@ -12,8 +12,10 @@ import { drawLine } from "@/lib/projects/building/raster";
 import { buildKindergarten, kindergartenDoorPads, kindergartenOutline, KINDERGARTEN } from "@/lib/projects/building/pisga-kindergarten";
 import { readPlanFurniture } from "@/lib/projects/building/plan-furniture";
 import { readPlanRooms, type PlanRoom, type RoomKind, type RoomLabel } from "@/lib/projects/building/plan-rooms";
-import { cutDxfWindows, dxfColumns, dxfFurnitureShapes, dxfFixtures, dxfHallSeats, furnitureFromShapes, type FurniturePart, type FurnitureShape, dxfAcousticPartitions, dxfDividers, dxfEmergencyStair, exteriorDoorRects, glazedPartitions, dxfPartitions, dxfPlanPage, dxfRoof, dxfRoomLabels, dxfSymbols, openingsByDxfWindows, PISGA_DXF, dxfDoorLeaves, dxfFloorDetails, liftShafts } from "@/lib/projects/building/pisga-dxf";
+import { cutDxfWindows, dxfColumns, dxfFurnitureShapes, dxfFixtures, dxfHallSeats, furnitureFromShapes, type FurniturePart, type FurnitureShape, dxfAcousticPartitions, dxfDividers, dxfEmergencyStair, exteriorDoorRects, glazedPartitions, dxfPartitions, dxfPlanPage, dxfRoof, dxfRoomLabels, dxfSymbols, openingsByDxfWindows, PISGA_DXF, dxfDoorLeaves, dxfFloorDetails, liftShafts, dxfCeilingGrid, dxfCeilingTiles, dxfLayerLines, dxfSitePlants } from "@/lib/projects/building/pisga-dxf";
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { DxfDrawing } from "@/lib/projects/dxf-drawing";
+import { surveyFurniturePrims } from "@/lib/projects/building/pisga-survey-furniture";
 import { readPisgaSurvey, surveyGround, surveyPlot, WALL_SPOT_LAYER } from "@/lib/projects/building/pisga-survey";
 import { pisgaNeighbourBoxes, pisgaNeighbours } from "@/lib/projects/building/pisga-neighbours";
 import { surveyStreet, surveyStreetPrims } from "@/lib/projects/building/pisga-survey-street";
@@ -515,6 +517,209 @@ export function readPisgaDxfFloor(dxf: DxfDrawing, id: "floor-2" | "floor-1", by
  * architect's DXF is given, from its drawing: the same readers either way —
  * the DXF's floor sheets are handed over as painted pages (pisga-dxf.ts).
  */
+/** The grid's tile (between two lines 50–70 cm apart) holding `v`, as its middle; null between other lines. */
+function tileMiddle(v: number, lines: number[]): number | null {
+  for (let k = 1; k < lines.length; k++) {
+    const a = lines[k - 1]!, b = lines[k]!;
+    if (a <= v && v < b && b - a > 0.5 && b - a < 0.7) return (a + b) / 2;
+  }
+  return null;
+}
+
+/** The grid's line positions: x of the north–south lines, z of the east–west ones. */
+function gridLines(segs: Array<[number, number, number, number]>): { gx: number[]; gz: number[] } {
+  const gx = [...new Set(segs.filter((s) => Math.abs(s[0] - s[2]) < 0.01).map((s) => +s[0].toFixed(2)))].sort((a, b) => a - b);
+  const gz = [...new Set(segs.filter((s) => Math.abs(s[1] - s[3]) < 0.01).map((s) => +s[1].toFixed(2)))].sort((a, b) => a - b);
+  return { gx, gz };
+}
+
+/**
+ * The edges of the electrical sheet's small tiles (the WCs' 30 cm), merged into one segment per run on each line: the bars the 60 cm grid
+ * does not draw there.
+ */
+export function smallTileEdges(tiles: Array<{ x0: number; x1: number; z0: number; z1: number; size: number }>): Array<[number, number, number, number]> {
+  const runs = new Map<string, Array<[number, number]>>();
+  const add = (k: string, a: number, b: number) => (runs.get(k) ?? runs.set(k, []).get(k)!).push([a, b]);
+  for (const s of tiles) {
+    if (s.size > 0.45) continue;
+    for (const z of [s.z0, s.z1]) add(`z${z.toFixed(2)}`, s.x0, s.x1);
+    for (const x of [s.x0, s.x1]) add(`x${x.toFixed(2)}`, s.z0, s.z1);
+  }
+  const out: Array<[number, number, number, number]> = [];
+  for (const [k, list] of runs) {
+    const at = Number(k.slice(1));
+    list.sort((p, q) => p[0] - q[0]);
+    let [a, b] = list[0]!;
+    const emit = () => out.push(k[0] === "z" ? [a, at, b, at] : [at, a, at, b]);
+    for (const [c, d] of list.slice(1)) {
+      if (c <= b + 0.02) b = Math.max(b, d);
+      else { emit(); [a, b] = [c, d]; }
+    }
+    emit();
+  }
+  return out;
+}
+
+/** In a WC's 30 cm tiles a light is the tile it lies in; elsewhere it goes into its 60 cm tile. */
+function snapToSmallOr(p: Primitive & { type: "box" }, segs: Array<[number, number, number, number]>, inTile: (x: number, z: number) => { x0: number; x1: number; z0: number; z1: number; size: number } | undefined): Primitive {
+  const s = inTile(p.centre.x, p.centre.z);
+  if (s && s.size < 0.45) return { ...p, centre: { ...p.centre, x: (s.x0 + s.x1) / 2, z: (s.z0 + s.z1) / 2 }, size: { ...p.size, x: s.size - 0.02, z: s.size - 0.02 } };
+  return snapToTile(p, segs);
+}
+
+/**
+ * A canopy hung on a wall, as the kindergarten's door has one today (photograph 8): a thin dark steel slab from the wall face a→b out `depth`
+ * metres along `out`, its top at `top`, a fascia along its front, and two tie rods from the wall 1.3 m over it down to its front corners'
+ * inner points. The site has these, not pergolas on posts (the user, 2026-11-09).
+ */
+function hungCanopy(a: [number, number], b: [number, number], out: [number, number], depth: number, top: number, tag: string): Primitive[] {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 0.3) return [];
+  const [ux, uz] = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
+  const rotY = -Math.atan2(uz, ux);
+  const [mx, mz] = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const t = 0.1;
+  const prims: Primitive[] = [
+    { type: "box", centre: { x: mx + (out[0] * depth) / 2, y: top - t / 2, z: mz + (out[1] * depth) / 2 }, size: { x: len, y: t, z: depth }, rotY, material: "darkSteel", tag },
+    { type: "box", centre: { x: mx + out[0] * (depth - 0.02), y: top - 0.09, z: mz + out[1] * (depth - 0.02) }, size: { x: len, y: 0.18, z: 0.04 }, rotY, material: "darkSteel", tag },
+  ];
+  const inset = Math.min(0.5, len / 4);
+  for (const s of [inset, len - inset]) {
+    const [wx, wz] = [a[0] + ux * s, a[1] + uz * s];
+    const start = { x: wx + out[0] * 0.02, y: top + 1.3, z: wz + out[1] * 0.02 };
+    const end = { x: wx + out[0] * (depth - 0.08), y: top, z: wz + out[1] * (depth - 0.08) };
+    prims.push({ type: "box", centre: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, z: (start.z + end.z) / 2 }, size: { x: 0.03, y: 0.03, z: 0.03 }, span: { start, end }, material: "darkSteel", tag });
+    prims.push({ type: "box", centre: { x: wx + out[0] * 0.01, y: top + 1.3, z: wz + out[1] * 0.01 }, size: { x: 0.12, y: 0.16, z: 0.02 }, rotY, material: "darkSteel", tag });
+  }
+  return prims;
+}
+
+/** A light panel moved into the grid tile its middle falls in, a little under the tile's size so the T-bars frame it. */
+function snapToTile(p: Primitive & { type: "box" }, segs: Array<[number, number, number, number]>): Primitive {
+  const { gx, gz } = gridLines(segs);
+  const cx = tileMiddle(p.centre.x, gx), cz = tileMiddle(p.centre.z, gz);
+  if (cx == null || cz == null) return p;
+  return { ...p, centre: { ...p.centre, x: cx, z: cz }, size: { ...p.size, x: 0.58, z: 0.58 } };
+}
+
+/**
+ * The suspended ceiling the sheet's ceiling plan draws where the rooms laid none: wherever its grid runs inside the floor's outline, but
+ * over no stair or lift. The rooms' reading leaves gaps — floor −1's open plan (the classroom, the secretariat, the lobby) is one region
+ * that the "חלל כפול" label makes a void, so it had no ceiling at all, and floor −2's corridors had none between the rooms' panels.
+ * Light panels follow furnishFloor's rule (60 cm, every 2.4 m), on the sheet's own tiles.
+ */
+export function ceilingFromGrid(
+  grid: { segs: Array<[number, number, number, number]>; under: (x: number, z: number) => boolean },
+  furnished: Primitive[],
+  rooms: PlanRoom[],
+  outline: Outline,
+  level: number,
+  heightAt: (x: number, z: number) => number,
+  tag: string,
+): Primitive[] {
+  if (!grid.segs.length) return [];
+  const S = 0.1;
+  const panels = furnished.flatMap((p) => (p.type === "box" && p.material === "ceiling" ? [{ x0: p.centre.x - p.size.x / 2, x1: p.centre.x + p.size.x / 2, z0: p.centre.z - p.size.z / 2, z1: p.centre.z + p.size.z / 2 }] : []));
+  const roomAt = (x: number, z: number) =>
+    rooms.find((r) => {
+      let best: (typeof r.rows)[number] | undefined;
+      for (const row of r.rows) if (!best || Math.abs(row.y - z) < Math.abs(best.y - z)) best = row;
+      return !!best && Math.abs(best.y - z) <= 0.02 && best.spans.some(([a, b]) => x >= a && x < b);
+    });
+  const xs = grid.segs.flatMap((s) => [s[0], s[2]]), zs = grid.segs.flatMap((s) => [s[1], s[3]]);
+  const X0 = Math.min(...xs), Z0 = Math.min(...zs);
+  const cols = Math.ceil((Math.max(...xs) - X0) / S), rowsN = Math.ceil((Math.max(...zs) - Z0) / S);
+  const need: boolean[] = new Array(cols * rowsN).fill(false);
+  for (let j = 0; j < rowsN; j++) for (let i = 0; i < cols; i++) {
+    const x = X0 + (i + 0.5) * S, z = Z0 + (j + 0.5) * S;
+    if (!grid.under(x, z) || !insidePolygon(outline, x, z)) continue;
+    if (panels.some((p) => x > p.x0 && x < p.x1 && z > p.z0 && z < p.z1)) continue;
+    const room = roomAt(x, z);
+    if (room && (room.kind === "stair" || room.kind === "lift")) continue;
+    need[j * cols + i] = true;
+  }
+  // Runs per row, merged down while a run repeats exactly.
+  const out: Primitive[] = [];
+  const open = new Map<string, { i0: number; i1: number; j0: number; j1: number }>();
+  const flush = (r: { i0: number; i1: number; j0: number; j1: number }) => {
+    const x0 = X0 + r.i0 * S, x1 = X0 + r.i1 * S, z0 = Z0 + r.j0 * S, z1 = Z0 + r.j1 * S;
+    const h = heightAt((x0 + x1) / 2, (z0 + z1) / 2);
+    out.push({ type: "box", centre: { x: (x0 + x1) / 2, y: level + h + 0.01, z: (z0 + z1) / 2 }, size: { x: x1 - x0 + 0.02, y: 0.02, z: z1 - z0 + 0.02 }, material: "ceiling", tag: `${tag}:ceiling` });
+  };
+  for (let j = 0; j <= rowsN; j++) {
+    const runs: Array<[number, number]> = [];
+    if (j < rowsN) for (let i = 0; i < cols; ) {
+      if (!need[j * cols + i]) { i++; continue; }
+      const i0 = i;
+      while (i < cols && need[j * cols + i]) i++;
+      runs.push([i0, i]);
+    }
+    const seen = new Set<string>();
+    for (const [i0, i1] of runs) {
+      const k = `${i0}:${i1}`;
+      seen.add(k);
+      const r = open.get(k);
+      if (r) r.j1 = j + 1;
+      else open.set(k, { i0, i1, j0: j, j1: j + 1 });
+    }
+    for (const [k, r] of [...open]) if (!seen.has(k)) { flush(r); open.delete(k); }
+  }
+  // Lights on the sheet's own tiles: the cell between grid lines nearest each 2.4 m step, inside the new ceiling.
+  const filled = out.map((p) => (p.type === "box" ? { x0: p.centre.x - p.size.x / 2, x1: p.centre.x + p.size.x / 2, z0: p.centre.z - p.size.z / 2, z1: p.centre.z + p.size.z / 2 } : null)).filter((b): b is NonNullable<typeof b> => !!b);
+  const { gx, gz } = gridLines(grid.segs);
+  const tileOf = tileMiddle;
+  const lit = new Set<string>();
+  for (let z = Z0 + 1.2; z < Z0 + rowsN * S - 0.6; z += 2.4) for (let x = X0 + 1.2; x < X0 + cols * S - 0.6; x += 2.4) {
+    const cx = tileOf(x, gx), cz = tileOf(z, gz);
+    if (cx == null || cz == null) continue;
+    if (!filled.some((b) => cx - 0.3 >= b.x0 - 0.01 && cx + 0.3 <= b.x1 + 0.01 && cz - 0.3 >= b.z0 - 0.01 && cz + 0.3 <= b.z1 + 0.01)) continue;
+    const k = `${cx.toFixed(2)},${cz.toFixed(2)}`;
+    if (lit.has(k)) continue;
+    lit.add(k);
+    out.push({ type: "box", centre: { x: cx, y: level + heightAt(cx, cz) - 0.005, z: cz }, size: { x: 0.58, y: 0.012, z: 0.58 }, material: "lightPanel", tag: `${tag}:light` });
+  }
+  return out;
+}
+
+/**
+ * The ceiling grid's T-bars: each sheet line on an axis, cut to the ceiling panels furnishFloor laid (so no bar hangs over a stair or a
+ * void), at each panel's own underside (the hall's lower ceiling included). A line or a stretch of one with no ceiling over it is counted.
+ */
+export function ceilingGridBars(segs: Array<[number, number, number, number]>, furnished: Primitive[], tag: string): Primitive[] {
+  const panels = furnished.flatMap((p) => (p.type === "box" && p.material === "ceiling" ? [{ x0: p.centre.x - p.size.x / 2, x1: p.centre.x + p.size.x / 2, z0: p.centre.z - p.size.z / 2, z1: p.centre.z + p.size.z / 2, under: p.centre.y - p.size.y / 2 }] : []));
+  const out: Primitive[] = [];
+  const W = 0.024, T = 0.012;
+  // One bar per panel stretch; a line on a panel's edge (two rooms meeting) is laid once, by the first panel.
+  const laid = new Set<string>();
+  for (const [x1, z1, x2, z2] of segs) {
+    const eastWest = Math.abs(z1 - z2) < 0.01;
+    if (!eastWest && Math.abs(x1 - x2) >= 0.01) { noteDrop("pisga:ceiling-grid-off-axis", `(${x1.toFixed(1)}, ${z1.toFixed(1)})`); continue; }
+    const at = eastWest ? (z1 + z2) / 2 : (x1 + x2) / 2;
+    const [a0, a1] = eastWest ? [Math.min(x1, x2), Math.max(x1, x2)] : [Math.min(z1, z2), Math.max(z1, z2)];
+    let covered = 0;
+    for (const p of panels) {
+      const [lo, hi, c0, c1] = eastWest ? [p.x0, p.x1, p.z0, p.z1] : [p.z0, p.z1, p.x0, p.x1];
+      if (at < c0 - 0.005 || at > c1 + 0.005) continue;
+      const s0 = Math.max(a0, lo), s1 = Math.min(a1, hi);
+      if (s1 - s0 < 0.05) continue;
+      const key = `${eastWest ? "x" : "z"}${at.toFixed(2)}:${s0.toFixed(2)}:${s1.toFixed(2)}:${p.under.toFixed(2)}`;
+      if (laid.has(key)) continue;
+      laid.add(key);
+      covered += s1 - s0;
+      const mid = (s0 + s1) / 2;
+      out.push({
+        type: "box",
+        centre: eastWest ? { x: mid, y: p.under - T / 2, z: at } : { x: at, y: p.under - T / 2, z: mid },
+        size: eastWest ? { x: s1 - s0, y: T, z: W } : { x: W, y: T, z: s1 - s0 },
+        material: "ceilingGrid",
+        tag,
+      });
+    }
+    if (covered < 0.05) noteDrop("pisga:ceiling-grid-line-without-ceiling", () => `${eastWest ? "E–W" : "N–S"} at ${at.toFixed(2)}, ${a0.toFixed(1)}..${a1.toFixed(1)}`);
+  }
+  return out;
+}
+
 export async function buildPisga(pdf: Uint8Array | null, options?: { future?: boolean; dxf?: DxfDrawing; /** The plot's aerial photograph as a data URL, laid on the ground by a rough fit (a draft). */ groundPhoto?: string; /** The 2022 site survey (pisga-survey.ts): the existing ground, stairs and walls round the plot. */ survey?: DxfDrawing }): Promise<BuildingModel> {
   const dxf = options?.dxf;
   // The DXF has no future plan: floor −1 stays as drawn.
@@ -553,7 +758,26 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
     // Under floor −1's double-height void (and its stair) floor −2 has no ceiling.
     const voids = spec.id === "floor-2" ? [{ x: 20.4, y: 1.35, w: 11.9, h: 6.3 }] : [];
     // From the DXF the furniture is the sheet's own outlines, each extruded to what it is; the finishes, ceilings and lights stay the rooms'.
-    prims.push(...furnishFloor(rooms, dxf ? [] : items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, lowCeiling: spec.id === "floor-2" ? { x: 44.4, y: 1.3, w: 9.3, h: 15, m: HALL_FRONT - 0.32 - LEVEL.floorMinus2 } : undefined, voids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] }));
+    const lowCeiling = spec.id === "floor-2" ? { x: 44.4, y: 1.3, w: 9.3, h: 15, m: HALL_FRONT - 0.32 - LEVEL.floorMinus2 } : undefined;
+    const gridLines60 = dxf ? dxfCeilingGrid(dxf, spec.id as "floor-2" | "floor-1") : null;
+    // The electrical sheet's tiles (E24-10, OFF in the DXF) say the same ceiling room by room, and where the WCs take 30 cm tiles.
+    const tiles = dxf ? dxfCeilingTiles(dxf, spec.id as "floor-2" | "floor-1") : [];
+    const inTile = (x: number, z: number) => tiles.find((s) => x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1);
+    const grid = gridLines60 ? { ...gridLines60, under: (x: number, z: number) => gridLines60.under(x, z) || !!inTile(x, z) } : null;
+    // The stairs the ceiling plan draws are holes in the ceiling, as the double-height void is.
+    const ceilingVoids = [...voids, ...(grid?.stairs ?? []).map((s) => ({ x: s.x0, y: s.z0, w: s.x1 - s.x0, h: s.z1 - s.z0 }))];
+    const furnishedRaw = furnishFloor(rooms, dxf ? [] : items, { level: spec.level, tag: `${spec.id}:inside`, ceilingM: 3.3, lowCeiling, voids: ceilingVoids, ownFloor: spec.id === "floor-1" ? ["hall"] : [] });
+    // The rooms' light panels, set every 2.4 m from each room's corner, straddled the sheet's T-bars: each goes into the tile it falls in.
+    const furnished = grid ? furnishedRaw.map((p) => (p.type === "box" && p.material === "lightPanel" ? snapToSmallOr(p, grid.segs, inTile) : p)) : furnishedRaw;
+    prims.push(...furnished);
+    // The suspended ceiling as the sheet's ceiling plan draws it ("הנמכת תקרה", a layer left OFF in the DXF): panels where the rooms laid
+    // none, then the 60 cm grid line for line under every panel.
+    if (grid) {
+      const heightAt = (x: number, z: number) => (lowCeiling && x > lowCeiling.x && x < lowCeiling.x + lowCeiling.w && z > lowCeiling.y && z < lowCeiling.y + lowCeiling.h ? lowCeiling.m : 3.3);
+      const filled = ceilingFromGrid(grid, furnished, rooms, spec.outline, spec.level, heightAt, `${spec.id}:inside`);
+      prims.push(...filled);
+      prims.push(...ceilingGridBars([...grid.segs, ...smallTileEdges(tiles)], [...furnished, ...filled], `${spec.id}:inside:ceiling-grid`));
+    }
     const details = dxf ? dxfFloorDetails(dxf, spec.id as "floor-2" | "floor-1") : { counters: [], warnings: [], warningLabels: [], locators: [] };
     if (dxf) {
       // The fixtures the sheet draws in the WCs: a pan with its cistern, a basin on its stand, a counter's basins.
@@ -777,6 +1001,38 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       prims.push({ type: "box", centre: { x: cx, y, z: cz }, size: { x: sx, y: h, z: sz }, material: "stone", tag: "roof:bulkhead" });
   }
 
+  // A raised sill the sheet names ("סף מוגבה", the hall's wheelchair bay): the thin rectangle under its name, 5 cm proud of the floor it
+  // stands on (the highest floor surface under it, the hall's tiers included).
+  if (dxf) {
+    for (const sheet of ["floor-2", "floor-1"] as const) {
+      const lines = dxfLayerLines(dxf, sheet, /./);
+      for (const n of dxfNotes(dxf, sheet).filter((q) => /סף מוגבה/.test(q.text))) {
+        const rects = lines.flatMap((l) => {
+          // Closed by its flag or by its last point back on its first (the hall's is an open five-point polyline that comes home).
+          const home = l.pts.length >= 4 && Math.hypot(l.pts[0]![0] - l.pts[l.pts.length - 1]![0], l.pts[0]![1] - l.pts[l.pts.length - 1]![1]) < 0.01;
+          if (!(l.closed || home) || l.pts.length < 4 || l.pts.length > 5) return [];
+          const xs = l.pts.map((p) => p[0]), zs = l.pts.map((p) => p[1]);
+          const b = { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
+          const [w, d] = [b.x1 - b.x0, b.z1 - b.z0];
+          if (Math.min(w, d) > 0.15 || Math.max(w, d) < 0.6 || Math.max(w, d) > 3) return [];
+          const dist = Math.hypot(Math.max(b.x0 - n.x, 0, n.x - b.x1), Math.max(b.z0 - n.z, 0, n.z - b.z1));
+          return dist < 0.3 ? [{ b, dist }] : [];
+        });
+        const r = rects.sort((p, q) => p.dist - q.dist)[0];
+        if (!r) { noteDrop("pisga:raised-sill-without-outline", `${sheet} (${n.x.toFixed(1)}, ${n.z.toFixed(1)})`); continue; }
+        const { x0, x1, z0, z1 } = r.b;
+        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+        const storey = sheet === "floor-1" ? LEVEL.floorMinus1 : LEVEL.floorMinus2;
+        const floorTop = Math.max(storey, ...prims.flatMap((p) => {
+          if (!(p.tag ?? "").startsWith(sheet) || /:inside:(ceiling|light|furniture)/.test(p.tag ?? "")) return [];
+          if (p.type === "box" && !p.rotY && Math.abs(p.centre.x - cx) < p.size.x / 2 && Math.abs(p.centre.z - cz) < p.size.z / 2) { const top = p.centre.y + p.size.y / 2; return top <= storey + 0.05 && top > storey - 3 ? [top] : []; }
+          return [];
+        }));
+        prims.push({ type: "box", centre: { x: cx, y: floorTop + 0.025, z: cz }, size: { x: x1 - x0, y: 0.05, z: z1 - z0 }, material: "stone", tag: `${sheet}:inside:raised-sill` });
+      }
+    }
+  }
+
   // The emergency stair on the west face, from floor −1's door down to the courtyard: two flights, the one against the building first,
   // each tread as the sheet draws it, the rise shared evenly from +12.77 to +8.29.
   if (dxf) {
@@ -931,8 +1187,12 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: (LEVEL.courtyard + BED_LEVEL + 0.1) / 2, z: (az + bz) / 2 + 0.1 }, size: { x: Math.hypot(bx - ax, bz - az), y: BED_LEVEL + 0.1 - LEVEL.courtyard, z: 0.2 }, rotY: -ang, material: "stone", tag: "site:bed-kerb" });
     }
   }
-  for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: inBed(x, 19.6) ? BED_LEVEL : LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
-  for (const [x, z] of [[44.6, 22.6], [52.4, 22.9], [59.2, 23.4]] as const) prims.push({ type: "tree", at: { x, y: LEVEL.street, z }, height: 6, crown: 2.2, tag: "tree" });
+  // From the PDF the trees stand where its site plan draws them (read by hand); from the DXF the site sheet's own symbols are read, with
+  // the shrubs and the west strip's trees the hand list left out (built with the life round the building, once the ground is known).
+  if (!dxf) {
+    for (const x of [-6.3, -2.2, 2.6, 7.4, 12.1, 16.4, 20.9]) prims.push({ type: "tree", at: { x, y: inBed(x, 19.6) ? BED_LEVEL : LEVEL.courtyard, z: 19.6 }, height: 6.5, crown: 2.4, tag: "tree" });
+    for (const [x, z] of [[44.6, 22.6], [52.4, 22.9], [59.2, 23.4]] as const) prims.push({ type: "tree", at: { x, y: LEVEL.street, z }, height: 6, crown: 2.2, tag: "tree" });
+  }
 
   // Cars: most of the roof's bays taken, and the street's bays 13–18.
   const paint = [0xe8e8e6, 0x23262b, 0x8d9299, 0x6d1f23, 0xd5d7d9, 0x2c3e57, 0x5a5d61, 0xf0efe9];
@@ -1328,17 +1588,10 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
       prims.push({ type: "prism", ring: canopy, y0: 3.75, y1: 4.39, material: "stoneDark", tag: "site:kg-canopy" });
       for (const [x0, x1, z0, z1] of [[10.67, 19.74, -9.32, -8.97], [10.67, 11.02, -8.97, -7.45], [19.39, 19.74, -8.97, -4.20]] as const)
         prims.push({ type: "box", centre: { x: (x0 + x1) / 2, y: 4.49, z: (z0 + z1) / 2 }, size: { x: x1 - x0, y: 0.2, z: z1 - z0 }, material: "stoneDark", tag: "site:kg-canopy" });
-      // Photograph 8 close up: over the door under the block's east half a thin dark canopy (x 27.9–34.5, 1.2 m out, at +2.9), hung on two
-      // tie rods from the wall at +4.3.
-      const [cy, cOut] = [2.9, -8.57];
-      prims.push({ type: "box", centre: { x: 31.2, y: cy, z: (cOut - 7.37) / 2 }, size: { x: 6.6, y: 0.1, z: -(cOut + 7.37) }, material: "darkSteel", tag: "site:kg-door-canopy" });
-      for (const rx of [28.4, 34.0]) {
-        const n = 14;
-        for (let k = 0; k < n; k++) {
-          const tt = (k + 0.5) / n;
-          prims.push({ type: "box", centre: { x: rx, y: 4.3 + (cy + 0.05 - 4.3) * tt, z: -7.37 + (cOut + 0.1 + 7.37) * tt }, size: { x: 0.025, y: (4.3 - cy) / n + 0.02, z: Math.abs(cOut + 7.47) / n + 0.02 }, material: "darkSteel", tag: "site:kg-door-canopy" });
-        }
-      }
+      // Photograph 8 close up: over the door under the block's east half a thin dark canopy, 1.2 m out at +2.9, hung on two tie rods from the
+      // wall. It hangs on the ground floor's face (z −7.22), which ends at x 30.72 (east of it the face steps back to −4.01): run on to 34.5 as
+      // first read, its east end and a rod hung in the air (the user's mark, 2026-11-09).
+      prims.push(...hungCanopy([27.9, -7.22], [30.72, -7.22], [0, -1], 1.2, 3.0, "site:kg-door-canopy"));
       prims.push({ type: "prism", ring: body, y0: base, y1: soffit, material: "existing", tag: "site:kg-upper" });
       // The block over the middle wing is faced in stone (its hatch on 321-F2); the strip's wall is the kindergarten's plain one.
       prims.push({ type: "prism", ring: [[30.74, -2.6], [30.74, -7.24], [24.32, -7.24], [24.32, -2.6]], y0: base, y1: soffit, material: "stone", tag: "site:kg-upper" });
@@ -1401,13 +1654,29 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         console.warn(`pergola at ${((x0 + x1) / 2).toFixed(1)},${((z0 + z1) / 2).toFixed(1)} (+${top.toFixed(2)}) falls inside a built mass: not built`);
         continue;
       }
-      for (const [ax, az, bx, bz] of frameLines) {
-        prims.push({ type: "box", centre: { x: (ax + bx) / 2, y: top - 0.075, z: (az + bz) / 2 }, size: { x: Math.hypot(bx - ax, bz - az), y: 0.15, z: 0.1 }, rotY: -Math.atan2(bz - az, bx - ax), material: "metal", tag: "site:pergola" });
+      // What stands on site is a canopy hung on the wall, not a pergola on posts (the user, 2026-11-09): the frame's box gives its plan, and
+      // the side of it a wall stands behind (built mass 5–40 cm past the side's middle, a metre under the top) is the one it hangs on.
+      const solidAt = (x: number, y: number, z: number) =>
+        prims.some((p) => {
+          if (p.type === "prism") return y >= p.y0 && y <= p.y1 && insidePolygon(p.ring, x, z);
+          if (p.type !== "box" || p.span || !/^(kindergarten|site:kg)/.test(p.tag ?? "")) return false;
+          const [c, s] = [Math.cos(p.rotY ?? 0), Math.sin(p.rotY ?? 0)];
+          const [dx, dz] = [x - p.centre.x, z - p.centre.z];
+          const [lx, lz] = [dx * c - dz * s, dx * s + dz * c];
+          return Math.abs(lx) <= p.size.x / 2 && Math.abs(y - p.centre.y) <= p.size.y / 2 && Math.abs(lz) <= p.size.z / 2;
+        });
+      const sides: Array<{ a: [number, number]; b: [number, number]; out: [number, number]; depth: number }> = [
+        { a: [x0, z1], b: [x1, z1], out: [0, -1], depth: z1 - z0 },
+        { a: [x0, z0], b: [x1, z0], out: [0, 1], depth: z1 - z0 },
+        { a: [x0, z0], b: [x0, z1], out: [1, 0], depth: x1 - x0 },
+        { a: [x1, z0], b: [x1, z1], out: [-1, 0], depth: x1 - x0 },
+      ];
+      const wallSide = sides.find(({ a, b, out }) => [0.05, 0.15, 0.3, 0.4].some((d) => solidAt((a[0] + b[0]) / 2 - out[0] * d, top - 1, (a[1] + b[1]) / 2 - out[1] * d)));
+      if (!wallSide) {
+        noteDrop("pisga:canopy-without-a-wall", () => `${label.text} at ${((x0 + x1) / 2).toFixed(1)},${((z0 + z1) / 2).toFixed(1)}`);
+        continue;
       }
-      for (const [px, pz] of [[x0 + 0.05, z0 + 0.05], [x1 - 0.05, z0 + 0.05], [x0 + 0.05, z1 - 0.05], [x1 - 0.05, z1 - 0.05]] as const) {
-        const g = groundAt(px, pz, true) - 0.2;
-        prims.push({ type: "box", centre: { x: px, y: (top - 0.15 + g) / 2, z: pz }, size: { x: 0.1, y: top - 0.15 - g, z: 0.1 }, material: "metal", tag: "site:pergola-post" });
-      }
+      prims.push(...hungCanopy(wallSide.a, wallSide.b, wallSide.out, wallSide.depth, top, "site:canopy"));
     }
     for (const [ax, az, bx, bz] of kerbs) {
       const len = Math.hypot(bx - ax, bz - az);
@@ -1579,7 +1848,34 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
         }
       }
     }
-    for (const sheet of ["floor-2", "floor-1"] as const) for (const q of dxfFloorDetails(dxf, sheet).warningLabels) if (!placedWarnings.has(`${sheet}|${q[0].toFixed(2)}|${q[1].toFixed(2)}`)) console.warn(`warning surface ${sheet}: "משטח אזהרה" at ${q[0].toFixed(2)},${q[1].toFixed(2)} names no run's end`);
+    // The labels left name no run and the sheet draws no outline for them. Floor −2's six along the platform's south edge come in pairs
+    // 1.8–3.0 m apart, along the edge: each pair the two ends of one strip, 60 cm deep, laid on the paving at the nearest level mark's surface
+    // (the user left it to judgement, 2026-11-09). A label with no partner is counted.
+    for (const sheet of ["floor-2", "floor-1"] as const) {
+      const left = dxfFloorDetails(dxf, sheet).warningLabels.filter((q) => !placedWarnings.has(`${sheet}|${q[0].toFixed(2)}|${q[1].toFixed(2)}`)).sort((a, b) => a[0] - b[0]);
+      const spots = dxfSpotHeights(dxf, sheet);
+      const used = new Set<number>();
+      for (let i = 0; i < left.length; i++) {
+        if (used.has(i)) continue;
+        const p = left[i]!;
+        let j = -1, best = 3.2;
+        for (let k = i + 1; k < left.length; k++) {
+          const d = Math.hypot(left[k]![0] - p[0], left[k]![1] - p[1]);
+          if (!used.has(k) && d < best) { best = d; j = k; }
+        }
+        if (j < 0) {
+          noteDrop("pisga:warning-label-alone", () => `${sheet} (${p[0].toFixed(2)}, ${p[1].toFixed(2)})`);
+          continue;
+        }
+        used.add(i).add(j);
+        const q = left[j]!;
+        const [mx, mz] = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+        const mark = [...spots].sort((a, b) => Math.hypot(a.x - mx, a.z - mz) - Math.hypot(b.x - mx, b.z - mz))[0];
+        const tops = prims.filter((s): s is Extract<Primitive, { type: "prism" }> => s.type === "prism" && /^site:surface/.test(s.tag ?? "") && !/-fill$/.test(s.tag ?? "") && insidePolygon(s.ring, mx, mz)).map((s) => s.y1);
+        const level = tops.length ? tops.sort((a, b) => Math.abs(a - (mark?.level ?? a)) - Math.abs(b - (mark?.level ?? b)))[0]! : groundAt(mx, mz, true);
+        prims.push({ type: "box", centre: { x: mx, y: level + 0.005, z: mz }, size: { x: best + 0.6, y: 0.01, z: 0.6 }, rotY: -Math.atan2(q[1] - p[1], q[0] - p[0]), material: "tactile", tag: "site:tactile-pair" });
+      }
+    }
     // A paving edge's railing beside a stair's side wall that stands as high is the wall's to guard (the walls come after the paving, which
     // needs their levels): its pieces within 0.6 m of a wall reaching over them go.
     const stairWalls = prims.filter((p): p is Extract<Primitive, { type: "box" }> => p.type === "box" && p.tag === "site:retaining-stair");
@@ -1601,7 +1897,34 @@ export async function buildPisga(pdf: Uint8Array | null, options?: { future?: bo
 
   // Life round the building (DXF route): trees along the street's far side and the slopes, shrubs by the colonnade, and people for scale
   // where the sheets show people go — the entrance, the courtyard, the lobby, the hall.
+  // The survey's street furniture (lights, covers, signs, the barrier, garden kerbs), each on the surface the model has at its point:
+  // the highest site surface over it (pavings, the street's drape, terrain), the building's own slabs left out.
+  if (survey) {
+    const surfaces = prims.filter((p) => !/^(floor-|roof:|kindergarten:slab)/.test(p.tag ?? "") && (p.type === "terrain" || p.type === "drape" || p.type === "prism"));
+    const topAt = (x: number, z: number) => {
+      let best = -Infinity;
+      for (const p of surfaces) {
+        if (p.type === "terrain") {
+          const i = Math.round((x - p.x0) / p.dx), j = Math.round((z - p.z0) / p.dx);
+          if (i >= 0 && j >= 0 && i < p.nx && j < p.nz) best = Math.max(best, p.heights[j * p.nx + i]!);
+        } else if (p.type === "drape") {
+          if (!insidePolygon(p.ring, x, z) || p.holes?.some((h) => insidePolygon(h, x, z))) continue;
+          const g = p.grid, i = Math.round((x - g.x0) / g.dx), j = Math.round((z - g.z0) / g.dx);
+          if (i >= 0 && j >= 0 && i < g.nx && j < g.nz) best = Math.max(best, g.heights[j * g.nx + i]! + p.lift);
+        } else if (p.type === "prism" && insidePolygon(p.ring, x, z)) best = Math.max(best, p.y1);
+      }
+      return Number.isFinite(best) ? best : groundAt(x, z, true);
+    };
+    prims.push(...surveyFurniturePrims(survey, topAt));
+  }
   if (dxf) {
+    // The planting the site sheet draws: trees in the courtyard's bed, on the west strip and along the south street; shrubs between.
+    for (const pl of dxfSitePlants(dxf)) {
+      const y = inBed(pl.x, pl.z) ? BED_LEVEL : groundAt(pl.x, pl.z, true);
+      prims.push(pl.kind === "tree"
+        ? { type: "tree", at: { x: pl.x, y, z: pl.z }, height: pl.z > 21 && pl.x > 35 ? 6 : 6.5, crown: pl.z > 21 && pl.x > 35 ? 2.2 : 2.4, tag: "tree" }
+        : { type: "tree", kind: "scrub", at: { x: pl.x, y: y - 0.05, z: pl.z }, height: 1.2, crown: pl.size, tag: "site:plan-shrub" });
+    }
     let seed = 7;
     const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
     for (let x = -60; x < 130; x += 7 + rnd() * 4) { const z = 38 + (x > 20 ? (x - 20) * 0.28 : 0) + rnd() * 3; if (z < 30) continue; prims.push({ type: "tree", at: { x, y: groundAt(x, z, true), z }, height: 5 + rnd() * 2.5, crown: 1.8 + rnd(), tag: "tree" }); }

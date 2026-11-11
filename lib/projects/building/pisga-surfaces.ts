@@ -1,4 +1,5 @@
 import { insidePolygon } from "@/lib/projects/building/assemble";
+import { noteDrop } from "@/lib/projects/drop-log";
 import { railingPrims } from "@/lib/projects/building/pisga-stairs";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
 import { PISGA_DXF } from "@/lib/projects/building/pisga-dxf";
@@ -77,7 +78,11 @@ export function dxfSurfaces(drawing: DxfDrawing, sheet: keyof typeof PISGA_DXF.s
       else outers.push({ ...s, holes: [] });
     }
     for (const o of outers) {
-      if (o.a < 0.5) continue;
+      // Only slivers go: the herringbone paving east of the building came in pieces of 0.04–0.2 m², each a gap once left out (was 0.5 m²).
+      if (o.a < 0.01) {
+        noteDrop("pisga-surfaces:hatch-under-0.01m2", () => `${pattern} on ${p.layer}, ${o.a.toFixed(3)} m² at (${o.r[0]![0].toFixed(1)}, ${o.r[0]![1].toFixed(1)})`);
+        continue;
+      }
       out.push({ ring: o.r, holes: o.holes, kind: kindOf(pattern), pattern, layer: p.layer, colour: p.colour, areaM2: o.a - o.holes.reduce((t, h) => t + area(h), 0) });
     }
   }

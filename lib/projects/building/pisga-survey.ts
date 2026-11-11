@@ -27,7 +27,12 @@ export const toPlan = (p: { x: number; y: number }): [number, number] => [p.x - 
 const DOS_HEBREW = (() => {
   const m = new Map<string, string>();
   const dec = new TextDecoder("windows-1252");
-  for (let b = 0x80; b <= 0x9a; b++) m.set(dec.decode(new Uint8Array([b])), String.fromCharCode(0x5d0 + b - 0x80));
+  // The reader hands some of these bytes over as windows-1252 letters (‚ for 0x82) and others as the bare C1 code (U+008C for 0x8C, a
+  // ל): both map. Left out, "סלעים" read "סעים" and "מחסום" "חסום".
+  for (let b = 0x80; b <= 0x9a; b++) {
+    m.set(dec.decode(new Uint8Array([b])), String.fromCharCode(0x5d0 + b - 0x80));
+    m.set(String.fromCharCode(b), String.fromCharCode(0x5d0 + b - 0x80));
+  }
   return m;
 })();
 /** A survey label in logical order: its DOS Hebrew bytes, read as windows-1252, are letters typed right to left. */
