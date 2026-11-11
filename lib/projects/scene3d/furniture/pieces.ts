@@ -42,7 +42,10 @@ export function bed(spec: PieceSpec): PiecePart[] {
     ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => taperedLeg("foot", "timber", { x: offsetX + sx * (mattressW / 2 - 0.08), z: offsetZ + sz * (mattressD / 2 - 0.08), h: 0.06 }, 0.025, 0.018))),
     cushion("mattress", "linen", { x: offsetX, y: baseH + mattressH / 2, z: offsetZ + 0.01, w: mattressW, h: mattressH, d: mattressD - 0.04 }, { corner: 0.07 }),
     // A timber headboard, raked back a touch, with a bevelled top: not a board stood on its edge.
-    { ...slab("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.05, w: mattressW, h: h * 2.1, d: 0.08 }, 0.03, 0.012), shape: { kind: "extrude" as const, outline: rrect(mattressW, 0.08, 0.03, 6), bevel: 0.012 } },
+    spec.modern
+      ? // An upholstered panel headboard, a little wider than the bed.
+        cushion("headboard", "upholstery", { x: offsetX, y: h * 1.15, z: back + 0.06, w: mattressW + 0.12, h: h * 2.3, d: 0.1 }, { corner: 0.05 })
+      : { ...slab("headboard", "timber", { x: offsetX, y: h * 1.05, z: back + 0.05, w: mattressW, h: h * 2.1, d: 0.08 }, 0.03, 0.012), shape: { kind: "extrude" as const, outline: rrect(mattressW, 0.08, 0.03, 6), bevel: 0.012 } },
   ];
   const pillows = !spec.haredi && mattressW >= DOUBLE_BED_MIN_M ? 2 : 1;
   const pillowW = Math.min(0.62, (mattressW / pillows) * 0.82);
@@ -67,6 +70,28 @@ export function bed(spec: PieceSpec): PiecePart[] {
 /** A table: top, apron and four legs, inset so the legs read as legs. */
 export function table(spec: PieceSpec): PiecePart[] {
   const { w, d, h } = facingBox(spec);
+  if (spec.modern && w >= 0.8 && d >= 0.8) {
+    // A thin slab on two closed frames of black steel, set in from the ends.
+    const topH = 0.03;
+    const long = w >= d;
+    const span = long ? w : d;
+    const across = long ? d : w;
+    const parts: PiecePart[] = [slab("top", "timber", { x: 0, y: h - topH / 2, z: 0, w, h: topH, d }, 0.02, 0.006)];
+    for (const s of [-1, 1]) {
+      const at = s * (span / 2 - Math.min(0.22, span * 0.12));
+      const bar = 0.04;
+      const legH = h - topH;
+      const frame = (x: number, z: number, fw: number, fd: number, y: number, fh: number) =>
+        part("frame", "steel", long ? { x, y, z, w: fw, h: fh, d: fd } : { x: z, y, z: x, w: fd, h: fh, d: fw }, 0.003);
+      parts.push(
+        frame(at, -(across / 2 - 0.08), bar, bar, legH / 2, legH),
+        frame(at, across / 2 - 0.08, bar, bar, legH / 2, legH),
+        frame(at, 0, bar, across - 0.16, legH - bar / 2, bar),
+        frame(at, 0, bar, across - 0.16, bar / 2, bar),
+      );
+    }
+    return parts;
+  }
   const topH = 0.04;
   const legR = Math.min(0.04, w * 0.07, d * 0.07);
   const inset = Math.min(0.1, w * 0.15, d * 0.15);
@@ -132,6 +157,20 @@ export function seat(spec: PieceSpec): PiecePart[] {
   if (w > 1.0) return sofa(w, d, h);
   // An armchair: a sofa of one place. דירה 14's is 77 × 67 cm.
   if (w > 0.7 && d > 0.6) return sofa(w, d, h);
+  if (spec.modern) {
+    // A shell chair: one upholstered piece wrapping seat and back, on four slim black legs splayed a touch.
+    const seatY = h;
+    const parts: PiecePart[] = [
+      cushion("pad", "upholstery", { x: 0, y: seatY - 0.04, z: 0.02, w: w * 0.98, h: 0.08, d: d * 0.9 }, { corner: 0.12 }),
+      { ...cushion("back", "upholstery", { x: 0, y: seatY + 0.2, z: -d / 2 + 0.06, w: w * 0.96, h: 0.38, d: 0.07 }, { corner: 0.14 }), tiltX: -0.16 },
+    ];
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        parts.push(taperedLeg("leg", "steel", { x: sx * (w / 2 - 0.06), z: sz * (d / 2 - 0.07), h: seatY - 0.08 }, 0.011, 0.008));
+      }
+    }
+    return parts;
+  }
   const padH = 0.06;
   const legR = Math.min(0.022, w * 0.06);
   const parts: PiecePart[] = [
@@ -147,6 +186,37 @@ export function seat(spec: PieceSpec): PiecePart[] {
       parts.push(taperedLeg("leg", "timber", { x: sx * (w / 2 - legR * 2.2), z: sz * (d / 2 - legR * 2.2), h: rear ? h + 0.42 : h - padH }, legR, legR * 0.65));
     }
   }
+  return parts;
+}
+
+/**
+ * A bar stool at an island or a counter: a round upholstered seat on four
+ * slim metal legs, a footrest ring between them. No back, so no way to stand
+ * it the wrong way round — built as a dining chair, an island's stools faced
+ * the worktop with their backs and stood in it.
+ */
+export function stool(spec: PieceSpec): PiecePart[] {
+  const { w, d, h } = facingBox(spec);
+  const r = Math.min(0.2, Math.min(w, d) * 0.46);
+  const padH = 0.075;
+  const parts: PiecePart[] = [
+    turned("pad", "upholstery", { x: 0, y: h - padH / 2, z: 0 }, r, padH, [
+      [0, -padH / 2],
+      [r * 0.82, -padH / 2],
+      [r, -padH / 2 + 0.018],
+      [r, padH / 2 - 0.022],
+      [r * 0.86, padH / 2],
+      [0, padH / 2],
+    ]),
+  ];
+  const leg = r * 0.62;
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    parts.push(taperedLeg("leg", "metal", { x: sx * leg, z: sz * leg, h: h - padH }, 0.012, 0.009));
+  }
+  // The footrest: a ring round the legs, a third of the way up.
+  const ring: Array<[number, number, number]> = [];
+  for (let i = 0; i <= 24; i++) ring.push([Math.cos((i / 24) * Math.PI * 2) * leg * 1.02, 0, Math.sin((i / 24) * Math.PI * 2) * leg * 1.02]);
+  parts.push(tube("footrest", "metal", { x: 0, y: h * 0.38, z: 0, w: leg * 2.1, h: 0.02, d: leg * 2.1 }, ring, 0.008));
   return parts;
 }
 

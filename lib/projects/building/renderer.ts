@@ -1,13 +1,90 @@
 import { readFile } from "fs/promises";
+import { createRequire } from "module";
 import path from "path";
 
 import type { HTTPRequest } from "puppeteer-core";
 import sharp from "sharp";
 
 import { env } from "@/lib/env";
+import { createLogger } from "@/lib/logger";
+import { noteDrop } from "@/lib/projects/drop-log";
 import { launchChromium } from "@/lib/pdf/chromium-launch";
 import { forTracing } from "@/lib/projects/building/cut-model";
 import { BUILDING_ORIGIN, buildingPageHtml, type BuildingRenderPayload } from "@/lib/projects/building/render-page";
+
+const log = createLogger("building-renderer");
+
+/**
+ * A package's folder found the way Node finds it, from the working directory up: a git worktree has no
+ * node_modules of its own and walks up to the main checkout's (2026-10-26: every Wolf frame timed out there).
+ * `up` climbs from the resolved entry file (three: build/three.cjs → 2). Falls back to cwd/node_modules/<rel>.
+ */
+function packageDir(name: string, up: number, rel: string): string {
+  try {
+    let dir = createRequire(path.join(process.cwd(), "noop.js")).resolve(name);
+    for (let i = 0; i < up; i++) dir = path.dirname(dir);
+    return dir;
+  } catch {
+    return path.join(process.cwd(), "node_modules", rel);
+  }
+}
+
+/** A primitive with a non-finite number in it: a raster box just vanishes, but in the tracer's BVH it can scramble the whole frame. */
+function hasNonFinite(value: unknown, depth = 0): boolean {
+  if (typeof value === "number") return !Number.isFinite(value);
+  if (depth > 4 || value == null || typeof value !== "object") return false;
+  if (Array.isArray(value)) {
+    for (const v of value) if (hasNonFinite(v, depth + 1)) return true;
+    return false;
+  }
+  for (const v of Object.values(value)) if (hasNonFinite(v, depth + 1)) return true;
+  return false;
+}
+
+/** The payload without primitives the page cannot draw, each one counted (drop-log) — never silently. */
+function withFinitePrimitives(payload: BuildingRenderPayload): BuildingRenderPayload {
+  const prims = payload.model.primitives;
+  const bad = new Set(prims.filter((p) => hasNonFinite(p)));
+  if (!bad.size) return payload;
+  for (const p of bad) noteDrop("renderer:non-finite-primitive", () => `${p.type} ${"tag" in p ? String(p.tag ?? "") : ""}`);
+  return { ...payload, model: { ...payload.model, primitives: prims.filter((p) => !bad.has(p)) } };
+}
+
+/** Below this mass agreement with the raster frame of the same camera a traced frame is spoiled (dwf-booklet's measured rule, now for every caller). */
+const TRACE_MIN_MASS_MATCH = 0.6;
+
+/**
+ * One traced frame, checked. A tracer that ran out of GPU drew floors without walls (Pisga's north facade, a
+ * scrambled classroom, white frames at 2048 samples) and nothing caught it but an eye. The plain raster frame of the
+ * same (cut) camera is drawn too — seconds — and kept whenever the traced one fails, is blank, or loses its masses.
+ */
+async function verifiedTracedFrame(
+  payload: BuildingRenderPayload,
+  options: { outputWidthPx?: number; timeoutMs?: number } | undefined,
+): Promise<Buffer> {
+  const plainPayload: BuildingRenderPayload = { ...forTracing(payload), pathTrace: undefined };
+  const plainOf = async () =>
+    (await renderBuildingFrames([plainPayload], { ...options, verifyTrace: false, timeoutMs: Math.max(options?.timeoutMs ?? 60_000, 300_000) }))[0]!;
+  let traced: Buffer;
+  try {
+    traced = (await renderBuildingFrames([payload], { ...options, verifyTrace: false }))[0]!;
+  } catch (err: unknown) {
+    log.warn("traced frame failed; raster kept", { error: (err instanceof Error ? err.message : String(err)).slice(0, 300) });
+    noteDrop("renderer:traced-frame-failed", () => (err instanceof Error ? err.message : String(err)).slice(0, 120));
+    return plainOf();
+  }
+  const plain = await plainOf();
+  const stats = await sharp(traced).stats();
+  const flat = stats.channels.slice(0, 3).every((c) => c.stdev < 2);
+  const { massMatch } = await import("@/lib/projects/building/finish");
+  const mass = flat ? 0 : await massMatch(plain, traced);
+  if (flat || mass < TRACE_MIN_MASS_MATCH) {
+    log.warn("traced frame spoiled; raster kept", { flat, mass: Number(mass.toFixed(2)), samples: payload.pathTrace?.samples });
+    noteDrop("renderer:traced-frame-spoiled", `${flat ? "blank" : `mass ${mass.toFixed(2)}`}, ${payload.width}px, ${payload.pathTrace?.samples} samples`);
+    return plain;
+  }
+  return traced;
+}
 
 /**
  * The geometric render is local Chrome plus three.js. Path tracing needs the
@@ -27,9 +104,17 @@ function framesForHost(payloads: BuildingRenderPayload[]): BuildingRenderPayload
  */
 export async function renderBuildingFrames(
   payloads: BuildingRenderPayload[],
-  options?: { outputWidthPx?: number; timeoutMs?: number },
+  options?: {
+    outputWidthPx?: number;
+    timeoutMs?: number;
+    /** Check each traced frame against the plain raster frame of the same camera and keep the plain one when the traced is spoiled (default on). */
+    verifyTrace?: boolean;
+  },
 ): Promise<Buffer[]> {
   payloads = framesForHost(payloads);
+  if (payloads.length === 1 && payloads[0]!.pathTrace && options?.verifyTrace !== false) {
+    return [await verifiedTracedFrame(payloads[0]!, options)];
+  }
   // A traced frame leaves the GPU process holding its scene's textures, and
   // the next traced frame in the same browser came out with its walls
   // missing. Each traced frame gets a browser of its own.
@@ -66,19 +151,22 @@ export async function renderBuildingFrames(
     cache.set(file, text);
     return text;
   };
-  const three = path.join(process.cwd(), "node_modules", "three");
+  const three = packageDir("three", 2, "three");
   // The path tracer and its BVH, for a frame that asks for one: local only.
-  const tracer = path.join(process.cwd(), "node_modules", "three-gpu-pathtracer", "build");
-  const bvh = path.join(process.cwd(), "node_modules", "three-mesh-bvh", "build");
+  const tracer = packageDir("three-gpu-pathtracer", 1, "three-gpu-pathtracer/build");
+  const bvh = packageDir("three-mesh-bvh", 1, "three-mesh-bvh/build");
   const out: Buffer[] = [];
   try {
-    for (const payload of payloads) {
+    for (const [index, payload] of payloads.entries()) {
       const page = await browser.newPage();
+      const pageErrors: string[] = [];
       page.on("console", (m) => {
-        if (m.type() === "error") process.stderr.write(`[page] ${m.text()}\n`);
+        if (m.type() !== "error" || /favicon|Failed to load resource/.test(m.text())) return;
+        pageErrors.push(m.text().slice(0, 200));
+        process.stderr.write(`[page] ${m.text()}\n`);
       });
       await page.setRequestInterception(true);
-      const html = buildingPageHtml(forTracing(payload));
+      const html = buildingPageHtml(forTracing(withFinitePrimitives(payload)));
       page.on("request", (req: HTTPRequest) => {
         const url = req.url();
         if (!url.startsWith(BUILDING_ORIGIN)) return void req.abort();
@@ -103,11 +191,14 @@ export async function renderBuildingFrames(
         void source(file).then(
           (body) => req.respond({ status: 200, contentType: "text/javascript; charset=utf-8", body }),
           () => {
+            // A missing module used to leave the frame waiting its whole timeout (60 s; 25 min traced) — the worktree "time out".
             process.stderr.write(`[page] missing ${file}\n`);
+            pageErrors.push(`missing ${file}`);
             return req.respond({ status: 404, body: "" });
           },
         );
       });
+      const frameName = `frame ${index + 1}/${payloads.length} (${payload.width}×${payload.height}${payload.pathTrace ? `, traced ${payload.pathTrace.samples}` : ""})`;
       try {
         // The page draws as it loads: on the website's software GL (no GPU)
         // a room took past 25 s to load where this machine's GPU takes 3.
@@ -126,6 +217,9 @@ export async function renderBuildingFrames(
             .jpeg({ quality: 93, chromaSubsampling: "4:4:4" })
             .toBuffer(),
         );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new Error(`${frameName}: ${msg}${pageErrors.length ? `; page: ${pageErrors.slice(0, 5).join(" | ")}` : ""}`);
       } finally {
         await page.close().catch(() => undefined);
       }

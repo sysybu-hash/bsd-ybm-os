@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { BuiltFlat } from "@/lib/projects/floorplan-build";
 import type { SegmentedRoom } from "@/lib/projects/floorplan-segment";
 import { fillEnclosedHoles, mergeSpanRows, outlineEdges, rectsBounds, type Rect } from "@/lib/projects/scene3d/floors";
@@ -15,6 +16,8 @@ import {
   RAIL_CAP_W_M,
   RAIL_CAP_M,
   SLIDER_MIN_CLEAR_M,
+  WINDOW_SASH_FROM_M,
+  WINDOW_SASH_M,
   TERRACE_DROP_M,
   WALL_HEIGHT_M,
 } from "@/lib/projects/scene3d/standards";
@@ -157,6 +160,8 @@ export type BuildSceneOptions = {
   haredi?: boolean;
   /** The full rule set, where the caller has the style kit in hand. */
   rules?: AudienceRules;
+  /** Contemporary furniture forms (see PieceSpec.modern). */
+  modern?: boolean;
 };
 
 /**
@@ -460,6 +465,39 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
           ? { x: Math.min(x, x + dx), y: y - t / 2, w: Math.abs(dx), h: t }
           : { x: x - t / 2, y: Math.min(y, y + dy), w: t, h: Math.abs(dy) };
       meshes.push(boxFrom(p, leafRect, 0.01, headM, "furniture", "joinery", `${id}/leaf`));
+      // A lever on both faces near the free edge: a leaf without one read as a board leaning in the doorway.
+      const along = Math.abs(dx) >= Math.abs(dy);
+      const tip = { x: x + dx - Math.sign(dx || 1) * (along ? 0.07 * upm : 0), y: y + dy - Math.sign(dy || 1) * (along ? 0 : 0.07 * upm) };
+      const lever: Rect = along
+        ? { x: tip.x - 0.06 * upm, y: tip.y - (t / 2 + 0.05 * upm), w: 0.12 * upm, h: t + 0.1 * upm }
+        : { x: tip.x - (t / 2 + 0.05 * upm), y: tip.y - 0.06 * upm, w: t + 0.1 * upm, h: 0.12 * upm };
+      meshes.push(boxFrom(p, lever, 0.98, 1.0, "furniture", "metal", `${id}/handle`));
+    }
+    // A long window is casement leaves, not one fixed plate: a stile between each pair.
+    if (kind === "window" && clearM > WINDOW_SASH_FROM_M) {
+      const leaves = Math.max(2, Math.round(clearM / WINDOW_SASH_M));
+      const r = bandToRect(opening);
+      const depth = Math.min(r.h, r.w, 0.05 * upm);
+      const stile = 0.04 * upm;
+      for (let i = 1; i < leaves; i++) {
+        const t = i / leaves;
+        const mid: Rect =
+          opening.orientation === "h"
+            ? { x: r.x + r.w * t - stile / 2, y: r.y + r.h / 2 - depth / 2, w: stile, h: depth }
+            : { x: r.x + r.w / 2 - depth / 2, y: r.y + r.h * t - stile / 2, w: depth, h: stile };
+        meshes.push(boxFrom(p, mid, sillM, headM, "frame", "metal", `${id}/sash:${i}`));
+      }
+    }
+    // A slider is two panes, one behind the other, meeting at a mullion.
+    if (kind === "slider") {
+      const r = bandToRect(opening);
+      // A 5 × 7 cm profile at the glass line, not the wall's whole depth: a deep band made it a pillar.
+      const depth = Math.min(r.h, r.w, 0.07 * upm);
+      const mid: Rect =
+        opening.orientation === "h"
+          ? { x: r.x + r.w / 2 - 0.025 * upm, y: r.y + r.h / 2 - depth / 2, w: 0.05 * upm, h: depth }
+          : { x: r.x + r.w / 2 - depth / 2, y: r.y + r.h / 2 - 0.025 * upm, w: depth, h: 0.05 * upm };
+      meshes.push(boxFrom(p, mid, 0, headM, "frame", "metal", `${id}/mullion`));
     }
   });
 
@@ -735,6 +773,7 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
       haredi: options?.rules?.singleBeds ?? options?.haredi,
       ...(piece.fixture ? { fixture: piece.fixture } : {}),
       ...(doubled.has(piece) ? { double: true } : {}),
+      ...(options?.modern ? { modern: true } : {}),
       ...(holes.length ? { holes } : {}),
     })) {
       const painted = kitchenColumn && (built.material === "timber" || built.material === "joinery");
@@ -752,6 +791,68 @@ export function buildScene(input: SceneInput, options?: BuildSceneOptions): Flat
         ...(built.tiltX ? { tiltX: built.tiltX } : {}),
         ...(built.tiltZ ? { tiltZ: built.tiltZ } : {}),
       });
+    }
+    // A kitchen run against a wall carries its wall cabinets: a sheet draws the
+    // worktop and leaves the cupboards above it to the reader. Only where its
+    // back is on a wall and no window or door is in that wall — an island, or a
+    // run under the window, has none.
+    const kitchenRun =
+      kind === "counter" &&
+      !(host && isWetRoom(host.room.kind as SceneRoomKind)) &&
+      furniture.some((q) => (q.kind === "sink" || q.kind === "hob") && q.x + q.w / 2 > box.x && q.x + q.w / 2 < box.x + box.w && q.y + q.h / 2 > box.y && q.y + q.h / 2 < box.y + box.h);
+    if (kitchenRun) {
+      const step = 0.1 * upm;
+      // Where along one side of the run its back is on a wall with no window or door in it.
+      const sideOk = (side: "north" | "south" | "east" | "west") => {
+        const along = side === "north" || side === "south";
+        const back = side === "north" ? box.y : side === "south" ? box.y + box.h : side === "west" ? box.x : box.x + box.w;
+        const lo = along ? box.x : box.y;
+        const len = along ? box.w : box.h;
+        const ok: boolean[] = [];
+        for (let t = lo + step / 2; t < lo + len; t += step) {
+          const out = side === "north" || side === "west" ? -0.08 * upm : 0.08 * upm;
+          const q = along ? { x: t, y: back + out } : { x: back + out, y: t };
+          const onWall = distanceToRects(q, wallRectsAll) <= 0.06 * upm;
+          const at = project(p, q.x, q.y);
+          const open = openings.some((o) => Math.abs(o.centre.x - at.x) <= o.size.x / 2 + 0.05 && Math.abs(o.centre.z - at.z) <= o.size.z / 2 + 0.15);
+          ok.push(onWall && !open);
+        }
+        return ok;
+      };
+      // The back is the long side on the wall. `facing` alone put דירה 14's sink
+      // run's back on its open side, and the run along a blank wall had no cupboards.
+      const sides: Array<"north" | "south" | "east" | "west"> = box.w >= box.h ? ["north", "south"] : ["west", "east"];
+      const scored = sides.map((side) => ({ side, ok: sideOk(side) }));
+      const count = (s: { side: string; ok: boolean[] }) => s.ok.filter(Boolean).length + (s.side === facing ? 0.5 : 0);
+      const best = [...scored].sort((a, b) => count(b) - count(a))[0]!;
+      const side = best.side;
+      const ok = best.ok;
+      const along = side === "north" || side === "south";
+      const back = side === "north" ? box.y : side === "south" ? box.y + box.h : side === "west" ? box.x : box.x + box.w;
+      const lo = along ? box.x : box.y;
+      let runStart = -1;
+      for (let i = 0; i <= ok.length; i++) {
+        if (i < ok.length && ok[i]) {
+          if (runStart < 0) runStart = i;
+          continue;
+        }
+        if (runStart >= 0 && (i - runStart) * step >= 0.4 * upm) {
+          const a = lo + runStart * step;
+          const b = lo + i * step;
+          const depth = 0.35 * upm;
+          const r: Rect = along
+            ? { x: a, y: side === "north" ? back : back - depth, w: b - a, h: depth }
+            : { x: side === "west" ? back : back - depth, y: a, w: depth, h: b - a };
+          const c = project(p, r.x + r.w / 2, r.y + r.h / 2);
+          const sx = r.w / upm;
+          const sz = r.h / upm;
+          // From the splashback (1.50) to a line under the ceiling's cove (2.45): one top line for every run, as a fitted kitchen has.
+          meshes.push({ kind: "furniture", material: "joinery", centre: { x: c.x, y: 1.975, z: c.z }, size: { x: sx, y: 0.95, z: sz }, sourceId: `furniture:${index}/upper`, round: 0.004 });
+          // The warm strip under the cupboards, over the worktop.
+          meshes.push({ kind: "furniture", material: "lamp", centre: { x: c.x, y: 1.495, z: c.z }, size: { x: along ? sx - 0.04 : 0.03, y: 0.01, z: along ? 0.03 : sz - 0.04 }, sourceId: `furniture:${index}/underlight` });
+        }
+        runStart = -1;
+      }
     }
   });
 
@@ -875,7 +976,8 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
   const inAny = (rects: ReturnType<typeof rectOf>[], x: number, z: number) =>
     rects.some((r) => x >= r.x0 - E && x <= r.x1 + E && z >= r.z0 - E && z <= r.z1 + E);
   // A side inside another wall is a corner, where the wall turns: it stands.
-  const walls = meshes.filter((m) => m.kind === "wall").map(rectOf);
+  // A window's sill and head count: a pier between two windows has only them at its ends, and went.
+  const walls = meshes.filter((m) => m.kind === "wall" || m.kind === "wallSill" || m.kind === "wallHead").map(rectOf);
   // Terrace first: the flat's floor runs on under its terraces, and a stub
   // with terrace on both sides — 17's level mark's leader, read as a wall in
   // the middle of its terrace — stood on that floor.
@@ -909,7 +1011,11 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
       const [a, b] = alongX
         ? [side(t, m.centre.z - off), side(t, m.centre.z + off)]
         : [side(m.centre.x - off, t), side(m.centre.x + off, t)];
-      return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (a === "terrace") !== (b === "terrace");
+      // Wall at both ends — a pier between two windows, whose glass the reading floods as balcony — stands too.
+      const [wa, wb] = alongX
+        ? [inAny(walls, t, m.centre.z - off), inAny(walls, t, m.centre.z + off)]
+        : [inAny(walls, m.centre.x - off, t), inAny(walls, m.centre.x + off, t)];
+      return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (a === "terrace") !== (b === "terrace") || (wa && wb);
     });
     // A stub with no floor of the flat beside it is no parapet: a terrace's
     // edge runs its length, and 18's 35 cm block at its level mark stood
@@ -923,9 +1029,19 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
         const [a, b] = alongX
           ? [side(t, m.centre.z - far), side(t, m.centre.z + far)]
           : [side(m.centre.x - far, t), side(m.centre.x + far, t)];
-        return a === "floor" || b === "floor" || a === "wall" || b === "wall";
+        const [wa, wb] = alongX
+          ? [inAny(walls, t, m.centre.z - far), inAny(walls, t, m.centre.z + far)]
+          : [inAny(walls, m.centre.x - far, t), inAny(walls, m.centre.x + far, t)];
+        // A short run with the terrace on one side only is the parapet, kept:
+        // דירה 20's small terrace lost the piece of wall that closed its corner.
+        const parapet = (a === "terrace") !== (b === "terrace");
+        const thick = Math.min(m.size.x, m.size.z) >= 0.08;
+        return a === "floor" || b === "floor" || a === "wall" || b === "wall" || (wa && wb) || (parapet && thick);
       }).some(Boolean);
-      if (!floorBeside) continue;
+      if (!floorBeside) {
+        noteDrop("build-scene:lone-wall-stub-under-0.6m", () => `${length.toFixed(2)} m at (${m.centre.x.toFixed(2)}, ${m.centre.z.toFixed(2)})`);
+        continue;
+      }
     }
     if (stands.every(Boolean)) {
       out.push(m);
@@ -941,6 +1057,7 @@ export function wallsBesideFloor(meshes: SceneBox[]): SceneBox[] {
       while (j < slices && stands[j]) j++;
       const from = start + step * i;
       const to = start + step * j;
+      if (to - from < 0.15) noteDrop("build-scene:wall-stretch-under-0.15m", () => `${(to - from).toFixed(2)} m`);
       if (to - from >= 0.15) {
         const mid = (from + to) / 2;
         out.push({

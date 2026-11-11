@@ -1,7 +1,12 @@
 import { readFile } from "fs/promises";
+import { createRequire } from "module";
 import path from "path";
 
 import type { Browser, HTTPRequest, Page } from "puppeteer-core";
+
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger("scene-page");
 
 /**
  * A page that can run three.js, served to Chromium off disk.
@@ -22,10 +27,19 @@ const THREE_FILES = ["three.module.js", "three.core.js"] as const;
 
 const threeCache = new Map<string, string>();
 
+/** three/build found the way Node finds it: a git worktree has no node_modules and walks up to the main checkout's. */
+function threeBuildDir(): string {
+  try {
+    return path.dirname(createRequire(path.join(process.cwd(), "noop.js")).resolve("three"));
+  } catch {
+    return path.join(process.cwd(), "node_modules", "three", "build");
+  }
+}
+
 async function threeSource(file: string): Promise<string> {
   const cached = threeCache.get(file);
   if (cached) return cached;
-  const full = path.join(process.cwd(), "node_modules", "three", "build", file);
+  const full = path.join(threeBuildDir(), file);
   const text = await readFile(full, "utf8");
   threeCache.set(file, text);
   return text;
@@ -50,7 +64,11 @@ export async function openScenePage(browser: Browser, html: string): Promise<Pag
     if ((THREE_FILES as readonly string[]).includes(name)) {
       void threeSource(name).then(
         (body) => req.respond({ status: 200, contentType: "text/javascript; charset=utf-8", body }),
-        () => req.abort(),
+        (err: unknown) => {
+          // An abort here left the scene waiting its whole timeout with nothing said.
+          log.warn("three module missing", { file: name, error: (err instanceof Error ? err.message : String(err)).slice(0, 200) });
+          return req.respond({ status: 404, contentType: "text/plain", body: "missing" });
+        },
       );
       return;
     }

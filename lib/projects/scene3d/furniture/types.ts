@@ -28,6 +28,8 @@ export type PieceSpec = {
   holes?: Array<{ x: number; z: number; w: number; d: number }>;
   /** A kitchen sink of two bowls: a haredi kitchen's one drawn sink (sinks.ts). */
   double?: boolean;
+  /** Contemporary forms: a shell chair on metal legs, a slab table on frame legs, an upholstered headboard. */
+  modern?: boolean;
 };
 
 export type PiecePart = {

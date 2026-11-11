@@ -1,5 +1,5 @@
 import { GOTTLIEB_ARCHITECT_PROFILE, profileFor } from "@/lib/projects/building/cad-layers";
-import { dxfFacades, dxfSheets, houseInventory, modelOf, POCHE_PEN, readDxfHouse, sheetGeometryFromDxf, storeyOf } from "@/lib/projects/building/dxf-house";
+import { dxfFacades, dxfSheets, houseInventory, modelOf, pairedWallFaces, POCHE_PEN, readDxfHouse, sheetGeometryFromDxf, storeyOf } from "@/lib/projects/building/dxf-house";
 import { DWF_FLOOR_UNITS_PER_METRE } from "@/lib/projects/dwf-building";
 import { cleanDxfText, fillTriangles, flattenDxf, readDxfDrawing, type Pt } from "@/lib/projects/dxf-drawing";
 
@@ -251,5 +251,26 @@ describe("dxf-house: a facades file's elevations", () => {
       expect(g.texts.some((t) => t.text.includes("2.97"))).toBe(false);
       expect(g.display!.texts!.map((t) => t.text)).toEqual(["+2.97"]);
     }
+  });
+});
+
+describe("pairedWallFaces", () => {
+  const k = 100; // page units a metre
+  it("fills between two faces a wall's thickness apart, over the run they share", () => {
+    const quads = pairedWallFaces(
+      [
+        [[0, 0], [400, 0]],
+        [[100, 20], [500, 20]],
+      ],
+      k,
+    );
+    expect(quads).toHaveLength(1);
+    const xs = quads[0]!.map(([x]) => x);
+    expect(Math.min(...xs)).toBeCloseTo(100);
+    expect(Math.max(...xs)).toBeCloseTo(400);
+  });
+  it("leaves a room's width and a lone face unfilled", () => {
+    expect(pairedWallFaces([[[0, 0], [400, 0]], [[0, 300], [400, 300]]], k)).toHaveLength(0);
+    expect(pairedWallFaces([[[0, 0], [400, 0]]], k)).toHaveLength(0);
   });
 });

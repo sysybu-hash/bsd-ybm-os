@@ -71,6 +71,15 @@ const serverSchema = z.object({
    * only: the tracer is a development dependency the platform does not carry.
    */
   FLOORPLAN_TRACE_SAMPLES: optStr,
+  /**
+   * Which tracer photographs a measured still. "cycles" uses Blender's
+   * Cycles on this machine (BLENDER_BIN, or blender on PATH). Anything else
+   * keeps the Chromium raster, and a numeric FLOORPLAN_TRACE_SAMPLES still
+   * selects the three.js path tracer.
+   */
+  FLOORPLAN_TRACE_ENGINE: optStr,
+  /** Absolute path to blender.exe. Cycles is skipped when this is empty and blender is not on PATH. */
+  BLENDER_BIN: optStr,
   GEMINI_OMNI_VOICE_MODEL: optStr,
   // Per-scan-type model overrides — allows env-based tuning without redeploy
   GEMINI_INVOICE_MODEL: optStr,

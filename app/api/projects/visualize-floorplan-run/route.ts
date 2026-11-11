@@ -314,6 +314,7 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
       dwfUnit,
       startedAtMs,
       ...(choice ? { structure: choice.structure, planIndex: choice.planIndex } : {}),
+      ...(dwfUnit ? { unitNumber: dwfUnit.unit } : {}),
     });
 
     try {

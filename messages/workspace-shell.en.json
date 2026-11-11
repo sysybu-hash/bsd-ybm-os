@@ -747,6 +747,8 @@
         },
         "uploadTitle": "Upload the plan",
         "uploadHint": "PDF, DXF, DWG or a DWF permit strip. For a private house you can pick several files at once — one per storey and one of facades.",
+        "unitNumber": "Apartment number",
+        "unitNumberHint": "On a whole floor: the number inside the diamond by the entrance door, for example 14. Empty — the whole floor, at the file's own scale.",
         "chooseFiles": "Choose files",
         "identifying": "Reading the file and identifying what it holds…",
         "identifyFailed": "Identifying the file failed",

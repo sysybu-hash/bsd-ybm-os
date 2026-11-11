@@ -14,7 +14,7 @@ import type { MaterialId } from "@/lib/projects/scene3d/types";
  * whose audience is haredi gets exactly the rules the haredi presets get.
  */
 
-export type MaterialSpec = { color: number; roughness: number; metalness: number; opacity?: number };
+export type MaterialSpec = { color: number; roughness: number; metalness: number; opacity?: number; /** Light the face gives off by itself, a colour. */ emissive?: number };
 
 export type SceneLighting = {
   /** Colour temperature of the interior lamps and of the sun. */
@@ -37,6 +37,8 @@ export type SceneStyle = {
   materials: Record<MaterialId, MaterialSpec>;
   lighting: SceneLighting;
   rules: AudienceRules;
+  /** What shows where no surface is: paper by default; a sky for a frame that looks up out of an open courtyard. */
+  backdrop?: number;
 };
 
 /** The neutral finish every style starts from and then overrides. */
@@ -51,12 +53,16 @@ const BASE: Record<MaterialId, MaterialSpec> = {
   joinery: { color: 0xece7de, roughness: 0.45, metalness: 0 },
   stoneFrame: { color: 0xd7c4a4, roughness: 0.9, metalness: 0 },
   metal: { color: 0x9a958c, roughness: 0.3, metalness: 0.85 },
+  aluminium: { color: 0x6c6f73, roughness: 0.42, metalness: 0.55 },
   linen: { color: 0xf6f2e9, roughness: 0.9, metalness: 0 },
   upholstery: { color: 0xd6c9b2, roughness: 0.95, metalness: 0 },
   timber: { color: 0xa5764c, roughness: 0.5, metalness: 0 },
   worktop: { color: 0xe9e4db, roughness: 0.3, metalness: 0 },
   ceramic: { color: 0xf8fbfc, roughness: 0.12, metalness: 0 },
   steel: { color: 0x8f969d, roughness: 0.25, metalness: 0.8 },
+  foliage: { color: 0x4f6b3a, roughness: 0.85, metalness: 0 },
+  grass: { color: 0x6f8f4a, roughness: 0.95, metalness: 0 },
+  lamp: { color: 0xfff3dc, roughness: 0.5, metalness: 0, emissive: 0xffe2b0 },
   neutral: { color: 0xc9b89c, roughness: 0.8, metalness: 0 },
 };
 

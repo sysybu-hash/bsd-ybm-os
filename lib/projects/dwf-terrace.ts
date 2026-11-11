@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { DwfFloor } from "@/lib/projects/dwf-floor";
 import type { DwfGeometry } from "@/lib/projects/floorplan-dwf";
 import { textLines } from "@/lib/projects/floor-split";
@@ -265,7 +266,10 @@ export function readDwfTerraces(floor: DwfFloor, sheet: DwfGeometry): DwfTerrace
     const pix = [...new Set(rawPix)];
     if (open || pix.length > limit) continue;
     const areaM2 = (pix.length * cm * cm) / 10_000;
-    if (areaM2 < 1.5) continue;
+    if (areaM2 < 1.5) {
+      if (areaM2 >= 0.3) noteDrop("dwf-terrace:terrace-under-1.5m2", `${areaM2.toFixed(2)} m²`);
+      continue;
+    }
     // The flat: the one whose rooms the terrace's edge looks into most.
     const votes = new Map<number, number>();
     // Across a window, a door, a planter between the terrace and the wall.

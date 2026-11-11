@@ -36,14 +36,23 @@ export type PlanKey = {
   markers: Array<{ fx: number; fy: number; n: number }>;
   /** A bar of `metres` is `fraction` of the render's width. */
   scale: { fraction: number; metres: number };
-  /** North in the plan's frame (x right, z down the picture). */
-  north: { x: number; z: number };
+  /** North in the plan's frame (x right, z down the picture). None where the drawing does not mark it: no arrow is drawn. */
+  north?: { x: number; z: number };
+  /** The line under the key; by default, the one for a pair of mirrored homes. */
+  note?: string;
 };
 
 /** A table of the booklet's data: its cells are HTML, escaped by whoever fills them. */
 export type BookletTable = { title: string; note?: string; head: string[]; rows: string[][]; foot?: string[] };
 
-export type BuildingBookletPlate = { kicker: string; title: string; caption: string; image: BookletImage };
+export type BuildingBookletPlate = {
+  kicker: string;
+  title: string;
+  caption: string;
+  image: BookletImage;
+  /** A small plan of where the picture was taken from and which way it looks, set in the frame's corner. */
+  locator?: BookletImage;
+};
 
 /**
  * A project of several models in one booklet: one cover for the project, then
@@ -145,7 +154,13 @@ table.data tfoot td { font-weight: 700; background: #f5f3ff; }
 .opener-tables .data-block { margin-bottom: 0; }
 .compare.stack { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 6px; }
 .data-page { flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 16px 32px; columns: 3; column-gap: 28px; }
+.data-page .data-block.wide { column-span: all; max-width: 1100px; margin-inline: auto; }
+.data-page .data-block.wide table.data th, .data-page .data-block.wide table.data td { font-size: 15px; padding: 10px 14px; }
+.data-page .data-block.wide h3 { font-size: 18px; }
 .brief p { font-size: 11.5px; line-height: 1.5; margin: 0 0 6px; color: #44403c; }
+.plate-locator { position: absolute; left: 24px; bottom: 24px; z-index: 3; width: 270px; margin: 0; padding: 6px 6px 4px; background: rgba(255,255,255,0.95); border: 2px solid #1e1b4b; border-radius: 10px; }
+.plate-locator img { display: block; width: 100%; height: auto; }
+.plate-locator figcaption { margin-top: 2px; font-size: 11px; font-weight: 700; color: #1e1b4b; text-align: center; }
 svg.labelled { width: 100%; height: 100%; display: block; }
 svg.labelled text { font-family: "NotoHebrew", sans-serif; font-weight: 700; fill: #1e1b4b; paint-order: stroke; stroke: rgba(255,255,255,0.92); stroke-linejoin: round; }
 `;
@@ -153,7 +168,8 @@ svg.labelled text { font-family: "NotoHebrew", sans-serif; font-weight: 700; fil
 /** A table of the booklet's data, its title over it. */
 function dataTable(t: BookletTable): string {
   const row = (cells: string[], tag: "td" | "th") => `<tr>${cells.map((c) => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
-  return `<div class="data-block"><h3>${escapeHtml(t.title)}</h3>${t.note ? `<p class="data-note">${escapeHtml(t.note)}</p>` : ""}<table class="data"><thead>${row(t.head.map(escapeHtml), "th")}</thead><tbody>${t.rows.map((r) => row(r, "td")).join("")}</tbody>${t.foot ? `<tfoot>${row(t.foot, "td")}</tfoot>` : ""}</table></div>`;
+  // a table of more than three columns would crush into one of the data page's three columns: it spans the page
+  return `<div class="data-block${t.head.length > 3 ? " wide" : ""}"><h3>${escapeHtml(t.title)}</h3>${t.note ? `<p class="data-note">${escapeHtml(t.note)}</p>` : ""}<table class="data"><thead>${row(t.head.map(escapeHtml), "th")}</thead><tbody>${t.rows.map((r) => row(r, "td")).join("")}</tbody>${t.foot ? `<tfoot>${row(t.foot, "td")}</tfoot>` : ""}</table></div>`;
 }
 
 /** A plan with its rooms numbered, its key beside it, a north arrow and a scale bar over it. */
@@ -167,23 +183,27 @@ function keyedPlan(img: BookletImage, alt: string, key: PlanKey): string {
     .join("");
   const bar = key.scale.fraction * w;
   const [bx, by] = [view.x + Math.round(view.w * 0.04), view.y + Math.round(view.h * 0.955)];
-  const n = Math.hypot(key.north.x, key.north.z) || 1;
-  const [nx, nz] = [key.north.x / n, key.north.z / n];
+  const north = key.north ?? { x: 0, z: -1 };
+  const n = Math.hypot(north.x, north.z) || 1;
+  const [nx, nz] = [north.x / n, north.z / n];
   const [ax, ay] = [view.x + Math.round(view.w * 0.07), view.y + Math.round(view.h * 0.08)];
   const len = Math.round(view.h * 0.05);
   const [tx, ty] = [ax + nx * len, ay + nz * len];
   const [px, py] = [-nz, nx];
   const head = `${tx},${ty} ${tx - nx * len * 0.35 + px * len * 0.2},${ty - nz * len * 0.35 + py * len * 0.2} ${tx - nx * len * 0.35 - px * len * 0.2},${ty - nz * len * 0.35 - py * len * 0.2}`;
   const stroke = Math.max(4, Math.round(w / 600));
+  const arrow = key.north
+    ? `<line x1="${ax}" y1="${ay}" x2="${tx}" y2="${ty}"/><polygon points="${head}"/>
+    <text x="${tx + nx * len * 0.5}" y="${ty + nz * len * 0.5 + (nz > 0.5 ? len * 0.35 : 0)}" text-anchor="middle" font-size="${Math.round(w / 55)}" stroke="none" fill="#1e1b4b">צפון</text>`
+    : "";
   const furniture = `<g stroke="#1e1b4b" fill="#1e1b4b" stroke-width="${stroke}">
-    <line x1="${ax}" y1="${ay}" x2="${tx}" y2="${ty}"/><polygon points="${head}"/>
-    <text x="${tx + nx * len * 0.5}" y="${ty + nz * len * 0.5 + (nz > 0.5 ? len * 0.35 : 0)}" text-anchor="middle" font-size="${Math.round(w / 55)}" stroke="none" fill="#1e1b4b">צפון</text>
+    ${arrow}
     <rect x="${bx}" y="${by - Math.round(h / 120)}" width="${bar.toFixed(1)}" height="${Math.round(h / 120)}"/>
     <text x="${(bx + bar / 2).toFixed(1)}" y="${by - Math.round(h / 80)}" text-anchor="middle" font-size="${Math.round(w / 60)}" stroke="none" fill="#1e1b4b">${key.scale.metres} מ'</text>
   </g>`;
   const rows = key.rows.map((r) => `<tr><td class="n">${r.n}</td><td>${escapeHtml(r.name)}</td><td dir="ltr">${escapeHtml(r.dims)}</td><td dir="ltr">${escapeHtml(r.area)}</td></tr>`).join("");
   return `<div class="master-stage"><div class="plan-layout">
-    <aside class="plan-key"><h3>מקרא החללים</h3><table><thead><tr><th>#</th><th>חלל</th><th>מידות (מ')</th><th>שטח (מ"ר)</th></tr></thead><tbody>${rows}</tbody></table><p>המספר זהה בשני הבתים, תמונת הראי זה של זה.</p></aside>
+    <aside class="plan-key"><h3>מקרא החללים</h3><table><thead><tr><th>#</th><th>חלל</th><th>מידות (מ')</th><th>שטח (מ"ר)</th></tr></thead><tbody>${rows}</tbody></table><p>${escapeHtml(key.note ?? "המספר זהה בשני הבתים, תמונת הראי זה של זה.")}</p></aside>
     <div class="plan-pic"><svg class="labelled" viewBox="${view.x} ${view.y} ${view.w} ${view.h}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${escapeHtml(alt)}"><image href="${src(img)}" width="${w}" height="${h}"/>${marks}${furniture}</svg></div>
   </div></div>`;
 }
@@ -229,10 +249,11 @@ function pageKit(total: number, producedAt?: Date) {
     <div class="plaque-produced">${produced}</div>
   </footer>`;
   const compact = `<footer class="gallery-plaque gallery-plaque-compact"><div class="plaque-produced">${produced}</div></footer>`;
-  const framed = (img: BookletImage, alt: string, ornament = true, labels?: BuildingBookletSheet["labels"]) => `<div class="master-stage">
+  const framed = (img: BookletImage, alt: string, ornament = true, labels?: BuildingBookletSheet["labels"], locator?: BookletImage) => `<div class="master-stage">
     <div class="ornament-frame${ornament ? "" : " ornament-frame-plain"}">
       ${ornament ? `<span class="corner corner-tl"></span><span class="corner corner-tr"></span><span class="corner corner-bl"></span><span class="corner corner-br"></span>` : ""}
       <div class="master-mat">${labels?.length && img.width && img.height ? labelledImage(img, alt, labels) : `<img src="${src(img)}" alt="${escapeHtml(alt)}" />`}</div>
+      ${locator ? `<figure class="plate-locator"><img src="${src(locator)}" alt="מפת התמצאות" /><figcaption>מקום הצילום וכיוונו</figcaption></figure>` : ""}
     </div>
   </div>`;
   const renderPage = (s: BuildingBookletSheet, prefix: string) => `<section class="plate plate-master">
@@ -257,7 +278,7 @@ function pageKit(total: number, producedAt?: Date) {
 </section>`;
   const platePage = (p: BuildingBookletPlate, prefix: string) => `<section class="plate plate-master">
   ${top(kicker(`${prefix}${p.kicker}`))}
-  ${framed(p.image, p.title)}
+  ${framed(p.image, p.title, true, undefined, p.locator)}
   ${plaque(`${prefix}${p.kicker}`, p.title, p.caption)}
 </section>`;
   const kpiRow = (kpis: Array<{ label: string; value: string }>) =>
@@ -330,7 +351,7 @@ export function buildProjectBookletHtml(input: ProjectBookletInput): string {
   let at = 2;
   const contents = input.chapters
     .map((c) => {
-      const row = `<tr><td>${escapeHtml(c.name)}</td><td>${c.sheets.length} גיליונות · ${c.plates.length} מבטים</td><td>עמ' ${at}</td></tr>`;
+      const row = `<tr><td>${escapeHtml(c.name)}</td><td>${c.sheets.length === 1 ? "גיליון אחד" : `${c.sheets.length} גיליונות`} · ${c.plates.length} מבטים</td><td>עמ' ${at}</td></tr>`;
       at += chapterPages(c);
       return row;
     })

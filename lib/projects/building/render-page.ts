@@ -27,6 +27,8 @@ export type BuildingCamera = {
   interior?: boolean;
   /** The room an interior view stands in, its floor and its ceiling: where its downlights and pendants hang. */
   room?: { x0: number; x1: number; z0: number; z1: number; floorY: number; ceilingY: number };
+  /** A shift lens: with a level camera, the frame slides up by this fraction of its height, so a tower's verticals stay upright. */
+  shiftY?: number;
   /** Parallel projection, as an elevation is drawn: half the frame's width in metres. */
   orthoHalfWidth?: number;
   /** For an elevation: metres behind the face the ground line is the lowest of (25 by default; 0 cuts at the face). */
@@ -58,6 +60,8 @@ export type BuildingRenderPayload = {
   height: number;
   /** Sun direction: azimuth from north, clockwise, and elevation, degrees. */
   sun: { azimuthDeg: number; elevationDeg: number };
+  /** The sunlight's own colour and strength, over the look's default. */
+  sunLight?: { color: number; intensity: number };
   exposure: number;
   /** Ambient occlusion on: slower, and the frame reads as a photograph. */
   ao: boolean;
@@ -86,7 +90,7 @@ export function buildingPageHtml(payload: BuildingRenderPayload): string {
 })();
 window.addEventListener("error", function (e) { window.__renderError = String(e.message); });
 </script>
-<script type="module">
+<script type="module" onerror="window.__renderError = 'a page module failed to load'">
 ${PAGE_SCRIPT}
 </script>
 <script>window.__payload = ${JSON.stringify(payload)};</script>
@@ -172,6 +176,9 @@ async function main() {
   // and warm, the sky deepening to amber at the horizon, the distance hazed.
   const goldenModel = !!(P.model.palette && P.model.palette.golden) && !inside && P.camera.cutAboveM == null && !P.camera.studio && !P.camera.section;
   const golden = (houseOut || goldenModel) && P.camera.orthoHalfWidth == null && P.sun.elevationDeg <= 18;
+  // A flat's rooms at the golden hour the client chose: a low amber sun
+  // through the windows, and the lamps and coves warm against it.
+  const goldenInside = inside && !!(P.model.palette && P.model.palette.golden) && P.sun.elevationDeg <= 18;
   if (golden) {
     su.turbidity.value = 6.5; su.rayleigh.value = 2.6; su.mieCoefficient.value = 0.007; su.mieDirectionalG.value = 0.86;
     scene.environment = pmrem.fromScene(skyScene, 0.02).texture;
@@ -199,27 +206,32 @@ async function main() {
   // light, and stood in the studio's grey fill (13/10/2026).
   const fromAbove = P.camera.cutAboveM != null || (P.camera.studio === true && P.camera.orthoHalfWidth != null && P.camera.position.y - P.camera.target.y > 10);
   const housePlan = fromAbove && !inside && (P.camera.planStyle === true || P.model.primitives.some((p) => p.material === "renderBrown" || p.material === "renderGray"));
-  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? (goldenModel ? 0xffd9b4 : 0xffc58c) : houseOut ? 0xffe8cc : 0xfff1dc, housePlan ? 2.05 : golden ? (goldenModel ? 2.8 : 3.4) : houseFlat ? 1.9 : 3.1);
-  sun.position.set(cx + sunDir.x * span * 1.5, sunDir.y * span * 1.5, cz + sunDir.z * span * 1.5);
+  const sun = new THREE.DirectionalLight(housePlan ? 0xfff3e4 : golden ? (goldenModel ? 0xffd9b4 : 0xffc58c) : goldenInside ? 0xffb470 : houseOut ? 0xffe8cc : 0xfff1dc, housePlan ? 2.05 : golden ? (goldenModel ? 2.8 : 3.4) : goldenInside ? 3.8 : houseFlat ? 1.9 : 3.1);
+  // A model may ask the shadow box to reach further than its building (a street with its cars round it: past the box the ground
+  // was lit apart, a pale patch). The sun stands back by as much, so the box's depth holds the far ground too.
+  const reach = Math.max(span * 0.8, Number(M.shadowReachM) || 0), sunBack = Math.max(span * 1.5, reach * 1.6);
+  sun.position.set(cx + sunDir.x * sunBack, sunDir.y * sunBack, cz + sunDir.z * sunBack);
   sun.target.position.set(cx, 8, cz);
   // House plan: no cast sun — wall bands washed the floors (13/10/2026). AO only.
   // Outside / interiors keep soft shadows.
   sun.castShadow = !housePlan;
   sun.shadow.mapSize.set(4096, 4096);
   const sc = sun.shadow.camera;
-  const shadowHalf = housePlan && P.camera.orthoHalfWidth != null ? P.camera.orthoHalfWidth * 1.15 : span * 0.8;
+  const shadowHalf = housePlan && P.camera.orthoHalfWidth != null ? P.camera.orthoHalfWidth * 1.15 : reach;
   if (housePlan && P.camera.orthoHalfWidth != null) {
     const t = P.camera.target;
     sun.target.position.set(t.x, t.y, t.z);
     sun.position.set(t.x + sunDir.x * span * 1.2, t.y + sunDir.y * span * 1.8, t.z + sunDir.z * span * 1.2);
   }
   sc.left = -shadowHalf; sc.right = shadowHalf; sc.top = shadowHalf; sc.bottom = -shadowHalf;
-  sc.near = 1; sc.far = span * 4;
+  sc.near = 1; sc.far = Math.max(span * 4, sunBack * 2.6);
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.04;
   // Outside: softer contact shadows (was harsh black on the hero).
   sun.shadow.radius = houseOut && !housePlan ? 6 : 3;
   if (houseOut && !housePlan) { renderer.shadowMap.type = THREE.PCFShadowMap; sun.shadow.blurSamples = 16; }
+  // a caller's own sunlight (a softer golden hour): colour and strength
+  if (P.sunLight) { sun.color.setHex(P.sunLight.color); sun.intensity = P.sunLight.intensity; }
   scene.add(sun, sun.target);
   // The golden hour's exterior lamps, lit: a warm light over the nearest of the wall lamps the model carries.
   if (golden && goldenModel) {
@@ -227,7 +239,9 @@ async function main() {
       .map((q) => ({ q, d: Math.hypot(q.centre.x - P.camera.position.x, q.centre.z - P.camera.position.z) }))
       .filter((e) => e.d < 60).sort((a, b) => a.d - b.d).slice(0, 14);
     for (const { q } of lamps) {
-      const l = new THREE.PointLight(0xffc98a, 9, 7, 1.6);
+      // a street's lamp, high on its pole, throws its pool on the road below: farther and stronger than a wall's lamp
+      const high = /^street:/.test(q.tag || "");
+      const l = new THREE.PointLight(0xffc98a, high ? 60 : 9, high ? 16 : 7, 1.6);
       l.position.set(q.centre.x, q.centre.y - 0.1, q.centre.z);
       scene.add(l);
     }
@@ -280,13 +294,21 @@ async function main() {
   }
   // A room's ceiling takes the light its floor and walls throw back up; the
   // rasteriser bounces none, and a top storey's ceiling stood dark grey.
-  if (inside) scene.add(new THREE.HemisphereLight(0xfff1df, 0xd2bfa2, 0.55));
+  if (inside) scene.add(new THREE.HemisphereLight(goldenInside ? 0xffe2c0 : 0xfff1df, 0xd2bfa2, goldenInside ? 0.42 : 0.55));
   if (inside) {
+    // the nearest panels only: a public building's hall carries hundreds, and a light for each stalled the shader
+    const near = [];
     for (const p of P.model.primitives) {
       if (p.type !== "box" || p.material !== "lightPanel") continue;
       const d = Math.hypot(p.centre.x - P.camera.position.x, p.centre.z - P.camera.position.z);
-      if (d > 16 || Math.abs(p.centre.y - P.camera.position.y) > 4) continue;
-      const l = new THREE.PointLight(0xffe9cc, 5.5, 7, 1.6);
+      // the panels over the camera's own floor (a storey's below its floor light only its slab's underside), its hall's high ones too
+      const dy = p.centre.y - P.camera.position.y;
+      if (d > 16 || dy < -1.2 || dy > 5) continue;
+      near.push({ p, d });
+    }
+    near.sort((a, b) => a.d - b.d);
+    for (const { p } of near.slice(0, 24)) {
+      const l = new THREE.PointLight(goldenInside ? 0xffd09a : 0xffe9cc, 5.5, 7, 1.6);
       l.position.set(p.centre.x, p.centre.y - 0.15, p.centre.z);
       scene.add(l);
     }
@@ -517,6 +539,9 @@ async function main() {
     timber: new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.5 }),
     upholstery: new THREE.MeshStandardMaterial({ color: 0x3e5566, roughness: 0.9 }),
     upholsteryAccent: new THREE.MeshStandardMaterial({ color: 0xc58b3a, roughness: 0.85 }),
+    velvet: new THREE.MeshStandardMaterial({ color: 0x5c1420, roughness: 0.95 }),
+    pewCushion: new THREE.MeshStandardMaterial({ color: 0x9a1c26, roughness: 0.88 }),
+    glassTint: new THREE.MeshPhysicalMaterial({ color: 0x1a2025, metalness: 0.45, roughness: 0.05, transparent: true, opacity: 0.74, envMapIntensity: 1.3, depthWrite: false }),
     whiteboard: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.25 }),
     screen: new THREE.MeshStandardMaterial({ color: 0x15171a, roughness: 0.2, metalness: 0.4 }),
     // A sink's bowl and a washer's door: dark against the worktop and the white box, so each reads as what it is from above.
@@ -560,7 +585,22 @@ async function main() {
     cabinet: new THREE.MeshStandardMaterial({ color: 0xf1eee8, roughness: 0.45 }),
     railGlass: new THREE.MeshPhysicalMaterial({ color: 0xe8f1f2, roughness: 0.03, metalness: 0, transmission: 1, thickness: 0.01, ior: 1.5, transparent: true, opacity: 0.22, depthWrite: false }),
     poche: new THREE.MeshStandardMaterial({ color: P.camera.planStyle ? 0x24232a : P.camera.studio ? 0xd8cbb8 : 0x3b3a38, roughness: 0.9 }),
+    // Food-plant materials (the Delicatess factory, 10/11/2026). Stainless is kept light and only half metallic: a fully metallic
+    // grey ("metal") mirrors a room's dim surroundings and read near-black indoors.
+    stainless: new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.32, metalness: 0.45 }),
+    crateBlue: new THREE.MeshStandardMaterial({ color: 0x2f6aa8, roughness: 0.55 }),
+    safetyOrange: new THREE.MeshStandardMaterial({ color: 0xe0661c, roughness: 0.45, metalness: 0.2 }),
+    sausage: new THREE.MeshPhysicalMaterial({ color: 0x8a3b22, roughness: 0.38, clearcoat: 0.4, clearcoatRoughness: 0.3 }),
+    wrapFilm: new THREE.MeshPhysicalMaterial({ color: 0xe9ecef, roughness: 0.18, clearcoat: 0.8, transparent: true, opacity: 0.9 }),
+    rubber: new THREE.MeshStandardMaterial({ color: 0x1b1c1e, roughness: 0.85 }),
+    epoxy: new THREE.MeshStandardMaterial({ color: 0xc9ccc9, roughness: 0.22, metalness: 0.02 }),
     lightPanel: new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e0, emissiveIntensity: 2.2 }),
+    // A lived-in flat's window at dusk: the glass still reflects the sky, and the room's warm lamps glow through it.
+    // (the room's back, set in behind the glass: a warm lit wall)
+    roomGlow: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffaa5c, emissiveIntensity: 1.45, roughness: 1 }),
+    roomGlowDim: new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xd08a4c, emissiveIntensity: 0.6, roughness: 1 }),
+    // the lit room's window glass: darker and thinner than the plain glass, so the room's light reads through the reflection
+    glassWarm: new THREE.MeshPhysicalMaterial({ color: 0x2a2a2a, metalness: 0.45, roughness: 0.03, transparent: true, opacity: 0.55, envMapIntensity: 1.3, depthWrite: false }),
     carGlass: new THREE.MeshPhysicalMaterial({ color: 0x1c2328, metalness: 0.4, roughness: 0.05 }),
     tyre: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }),
     tailLamp: new THREE.MeshStandardMaterial({ color: 0x9a1616, roughness: 0.25, emissive: 0x3a0505 }),
@@ -581,7 +621,7 @@ async function main() {
       // Honed limestone as the Wolf seminar is clad: courses 36 cm, stones 50–120 cm, sand-cream, thin dark joints.
       const limestone = canvasTex(1024, 1024, (g, w, h) => {
         g.fillStyle = "#5f5748"; g.fillRect(0, 0, w, h);
-        const rows = 11, ch = h / rows;
+        const rows = PAL.courseM ? Math.max(4, Math.round(4 / PAL.courseM)) : 11, ch = h / rows;
         for (let r = 0; r < rows; r++) {
           let x = -rnd() * 300;
           while (x < w) {
@@ -913,6 +953,23 @@ async function main() {
       mesh = new THREE.Mesh(worldBox(p.size.x, p.size.y, p.size.z, repeatOf(mat), p.rotY ? null : p.centre), mat);
       mesh.position.set(p.centre.x, p.centre.y, p.centre.z);
       if (p.rotY) mesh.rotation.y = p.rotY;
+    } else if (p.type === "prism" && p.side) {
+      // An upright outline in a wall's face (an arch's stone, its glass): drawn in (u, y), extruded through the wall.
+      const sd = p.side;
+      const shape = new THREE.Shape(p.ring.map(([u, y]) => new THREE.Vector2(u, y)));
+      for (const h of p.holes || []) shape.holes.push(new THREE.Path(h.map(([u, y]) => new THREE.Vector2(u, y))));
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: sd.t1 - sd.t0, bevelEnabled: false, curveSegments: 1 });
+      // local (u, y, depth): along x → world (x, y, z = t0 + depth); along z → world z = u, x = t1 − depth
+      if (sd.along === "x") geo.translate(0, 0, sd.t0);
+      else { geo.rotateY(-Math.PI / 2); geo.translate(sd.t1, 0, 0); }
+      const pos = geo.attributes.position, uv = geo.attributes.uv; geo.computeVertexNormals(); const nrm = geo.attributes.normal;
+      const r = repeatOf(mat);
+      for (let i = 0; i < uv.count; i++) {
+        const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+        const ny = Math.abs(nrm.getY(i)), nx = Math.abs(nrm.getX(i));
+        uv.setXY(i, ny > 0.5 ? x / r : (nx > 0.5 ? z : x) / r, ny > 0.5 ? z / r : y / r);
+      }
+      mesh = new THREE.Mesh(geo, mat);
     } else if (p.type === "prism") {
       const shape = new THREE.Shape(p.ring.map(([x, z]) => new THREE.Vector2(x, -z)));
       for (const h of p.holes || []) shape.holes.push(new THREE.Path(h.map(([x, z]) => new THREE.Vector2(x, -z))));
@@ -920,6 +977,15 @@ async function main() {
       const geo = new THREE.ExtrudeGeometry(shape, { depth: p.y1 - y0, bevelEnabled: false });
       geo.rotateX(-Math.PI / 2);
       geo.translate(0, y0, 0);
+      // a ramp: its top (or the whole of it) sloped by the gradient g from the point o
+      if (p.rise) {
+        const ps = geo.attributes.position;
+        for (let i = 0; i < ps.count; i++) {
+          if (!p.rise.all && Math.abs(ps.getY(i) - p.y1) > 1e-4) continue;
+          ps.setY(i, ps.getY(i) + (ps.getX(i) - p.rise.o[0]) * p.rise.g[0] + (ps.getZ(i) - p.rise.o[1]) * p.rise.g[1]);
+        }
+        ps.needsUpdate = true;
+      }
       // UVs in metres from world position, projected by each face's normal.
       const pos = geo.attributes.position, uv = geo.attributes.uv; geo.computeVertexNormals(); const nrm = geo.attributes.normal;
       const r = repeatOf(mat);
@@ -1170,6 +1236,43 @@ async function main() {
       g.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
       scene.add(g);
       continue;
+    } else if (p.type === "person" && p.style === "worker") {
+      // A food-plant worker at a bench, facing local +z: white coat and trousers, white rubber boots, blue nitrile gloves, a
+      // hair net — limbs as capsules between joints, arms reaching forward to the worktop, so a hall reads as manned, not as pegs.
+      const g = new THREE.Group(), k = p.height / 1.72;
+      const std = (color, roughness) => new THREE.MeshStandardMaterial({ color, roughness, clippingPlanes: clip });
+      const coat = std(0xf3f3f0, 0.78), boot = std(0xf6f6f4, 0.38), glove = std(0x3d7fd1, 0.45), skin = std(0xc99a7c, 0.62), net = std(0xfafafa, 0.95);
+      const V = (x, y, z) => new THREE.Vector3(x * k, y * k, z * k);
+      const limb = (a, b, r, m) => {
+        const d = b.clone().sub(a), L = d.length();
+        const c = new THREE.Mesh(new THREE.CapsuleGeometry(r * k, Math.max(0.001, L - 2 * r * k), 4, 10), m);
+        c.position.copy(a.clone().add(b).multiplyScalar(0.5));
+        c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+        g.add(c);
+      };
+      for (const s of [-1, 1]) {
+        limb(V(s * 0.1, 0.84, 0), V(s * 0.1, 0.2, 0.01), 0.07, coat); // leg in white trousers
+        limb(V(s * 0.1, 0.32, 0), V(s * 0.1, 0.06, 0.02), 0.068, boot); // boot shaft
+        limb(V(s * 0.1, 0.045, -0.04), V(s * 0.1, 0.045, 0.15), 0.045, boot); // boot foot
+        limb(V(s * 0.215, 1.39, -0.01), V(s * 0.25, 1.13, 0.1), 0.055, coat); // upper arm
+        limb(V(s * 0.25, 1.13, 0.1), V(s * 0.16, 1.0, 0.36), 0.047, coat); // forearm, reaching to the worktop
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.047 * k, 12, 10), glove);
+        hand.scale.set(0.85, 0.7, 1.25); hand.position.copy(V(s * 0.15, 0.985, 0.41)); g.add(hand);
+      }
+      const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.19 * k, 0.225 * k, 0.4 * k, 20, 1, true), coat);
+      skirt.position.copy(V(0, 0.86, 0)); skirt.scale.z = 0.78; g.add(skirt);
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.17 * k, 0.32 * k, 6, 16), coat);
+      torso.position.copy(V(0, 1.2, 0)); torso.scale.set(1.18, 1, 0.74); g.add(torso);
+      limb(V(0, 1.44, 0), V(0, 1.53, 0.01), 0.048, skin); // neck
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1 * k, 20, 16), skin);
+      head.position.copy(V(0, 1.6, 0.01)); head.scale.set(0.9, 1.08, 1); g.add(head);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.108 * k, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), net);
+      cap.position.copy(V(0, 1.615, -0.008)); cap.rotation.x = -0.18; cap.scale.set(0.95, 1.05, 1.05); g.add(cap);
+      g.position.set(p.at.x, p.at.y, p.at.z);
+      g.rotation.y = p.rotY;
+      g.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
+      scene.add(g);
+      continue;
     } else if (p.type === "person") {
       const g = new THREE.Group();
       // Figures for scale, drawn as an architect draws them: pale and plain.
@@ -1203,16 +1306,20 @@ async function main() {
     if (!mesh) continue;
     // The walls stop at the roof's top face; grey over them, they showed through in streaks.
     if (mat === MAT.roofing) mesh.position.y += 0.02;
-    mesh.castShadow = p.material !== "glass" && p.material !== "railGlass" && p.material !== "stairShade";
+    mesh.castShadow = p.material !== "glass" && p.material !== "glassTint" && p.material !== "glassWarm" && p.material !== "railGlass" && p.material !== "stairShade" && p.material !== "roomGlow" && p.material !== "roomGlowDim";
     mesh.receiveShadow = true;
-    if (p.material === "glass" || p.material === "railGlass" || p.material === "stairShade") mesh.renderOrder = 2;
+    if (p.material === "glass" || p.material === "glassTint" || p.material === "glassWarm" || p.material === "railGlass" || p.material === "stairShade") mesh.renderOrder = 2;
     scene.add(mesh);
   }
 
   // The hills round the site, to the horizon, fading into haze.
   if (P.camera.cutAboveM == null && !P.camera.studio) {
     const far = new THREE.Mesh(new THREE.CircleGeometry(2500, 64), MAT.soilFar);
-    far.rotation.x = -Math.PI / 2; far.position.set(cx, -3, cz); far.receiveShadow = true;
+    // Under the model's lowest ground, not at a fixed −3: a street falling past −3 (Breuer 21's, to −5.4 a hundred metres on) went
+    // under the disk, and its road and the ground round it vanished in a pale flat (2026-11-10).
+    let lowGround = -2.5;
+    for (const q of M.primitives) if (q.type === "terrain") for (const h of q.heights) if (h < lowGround) lowGround = h;
+    far.rotation.x = -Math.PI / 2; far.position.set(cx, Math.min(-3, lowGround - 0.5), cz); far.receiveShadow = true;
     scene.add(far);
     scene.fog = new THREE.Fog(0xb9d3ec, 220, 1600);
   }
@@ -1245,6 +1352,8 @@ async function main() {
     const CAPPED = new Set(["plaster", "stone", "stoneDeep", "stoneDark", "render", "concrete", "existing", "slab"]);
     for (const p of M.primitives) {
       if (hidden(p.tag)) continue;
+      // A far ground ("far:") lies hidden under the site's own and is never cut: its profile would draw a second ground line.
+      if (p.type === "terrain" && p.tag && p.tag.indexOf("far:") === 0) continue;
       if (p.type === "terrain") {
         // A section cuts the ground where it cuts; an elevation shows the
         // ground line along the face — the lowest ground in the 25 m behind
@@ -1366,6 +1475,9 @@ async function main() {
   if (P.camera.up) cam.up.set(P.camera.up.x, P.camera.up.y, P.camera.up.z);
   cam.position.set(P.camera.position.x, P.camera.position.y, P.camera.position.z);
   cam.lookAt(P.camera.target.x, P.camera.target.y, P.camera.target.z);
+  // A shift lens, as an architect photographs a tower: the camera looks level (verticals stay parallel) and the frame slides
+  // up by this fraction of its height.
+  if (P.camera.shiftY && !P.camera.orthoHalfWidth) cam.setViewOffset(P.width, P.height, 0, -P.camera.shiftY * P.height, P.width, P.height);
 
   if (P.camera.mask) {
     const ink = new THREE.MeshBasicMaterial({ color: 0x000000 });
@@ -1446,13 +1558,26 @@ async function traceFrame(renderer, scene, cam, sky, sunDir, P) {
   renderer.toneMappingExposure = P.exposure * (P.camera.interior === true ? 1.1 : 1.6);
   const tracer = new WebGLPathTracer(renderer);
   tracer.tiles.set(2, 2);
+  // A still, not a viewport: no 100 ms start delay, no 0.5 s fade from the raster preview into the traced image.
+  tracer.renderDelay = 0;
+  tracer.fadeDuration = 0;
   tracer.filterGlossyFactor = 0.5;
   tracer.setScene(scene, cam);
-  const samples = P.pathTrace.samples;
-  for (let i = 0; i < samples; i++) {
+  // Counted by what the tracer really did, not by loop turns: renderSample() does nothing while shaders compile,
+  // and with 2×2 tiles each call is a quarter sample — the old fixed loop could stop below the tracer's minimum and
+  // ship a blank or half-drawn frame. Same cost as before: samples/4 full samples.
+  let lost = false;
+  renderer.domElement.addEventListener("webglcontextlost", () => { lost = true; });
+  const want = Math.max(1, P.pathTrace.samples / (tracer.tiles.x * tracer.tiles.y));
+  const t0 = performance.now();
+  let turns = 0;
+  while (tracer.samples < want) {
+    if (lost || renderer.getContext().isContextLost()) throw new Error("webgl context lost at " + tracer.samples.toFixed(1) + " samples");
+    if (performance.now() - t0 > 1400000) throw new Error("trace timed out at " + tracer.samples.toFixed(1) + "/" + want + " samples");
     tracer.renderSample();
-    if (i % 4 === 3) await new Promise((r) => setTimeout(r, 0));
+    if (++turns % 4 === 0) await new Promise((r) => setTimeout(r, 0));
   }
+  if (renderer.getContext().isContextLost()) throw new Error("webgl context lost");
 }
 
 main().catch((e) => { window.__renderError = String(e && e.stack || e); });

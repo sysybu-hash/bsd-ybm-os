@@ -1,5 +1,5 @@
 import { PLAN_NORTH, type North, type Side } from "@/lib/projects/building/compass";
-import { dxfFacades, dxfSheets, modelOf, readDxfHouse, storeyOf, type HouseInventory } from "@/lib/projects/building/dxf-house";
+import { dxfFacadeWhole, dxfFacades, dxfSheets, modelOf, readDxfHouse, storeyOf, type HouseInventory } from "@/lib/projects/building/dxf-house";
 import { askDrawing } from "@/lib/projects/building/house-ai";
 import type { ElevationLevels } from "@/lib/projects/building/house-levels";
 import type { HouseSiteLevels } from "@/lib/projects/building/house-yard";
@@ -25,7 +25,8 @@ export type HouseLevels = { floors: number[]; roof: number; parapet: number };
 export type HouseProject = {
   /** Each model's storeys from the ground up, and the plan of its roof where one is drawn: what stands on it. */
   models: Array<{ id: string; name: string; floors: HouseSheetRef[]; roof?: HouseSheetRef }>;
-  facades: HouseSheetRef;
+  /** The facade sheet; `also`, more of them, where each elevation is a file of its own (a Revit export: one DWG a view). */
+  facades: HouseSheetRef & { also?: HouseSheetRef[] };
   style: string;
   /**
    * The haredi switch, set by hand: single beds, and a kitchen's one drawn
@@ -135,12 +136,13 @@ function modelKey(name: string): string {
  */
 export function projectFromSheets(sheets: Array<HouseSheetRef & { name: string }>, style = HOUSE_STYLE): { project: HouseProject | null; problems: string[] } {
   const problems: string[] = [];
-  const facades = sheets.find((s) => FACADE_WORDS.test(s.name));
+  const facadeSheets = sheets.filter((s) => FACADE_WORDS.test(s.name));
+  const facades = facadeSheets[0];
   const byModel = new Map<string, Array<{ storey: number; ref: HouseSheetRef }>>();
   const roofs = new Map<string, HouseSheetRef>();
   const refOf = (s: HouseSheetRef): HouseSheetRef => ({ file: s.file, ...(s.sheet ? { sheet: s.sheet } : {}), ...(s.whole ? { whole: true } : {}) });
   for (const s of sheets) {
-    if (s === facades) continue;
+    if (facadeSheets.includes(s)) continue;
     const storey = storeyOf(s.name);
     const model = modelKey(s.name) || "A";
     if (storey === "roof") {
@@ -171,7 +173,19 @@ export function projectFromSheets(sheets: Array<HouseSheetRef & { name: string }
       return [{ id, name: id.length <= 3 ? `דגם ${id}` : id, floors: kept.map((f) => f.ref), ...(roof ? { roof } : {}) }];
     });
   if (!models.length) problems.push("לא נמצאו תוכניות קומה (למשל A-ground.dwf, A-floor1.dwf)");
-  return { project: facades && models.length ? { models, facades: { file: facades.file, ...(facades.sheet ? { sheet: facades.sheet } : {}), ...(facades.whole ? { whole: true } : {}) }, style } : null, problems };
+  return { project: facades && models.length ? { models, facades: { ...refOf(facades), ...(facadeSheets.length > 1 ? { also: facadeSheets.slice(1).map(refOf) } : {}) }, style } : null, problems };
+}
+
+const SIDE_NAMES: Array<[RegExp, string]> = [
+  [/צפונית|north|tzfon/i, "צפונית"],
+  [/דרומית|south|darom/i, "דרומית"],
+  [/מזרחית|east|mizrach/i, "מזרחית"],
+  [/מערבית|west|maarav/i, "מערבית"],
+];
+
+/** The side a facade file's name says it draws: "…Elevation - חזית מזרחית03.dxf" → מזרחית. */
+export function facadeSideOfName(file: string): string | null {
+  return SIDE_NAMES.find(([re]) => re.test(file))?.[1] ?? null;
 }
 
 /** What the hand knows of a house, uploaded beside its sheets as `house.json`. */
@@ -302,12 +316,21 @@ export function houseSheetReader(load: (file: string) => Promise<Buffer>) {
       return /\.dxf$/i.test(ref.file) ? (await tab(ref)).inventory : null;
     },
     /** The facades: a DXF's each under its own title, else the sheet whole for its drawings to be cut apart. */
-    async facades(ref: HouseSheetRef): Promise<DwfGeometry | Array<{ title: string; geometry: DwfGeometry }>> {
-      if (/\.dxf$/i.test(ref.file) && !ref.sheet) {
-        const house = await dxfOf(ref.file, ref.whole);
-        const titled = house ? dxfFacades(house.drawing, house.profile) : [];
+    async facades(ref: HouseSheetRef & { also?: HouseSheetRef[] }): Promise<DwfGeometry | Array<{ title: string; geometry: DwfGeometry }>> {
+      const titledOf = async (r: HouseSheetRef): Promise<Array<{ title: string; geometry: DwfGeometry }>> => {
+        if (!/\.dxf$/i.test(r.file) || r.sheet) return [];
+        const house = await dxfOf(r.file, r.whole);
+        if (!house) return [];
+        const titled = dxfFacades(house.drawing, house.profile);
         if (titled.length) return titled;
-      }
+        // No title in the drawing: one elevation drawn whole, named by its file ("…חזית מזרחית03.dxf").
+        const side = facadeSideOfName(r.file);
+        const one = side ? dxfFacadeWhole(house.drawing, `חזית ${side}`, house.profile) : null;
+        return one ? [one] : [];
+      };
+      const all = [ref, ...(ref.also ?? [])];
+      const titled = (await Promise.all(all.map(titledOf))).flat();
+      if (titled.length) return titled;
       return geometry(ref);
     },
   };

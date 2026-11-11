@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { PdfPage } from "@/lib/projects/building/pdf-paths";
 import {
   boxes,
@@ -95,6 +96,9 @@ export function readPlanWalls(
   const mask = emptyMask(cols, rows);
   const minPx = Math.round(200 / (cm * cm));
   for (let i = 0; i < mask.data.length; i++) mask.data[i] = parts.sizes[parts.ids[i]!]! >= minPx ? 1 : 0;
+  parts.sizes.forEach((px, id) => {
+    if (id > 0 && px > 0 && px < minPx) noteDrop("plan-walls:wall-scrap-under-200cm2", () => `${Math.round(px * cm * cm)} cm²`);
+  });
 
   return { box: region, unitsPerMetre: options.unitsPerMetre, cm, mask, bands: bandsOf(mask, cm) };
 }

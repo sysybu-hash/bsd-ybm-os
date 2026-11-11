@@ -164,6 +164,8 @@ export default function FloorplanVizWidget({ liveData }: FloorplanVizWidgetProps
             files={wizard.files}
             dwf={dwf}
             projectId={run.projectId || undefined}
+            unitNumber={wizard.unitNumber}
+            onUnitNumber={wizard.setUnitNumber}
             onGenerate={(mode) => {
               setStep("result");
               void run.generate(run.scope, mode, wizard.runFields());

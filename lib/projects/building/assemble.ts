@@ -1,3 +1,4 @@
+import { noteDrop } from "@/lib/projects/drop-log";
 import type { BuildingMaterial, Primitive } from "@/lib/projects/building/model";
 import type { PlanOpening } from "@/lib/projects/building/plan-openings";
 import type { PlanWalls } from "@/lib/projects/building/plan-walls";
@@ -163,7 +164,11 @@ export function floorPrimitives(walls: PlanWalls, openings: PlanOpening[], floor
   };
 
   for (const b of walls.bands) {
-    if (!within(b) || Math.max(b.w, b.h) < 0.15) continue;
+    if (!within(b)) continue;
+    if (Math.max(b.w, b.h) < 0.15) {
+      noteDrop("assemble:wall-band-under-0.15m", () => `${b.w.toFixed(2)}×${b.h.toFixed(2)} m`);
+      continue;
+    }
     wallPiece(b, y0, top, outerSide(b));
   }
 

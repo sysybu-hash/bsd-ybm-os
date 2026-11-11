@@ -80,6 +80,35 @@ export type FloorplanVectorGeometry = {
   dwellingLabels?: number;
   /** A DXF's text, where it stands on the page, for the preview it is read from. */
   labels?: DxfLabel[];
+  /**
+   * Door and window blocks, in page units.
+   *
+   * A flood treats every gap as a leak. These marks say which gaps are openings
+   * the sheet drew on purpose, so they can be closed before the fill.
+   */
+  openingMarks?: Array<{ x: number; y: number; width?: number; axis?: "h" | "v" }>;
+  /**
+   * Window lines, in page units. They are not walls, but they are the pane
+   * the outside would otherwise pour through.
+   */
+  glazing?: VectorSegment[];
+  /**
+   * Door-leaf and door-frame lines, in page units. A terrace door is often
+   * drawn in an opening wider than the leaf; the line is what closes that
+   * opening up to the wall on either side.
+   */
+  doorLines?: VectorSegment[];
+  /**
+   * Apartment-number blocks (App_Nom / Nom), in page units.
+   *
+   * The number is a seed, not a boundary. The face that contains it is the flat.
+   */
+  unitMarks?: Array<{ number: number; x: number; y: number }>;
+  /**
+   * When the page is one flat cut out of a whole floor: its number and its
+   * areas as the cut measured them, beside the area printed by its number.
+   */
+  unitArea?: { number: number; netM2: number; grossM2: number; balconyM2: number; printedM2?: number };
   /** What a DXF reader took from the drawing and what it did not; see DxfReadReport. */
   cad?: DxfReadReport;
 };

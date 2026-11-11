@@ -112,7 +112,8 @@ async function askClaude(key: string, content: unknown[], maxTokens: number): Pr
           log.info("finish judge model unavailable; next", { model, status: res.status });
           break;
         }
-        log.warn("finish judge failed", { model, status: res.status });
+        // The body names the cause (credit, model, image): without it every 400 since 2026-11-03 looked the same.
+        log.warn("finish judge failed", { model, status: res.status, body: body.slice(0, 400) });
         return null;
       }
       try {

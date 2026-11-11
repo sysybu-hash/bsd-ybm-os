@@ -29,7 +29,8 @@ export function cutModel(model: BuildingModel, cutM: number): BuildingModel {
       if (wall) out.push({ type: "box", centre: { ...p.centre, y: cutM + 0.004 }, size: { x: p.size.x + 0.002, y: 0.03, z: p.size.z + 0.002 }, material: "poche", tag: `${p.tag ?? ""}:poche`, ...(p.rotY ? { rotY: p.rotY } : {}) });
     } else if (p.type === "prism") {
       if (p.y0 >= cutM) continue;
-      out.push(p.y1 <= cutM ? p : { ...p, y1: cutM });
+      // an upright outline (an arch's stone) is not cut by height: kept whole when it starts under the cut
+      out.push(p.y1 <= cutM || p.side ? p : { ...p, y1: cutM });
     } else if (p.type === "cylinder") {
       const bottom = p.centre.y - p.height / 2;
       if (bottom >= cutM) continue;
@@ -57,8 +58,12 @@ function topOf(p: Primitive): number {
       return p.y1;
     case "cylinder":
       return p.centre.y + p.height / 2;
-    case "terrain":
-      return Math.max(...p.heights);
+    case "terrain": {
+      // A loop, not Math.max(...): a spread of ~200k heights overflows the stack (Damesek's grid is 118k).
+      let top = -Infinity;
+      for (const h of p.heights) if (h > top) top = h;
+      return top;
+    }
     case "tree":
     case "plant":
     case "car":

@@ -276,7 +276,7 @@ export async function inModelFrame(render: Buffer, wide = false): Promise<{ imag
  * inventory, so only lost structure refuses it (interiorFault); invented
  * soft staging is not requested in PLAN_RULES.
  */
-type Kind = {
+export type Kind = {
   kind: FinishKind;
   look: string;
   minEdges: number;
@@ -631,7 +631,7 @@ export function repairPrompt(kind: Pick<Kind, "kind">, pass: Extract<NextPass, {
 
 type PictureSet = { names(): string[]; get(name: string): Buffer | undefined };
 
-function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit) {
+function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit, lookOf?: (name: string) => Kind | null | undefined) {
   const names = new Set(pictures.names());
   return pictures
     .names()
@@ -641,7 +641,7 @@ function paintingJobs(pictures: PictureSet, style: FloorplanVizStyleKit) {
       return !side || names.has(`sheet-${side}.jpg`);
     })
     .map((name) => {
-      const kind = houseLookOf(name, style);
+      const kind = lookOf?.(name) ?? houseLookOf(name, style);
       const storey = /^view-plan(?:whole)?-(floor-\d+)\.jpg$/.exec(name)?.[1];
       const tile = /^view-plantile-(floor-\d+-(?:back|front)(?:-r)?)\.jpg$/.exec(name)?.[1];
       const mask = tile ? pictures.get(`mask-${tile}.png`) : storey ? pictures.get(`mask-${storey}.png`) : undefined;
@@ -687,6 +687,8 @@ export async function paintHousePictures(
     client?: GoogleGenAI;
     /** The image models to ask, in order: HOUSE_IMAGE_MODELS where not given. */
     models?: string[];
+    /** A picture's look where the house's is not the building's (a stone tower, not a plaster house); the house's where it gives none. */
+    lookOf?: (name: string) => Kind | null | undefined;
     /** Paintings already held, by their render's key: a render that has not changed is not painted again. */
     cache?: PaintingCache;
     /** The house model the pictures are of, for the cost report. */
@@ -736,7 +738,7 @@ export async function paintHousePictures(
   const models = options.models?.length ? options.models : [...HOUSE_IMAGE_MODELS];
   const model = models[0] ?? "unknown";
   const group = options.group ?? "";
-  const jobs = paintingJobs(pictures, options.style).filter((j) => options.only?.(j.name) ?? true);
+  const jobs = paintingJobs(pictures, options.style, options.lookOf).filter((j) => options.only?.(j.name) ?? true);
   const painted: string[] = [];
   const free = { calls: 0, images: 0, usd: 0, ils: 0 };
   let next = 0;
