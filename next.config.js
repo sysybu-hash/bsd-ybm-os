@@ -286,6 +286,8 @@ const nextConfig = {
     // A private house's steps draw the same way, and make its PDF the same way.
     "/api/projects/house-booklet-step": BUILDING_BOOKLET_FILES,
     "/api/cron/house-booklet-step": BUILDING_BOOKLET_FILES,
+    // VMB runner: runProject draws the measured flat, the house or the DWF building and prints the PDF, all read by path.
+    "/api/cron/vmb-runner": BUILDING_BOOKLET_FILES,
     "/api/projects/visualize-floorplan/*/stills/*": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",

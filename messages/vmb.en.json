@@ -539,6 +539,32 @@
       "err_forbidden": "The request was blocked.",
       "err_failed": "Not done. Try again.",
       "minutes": "{n} min"
+    },
+    "run": {
+      "stopTitle": "The run stopped",
+      "refunded": "You were not charged: every held credit is back in your balance.",
+      "fault": "Something failed on our side while building. You can try again; if it happens again, contact us.",
+      "stalled": "The run stopped making progress and was stopped. You can try again.",
+      "pickUnit": "Which flat should the booklet be built for?",
+      "unit": "Flat {n}",
+      "failed": "Not saved. Try again.",
+      "bookletTitle": "The booklet is ready",
+      "ready": "Delivered {date}",
+      "open": "Open",
+      "download": "Download",
+      "share": "Copy link",
+      "copied": "Link copied",
+      "pictures": "{painted} painted pictures, {free} as the free render",
+      "credits": "{n} credits charged",
+      "free": "Not charged",
+      "assumptionsTitle": "Assumptions page",
+      "assumptionsNone": "Every value was read from the files or given by you.",
+      "unusedTitle": "Answers that did not affect this booklet:",
+      "notifyAsk": "Notify me in the browser when it ends",
+      "notifyOn": "We will notify you when it ends",
+      "notifyDone": "The booklet is ready",
+      "notifyFailed": "The run stopped",
+      "projectUnit": "Flat {n}"
     }
   }
 }

@@ -7,11 +7,14 @@ import { UploadZone } from "@/components/vmb/upload/UploadZone";
 import { ScanPanel } from "@/components/vmb/scan/ScanPanel";
 import { QuestionsForm } from "@/components/vmb/questions/QuestionsForm";
 import { CostCard } from "@/components/vmb/cost/CostCard";
+import { StopCard } from "@/components/vmb/run/StopCard";
+import { BookletCard } from "@/components/vmb/run/BookletCard";
+import { projectBooklet, projectStop, projectUnit } from "@/lib/vmb/outcome";
 import { projectCost } from "@/lib/vmb/run-store";
 import { questionsState } from "@/lib/vmb/answers-store";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
-import { costLabels, kindLabels, progressText, questionsLabels, scanLabels, uploadLabels } from "@/lib/vmb/projects-labels";
+import { bookletLabels, costLabels, kindLabels, notifyLabels, progressText, questionsLabels, scanLabels, stopLabels, uploadLabels } from "@/lib/vmb/projects-labels";
 import { toScanViews } from "@/lib/vmb/scan-view";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
 
@@ -29,7 +32,11 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
   if (!project) notFound();
 
   const latest = project.jobs[0] ? (JSON.parse(JSON.stringify(project.jobs[0])) as JobItem) : null;
-  const showJob = latest && (latest.status === "queued" || latest.status === "running" || latest.status === "failed");
+  // A stopped run is told by the stop card (in the engine's words), never by the job's raw error.
+  const showJob = latest && (latest.status === "queued" || latest.status === "running");
+  const stop = projectStop(project.manifest);
+  const booklet = projectBooklet(project.manifest);
+  const unit = projectUnit(project.manifest);
   const questions = questionsState(project);
   const cost = project.files.length ? await projectCost(user.id, project.id) : null;
   const created = project.createdAt.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
@@ -42,7 +49,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
       labels={{
         ...frameLabels(),
         projectName: project.name,
-        projectMeta: `${kindLabels()[project.kind] ?? project.kind} · ${p("created", { date: created })}`,
+        projectMeta: [kindLabels()[project.kind] ?? project.kind, unit != null ? vmbStudioT("vmb.run.projectUnit", { n: String(unit) }) : null, p("created", { date: created })].filter(Boolean).join(" · "),
         steps: stepLabels(),
       }}
     >
@@ -61,9 +68,12 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
                 leave: vmbStudioT("vmb.studio.progressLeave"),
                 failedTitle: p("failedTitle"),
                 progress: progressText(),
+                notify: notifyLabels(),
               }}
             />
           ) : null}
+          {stop && !showJob ? <StopCard projectId={project.id} stop={stop} labels={stopLabels()} /> : null}
+          {booklet && !showJob ? <BookletCard booklet={booklet} labels={bookletLabels()} /> : null}
           {cost ? <CostCard projectId={project.id} initial={cost} labels={costLabels()} /> : null}
           <section className="vmb-card p-5">
             <h2 className="text-sm font-bold">{p("nextTitle")}</h2>

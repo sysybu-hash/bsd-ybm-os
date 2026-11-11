@@ -5,7 +5,7 @@ import { runnerReady } from "@/lib/vmb/run-store";
 import { claimNextJob, reapStalledJobs, runClaimed } from "@/lib/vmb/runner";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300;
+export const maxDuration = 800;
 
 /**
  * VMB's runner, every minute: fails jobs that stopped reporting (their credits go back), then takes one queued booklet

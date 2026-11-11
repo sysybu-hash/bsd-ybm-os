@@ -15,6 +15,7 @@ jest.mock("@/lib/prisma", () => ({
 
 import { claimNextJob, creditsUsed, failJob, finishJob, progressReporter, reapStalledJobs, runClaimed, STALLED_AFTER_MS, type RunOutput } from "@/lib/vmb/runner";
 import type { JobProgress } from "@/lib/vmb/progress";
+import { RunProjectError } from "@/lib/projects/pipeline/runProject";
 
 const project = {
   id: "p1",
@@ -24,7 +25,7 @@ const project = {
   files: [{ relPath: "a.dxf", kind: "dxf", blobUrl: "https://blob/a.dxf" }],
 };
 const job = { id: "j1", workspaceId: "w1", projectId: "p1", startedAt: new Date(Date.now() - 5000), costCredits: 20, progress: null, project: { kind: "house", manifest: project.manifest } };
-const out: RunOutput = { bookletUrl: "https://blob/booklet.html", picturesPainted: 7, picturesFree: 2, assumptions: ["north: default"] };
+const out: RunOutput = { bookletUrl: "https://blob/booklet.pdf", picturesPainted: 7, picturesFree: 2, assumptions: ["north: default"], route: "flat-dxf", unusedAnswers: ["north"] };
 
 describe("VMB runner", () => {
   beforeEach(() => {
@@ -37,11 +38,13 @@ describe("VMB runner", () => {
     mockSettle.mockResolvedValue(undefined);
   });
 
-  it("bills the base plus each painted picture, never above the hold", () => {
+  it("bills the base plus each painted picture, never above the hold, and nothing when none was painted", () => {
     expect(creditsUsed("house", 7, 100)).toBe(4 + 7);
     expect(creditsUsed("house", 500, 20)).toBe(20);
-    expect(creditsUsed("flat", -3, 20)).toBe(2);
-    expect(creditsUsed("flat", Number.NaN, 20)).toBe(2);
+    expect(creditsUsed("flat", 1, 20)).toBe(3);
+    expect(creditsUsed("flat", 0, 20)).toBe(0);
+    expect(creditsUsed("flat", -3, 20)).toBe(0);
+    expect(creditsUsed("flat", Number.NaN, 20)).toBe(0);
   });
 
   it("claims the oldest queued job only when its own update moved it", async () => {
@@ -85,7 +88,7 @@ describe("VMB runner", () => {
     expect(mockSettle).toHaveBeenCalledWith("w1", "j1", 11);
     const upd = mockDb.vmbProject.update.mock.calls[0][0];
     expect(upd.data.status).toBe("done");
-    expect(upd.data.manifest.booklet).toMatchObject({ url: out.bookletUrl, picturesPainted: 7, picturesFree: 2, creditsUsed: 11 });
+    expect(upd.data.manifest.booklet).toMatchObject({ url: out.bookletUrl, route: "flat-dxf", unusedAnswers: ["north"], picturesPainted: 7, picturesFree: 2, creditsUsed: 11 });
     expect(upd.data.manifest.answers).toEqual(project.manifest.answers);
   });
 
@@ -97,12 +100,26 @@ describe("VMB runner", () => {
   });
 
   it("an engine that throws fails the job and gives every credit back", async () => {
-    const r = await runClaimed({ jobId: "j1", projectId: "p1", kind: "house", files: [], answers: {}, layerMaps: {} }, async () => {
+    const r = await runClaimed({ jobId: "j1", projectId: "p1", kind: "house", files: [], answers: {} as never, layerMaps: {} }, async () => {
       throw new Error("reader crashed");
     });
     expect(r).toBe("failed");
     expect(mockSettle).toHaveBeenCalledWith("w1", "j1", 0);
-    expect(mockDb.vmbProject.update.mock.calls[0][0].data).toEqual({ status: "failed" });
+    const data = mockDb.vmbProject.update.mock.calls[0][0].data;
+    expect(data.status).toBe("failed");
+    expect(data.manifest.stop).toMatchObject({ jobId: "j1", code: "error", message: null });
+  });
+
+  it("a stop the client can act on returns the project to answered with the engine words and the flats", async () => {
+    const r = await runClaimed({ jobId: "j1", projectId: "p1", kind: "flat", files: [], answers: {} as never, layerMaps: {} }, async () => {
+      throw new RunProjectError("unit-needed", "בקומה כמה דירות", { units: [14, 15, 16] });
+    });
+    expect(r).toBe("failed");
+    expect(mockSettle).toHaveBeenCalledWith("w1", "j1", 0);
+    expect(mockDb.vmbJob.updateMany.mock.calls.at(-1)[0].data).toMatchObject({ status: "failed", error: "unit-needed" });
+    const data = mockDb.vmbProject.update.mock.calls[0][0].data;
+    expect(data.status).toBe("answered");
+    expect(data.manifest.stop).toMatchObject({ code: "unit-needed", message: "בקומה כמה דירות", units: [14, 15, 16] });
   });
 
   it("fails jobs that stopped reporting and gives their credits back", async () => {
@@ -117,7 +134,7 @@ describe("VMB runner", () => {
   });
 
   it("an engine that delivers finishes the job", async () => {
-    const r = await runClaimed({ jobId: "j1", projectId: "p1", kind: "house", files: [], answers: {}, layerMaps: {} }, async (_i, report) => {
+    const r = await runClaimed({ jobId: "j1", projectId: "p1", kind: "house", files: [], answers: {} as never, layerMaps: {} }, async (_i, report) => {
       await report("read", 1);
       return out;
     });

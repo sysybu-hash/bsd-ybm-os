@@ -44,3 +44,6 @@ export const vmbScanFactsSchema = z.object({ headerUnitsM: z.number().nullable()
 
 /** The questions form as sent: answers by question id; each is checked against its question on the server. */
 export const vmbAnswersBodySchema = z.object({ answers: z.record(z.string(), z.unknown()) });
+
+/** The flat to build on a whole-floor drawing. */
+export const vmbUnitBodySchema = z.object({ unit: z.number().int().min(1).max(9999) });

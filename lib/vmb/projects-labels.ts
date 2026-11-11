@@ -7,7 +7,10 @@ import type { UploadLabels } from "@/components/vmb/upload/UploadZone";
 import type { ScanLabels } from "@/components/vmb/scan/ScanFileRow";
 import type { QuestionsLabels } from "@/components/vmb/questions/QuestionsForm";
 import type { CostLabels } from "@/components/vmb/cost/CostCard";
-import type { Question } from "@/lib/vmb/questions";
+import { QUESTION_IDS, type Question } from "@/lib/vmb/questions";
+import type { StopLabels } from "@/components/vmb/run/StopCard";
+import type { BookletLabels } from "@/components/vmb/run/BookletCard";
+import type { LiveJobLabels } from "@/components/vmb/projects/LiveJobCard";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { SUGGEST_VIA } from "@/lib/vmb/rescan";
 
@@ -177,4 +180,33 @@ export function costLabels(): CostLabels {
     failed: c("failed"),
     views: Object.fromEntries(["exterior_day", "exterior_dusk", "aerial", "interior"].map((v) => [v, vmbStudioT(`vmb.questions.o_views_${v}`)])),
   };
+}
+
+const r = (k: string) => vmbStudioT(`vmb.run.${k}`);
+
+export function stopLabels(): StopLabels {
+  return { title: r("stopTitle"), refunded: r("refunded"), fault: r("fault"), stalled: r("stalled"), pickUnit: r("pickUnit"), unit: r("unit"), failed: r("failed") };
+}
+
+export function bookletLabels(): BookletLabels {
+  const q = (k: string) => vmbStudioT(`vmb.questions.${k}`);
+  return {
+    title: r("bookletTitle"),
+    ready: r("ready"),
+    open: r("open"),
+    download: r("download"),
+    share: r("share"),
+    copied: r("copied"),
+    pictures: r("pictures"),
+    credits: r("credits"),
+    free: r("free"),
+    assumptionsTitle: r("assumptionsTitle"),
+    assumptionsNone: r("assumptionsNone"),
+    unusedTitle: r("unusedTitle"),
+    answers: Object.fromEntries(QUESTION_IDS.map((id) => [id, q(`q_${id}_title`)])),
+  };
+}
+
+export function notifyLabels(): NonNullable<LiveJobLabels["notify"]> {
+  return { ask: r("notifyAsk"), on: r("notifyOn"), done: r("notifyDone"), failed: r("notifyFailed") };
 }

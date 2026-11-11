@@ -48,3 +48,23 @@ export async function saveAnswers(userId: string, projectId: string, input: Reco
   await prisma.vmbProject.update({ where: { id: project.id }, data: { manifest, status: next } });
   return questionsState({ ...project, manifest });
 }
+
+export type SetUnitResult = { ok: true } | { ok: false; code: "not_found" | "running" | "not_offered" };
+
+/**
+ * The flat to build on a whole-floor drawing. When the engine stopped and named the flats it found, only one of those is
+ * taken; the stop is then cleared and the project is ready to start again.
+ */
+export async function setUnit(userId: string, projectId: string, unit: number): Promise<SetUnitResult> {
+  const project = await prisma.vmbProject.findFirst({ where: { id: projectId, ...projectsOfUser(userId) }, select: { id: true, status: true, manifest: true } });
+  if (!project) return { ok: false, code: "not_found" };
+  if (project.status === "running") return { ok: false, code: "running" };
+  const manifest: Prisma.JsonObject = { ...asObject(project.manifest) };
+  const stop = asObject(manifest.stop as Prisma.JsonValue);
+  const offered = Array.isArray(stop.units) ? stop.units.filter((u): u is number => typeof u === "number") : [];
+  if (offered.length && !offered.includes(unit)) return { ok: false, code: "not_offered" };
+  manifest.unit = unit;
+  delete manifest.stop;
+  await prisma.vmbProject.update({ where: { id: project.id }, data: { manifest } });
+  return { ok: true };
+}

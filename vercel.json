@@ -27,7 +27,7 @@
       "maxDuration": 300
     },
     "app/api/cron/vmb-runner/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 800
     }
   },
   "crons": [
