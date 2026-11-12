@@ -428,3 +428,21 @@ ${chapters}
 ${report}
 </body></html>`;
 }
+
+/**
+ * One page, as a document of its own, appended to a finished booklet (its pages carry "n/total" already): the measured
+ * agreement of the model with the uploaded sheets, in the booklet's design. The words are the caller's (they make a
+ * claim, so they live with the numbers that back them: lib/projects/accuracy/booklet-accuracy.ts).
+ */
+export function buildAppendixPageHtml(input: { projectName: string; kicker: string; title: string; table: BookletTable; paragraphs: Array<{ title: string; text: string }>; caption: string; producedAt?: Date }): string {
+  const k = pageKit(1, input.producedAt);
+  const words = input.paragraphs.map((p) => `<div class="data-block wide appendix-words"><h3>${escapeHtml(p.title)}</h3><p>${escapeHtml(p.text)}</p></div>`).join("");
+  return `${documentHead(input.projectName)}
+<style>.appendix-words p { font-size: 14px; line-height: 1.6; margin: 0; color: #1c1917; }</style>
+<section class="plate plate-gallery">
+  ${k.top(input.kicker)}
+  <div class="data-page">${dataTable(input.table)}${words}</div>
+  ${k.plaque(input.projectName, input.title, input.caption)}
+</section>
+</body></html>`;
+}
