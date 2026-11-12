@@ -1,4 +1,4 @@
-import { BSD_YBM_LOGO_PNG_BASE64 } from "@/lib/pdf/font-data.generated";
+import { bookletBrand } from "@/lib/projects/building/booklet-brand";
 import { escapeHtml } from "@/lib/pdf/invoice-labels";
 import { loadPdfFontBuffers } from "@/lib/pdf/load-pdf-font-buffers";
 import { BOOKLET_CSS } from "@/lib/projects/viz-pdf/booklet-css";
@@ -103,8 +103,9 @@ export type BuildingBookletInput = {
 /** A3 landscape, in CSS pixels and PDF points. */
 export const BUILDING_BOOKLET_PAGE = { cssWidth: 1587, cssHeight: 1123, ptWidth: 1190.55, ptHeight: 841.89 };
 
-const SITE = "https://www.bsd-ybm.co.il";
-const link = (html: string) => `<a class="brand-link" href="${SITE}" target="_blank" rel="noopener noreferrer">${html}</a>`;
+/** A link to the booklet's maker (bookletBrand: BSD-YBM, or VisualModuBuild when VMB runs the engine). */
+const link = (html: string) => `<a class="brand-link" href="${bookletBrand().site}" target="_blank" rel="noopener noreferrer">${html}</a>`;
+const brandName = () => escapeHtml(bookletBrand().name);
 const src = (img: BookletImage) => `data:${img.mimeType || "image/jpeg"};base64,${img.base64}`;
 
 const LANDSCAPE_CSS = `
@@ -232,14 +233,15 @@ function fonts(): string {
 
 /** The pieces every page of the booklet is made of: its header, plaque, frame and the counter that numbers it. */
 function pageKit(total: number, producedAt?: Date) {
-  const logo = BSD_YBM_LOGO_PNG_BASE64
-    ? `<img class="page-logo" src="data:image/png;base64,${BSD_YBM_LOGO_PNG_BASE64}" alt="BSD-YBM" />`
-    : `<span class="gallery-wordmark">BSD-YBM</span>`;
+  const brand = bookletBrand();
+  const logo = brand.logoPngBase64
+    ? `<img class="page-logo" src="data:image/png;base64,${brand.logoPngBase64}" alt="${brandName()}" />`
+    : `<span class="gallery-wordmark">${brandName()}</span>`;
   const pageLogo = link(logo);
   const at = producedAt ?? new Date();
   const dateHe = at.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" });
   const timeHe = at.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-  const produced = link(escapeHtml("הופק ע״י מערכת BSD-YBM"));
+  const produced = link(`הופק ע״י מערכת ${brandName()}`);
   let page = 1;
   const kicker = (text: string) => `${++page}/${total} · ${text}`;
   const top = (text: string) => `<header class="gallery-top">${pageLogo}<span class="gallery-kicker">${escapeHtml(text)}</span></header>`;
@@ -314,7 +316,7 @@ export function buildBuildingBookletHtml(input: BuildingBookletInput): string {
     <div class="cover-photo"><img src="${src(input.hero)}" alt="${escapeHtml(input.projectName)}" /></div>
     <div class="cover-copy">
       <div class="hero">
-        <div class="hero-top"><div class="sub">${link("BSD-YBM")} · חוברת הדמיה</div><div class="hero-meta">${k.stamp}</div></div>
+        <div class="hero-top"><div class="sub">${link(brandName())} · חוברת הדמיה</div><div class="hero-meta">${k.stamp}</div></div>
         <h1>${escapeHtml(input.projectName)}</h1>
         <p class="sub">${subtitleOf(input.subtitle, input.architect)}</p>
         <div class="kpis">${k.kpiRow(input.kpis)}</div>
@@ -326,7 +328,7 @@ export function buildBuildingBookletHtml(input: BuildingBookletInput): string {
         <table><thead><tr><th>חלל</th><th>קומה</th><th>שטח</th></tr></thead><tbody>${k.roomRows(input.rooms)}</tbody></table>
       </div>
       ${NOTE}
-      <div class="produced-bar" style="margin-top:12px">${link(`הופק על ידי מערכת BSD-YBM · ${k.stamp}`)}</div>
+      <div class="produced-bar" style="margin-top:12px">${link(`הופק על ידי מערכת ${brandName()} · ${k.stamp}`)}</div>
     </div>
   </div>
 </section>
@@ -402,7 +404,7 @@ export function buildProjectBookletHtml(input: ProjectBookletInput): string {
     <div class="cover-photo"><img src="${src(input.hero)}" alt="${escapeHtml(input.projectName)}" /></div>
     <div class="cover-copy">
       <div class="hero">
-        <div class="hero-top"><div class="sub">${link("BSD-YBM")} · חוברת הדמיה</div><div class="hero-meta">${k.stamp}</div></div>
+        <div class="hero-top"><div class="sub">${link(brandName())} · חוברת הדמיה</div><div class="hero-meta">${k.stamp}</div></div>
         <h1>${escapeHtml(input.projectName)}</h1>
         <p class="sub">${subtitleOf(input.subtitle)}</p>
         <div class="kpis">${k.kpiRow(input.kpis)}</div>
@@ -418,7 +420,7 @@ export function buildProjectBookletHtml(input: ProjectBookletInput): string {
         <table><thead><tr><th>דגם</th><th>בחוברת</th><th>עמוד</th></tr></thead><tbody>${contents}</tbody></table>
       </div>
       ${NOTE}
-      <div class="produced-bar" style="margin-top:12px">${link(`הופק על ידי מערכת BSD-YBM · ${k.stamp}`)}</div>
+      <div class="produced-bar" style="margin-top:12px">${link(`הופק על ידי מערכת ${brandName()} · ${k.stamp}`)}</div>
     </div>
   </div>
 </section>
