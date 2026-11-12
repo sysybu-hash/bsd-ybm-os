@@ -161,7 +161,9 @@ const nextConfig = {
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com",
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com wss://generativelanguage.googleapis.com",
+        // https://vercel.com/api/blob/: Vercel Blob's client uploads (VMB's project files go from the browser straight to
+        // the store, @vercel/blob/client upload); the trailing slash allows that path and below only, not vercel.com.
+        "connect-src 'self' https://vercel.com/api/blob/ https://*.googleapis.com https://generativelanguage.googleapis.com https://api.anthropic.com https://api.openai.com https://*.posthog.com https://*.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.paypal.com wss://generativelanguage.googleapis.com",
         // 'self' is required for the App Builder preview: the workspace frames
         // its own /api/app-builder/preview document. frame-src overrides
         // default-src for frames, so without it the browser refuses to embed a

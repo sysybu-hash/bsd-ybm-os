@@ -87,6 +87,15 @@ describe("production CSP", () => {
     expect(preview).toContain("connect-src 'none'");
   });
 
+  it("lets the browser upload to Vercel Blob (VMB's project files), and nothing else on vercel.com", async () => {
+    const rules = await headersFor({ NODE_ENV: "production", CSP_STRICT: "true" });
+    const csp = cspFor(rules, "/:path*");
+    const connect = csp.split(";").find((d) => d.trim().startsWith("connect-src"))!.trim().split(/\s+/);
+    expect(connect).toContain("https://vercel.com/api/blob/");
+    expect(connect).not.toContain("https://vercel.com");
+    expect(connect).not.toContain("https://vercel.com/");
+  });
+
   it("scopes the preview policy to that route only", async () => {
     const rules = await headersFor({ NODE_ENV: "production", CSP_STRICT: "true" });
     const previewRules = rules.filter((r) => r.source === PREVIEW_ROUTE);
