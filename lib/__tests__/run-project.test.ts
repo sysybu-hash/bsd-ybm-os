@@ -3,7 +3,7 @@
  */
 import { GENERIC_CAD_PROFILE, layerKind, withLayerMap } from "@/lib/projects/building/cad-layers";
 import { isFlatFailure, measureFlatFromDxf } from "@/lib/projects/pipeline/flat-measured";
-import { answerAssumptions, chooseRoute, runProject, RunProjectError, type RunDeps, type RunInput } from "@/lib/projects/pipeline/runProject";
+import { answerAssumptions, chooseRoute, convertDwgFiles, runProject, RunProjectError, type RunDeps, type RunInput } from "@/lib/projects/pipeline/runProject";
 
 const file = (relPath: string, kind: RunInput["files"][number]["kind"]) => ({ relPath, kind, blobUrl: `https://x.public.blob.vercel-storage.com/${relPath}` });
 const answers: RunInput["answers"] = {
@@ -101,5 +101,51 @@ describe("runProject — the house and DWF routes through their pipelines", () =
     expect(out.route).toBe("building-dwf");
     expect(out.picturesFree).toBe(3);
     expect(out.assumptions.some((a) => a.includes("השכבות שאושרו"))).toBe(true);
+  });
+});
+
+describe("convertDwgFiles — DWG read as DXF", () => {
+  const report = async () => undefined;
+  const base = (convertDwg?: RunDeps["convertDwg"]): RunDeps => ({
+    fetchFile: async (url) => Buffer.from(`dwg:${url.split("/").pop()}`),
+    putBooklet: async () => "",
+    htmlToPdf: async () => Buffer.from(""),
+    house: async () => ({ html: "", pictures: 0, notes: [] }),
+    buildingDwf: async () => ({ html: "", pictures: 0 }),
+    ...(convertDwg ? { convertDwg } : {}),
+  });
+
+  it("converts each DWG without a DXF of its name, puts the DXF bytes in its place, and keeps the client's own DXF", async () => {
+    const bytes = new Map<string, Buffer>();
+    const seen: string[] = [];
+    const files = [file("p/0.dwg", "dwg"), file("p/1.DWG", "dwg"), file("p/1.dxf", "dxf"), file("p/notes.pdf", "pdf")];
+    const out = await convertDwgFiles(files, bytes, base(async (b) => (seen.push(b.toString()), Buffer.from(`dxf<${b}>`))), report);
+    expect(seen).toEqual(["dwg:0.dwg"]);
+    expect(out.map((f) => `${f.relPath}:${f.kind}`)).toEqual(["p/0.dxf:dxf", "p/1.DWG:dwg", "p/1.dxf:dxf", "p/notes.pdf:pdf"]);
+    expect(bytes.get("p/0.dxf")?.toString()).toBe("dxf<dwg:0.dwg>");
+  });
+
+  it("leaves the files as they were without a converter, so the DWG stops the run as before", async () => {
+    const files = [file("a.dwg", "dwg"), file("b.dwg", "dwg")];
+    expect(await convertDwgFiles(files, new Map(), base(), report)).toBe(files);
+  });
+
+  it("stops with a message the client can act on when a conversion fails or the site has no key", async () => {
+    const files = [file("x/0.dwg", "dwg")];
+    await expect(convertDwgFiles(files, new Map(), base(async () => null), report)).rejects.toThrow("0.dwg לא הומר ל־DXF");
+    const unavailable = Object.assign(new Error("no key"), { name: "DwgConversionUnavailableError" });
+    await expect(convertDwgFiles(files, new Map(), base(async () => { throw unavailable; }), report)).rejects.toMatchObject({ code: "needs-conversion" });
+  });
+
+  it("runs a project of DWGs through the house route on the converted DXF", async () => {
+    const calls: string[] = [];
+    const d = base(async (b) => Buffer.from(`dxf<${b}>`));
+    const out = await runProject(
+      { jobId: "j9", projectId: "p1", kind: "public", files: [file("s/0.dwg", "dwg"), file("s/facades.dwg", "dwg")], answers, layerMaps: {}, projectName: "בית" },
+      report,
+      { ...d, house: async (fs) => (calls.push([...fs].map(([k, v]) => `${k}=${v}`).join(",")), { html: "<html/>", pictures: 1, notes: [] }) },
+    );
+    expect(out.route).toBe("house");
+    expect(calls).toEqual(["0.dxf=dxf<dwg:0.dwg>,facades.dxf=dxf<dwg:facades.dwg>"]);
   });
 });

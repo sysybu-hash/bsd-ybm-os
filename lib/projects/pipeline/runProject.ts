@@ -85,12 +85,22 @@ export type RunDeps = {
   /** The studio's files next to the booklet; left out where there is no studio (tests, old callers). */
   putStudio?(jobId: string, name: string, body: Buffer): Promise<string>;
   htmlToPdf(html: string): Promise<Buffer>;
+  /**
+   * DWG in, DXF bytes out (CloudConvert, paid per file); null when the conversion failed. Left out where there is no
+   * converter (tests, the local Studio): a DWG then stops the run as before. Throws DwgConversionUnavailableError when
+   * the platform has no key.
+   */
+  convertDwg?(bytes: Buffer): Promise<Buffer | null>;
   /** The house and DWF building pipelines, unpainted: their booklet's HTML and how many pictures it holds. */
   house(files: Map<string, Buffer>, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; notes: string[]; models?: MeasuredModel[] }>;
   buildingDwf(bytes: Buffer, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; models?: MeasuredModel[] }>;
 };
 
 const MAX_FILE_BYTES = 200 * 1024 * 1024;
+/** One DWG's conversion; a big Revit export takes a minute or two. */
+const DWG_TIMEOUT_MS = 180_000;
+/** DWGs converted at once (a project of ten storeys and facades fits the function's time). */
+const DWG_AT_ONCE = 3;
 
 /** The platform deps: Blob in, Blob out. The local Studio keeps the pipelines and swaps fetchFile/putBooklet for the disk. */
 export const realDeps: RunDeps = {
@@ -108,6 +118,10 @@ export const realDeps: RunDeps = {
   async putStudio(jobId, name, body) {
     const { putProjectBlob } = await import("@/lib/projects/pipeline/project-blob");
     return putProjectBlob(`vmb-studio/${jobId}/${name}`, body, name.endsWith(".json") ? "application/json" : "image/jpeg");
+  },
+  async convertDwg(bytes) {
+    const { dwgToDxfBytes } = await import("@/lib/projects/floorplan-dwg-convert");
+    return dwgToDxfBytes(bytes, { timeoutMs: DWG_TIMEOUT_MS });
   },
   async htmlToPdf(html) {
     const { renderHtmlSectionsPdf } = await import("@/lib/pdf/render-html-pdf-chromium");
@@ -293,14 +307,56 @@ async function saveBuildingStudio(jobId: string, measured: MeasuredStudio, put: 
 
 const accuracyFailed = (jobId: string) => (message: string) => log.warn("accuracy page not added", { jobId, error: message });
 
-export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
-  const { route, files } = chooseRoute(input.kind, input.files);
-  const projectName = input.projectName?.trim() || fileName(files[0]!.relPath).replace(/\.[^.]+$/, "");
-  log.info("run", { jobId: input.jobId, route, files: files.length });
+const withoutExt = (relPath: string) => relPath.replace(/\.[^./\\]+$/, "");
 
+/**
+ * The DWGs the run can read only as DXF, converted (deps.convertDwg) and put in their place: same path with ".dxf",
+ * their bytes ready in `bytes`. A DWG with a DXF of the same name beside it is not converted (the client's own export
+ * wins, and costs nothing). Without a converter the files come back as they were, and chooseRoute stops on the DWG.
+ */
+export async function convertDwgFiles(files: RunInput["files"], bytes: Map<string, Buffer>, deps: RunDeps, report: Report): Promise<RunInput["files"]> {
+  const exported = new Set(files.filter((f) => f.kind === "dxf").map((f) => withoutExt(f.relPath).toLowerCase()));
+  const todo = files.filter((f) => f.kind === "dwg" && !exported.has(withoutExt(f.relPath).toLowerCase()));
+  const convert = deps.convertDwg;
+  if (!todo.length || !convert) return files;
+  const converted = new Map<string, string>();
+  let done = 0;
+  for (let i = 0; i < todo.length; i += DWG_AT_ONCE) {
+    await Promise.all(
+      todo.slice(i, i + DWG_AT_ONCE).map(async (f) => {
+        let dxf: Buffer | null;
+        try {
+          dxf = await convert(await deps.fetchFile(f.blobUrl));
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === "DwgConversionUnavailableError") {
+            throw new RunProjectError("needs-conversion", "המרת DWG עוד לא מופעלת באתר. שמרו את השרטוטים כ־DXF מתוכנת השרטוט והעלו אותם");
+          }
+          throw err;
+        }
+        if (!dxf?.length) {
+          throw new RunProjectError("needs-conversion", `הקובץ ${fileName(f.relPath)} לא הומר ל־DXF. שמרו אותו כ־DXF מתוכנת השרטוט והעלו אותו`);
+        }
+        const relPath = `${withoutExt(f.relPath)}.dxf`;
+        bytes.set(relPath, dxf);
+        converted.set(f.relPath, relPath);
+        await report("read", ++done, todo.length, `המרה ל־DXF: ${fileName(f.relPath)}`);
+      }),
+    );
+  }
+  return files.map((f) => {
+    const relPath = converted.get(f.relPath);
+    return relPath ? { ...f, relPath, kind: "dxf" as const } : f;
+  });
+}
+
+export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
   const bytes = new Map<string, Buffer>();
+  const { route, files } = chooseRoute(input.kind, await convertDwgFiles(input.files, bytes, deps, report));
+  const projectName = input.projectName?.trim() || fileName(files[0]!.relPath).replace(/\.[^.]+$/, "");
+  log.info("run", { jobId: input.jobId, route, files: files.length, converted: bytes.size });
+
   for (const [i, f] of files.entries()) {
-    bytes.set(f.relPath, await deps.fetchFile(f.blobUrl));
+    if (!bytes.has(f.relPath)) bytes.set(f.relPath, await deps.fetchFile(f.blobUrl));
     await report("read", i + 1, files.length, fileName(f.relPath));
   }
 
