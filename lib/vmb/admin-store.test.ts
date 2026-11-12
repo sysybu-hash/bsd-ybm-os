@@ -10,7 +10,7 @@ jest.mock("@/lib/vmb/billing", () => ({ applyVmbPayment: (...a: unknown[]) => mo
 
 const mockDb = {
   vmbWorkspace: { findUnique: jest.fn() },
-  vmbSubscription: { updateMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  vmbSubscription: { updateMany: jest.fn(), findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
   vmbPayment: { findFirst: jest.fn(), updateMany: jest.fn() },
   vmbCreditLedger: { findFirst: jest.fn(), aggregate: jest.fn(), create: jest.fn() },
   $transaction: jest.fn(),
@@ -73,8 +73,18 @@ describe("VMB admin", () => {
     mockDb.vmbSubscription.findUnique.mockResolvedValue({ periodEnd: end });
     expect(await runAdminAction("a@x.co", { action: "extend", workspaceId: "w1", days: 30 })).toEqual({ ok: true });
     expect(mockDb.vmbSubscription.update.mock.calls[0][0].data.periodEnd.getTime()).toBe(end.getTime() + 30 * 86_400_000);
+  });
+
+  it("starts a trial for an office with no subscription: those days, no payment, no included credits", async () => {
     mockDb.vmbSubscription.findUnique.mockResolvedValue(null);
-    expect(await runAdminAction("a@x.co", { action: "extend", workspaceId: "w1", days: 30 })).toEqual({ ok: false, code: "no_subscription" });
+    const before = Date.now();
+    expect(await runAdminAction("a@x.co", { action: "extend", workspaceId: "w1", days: 30 })).toEqual({ ok: true });
+    const data = mockDb.vmbSubscription.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({ workspaceId: "w1", status: "active", includedCredits: 0 });
+    expect(data.periodEnd.getTime() - data.periodStart.getTime()).toBe(30 * 86_400_000);
+    expect(data.periodStart.getTime()).toBeGreaterThanOrEqual(before);
+    expect(mockApply).not.toHaveBeenCalled();
+    expect(mockCredits.recordCredit).not.toHaveBeenCalled();
   });
 
   it("marks a refund once, takes back the payment's credits as far as the balance goes, and cancels an annual plan", async () => {

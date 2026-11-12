@@ -213,7 +213,12 @@ async function act(adminEmail: string, a: AdminAction): Promise<AdminActionResul
     }
     case "extend": {
       const sub = await prisma.vmbSubscription.findUnique({ where: { workspaceId: a.workspaceId }, select: { periodEnd: true } });
-      if (!sub) return { ok: false, code: "no_subscription" };
+      if (!sub) {
+        // An office with no subscription gets a trial: these days, no payment, no included credits (credits are granted apart).
+        const now = new Date();
+        await prisma.vmbSubscription.create({ data: { workspaceId: a.workspaceId, status: "active", periodStart: now, periodEnd: new Date(now.getTime() + a.days * DAY), includedCredits: 0 } });
+        return { ok: true };
+      }
       const from = Math.max(sub.periodEnd.getTime(), Date.now());
       await prisma.vmbSubscription.update({ where: { workspaceId: a.workspaceId }, data: { periodEnd: new Date(from + a.days * DAY) } });
       return { ok: true };

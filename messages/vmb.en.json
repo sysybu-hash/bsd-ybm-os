@@ -551,7 +551,7 @@
       "act_note": "Reason",
       "act_activate": "Activate after bank transfer",
       "act_reference": "Transfer reference",
-      "act_extend": "Extend subscription",
+      "act_extend": "Extend subscription (or start a trial)",
       "act_days": "Days",
       "act_freeze": "Freeze subscription",
       "act_unfreeze": "Unfreeze",
