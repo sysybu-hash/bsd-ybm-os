@@ -383,7 +383,7 @@
       "rescan": "Scan again",
       "showMore": "Show all",
       "showLess": "Show less",
-      "notScannedYet": "{n} more files (PDF, DWG, DWF and photos) will be scanned once their readers are connected here.",
+      "notScannedYet": "{n} more files are not scanned here: DWG files are converted to DXF and read when the run starts; PDF, DWF and photos will be scanned once their readers are connected here.",
       "empty": "Upload a DXF file to see how much of it the system reads.",
       "err_generic": "Scan failed",
       "err_not_found": "File not found",

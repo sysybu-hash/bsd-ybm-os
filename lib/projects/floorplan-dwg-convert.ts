@@ -66,6 +66,18 @@ export async function dwgToDxf(
   bytes: Buffer | Uint8Array,
   options?: { spend?: FloorplanSpend; timeoutMs?: number },
 ): Promise<string | null> {
+  const out = await dwgToDxfBytes(bytes, options);
+  return out ? out.toString("utf8") : null;
+}
+
+/**
+ * The same conversion, as the DXF's own bytes: a DXF older than R2007 is written in the drawing's code page (Hebrew
+ * cp1255), which a UTF-8 decode would spoil before the reader sees it. VMB's pipelines read bytes.
+ */
+export async function dwgToDxfBytes(
+  bytes: Buffer | Uint8Array,
+  options?: { spend?: FloorplanSpend; timeoutMs?: number },
+): Promise<Buffer | null> {
   if (!isDwgConversionConfigured()) throw new DwgConversionUnavailableError();
   const deadline = Date.now() + (options?.timeoutMs ?? CONVERT_TIMEOUT_MS);
   try {
@@ -107,7 +119,7 @@ export async function dwgToDxf(
         const dxf = await fetch(url);
         if (!dxf.ok) throw new Error(`CloudConvert download answered ${dxf.status}`);
         if (options?.spend) recordFloorplanSpend(options.spend, "extract", "cloudconvert-dwg");
-        return await dxf.text();
+        return Buffer.from(await dxf.arrayBuffer());
       }
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     }
