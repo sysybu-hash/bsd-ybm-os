@@ -202,6 +202,7 @@ function drawFiles() {
     if (f.kind === "house") return `<select data-i="${i}" data-k="role">${ROLES.map(([v, t]) => `<option value="${v}" ${f.role === v ? "selected" : ""}>${t}</option>`).join("")}</select><input data-i="${i}" data-k="model" value="${esc(f.model)}" placeholder="דגם (A, B…)" title="שם הדגם: קבצי קומות של אותו דגם יחד">`;
     if (f.kind === "pdf") return `<input data-i="${i}" data-k="area" type="number" step="0.01" value="${esc(f.area)}" placeholder='שטח ברוטו מ"ר'>`;
     if (f.kind === "unit") return `<input data-i="${i}" data-k="unit" type="number" value="${esc(f.unit)}" placeholder="מספר דירה">`;
+    if (f.kind === "flatdxf") return `<input data-i="${i}" data-k="unit" type="number" value="${esc(f.unit)}" placeholder="מספר דירה (בקומה שלמה)">`;
     return "";
   };
   $("files").innerHTML = files.length ? files.map((f, i) => `<div class="file"><b>${esc(base(f.path))}</b><div class="f2">${kindSel(f, i)}</div><div class="f2">${extra(f, i)}</div><a data-d="${i}">הסר</a><div class="hint" style="margin:0">${esc(cfg.kinds[f.kind].note)}</div></div>`).join("") : '<div class="hint">בחרו קבצי תכנון: DXF, DWF, PDF או תמונה. המערכת מזהה כל קובץ ומציעה איך לבנות ממנו הדמיה.</div>';
@@ -233,7 +234,7 @@ async function build() {
     if (f.kind === "house") continue;
     if (f.kind === "pdf" && !f.area) return alert(`חסר שטח ברוטו (מ"ר) לקובץ ${base(f.path)}`);
     if (f.kind === "unit" && !f.unit) return alert(`חסר מספר דירה לקובץ ${base(f.path)}`);
-    items.push({ ...common, project: f.kind, file: f.path, area: f.area, unit: f.unit, ...(f.kind === "permit" ? { name: $("projName").value.trim() || base(f.path).replace(/\.[^.]+$/, "") } : {}) });
+    items.push({ ...common, project: f.kind, file: f.path, area: f.area, unit: f.unit, ...(f.kind === "permit" || f.kind === "flatdxf" ? { name: $("projName").value.trim() || base(f.path).replace(/\.[^.]+$/, "") } : {}) });
   }
   if (!items.length) return alert("אין מה לבנות: כל הקבצים מסומנים 'התעלם'");
   const r = await post("/api/jobs", { type: "build", items, flux: $("thenFlux").checked ? fluxParams() : null });

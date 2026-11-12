@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { withWorkspacesAuth } from "@/lib/api-handler";
 import { apiErrorResponse } from "@/lib/api-route-helpers";
-import { jsonBadRequest } from "@/lib/api-json";
+import { jsonBadRequest, jsonForbidden } from "@/lib/api-json";
 import { applyRateLimit } from "@/lib/rate-limit";
 import { guardConstructionOnlyApi } from "@/lib/industry-api-guard";
 import { requireProjectForOrg } from "@/lib/projects/project-access";
 import { isFloorplanBlobUrl } from "@/lib/projects/floorplan-blob";
 import { createBookletJob, listBookletJobs, scheduleNextStep } from "@/lib/projects/building/booklet-job";
+import { vizAccessForUser } from "@/lib/projects/viz-access";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,9 @@ export const POST = withWorkspacesAuth(async (req, { orgId, userId, role }) => {
     if (limited) return limited;
     const block = await guardConstructionOnlyApi(orgId, role);
     if (block) return block;
+    // A booklet is the measured visualisation: open to active subscribers, as the other visualisation routes are.
+    const access = await vizAccessForUser(userId, orgId);
+    if (!access.subscriber) return jsonForbidden("ההדמיה המדודה פתוחה למנויים פעילים");
     const parsed = createSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return jsonBadRequest("חסרים פרטים להפקת החוברת", "missing_fields");
     const { blobUrl, name, subtitle, projectId } = parsed.data;

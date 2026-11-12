@@ -1819,3 +1819,243 @@ model HouseBookletJob {
   @@index([organizationId, createdAt])
   @@index([status, updatedAt])
 }
+
+// ─── VisualModuBuild (vmb.bsd-ybm.co.il) ─────────────────────────────────────
+// A separate product with its own accounts: no relation to User/Organization.
+
+model VmbUser {
+  id            String    @id @default(cuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  /// Stored lower-cased.
+  email         String    @unique
+  name          String?
+  image         String?
+  /// Google's stable subject id, once the user signed in with Google.
+  googleSub     String?   @unique
+  /// True once Google vouched for the address.
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+
+  password    VmbPasswordCredential?
+  sessions    VmbSession[]
+  memberships VmbMembership[]
+}
+
+model VmbPasswordCredential {
+  userId    String   @id
+  hash      String
+  updatedAt DateTime @updatedAt
+  user      VmbUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VmbSession {
+  /// sha256 of the cookie token; the token itself is never stored.
+  id         String   @id
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  user       VmbUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// An office (the paying customer). engineOrgId is the hidden platform
+/// Organization the shared engine bills AI usage to; created on first run.
+model VmbWorkspace {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  name        String
+  engineOrgId String?  @unique
+  /// Days after a delivered booklet that the source files are deleted (rule 13.11); null keeps them.
+  fileRetentionDays Int?   @default(30)
+
+  members      VmbMembership[]
+  subscription VmbSubscription?
+  ledger       VmbCreditLedger[]
+  payments     VmbPayment[]
+  projects     VmbProject[]
+  jobs         VmbJob[]
+  invites      VmbInvite[]
+}
+
+/// An address an office owner invited; the user joins the office when they first sign in.
+model VmbInvite {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  /// Stored lower-cased.
+  email       String
+  invitedById String?
+  acceptedAt  DateTime?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, email])
+  @@index([email])
+}
+
+model VmbMembership {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  userId      String
+  /// owner | member
+  role        String       @default("member")
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        VmbUser      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model VmbSubscription {
+  workspaceId     String       @id
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  /// office (the annual plan)
+  plan            String       @default("office")
+  /// active | frozen | cancelled
+  status          String       @default("active")
+  periodStart     DateTime
+  periodEnd       DateTime
+  includedCredits Int
+  workspace       VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([status, periodEnd])
+}
+
+/// Every credit movement. The balance is the sum of delta.
+/// (workspaceId, reason, refId) is unique so a replayed event cannot count twice.
+model VmbCreditLedger {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  delta       Int
+  /// grant | purchase | hold | release | adjust | refund
+  reason      String
+  /// What this movement answers to: a payment txId, a job id, an admin action id.
+  refId       String
+  jobId       String?
+  note        String?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, reason, refId])
+  @@index([workspaceId, createdAt])
+}
+
+model VmbPayment {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  workspaceId String
+  /// paypal | manual
+  gateway     String
+  /// The gateway capture id, or the admin reference for a bank transfer.
+  txId        String
+  /// annual | credits
+  kind        String
+  packId      String?
+  /// Agorot (ILS * 100), VAT included.
+  amountMinor Int
+  currency    String       @default("ILS")
+  /// completed | refunded
+  status      String       @default("completed")
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([gateway, txId])
+  @@index([workspaceId, createdAt])
+}
+
+/// A client project: the uploaded files, what was read from them, and its outputs.
+model VmbProject {
+  id            String       @id @default(cuid())
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  workspaceId   String
+  createdById   String?
+  name          String
+  /// flat | house | building | industrial | public
+  kind          String       @default("building")
+  /// draft | identified | running | done | failed
+  status        String       @default("draft")
+  /// The project file: sheets, roles, units, scale, answers, assumptions.
+  manifest      Json?
+  /// Uploaded source files are deleted at this time (privacy policy, 13.11).
+  filesDeleteAt DateTime?
+  workspace     VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  jobs          VmbJob[]
+  scans         VmbScanReport[]
+  files         VmbProjectFile[]
+
+  @@index([workspaceId, updatedAt])
+}
+
+/// One unit of work with live progress; the server is the truth, so a closed tab loses nothing.
+model VmbJob {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  workspaceId String
+  projectId   String
+  /// scan | rescan | build | render | paint | booklet
+  kind        String
+  /// queued | running | done | failed | cancelled
+  status      String       @default("queued")
+  /// Stage list with done/total per stage (see lib/vmb/progress.ts).
+  progress    Json?
+  percent     Int          @default(0)
+  etaSeconds  Int?
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  costCredits Int?
+  computeMs   Int?
+  workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     VmbProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([workspaceId, status])
+}
+
+/// What one scan round read from one file, and what it did not.
+model VmbScanReport {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  projectId   String
+  jobId       String?
+  fileName    String
+  /// 1 = first scan, 2+ = an extra scan of what the earlier rounds missed.
+  round       Int        @default(1)
+  /// Per kind (layers, blocks, entities, hatches): { read, total }.
+  counts      Json
+  /// Share of the sheet's ink that has a counterpart in the model, 0..1.
+  inkCoverage Float?
+  /// Items not read: name, count, reason.
+  unread      Json
+  /// What the sheet states that the questions form need not ask: header units, level marks.
+  facts       Json?
+  project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, fileName, round])
+}
+
+/// One uploaded source file of a project, stored in Blob under vmb/{projectId}/.
+model VmbProjectFile {
+  id          String     @id @default(cuid())
+  createdAt   DateTime   @default(now())
+  projectId   String
+  /// Path inside the dropped folder, as the client named it (made safe).
+  relPath     String
+  /// dxf | dwg | pdf | dwf | image
+  kind        String
+  size        Int
+  contentType String
+  blobUrl     String
+  blobPath    String
+  uploadedBy  String?
+  project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, relPath])
+}

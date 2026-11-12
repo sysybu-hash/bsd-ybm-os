@@ -34,6 +34,20 @@ const LEGACY_REDIRECTS = [
   },
 ];
 
+/**
+ * VisualModuBuild: its own host (prod `vmb.bsd-ybm.co.il`, dev `vmb.localhost`)
+ * serves the `app/vmb` tree at the root. API, Next internals, static files and
+ * already-prefixed paths pass through untouched.
+ */
+const VMB_HOST_REWRITES = [
+  { source: "/", has: [{ type: "host", value: "vmb\\..+" }], destination: "/vmb" },
+  {
+    source: "/:path((?!api/|_next/|vmb(?:/|$)|favicon\\.ico|.*\\.[a-z0-9]+$).*)",
+    has: [{ type: "host", value: "vmb\\..+" }],
+    destination: "/vmb/:path",
+  },
+];
+
 /** Allow common local dev ports to avoid Next dev cross-origin warnings. */
 function buildAllowedDevOrigins() {
   const set = new Set([
@@ -201,7 +215,12 @@ const nextConfig = {
   },
   // The visualizer's handler, at a path no other route contains (see above).
   async rewrites() {
-    return [{ source: "/api/projects/visualize-floorplan", destination: "/api/projects/visualize-floorplan-run" }];
+    return {
+      // Before the filesystem, so the VMB host's "/" never reaches app/page.tsx.
+      beforeFiles: VMB_HOST_REWRITES,
+      afterFiles: [{ source: "/api/projects/visualize-floorplan", destination: "/api/projects/visualize-floorplan-run" }],
+      fallback: [],
+    };
   },
   transpilePackages: ["react-signature-canvas", "signature_pad", "@hebcal/core"],
   serverExternalPackages: [
@@ -267,6 +286,10 @@ const nextConfig = {
     // A private house's steps draw the same way, and make its PDF the same way.
     "/api/projects/house-booklet-step": BUILDING_BOOKLET_FILES,
     "/api/cron/house-booklet-step": BUILDING_BOOKLET_FILES,
+    // VMB runner: runProject draws the measured flat, the house or the DWF building and prints the PDF, all read by path.
+    "/api/cron/vmb-runner": BUILDING_BOOKLET_FILES,
+    // The queue's call for one job: the same engine.
+    "/api/cron/vmb-job": BUILDING_BOOKLET_FILES,
     "/api/projects/visualize-floorplan/*/stills/*": [
       "./lib/pdf/fonts/**",
       "./lib/pdf/load-pdf-font-buffers.ts",

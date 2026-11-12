@@ -73,7 +73,7 @@ export async function listBookletJobs(orgId: string): Promise<BookletJobView[]> 
   return rows.map(view);
 }
 
-function appBaseUrl(): string {
+export function appBaseUrl(): string {
   const explicit = env.QSTASH_TARGET_BASE_URL?.trim();
   if (explicit) return explicit.replace(/\/$/, "");
   const site = env.NEXT_PUBLIC_SITE_URL?.trim() || env.NEXTAUTH_URL?.trim();

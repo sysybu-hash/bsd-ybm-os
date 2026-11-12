@@ -25,9 +25,23 @@
     },
     "app/api/cron/house-booklet-step/route.ts": {
       "maxDuration": 300
+    },
+    "app/api/cron/vmb-runner/route.ts": {
+      "maxDuration": 800
+    },
+    "app/api/cron/vmb-job/route.ts": {
+      "maxDuration": 800
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/vmb-files-cleanup",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/vmb-runner",
+      "schedule": "*/15 * * * *"
+    },
     {
       "path": "/api/cron/financial-insights",
       "schedule": "0 6 * * *"

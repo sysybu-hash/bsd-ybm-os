@@ -37,7 +37,7 @@ import {
 } from "@/lib/projects/building/house-booklet-job";
 import { costLines, costReport, defaultHouseBudgetIls, estimateHousePainting, formatCost, houseSpend, runWithTextBudget, spentSoFar, type HouseSpend } from "@/lib/projects/building/house-cost";
 import { paintingPlan } from "@/lib/projects/building/house-photoreal";
-import { houseSheetReader } from "@/lib/projects/building/house-project";
+import { houseSheetReader, inferRequireCars } from "@/lib/projects/building/house-project";
 import { packHouseReading, unpackHouseReading } from "@/lib/projects/building/house-reading-pack";
 import { answerMemo, houseFileStore, paintingCache, type HouseFileStore } from "@/lib/projects/building/house-store";
 import { resolveFloorplanVizStyle } from "@/lib/projects/floorplan-viz-styles";
@@ -172,6 +172,10 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
       record.facadesRef = await store.put(houseJobPath(record.id, "facades.json"), Buffer.from(JSON.stringify(storeHouseFacades(facades))), "application/json");
       record.north = north;
       record.northKnown = northKnown;
+      // A building whose DXF floors draw no parking (a school) is not held to the cars gate: inferred as the Studio does.
+      const cars = await inferRequireCars(project, sheets);
+      record.requireCars = cars.requireCars;
+      if (!cars.requireCars) say("parking drawn: none, so the cars gate is not applied");
     });
     record.at = { kind: "read", model: 0 };
     return;
@@ -211,6 +215,7 @@ export async function runHouseStep(ctx: Ctx): Promise<void> {
           north: record.north!,
           northKnown: record.northKnown ?? true,
           ai: record.ai,
+          requireCars: record.requireCars,
           say,
         }),
         stage: at.stage,

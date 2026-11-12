@@ -348,7 +348,8 @@ export function anchorOf(r: DxfRecord): Pt | null {
   return has(r, 10) ? { x: num(r, 10), y: num(r, 20) } : null;
 }
 
-type Ctx = { m: Matrix; layer?: string; colour?: number; weightMm?: number; path: string[]; depth: number };
+/** `maxDepth`: how deep block references are followed (8 unless a caller asks for more, as the second scan does). */
+type Ctx = { m: Matrix; layer?: string; colour?: number; weightMm?: number; path: string[]; depth: number; maxDepth?: number };
 
 /** HATCH boundary paths as rings, in object coordinates. */
 function hatchRings(r: DxfRecord): Pt[][] {
@@ -687,14 +688,14 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
         const name = str(e, 2);
         const blk = drawing.blocks.get(name);
         out.push({ ...base, dimension: true, text: str(e, 1) || undefined, at: apply(ctx.m, { x: num(e, 11), y: num(e, 21) }) });
-        if (blk && ctx.depth < 8) flattenDxf(drawing, blk.entities, { m: ctx.m, layer: layerName, colour, weightMm, path: [...ctx.path, name], depth: ctx.depth + 1 }, out);
+        if (blk && ctx.depth < (ctx.maxDepth ?? 8)) flattenDxf(drawing, blk.entities, { m: ctx.m, layer: layerName, colour, weightMm, path: [...ctx.path, name], depth: ctx.depth + 1, maxDepth: ctx.maxDepth }, out);
         break;
       }
       case "INSERT": {
         const name = str(e, 2);
         const blk = drawing.blocks.get(name);
-        if (!blk || ctx.depth >= 8 || ctx.path.includes(name)) {
-          const why = !blk ? "missing-block" : ctx.depth >= 8 ? "nested-too-deep" : "self-referencing-block";
+        if (!blk || ctx.depth >= (ctx.maxDepth ?? 8) || ctx.path.includes(name)) {
+          const why = !blk ? "missing-block" : ctx.depth >= (ctx.maxDepth ?? 8) ? "nested-too-deep" : "self-referencing-block";
           noteDrop(`dxf-drawing:${why}`, () => `${name} on ${layerName}`);
           break;
         }
@@ -723,7 +724,7 @@ export function flattenDxf(drawing: DxfDrawing, entities: DxfRecord[] = drawing.
               mirrored: mm.a * mm.d - mm.b * mm.c < 0,
               attribs,
             });
-            flattenDxf(drawing, blk.entities, { m: mm, layer: layerName, colour, weightMm, path: [...ctx.path, name], depth: ctx.depth + 1 }, out);
+            flattenDxf(drawing, blk.entities, { m: mm, layer: layerName, colour, weightMm, path: [...ctx.path, name], depth: ctx.depth + 1, maxDepth: ctx.maxDepth }, out);
           }
         }
         if (e.children?.length) flattenDxf(drawing, e.children.filter((a) => a.type === "ATTRIB"), { ...ctx, layer: ctx.layer }, out);

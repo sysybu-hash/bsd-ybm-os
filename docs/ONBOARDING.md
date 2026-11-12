@@ -86,6 +86,12 @@ CRON_SECRET="local-dev-secret"
 # message rather than failing at the platform edge.
 # BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 
+# VisualModuBuild's own private Blob store (Storage → Create → Blob, access Private,
+# connected with the env prefix VMB_BLOB). The client's sheets, booklets and studio
+# files go there and are read only through routes that check the office. Without it
+# they fall back to the public store above (unguessable addresses, but public).
+# VMB_BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
+
 # CAD conversion — only needed to accept .dwg uploads. A .dxf is read directly.
 # Without it, a DWG upload is refused with a message telling the user to export
 # the drawing as DXF from their CAD program.
@@ -134,6 +140,16 @@ GOOGLE_CLIENT_SECRET="..."
 # אופציונלי — Client נפרד לכניסה בלבד (מומלץ להסרת אזהרת Google ב-login)
 # GOOGLE_SIGNIN_CLIENT_ID="..."
 # GOOGLE_SIGNIN_CLIENT_SECRET="..."
+
+# VisualModuBuild (vmb.bsd-ybm.co.il) — Client נפרד, חשבונות נפרדים מהפלטפורמה.
+# Redirect URI: https://vmb.bsd-ybm.co.il/api/vmb/auth/google/callback
+# (ולפיתוח: http://localhost:3000/api/vmb/auth/google/callback). בלי שניהם הכפתור כבוי.
+# VMB_GOOGLE_CLIENT_ID="..."
+# VMB_GOOGLE_CLIENT_SECRET="..."
+# מנהלי־על של VMB: רשימה מופרדת בפסיקים. כתובת נחשבת רק אחרי כניסה עם Google (כתובת מאומתת).
+# VMB_SUPERADMIN_EMAILS="a@example.com,b@example.com"
+# "1" רק אחרי שמריץ החוברות של VMB מחובר. עד אז כפתור ההרצה לא מחזיק קרדיטים ולא יוצר עבודה.
+# VMB_RUNNER_READY="1"
 ```
 
 - **מדריך מלא (עברית):** [GOOGLE-OAUTH.md](./GOOGLE-OAUTH.md) — scopes, Testing mode, אימות, שני Clients.

@@ -6,6 +6,8 @@ import {
 } from "@/lib/paypal-server";
 import { parseCapturePayload } from "@/lib/paypal-order-parse";
 import { applyPayPalCaptureResult } from "@/lib/paypal-capture-apply";
+import { applyVmbPayment } from "@/lib/vmb/billing";
+import { parseVmbCustomId, VMB_CUSTOM_ID_PREFIX } from "@/lib/vmb/custom-id";
 import { sendInvoiceEmail } from "@/lib/invoice-mailer";
 import { createLogger } from "@/lib/logger";
 
@@ -97,6 +99,24 @@ export async function POST(req: Request) {
 
   if (!customId) {
     log.warn("missing_custom_id", { captureId });
+    return NextResponse.json({ received: true });
+  }
+
+  // VisualModuBuild purchases: their own ledger, never an Organization or Invoice.
+  if (customId.startsWith(VMB_CUSTOM_ID_PREFIX)) {
+    const purchase = parseVmbCustomId(customId);
+    if (!purchase) {
+      log.warn("vmb_bad_custom_id", { captureId });
+      return NextResponse.json({ received: true });
+    }
+    const vmb = await applyVmbPayment({
+      purchase,
+      gateway: "paypal",
+      txId: captureId,
+      amountMinor: Math.round(paid * 100),
+      currency,
+    });
+    if (!vmb.applied && vmb.reason !== "duplicate") log.error("vmb_apply_failed", undefined, { reason: vmb.reason, captureId });
     return NextResponse.json({ received: true });
   }
 
