@@ -16,7 +16,7 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { claimNextJob, creditsUsed, failJob, finishJob, progressReporter, reapStalledJobs, runClaimed, STALLED_AFTER_MS, type RunOutput } from "@/lib/vmb/runner";
+import { claimJob, claimNextJob, creditsUsed, failJob, finishJob, progressReporter, reapStalledJobs, runClaimed, STALLED_AFTER_MS, type RunOutput } from "@/lib/vmb/runner";
 import type { JobProgress } from "@/lib/vmb/progress";
 import { RunProjectError } from "@/lib/projects/pipeline/runProject";
 
@@ -61,6 +61,17 @@ describe("VMB runner", () => {
     mockDb.vmbJob.updateMany.mockResolvedValue({ count: 0 });
     expect(await claimNextJob()).toBeNull();
     expect(mockDb.vmbJob.updateMany).toHaveBeenCalledTimes(3);
+  });
+
+  it("claims the one job the queue named, only while it is still queued", async () => {
+    const input = await claimJob("j1");
+    expect(mockDb.vmbJob.findFirst.mock.calls[0][0].where).toEqual({ id: "j1", kind: "booklet", status: "queued" });
+    expect(input).toMatchObject({ jobId: "j1", projectId: "p1" });
+    mockDb.vmbJob.findFirst.mockResolvedValue(null);
+    expect(await claimJob("j1")).toBeNull();
+    mockDb.vmbJob.findFirst.mockResolvedValue({ id: "j1", projectId: "p1" });
+    mockDb.vmbJob.updateMany.mockResolvedValue({ count: 0 });
+    expect(await claimJob("j1")).toBeNull();
   });
 
   it("returns nothing when the queue is empty", async () => {

@@ -9,6 +9,7 @@ import { getEntitlement } from "@/lib/vmb/entitlement";
 import { estimateBooklet, runBlock, type BookletEstimate, type RunBlock } from "@/lib/vmb/estimate";
 import type { JobProgress } from "@/lib/vmb/progress";
 import { projectsOfUser } from "@/lib/vmb/projects";
+import { dispatchRun } from "@/lib/vmb/run-queue";
 
 const log = createLogger("vmb-run");
 
@@ -94,6 +95,8 @@ export async function startRun(userId: string, projectId: string): Promise<Start
   }
   await prisma.vmbProject.update({ where: { id: p.id }, data: { status: "running" } });
   log.info("run queued", { projectId: p.id, jobId: job.id, cap: estimate.cap });
+  // Started now by the queue; if the message cannot be sent, the sweeper (cron/vmb-runner) takes it within 15 minutes.
+  await dispatchRun(job.id);
   return { ok: true, jobId: job.id };
 }
 

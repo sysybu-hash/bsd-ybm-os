@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 800;
 
 /**
- * VMB's runner, every minute: fails jobs that stopped reporting (their credits go back), then takes one queued booklet
- * job and runs it. Does nothing while VMB_RUNNER_READY is off.
+ * VMB's sweeper, every 15 minutes: fails jobs that stopped reporting (their credits go back), then takes one queued
+ * booklet job the queue did not start (cron/vmb-job runs each job as it is queued) and runs it. Not every minute: each
+ * call wakes the database. Does nothing while VMB_RUNNER_READY is off.
  */
 export async function GET(req: NextRequest) {
-  return withCronGuard(req, "vmb-runner", { type: "crontab", value: "* * * * *" }, async () => {
+  return withCronGuard(req, "vmb-runner", { type: "crontab", value: "*/15 * * * *" }, async () => {
     if (!runnerReady()) return { ready: false };
     const reaped = await reapStalledJobs();
     const input = await claimNextJob();

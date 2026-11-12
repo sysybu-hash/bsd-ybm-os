@@ -25,6 +25,8 @@ jest.mock("@/lib/vmb/credits", () => ({
 
 const mockEnt = jest.fn();
 jest.mock("@/lib/vmb/entitlement", () => ({ getEntitlement: (...a: unknown[]) => mockEnt(...a) }));
+const mockDispatch = jest.fn();
+jest.mock("@/lib/vmb/run-queue", () => ({ dispatchRun: (...a: unknown[]) => mockDispatch(...a) }));
 
 import { cancelQueuedRun, projectCost, startRun } from "@/lib/vmb/run-store";
 
@@ -59,6 +61,7 @@ describe("the run button on the server", () => {
 
   it("holds the ceiling for a new job and marks the project running", async () => {
     await expect(startRun("u1", "p1")).resolves.toEqual({ ok: true, jobId: "j1" });
+    expect(mockDispatch).toHaveBeenCalledWith("j1");
     expect(mockCredits.holdCredits).toHaveBeenCalledWith("w1", "j1", 10);
     expect(mockDb.vmbJob.create.mock.calls[0][0].data).toMatchObject({ kind: "booklet", status: "queued", costCredits: 10 });
     expect(mockDb.vmbProject.update).toHaveBeenCalledWith({ where: { id: "p1" }, data: { status: "running" } });

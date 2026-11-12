@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
+import { runWithAiRequest } from "@/lib/ai-usage";
 import { VMB_PROJECT_KINDS, type VmbProjectKind } from "@/lib/validation/schemas/vmb-projects";
 import { questionsState } from "@/lib/vmb/answers-store";
 import { settleHold } from "@/lib/vmb/credits";
@@ -91,17 +92,28 @@ export async function claimNextJob(): Promise<RunInput | null> {
   for (let tries = 0; tries < 3; tries++) {
     const next = await prisma.vmbJob.findFirst({ where: { kind: "booklet", status: "queued" }, orderBy: { createdAt: "asc" }, select: { id: true, projectId: true } });
     if (!next) return null;
-    const moved = await prisma.vmbJob.updateMany({ where: { id: next.id, status: "queued" }, data: { status: "running", startedAt: new Date() } });
-    if (moved.count !== 1) continue;
-    const input = await inputFor(next.id, next.projectId);
-    if (!input) {
-      await failJob(next.id, "project_missing");
-      continue;
-    }
-    log.info("job claimed", { jobId: next.id, projectId: next.projectId });
-    return input;
+    const input = await claim(next);
+    if (input) return input;
   }
   return null;
+}
+
+/** Takes this one queued job (the queue's message names it). Null when it is gone, cancelled or already taken. */
+export async function claimJob(jobId: string): Promise<RunInput | null> {
+  const job = await prisma.vmbJob.findFirst({ where: { id: jobId, kind: "booklet", status: "queued" }, select: { id: true, projectId: true } });
+  return job ? claim(job) : null;
+}
+
+async function claim(job: { id: string; projectId: string }): Promise<RunInput | null> {
+  const moved = await prisma.vmbJob.updateMany({ where: { id: job.id, status: "queued" }, data: { status: "running", startedAt: new Date() } });
+  if (moved.count !== 1) return null;
+  const input = await inputFor(job.id, job.projectId);
+  if (!input) {
+    await failJob(job.id, "project_missing");
+    return null;
+  }
+  log.info("job claimed", { jobId: job.id, projectId: job.projectId });
+  return input;
 }
 
 /** Seconds between progress writes; a stage that completes is always written. */
@@ -224,7 +236,8 @@ export async function runClaimed(input: RunInput, engine: (input: RunInput, repo
   const initial = (job?.progress as unknown as JobProgress | null) ?? { startedAt: Date.now(), stages: RUN_STAGES.map((key) => ({ key, weight: 1, done: 0, total: 1 })) };
   const { report } = progressReporter(input.jobId, { ...initial, startedAt: Date.now() });
   try {
-    const out = await engine(input, report);
+    // Every model call the engine makes is recorded against this office (AiUsageEvent.feature "vmb-engine:<workspace>").
+    const out = await runWithAiRequest({ feature: `vmb-engine:${job?.workspaceId ?? "unknown"}` }, () => engine(input, report));
     return (await finishJob(input.jobId, out)) ? "done" : "failed";
   } catch (err: unknown) {
     if (err instanceof RunProjectError) await failJob(input.jobId, err.code, { code: err.code, message: err.message, units: err.detail?.units });
