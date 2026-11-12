@@ -32,6 +32,14 @@ const LEGACY_REDIRECTS = [
     destination: "https://www.bsd-ybm.co.il/:path*",
     permanent: true,
   },
+  /**
+   * VisualModuBuild lives on its own host. Reached through www (`/vmb/...`), its Google sign-in sent www's callback,
+   * which the VMB OAuth client does not know (redirect_uri_mismatch), and its session cookie would land on www. So
+   * www's VMB pages and sign-in move to the product host. Previews (*.vercel.app) and localhost keep the /vmb prefix.
+   */
+  { source: "/vmb", has: [{ type: "host", value: "www\\.bsd-ybm\\.co\\.il" }], destination: "https://vmb.bsd-ybm.co.il/", permanent: false },
+  { source: "/vmb/:path*", has: [{ type: "host", value: "www\\.bsd-ybm\\.co\\.il" }], destination: "https://vmb.bsd-ybm.co.il/:path*", permanent: false },
+  { source: "/api/vmb/auth/:path*", has: [{ type: "host", value: "www\\.bsd-ybm\\.co\\.il" }], destination: "https://vmb.bsd-ybm.co.il/api/vmb/auth/:path*", permanent: false },
 ];
 
 /**
