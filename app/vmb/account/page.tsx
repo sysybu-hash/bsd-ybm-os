@@ -87,7 +87,7 @@ export default async function VmbAccountPage() {
             <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-[color:var(--vmb-accent)]/20 blur-[80px]" />
             <p className="text-sm text-[color:var(--vmb-muted)]">{a("plan")}</p>
             <p className={`mt-2 text-2xl font-bold ${ent.active ? "text-[color:var(--vmb-pass)]" : ""}`}>{status}</p>
-            <p className="mt-1 text-sm text-[color:var(--vmb-ink-soft)]">{a("included", { n: VMB_ANNUAL_PLAN.includedCredits.toLocaleString("en-US") })}</p>
+            <p className="mt-1 text-sm text-[color:var(--vmb-ink-soft)]">{ent.subscription && ent.subscription.includedCredits === 0 ? a("trial") : a("included", { n: VMB_ANNUAL_PLAN.includedCredits.toLocaleString("en-US") })}</p>
             <div className="mt-7 border-t border-[color:var(--vmb-line)] pt-6">
               <p className="flex items-baseline justify-between gap-3">
                 <span className="font-medium">{ent.active ? a("renew") : a("buyAnnual")}</span>

@@ -231,6 +231,7 @@
       "statusExpired": "The subscription ended on {date}. Your remaining credits are kept and come back when you renew.",
       "balance": "Credit balance",
       "included": "{n} credits included every year",
+      "trial": "Trial subscription. Credits are granted separately and are not included.",
       "buyAnnual": "Buy the annual plan",
       "renew": "Renew for another year",
       "renewNote": "The new year starts when the current period ends.",
