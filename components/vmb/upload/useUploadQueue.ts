@@ -25,7 +25,8 @@ const MULTIPART_FROM = 50 * 1024 * 1024;
  * Uploads a folder's worth of files three at a time: token → Blob → register.
  * Files VMB does not read are counted as skipped and never sent.
  */
-export function useUploadQueue(projectId: string, onStored: (f: StoredFile) => void) {
+/** `access` is the store the server writes to (projectBlobAccess): a token for one store refuses the other's access. */
+export function useUploadQueue(projectId: string, access: "private" | "public", onStored: (f: StoredFile) => void) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [skipped, setSkipped] = useState<string[]>([]);
   const running = useRef(0);
@@ -43,7 +44,7 @@ export function useUploadQueue(projectId: string, onStored: (f: StoredFile) => v
         patch(item.key, { status: "uploading", percent: 0, error: undefined });
         const { upload } = await import("@vercel/blob/client");
         const blob = await upload(blobPathnameFor(projectId, item.relPath), item.file, {
-          access: "public",
+          access,
           handleUploadUrl: `/api/vmb/projects/${projectId}/upload`,
           contentType: contentTypeFor(item.relPath) ?? undefined,
           multipart: item.size >= MULTIPART_FROM,
@@ -64,7 +65,7 @@ export function useUploadQueue(projectId: string, onStored: (f: StoredFile) => v
         patch(item.key, { status: "failed", error: /^[a-z_]+$/.test(msg) ? msg : "generic" });
       }
     },
-    [projectId, patch],
+    [projectId, access, patch],
   );
 
   const pump = useCallback(() => {

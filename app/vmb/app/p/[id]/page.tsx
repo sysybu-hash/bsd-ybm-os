@@ -14,6 +14,7 @@ import { projectCost } from "@/lib/vmb/run-store";
 import { questionsState } from "@/lib/vmb/answers-store";
 import type { JobItem } from "@/components/vmb/projects/types";
 import { getProject } from "@/lib/vmb/projects";
+import { projectBlobAccess } from "@/lib/projects/pipeline/project-blob";
 import { bookletLabels, costLabels, kindLabels, notifyLabels, progressText, questionsLabels, scanLabels, stopLabels, uploadLabels } from "@/lib/vmb/projects-labels";
 import { toScanViews } from "@/lib/vmb/scan-view";
 import { frameLabels, getStudioContext, railStep, stepLabels, vmbStudioT } from "@/lib/vmb/studio-context";
@@ -55,7 +56,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
-          <UploadZone projectId={project.id} initial={project.files} labels={uploadLabels()} />
+          <UploadZone projectId={project.id} access={projectBlobAccess()} initial={project.files} labels={uploadLabels()} />
           {project.files.length ? <ScanPanel projectId={project.id} files={project.files} initial={toScanViews(project.scans)} labels={scanLabels()} /> : null}
           {project.files.length ? <QuestionsForm projectId={project.id} initial={questions} labels={questionsLabels(questions.questions)} /> : null}
         </div>
@@ -75,6 +76,7 @@ export default async function VmbProjectPage({ params }: { params: Promise<{ id:
           {stop && !showJob ? <StopCard projectId={project.id} stop={stop} labels={stopLabels()} /> : null}
           {booklet && !showJob ? <BookletCard
               booklet={booklet}
+              bookletHref={`/api/vmb/projects/${project.id}/booklet`}
               files={{ deleteAt: project.filesDeleteAt?.toISOString() ?? null, deletedAt: projectFilesDeletedAt(project.manifest) }}
               studioHref={`/app/p/${project.id}/studio`}
               labels={bookletLabels()}

@@ -1,5 +1,5 @@
 import "server-only";
-import { del } from "@vercel/blob";
+import { deleteProjectBlobs } from "@/lib/projects/pipeline/project-blob";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
@@ -50,7 +50,7 @@ export async function purgeExpiredFiles(now = new Date()): Promise<number> {
   for (const p of due) {
     const urls = p.files.map((f) => f.blobUrl);
     try {
-      if (urls.length) await del(urls);
+      if (urls.length) await deleteProjectBlobs(urls);
     } catch (err: unknown) {
       // Storage refused: keep the rows so the next run tries again.
       log.warn("files purge failed", { projectId: p.id, error: err instanceof Error ? err.message : String(err) });

@@ -104,6 +104,8 @@ const serverSchema = z.object({
   VMB_SUPERADMIN_EMAILS: optStr,
   /** "1" once the VMB booklet runner is connected: until then the start button holds no credits and starts nothing. */
   VMB_RUNNER_READY: optStr,
+  /** VMB's private Blob store (a separate store, access "private"): project files, booklets, studio. Unset: the public store. */
+  VMB_BLOB_READ_WRITE_TOKEN: optStr,
 
   // --- Google Cloud / Document AI ---
   GOOGLE_APPLICATION_CREDENTIALS_JSON: optStr,

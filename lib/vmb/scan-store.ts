@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
 import { readDxfDrawing, type DxfDrawing } from "@/lib/projects/dxf-drawing";
+import { readProjectBlob } from "@/lib/projects/pipeline/project-blob";
 import { ownProject } from "@/lib/vmb/project-files";
 import { DEEP_DEPTH, previewRescan, suggestLayers, type RescanPreview } from "@/lib/vmb/rescan";
 import { scanDrawing, type ScanResult } from "@/lib/vmb/scan";
@@ -26,9 +27,9 @@ async function openFile(userId: string, projectId: string, fileId: string): Prom
   if (!SCANNABLE_KINDS.has(file.kind)) return { ok: false, code: "kind_not_scanned" };
   let bytes: Uint8Array;
   try {
-    const res = await fetch(file.blobUrl);
-    if (!res.ok) throw new Error(`blob ${res.status}`);
-    bytes = new Uint8Array(await res.arrayBuffer());
+    const buf = await readProjectBlob(file.blobUrl);
+    if (!buf) throw new Error("blob not read");
+    bytes = new Uint8Array(buf);
   } catch (err: unknown) {
     log.warn("scan fetch failed", { projectId, error: err instanceof Error ? err.message : String(err) });
     return { ok: false, code: "fetch_failed" };

@@ -64,13 +64,13 @@ describe("VMB project files on the server", () => {
   it("drops the blob when the project is full", async () => {
     mockDb.vmbProjectFile.aggregate.mockResolvedValue({ _count: { _all: 400 }, _sum: { size: 10 } });
     await expect(registerUploadedFile(base)).resolves.toEqual({ ok: false, code: "too_many_files" });
-    expect(mockBlob.del).toHaveBeenCalledWith(URL1);
+    expect(mockBlob.del).toHaveBeenCalledWith([URL1], expect.anything());
   });
 
   it("replacing a path deletes the old blob", async () => {
     mockDb.vmbProjectFile.findUnique.mockResolvedValue({ blobUrl: "https://store/old.dxf" });
     await registerUploadedFile(base);
-    expect(mockBlob.del).toHaveBeenCalledWith("https://store/old.dxf");
+    expect(mockBlob.del).toHaveBeenCalledWith(["https://store/old.dxf"], expect.anything());
     // The old version's scan is dropped with it.
     expect(mockDb.vmbScanReport.deleteMany).toHaveBeenCalledWith({ where: { projectId: "p1", fileName: "plans/a.dxf" } });
   });
@@ -83,7 +83,7 @@ describe("VMB project files on the server", () => {
     mockDb.$transaction.mockImplementation((ops: unknown[]) => Promise.all(ops));
     await expect(deleteProjectFile("u1", "p1", "f1")).resolves.toBe(true);
     expect(mockDb.vmbProjectFile.delete).toHaveBeenCalledWith({ where: { id: "f1" } });
-    expect(mockBlob.del).toHaveBeenCalledWith(URL1);
+    expect(mockBlob.del).toHaveBeenCalledWith([URL1], expect.anything());
     // Its scan goes with it.
     expect(mockDb.vmbScanReport.deleteMany).toHaveBeenCalledWith({ where: { projectId: "p1", fileName: "plans/a.dxf" } });
   });

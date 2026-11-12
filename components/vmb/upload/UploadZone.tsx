@@ -46,13 +46,13 @@ function Row({ name, kind, size, right }: { name: string; kind: string; size: nu
 }
 
 /** Drop a whole project folder (or pick files); each file goes straight to storage with live progress. */
-export function UploadZone({ projectId, initial, labels }: { projectId: string; initial: StoredFile[]; labels: UploadLabels }) {
+export function UploadZone({ projectId, access, initial, labels }: { projectId: string; access: "private" | "public"; initial: StoredFile[]; labels: UploadLabels }) {
   const router = useRouter();
   const [files, setFiles] = useState(initial);
   const [over, setOver] = useState(false);
   const folderInput = useRef<HTMLInputElement>(null);
   const filesInput = useRef<HTMLInputElement>(null);
-  const q = useUploadQueue(projectId, (f) => {
+  const q = useUploadQueue(projectId, access, (f) => {
     setFiles((all) => [...all.filter((x) => x.relPath !== f.relPath), f].sort((a, b) => a.relPath.localeCompare(b.relPath)));
   });
 

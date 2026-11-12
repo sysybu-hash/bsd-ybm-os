@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isFloorplanBlobUrl } from "@/lib/projects/floorplan-blob";
+import { readProjectBlob } from "@/lib/projects/pipeline/project-blob";
 import { projectBooklet, projectCameras } from "@/lib/vmb/outcome";
 import { projectsOfUser } from "@/lib/vmb/projects";
 import type { VmbStudioCamera } from "@/lib/validation/schemas/vmb-studio";
@@ -20,10 +20,9 @@ export async function studioPart(userId: string, projectId: string, part: Studio
   const p = await prisma.vmbProject.findFirst({ where: { id: projectId, ...projectsOfUser(userId) }, select: { manifest: true } });
   const studio = p ? projectBooklet(p.manifest)?.studio : undefined;
   const url = part === "data" ? studio?.dataUrl : key ? studio?.sheets?.[key] : studio?.sheetUrl;
-  if (!url || !isFloorplanBlobUrl(url)) return null;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-  return { body: await res.arrayBuffer(), type: part === "data" ? "application/json" : "image/jpeg" };
+  const bytes = url ? await readProjectBlob(url) : null;
+  if (!bytes) return null;
+  return { body: new Uint8Array(bytes).buffer, type: part === "data" ? "application/json" : "image/jpeg" };
 }
 
 /** The cameras the client keeps on the project; the next run renders them. Not while a run is going. */

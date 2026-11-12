@@ -1,5 +1,5 @@
 import "server-only";
-import { del, head } from "@vercel/blob";
+import { deleteProjectBlobs, headProjectBlob, isProjectBlobUrl } from "@/lib/projects/pipeline/project-blob";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
 import { capacityProblem, fileKind, projectBlobPrefix, safeRelPath } from "@/lib/vmb/files";
@@ -38,9 +38,10 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
   const kind = fileKind(rel);
   if (!kind) return { ok: false, code: "bad_kind" };
 
-  let blob: Awaited<ReturnType<typeof head>>;
+  if (!isProjectBlobUrl(input.url)) return { ok: false, code: "not_in_store" };
+  let blob: Awaited<ReturnType<typeof headProjectBlob>>;
   try {
-    blob = await head(input.url);
+    blob = await headProjectBlob(input.url);
   } catch {
     return { ok: false, code: "not_in_store" };
   }
@@ -49,7 +50,7 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
   const usage = await projectUsage(project.id, rel);
   const problem = capacityProblem([{ size: blob.size }], usage.count, usage.bytes);
   if (problem) {
-    await del(blob.url).catch(() => undefined);
+    await deleteProjectBlobs([blob.url]).catch(() => undefined);
     return { ok: false, code: problem };
   }
 
@@ -69,7 +70,7 @@ export async function registerUploadedFile(input: { userId: string; projectId: s
   if (previous && previous.blobUrl !== blob.url) {
     // A new version of the sheet: its old scan no longer describes it.
     await prisma.vmbScanReport.deleteMany({ where: { projectId: project.id, fileName: rel } });
-    await del(previous.blobUrl).catch((err: unknown) => log.warn("old_blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
+    await deleteProjectBlobs([previous.blobUrl]).catch((err: unknown) => log.warn("old_blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
   }
   return { ok: true, file };
 }
@@ -85,6 +86,6 @@ export async function deleteProjectFile(userId: string, projectId: string, fileI
     prisma.vmbProjectFile.delete({ where: { id: file.id } }),
     prisma.vmbScanReport.deleteMany({ where: { projectId, fileName: file.relPath } }),
   ]);
-  await del(file.blobUrl).catch((err: unknown) => log.warn("blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
+  await deleteProjectBlobs([file.blobUrl]).catch((err: unknown) => log.warn("blob_delete_failed", { error: err instanceof Error ? err.message : String(err) }));
   return true;
 }

@@ -86,6 +86,12 @@ CRON_SECRET="local-dev-secret"
 # message rather than failing at the platform edge.
 # BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
 
+# VisualModuBuild's own private Blob store (Storage → Create → Blob, access Private,
+# connected with the env prefix VMB_BLOB). The client's sheets, booklets and studio
+# files go there and are read only through routes that check the office. Without it
+# they fall back to the public store above (unguessable addresses, but public).
+# VMB_BLOB_READ_WRITE_TOKEN="vercel_blob_rw_..."
+
 # CAD conversion — only needed to accept .dwg uploads. A .dxf is read directly.
 # Without it, a DWG upload is refused with a message telling the user to export
 # the drawing as DXF from their CAD program.

@@ -14,7 +14,6 @@
  */
 import { createLogger } from "@/lib/logger";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
-import { isFloorplanBlobUrl } from "@/lib/projects/floorplan-blob";
 import { flatBookletHtml } from "@/lib/projects/pipeline/flat-booklet";
 import type { BookletState } from "@/lib/projects/building/dwf-booklet";
 import { BUILDING_STUDIO_VERSION, buildingStudioModel, type BuildingStudioData } from "@/lib/projects/pipeline/building-studio";
@@ -95,23 +94,19 @@ const MAX_FILE_BYTES = 200 * 1024 * 1024;
 /** The platform deps: Blob in, Blob out. The local Studio keeps the pipelines and swaps fetchFile/putBooklet for the disk. */
 export const realDeps: RunDeps = {
   async fetchFile(url) {
-    if (!isFloorplanBlobUrl(url)) throw new RunProjectError("fetch-failed", "קובץ שלא נמצא באחסון של הפרויקט");
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new RunProjectError("fetch-failed", `הקובץ לא נקרא מהאחסון (${res.status})`);
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength > MAX_FILE_BYTES) throw new RunProjectError("fetch-failed", "הקובץ גדול מדי");
+    const { isProjectBlobUrl, readProjectBlob } = await import("@/lib/projects/pipeline/project-blob");
+    if (!isProjectBlobUrl(url)) throw new RunProjectError("fetch-failed", "קובץ שלא נמצא באחסון של הפרויקט");
+    const buf = await readProjectBlob(url, MAX_FILE_BYTES);
+    if (!buf) throw new RunProjectError("fetch-failed", "הקובץ לא נקרא מהאחסון, או שהוא גדול מדי");
     return buf;
   },
   async putBooklet(jobId, pdf) {
-    const { put } = await import("@vercel/blob");
-    const blob = await put(`vmb-booklets/${jobId}/booklet.pdf`, pdf, { access: "public", contentType: "application/pdf", addRandomSuffix: true });
-    return blob.url;
+    const { putProjectBlob } = await import("@/lib/projects/pipeline/project-blob");
+    return putProjectBlob(`vmb-booklets/${jobId}/booklet.pdf`, pdf, "application/pdf");
   },
   async putStudio(jobId, name, body) {
-    const { put } = await import("@vercel/blob");
-    const contentType = name.endsWith(".json") ? "application/json" : "image/jpeg";
-    const blob = await put(`vmb-studio/${jobId}/${name}`, body, { access: "public", contentType, addRandomSuffix: true });
-    return blob.url;
+    const { putProjectBlob } = await import("@/lib/projects/pipeline/project-blob");
+    return putProjectBlob(`vmb-studio/${jobId}/${name}`, body, name.endsWith(".json") ? "application/json" : "image/jpeg");
   },
   async htmlToPdf(html) {
     const { renderHtmlSectionsPdf } = await import("@/lib/pdf/render-html-pdf-chromium");

@@ -31,16 +31,17 @@ export type BookletLabels = {
 
 /**
  * Step 7: the booklet the run delivered — open, download, copy its link — with the assumptions page next to it (rule
- * 13.2): every value the engine took as given, and the answers that did not change this booklet.
+ * 13.2): every value the engine took as given, and the answers that did not change this booklet. The PDF is read
+ * through `bookletHref` (the project's own route), never its storage address: the link works for the office only.
  */
-export function BookletCard({ booklet, files, studioHref, labels }: { booklet: ProjectBooklet; files: { deleteAt: string | null; deletedAt: string | null }; studioHref?: string; labels: BookletLabels }) {
+export function BookletCard({ booklet, bookletHref, files, studioHref, labels }: { booklet: ProjectBooklet; bookletHref: string; files: { deleteAt: string | null; deletedAt: string | null }; studioHref?: string; labels: BookletLabels }) {
   const [copied, setCopied] = useState(false);
   const day = (iso: string) => new Date(iso).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
   const date = day(booklet.at);
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(booklet.url);
+      await navigator.clipboard.writeText(new URL(bookletHref, window.location.href).toString());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -62,11 +63,11 @@ export function BookletCard({ booklet, files, studioHref, labels }: { booklet: P
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <a href={booklet.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-full bg-[color:var(--vmb-accent)] px-4 py-1.5 text-xs font-bold text-[color:var(--vmb-accent-ink)]">
+        <a href={bookletHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-full bg-[color:var(--vmb-accent)] px-4 py-1.5 text-xs font-bold text-[color:var(--vmb-accent-ink)]">
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           {labels.open}
         </a>
-        <a href={booklet.url} download className={btn}>
+        <a href={`${bookletHref}?download=1`} className={btn}>
           <Download className="h-3.5 w-3.5" aria-hidden />
           {labels.download}
         </a>

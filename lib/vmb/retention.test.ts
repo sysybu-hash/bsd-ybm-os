@@ -40,7 +40,7 @@ describe("VMB file retention", () => {
     mockDel.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("blob down"));
     const now = new Date("2026-12-12T00:00:00Z");
     expect(await purgeExpiredFiles(now)).toBe(1);
-    expect(mockDel).toHaveBeenNthCalledWith(1, ["u1", "u2"]);
+    expect(mockDel).toHaveBeenNthCalledWith(1, ["u1", "u2"], expect.anything());
     expect(mockDb.vmbProjectFile.deleteMany).toHaveBeenCalledTimes(1);
     expect(mockDb.vmbProjectFile.deleteMany).toHaveBeenCalledWith({ where: { projectId: "p1" } });
     expect(mockDb.vmbProject.update.mock.calls[0][0].data).toEqual({ filesDeleteAt: null, manifest: { a: 1, filesDeletedAt: now.toISOString() } });
