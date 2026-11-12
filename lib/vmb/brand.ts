@@ -42,3 +42,18 @@ export function isVmbHost(hostname: string | null | undefined): boolean {
   const h = (hostname ?? "").split(":")[0]?.trim().toLowerCase() ?? "";
   return h.startsWith("vmb.");
 }
+
+/** Hosts a browser may reach the product on: production, the main host's /vmb, previews, and local dev. */
+const PUBLIC_HOSTS = new Set([VMB_BRAND.host, "bsd-ybm.co.il", "www.bsd-ybm.co.il", "localhost:3000", "vmb.localhost:3000", "127.0.0.1:3000"]);
+
+/**
+ * The origin the browser used, for links that leave the site and come back (OAuth redirect_uri).
+ * Not `req.nextUrl.origin`: in dev that is the server's bind address (http://0.0.0.0:3000), which Google rejects.
+ * Taken from the Host header only when it is a known host; anything else falls back to `fallback`.
+ */
+export function publicOrigin(headers: Headers, fallback: string): string {
+  const host = (headers.get("x-forwarded-host") ?? headers.get("host") ?? "").split(",")[0]!.trim().toLowerCase();
+  if (!host || !(PUBLIC_HOSTS.has(host) || /^[a-z0-9-]+\.vercel\.app$/.test(host))) return fallback;
+  const local = /^(localhost|127\.0\.0\.1|[a-z0-9-]+\.localhost)(:\d+)?$/.test(host);
+  return `${local ? "http" : "https"}://${host}`;
+}
