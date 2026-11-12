@@ -1,0 +1,18 @@
+{
+  "id": "https://vmb.bsd-ybm.co.il/",
+  "name": "VisualModuBuild",
+  "short_name": "VMB",
+  "description": "הדמיות מדויקות מתוכניות אדריכליות",
+  "start_url": "/app?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050506",
+  "theme_color": "#050506",
+  "lang": "he-IL",
+  "dir": "rtl",
+  "icons": [
+    { "src": "/vmb-brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/vmb-brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/vmb-brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

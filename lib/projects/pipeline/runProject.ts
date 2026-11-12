@@ -13,6 +13,7 @@
  * Painting is not wired here yet: every picture is a free render (picturesFree), none is painted, so no credit is spent.
  */
 import { createLogger } from "@/lib/logger";
+import { withAccuracyPage, type AccuracyRow } from "@/lib/projects/accuracy/booklet-accuracy";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { flatBookletHtml } from "@/lib/projects/pipeline/flat-booklet";
 import type { BookletState } from "@/lib/projects/building/dwf-booklet";
@@ -223,12 +224,11 @@ export function chooseRoute(kind: RunKind, files: RunInput["files"]): { route: R
 async function saveStudio(
   jobId: string,
   flat: { unit: number; wallHeightM: number; scene: StudioData["scene"]; views: Parameters<typeof studioCameras>[0] },
-  sheet: { jpeg: Buffer; pxPerM: number } | null,
+  fitted: Awaited<ReturnType<typeof sheetOverlay>> | null,
   clientIds: Set<string>,
   put: NonNullable<RunDeps["putStudio"]>,
 ): Promise<RunOutput["studio"]> {
   try {
-    const fitted = sheet ? await sheetOverlay(flat.scene, sheet.jpeg, sheet.pxPerM) : null;
     const data: StudioData = {
       version: STUDIO_VERSION,
       unit: flat.unit,
@@ -247,25 +247,51 @@ async function saveStudio(
   }
 }
 
-/** A house's or a building's studio: every measured model, and each storey's sheet as a file of its own. Never costs the booklet. */
-async function saveBuildingStudio(jobId: string, models: MeasuredModel[], put: NonNullable<RunDeps["putStudio"]>): Promise<RunOutput["studio"]> {
+type MeasuredStudio = { data: BuildingStudioData; sheets: Map<string, Buffer> };
+
+/** A house's or a building's studio: every measured model, each storey's sheet registered and measured. Never costs the booklet. */
+async function measureBuildingStudio(jobId: string, models: MeasuredModel[]): Promise<MeasuredStudio | null> {
   try {
     const data: BuildingStudioData = { version: BUILDING_STUDIO_VERSION, kind: "building", models: [] };
-    const sheets: Record<string, string> = {};
+    const sheets = new Map<string, Buffer>();
     for (const [i, m] of models.entries()) {
       const made = await buildingStudioModel(m.name, m.state, m.artefacts, models.length > 1 ? `m${i}-` : "");
       if (!made) continue;
       data.models.push(made.model);
-      for (const [key, jpeg] of made.sheets) sheets[key] = await put(jobId, `sheet-${key}.jpg`, jpeg);
+      for (const [key, jpeg] of made.sheets) sheets.set(key, jpeg);
     }
-    if (!data.models.length) return undefined;
-    const dataUrl = await put(jobId, "studio.json", Buffer.from(JSON.stringify(data)));
+    return data.models.length ? { data, sheets } : null;
+  } catch (err: unknown) {
+    log.warn("building studio not measured", { jobId, error: err instanceof Error ? err.message : String(err) });
+    return null;
+  }
+}
+
+/** The accuracy page's rows: each storey's measured overlay, named as the studio names it. */
+export function buildingAccuracyRows(data: BuildingStudioData): AccuracyRow[] {
+  const many = data.models.length > 1;
+  return data.models.flatMap((m) =>
+    m.sheets.flatMap((s) => {
+      if (!s.overlay) return [];
+      const title = m.storeys.find((st) => st.id === s.storeyId)?.title ?? s.storeyId;
+      return [{ sheet: many ? `${m.name} · ${title}` : title, stats: s.overlay.all }];
+    }),
+  );
+}
+
+async function saveBuildingStudio(jobId: string, measured: MeasuredStudio, put: NonNullable<RunDeps["putStudio"]>): Promise<RunOutput["studio"]> {
+  try {
+    const sheets: Record<string, string> = {};
+    for (const [key, jpeg] of measured.sheets) sheets[key] = await put(jobId, `sheet-${key}.jpg`, jpeg);
+    const dataUrl = await put(jobId, "studio.json", Buffer.from(JSON.stringify(measured.data)));
     return { dataUrl, sheetUrl: null, sheets };
   } catch (err: unknown) {
     log.warn("building studio not saved", { jobId, error: err instanceof Error ? err.message : String(err) });
     return undefined;
   }
 }
+
+const accuracyFailed = (jobId: string) => (message: string) => log.warn("accuracy page not added", { jobId, error: message });
 
 export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
   const { route, files } = chooseRoute(input.kind, input.files);
@@ -306,8 +332,17 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
     const used: AnswerId[] = [...(flat.unitsFromAnswer ? (["units"] as const) : []), "floorHeight", "furniture", "views"];
     const assumptions = [...answerAssumptions(input.answers, used.filter((id) => id !== "units")), ...flat.assumptions];
     const html = await flatBookletHtml({ projectName, unit: flat.unit, scene: flat.scene, views: flat.views, pictures, page, assumptions });
-    const bookletUrl = await deps.putBooklet(input.jobId, await deps.htmlToPdf(html));
-    const studio = deps.putStudio ? await saveStudio(input.jobId, flat, sheet, new Set(added.map((v) => v.id)), deps.putStudio) : undefined;
+    // The sheet measured once: the booklet's accuracy page and the studio's overlay are the same numbers.
+    const fitted = sheet
+      ? await sheetOverlay(flat.scene, sheet.jpeg, sheet.pxPerM).catch((err: unknown) => {
+          log.warn("flat sheet not measured", { jobId: input.jobId, error: err instanceof Error ? err.message : String(err) });
+          return null;
+        })
+      : null;
+    const rows: AccuracyRow[] = fitted?.overlay ? [{ sheet: fileName(file.relPath), stats: fitted.overlay.all }] : [];
+    const booklet = await withAccuracyPage(await deps.htmlToPdf(html), projectName, rows, deps.htmlToPdf, accuracyFailed(input.jobId));
+    const bookletUrl = await deps.putBooklet(input.jobId, booklet.pdf);
+    const studio = deps.putStudio ? await saveStudio(input.jobId, flat, fitted, new Set(added.map((v) => v.id)), deps.putStudio) : undefined;
     await report("booklet", 1, 1);
     return {
       bookletUrl,
@@ -327,8 +362,10 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
       ? await deps.house(new Map([...bytes].map(([k, v]) => [fileName(k), v])), projectName, say)
       : { ...(await deps.buildingDwf(bytes.get(files[0]!.relPath)!, projectName, say)), notes: [] as string[] };
   await report("render", out.pictures, out.pictures);
-  const bookletUrl = await deps.putBooklet(input.jobId, await deps.htmlToPdf(out.html));
-  const studio = deps.putStudio && out.models?.length ? await saveBuildingStudio(input.jobId, out.models, deps.putStudio) : undefined;
+  const measured = out.models?.length ? await measureBuildingStudio(input.jobId, out.models) : null;
+  const booklet = await withAccuracyPage(await deps.htmlToPdf(out.html), projectName, measured ? buildingAccuracyRows(measured.data) : [], deps.htmlToPdf, accuracyFailed(input.jobId));
+  const bookletUrl = await deps.putBooklet(input.jobId, booklet.pdf);
+  const studio = deps.putStudio && measured ? await saveBuildingStudio(input.jobId, measured, deps.putStudio) : undefined;
   await report("booklet", 1, 1);
   const layersGiven = Object.keys(input.layerMaps).length > 0;
   return {

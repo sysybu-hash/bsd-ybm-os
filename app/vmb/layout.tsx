@@ -27,6 +27,8 @@ export const metadata: Metadata = {
   applicationName: VMB_BRAND.name,
   // Its own tab icon; without this the platform's icons are inherited.
   icons: { icon: [{ url: VMB_BRAND.logo.icon, type: "image/png", sizes: "256x256" }], apple: VMB_BRAND.logo.appleIcon },
+  // Its own install manifest (name, cube icon); otherwise "add to home screen" installs BSD-YBM's.
+  manifest: VMB_BRAND.manifest,
   openGraph: {
     title: t("vmb.meta.title"),
     description: t("vmb.meta.description"),

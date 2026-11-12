@@ -25,6 +25,8 @@ export const VMB_BRAND = {
     icon: "/vmb-brand/icon.png",
     appleIcon: "/vmb-brand/apple-icon.png",
   },
+  /** Install manifest (home screen / installed app), with 192, 512 and maskable cube icons. */
+  manifest: "/vmb-brand/manifest.webmanifest",
   /** Short name for tight spaces (tabs, badges). */
   shortName: "VMB",
   /** Parent company line under the wordmark. */

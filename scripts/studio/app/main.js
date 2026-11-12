@@ -42,7 +42,7 @@ else {
     // An engine already running (started by the shortcut) is reused, not started twice.
     if (!(await up())) startServer();
     if (!(await waitUp())) { dialog.showErrorBox("סטודיו הדמיות", "המנוע לא עלה. הפרטים ב: " + LOG); app.quit(); return; }
-    win = new BrowserWindow({ width: 1500, height: 950, minWidth: 900, minHeight: 600, title: "סטודיו הדמיות", backgroundColor: "#14161a", autoHideMenuBar: true });
+    win = new BrowserWindow({ width: 1500, height: 950, minWidth: 900, minHeight: 600, title: "סטודיו הדמיות", backgroundColor: "#14161a", autoHideMenuBar: true, icon: path.join(PROJECT, "public", "vmb-brand", "icon-512.png") });
     win.loadURL(URL);
     // A page that fails to load (engine restarting) tries again instead of staying blank.
     win.webContents.on("did-fail-load", () => setTimeout(() => win && !win.isDestroyed() && win.loadURL(URL), 1500));
