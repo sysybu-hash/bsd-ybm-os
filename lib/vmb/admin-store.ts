@@ -161,7 +161,7 @@ export async function adminPayments() {
   return prisma.vmbPayment.findMany({
     orderBy: { createdAt: "desc" },
     take: 50,
-    select: { id: true, createdAt: true, gateway: true, txId: true, kind: true, packId: true, amountMinor: true, status: true, workspace: { select: { name: true } } },
+    select: { id: true, workspaceId: true, createdAt: true, gateway: true, txId: true, kind: true, packId: true, amountMinor: true, status: true, workspace: { select: { name: true } } },
   });
 }
 
@@ -170,9 +170,10 @@ export type AdminAction =
   | { action: "activate"; workspaceId: string; reference: string }
   | { action: "freeze"; workspaceId: string }
   | { action: "unfreeze"; workspaceId: string }
-  | { action: "extend"; workspaceId: string; days: number };
+  | { action: "extend"; workspaceId: string; days: number }
+  | { action: "refund"; workspaceId: string; paymentId: string; note: string };
 
-export type AdminActionResult = { ok: true } | { ok: false; code: "not_found" | "no_subscription" | "below_zero" | "duplicate" | "not_frozen" | "not_active" };
+export type AdminActionResult = { ok: true } | { ok: false; code: "not_found" | "no_subscription" | "below_zero" | "duplicate" | "not_frozen" | "not_active" | "already_refunded" };
 
 /** One administrator action. Every one is logged with who did it. */
 export async function runAdminAction(adminEmail: string, a: AdminAction): Promise<AdminActionResult> {
@@ -217,5 +218,30 @@ async function act(adminEmail: string, a: AdminAction): Promise<AdminActionResul
       await prisma.vmbSubscription.update({ where: { workspaceId: a.workspaceId }, data: { periodEnd: new Date(from + a.days * DAY) } });
       return { ok: true };
     }
+    case "refund":
+      return refundPayment(adminEmail, a);
   }
+}
+
+/**
+ * A refund the administrator already made by hand (in PayPal or by bank transfer): the payment is marked refunded, the
+ * credits it granted are taken back as far as the balance allows (never below zero; what was spent stays spent), and an
+ * annual payment cancels the subscription. Marked once: a second click finds it refunded.
+ */
+async function refundPayment(adminEmail: string, a: { workspaceId: string; paymentId: string; note: string }): Promise<AdminActionResult> {
+  const pay = await prisma.vmbPayment.findFirst({ where: { id: a.paymentId, workspaceId: a.workspaceId }, select: { id: true, gateway: true, txId: true, kind: true, status: true } });
+  if (!pay) return { ok: false, code: "not_found" };
+  if (pay.status !== "completed") return { ok: false, code: "already_refunded" };
+  const ref = `${pay.gateway}:${pay.txId}`;
+  const done = await prisma.$transaction(async (tx) => {
+    const moved = await tx.vmbPayment.updateMany({ where: { id: pay.id, status: "completed" }, data: { status: "refunded" } });
+    if (moved.count !== 1) return false;
+    const granted = await tx.vmbCreditLedger.findFirst({ where: { workspaceId: a.workspaceId, refId: ref, reason: { in: ["grant", "purchase"] } }, select: { delta: true } });
+    const sum = await tx.vmbCreditLedger.aggregate({ where: { workspaceId: a.workspaceId }, _sum: { delta: true } });
+    const back = Math.min(granted?.delta ?? 0, Math.max(0, sum._sum.delta ?? 0));
+    if (back > 0) await tx.vmbCreditLedger.create({ data: { workspaceId: a.workspaceId, delta: -back, reason: "refund", refId: ref, note: `${a.note} (${adminEmail})` } });
+    if (pay.kind === "annual") await tx.vmbSubscription.updateMany({ where: { workspaceId: a.workspaceId }, data: { status: "cancelled" } });
+    return true;
+  });
+  return done ? { ok: true } : { ok: false, code: "already_refunded" };
 }

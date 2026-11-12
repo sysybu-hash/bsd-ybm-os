@@ -11,6 +11,9 @@ jest.mock("@/lib/vmb/billing", () => ({ applyVmbPayment: (...a: unknown[]) => mo
 const mockDb = {
   vmbWorkspace: { findUnique: jest.fn() },
   vmbSubscription: { updateMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  vmbPayment: { findFirst: jest.fn(), updateMany: jest.fn() },
+  vmbCreditLedger: { findFirst: jest.fn(), aggregate: jest.fn(), create: jest.fn() },
+  $transaction: jest.fn(),
 };
 jest.mock("@/lib/prisma", () => ({
   get prisma() {
@@ -72,6 +75,37 @@ describe("VMB admin", () => {
     expect(mockDb.vmbSubscription.update.mock.calls[0][0].data.periodEnd.getTime()).toBe(end.getTime() + 30 * 86_400_000);
     mockDb.vmbSubscription.findUnique.mockResolvedValue(null);
     expect(await runAdminAction("a@x.co", { action: "extend", workspaceId: "w1", days: 30 })).toEqual({ ok: false, code: "no_subscription" });
+  });
+
+  it("marks a refund once, takes back the payment's credits as far as the balance goes, and cancels an annual plan", async () => {
+    mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => unknown) => fn(mockDb));
+    mockDb.vmbPayment.findFirst.mockResolvedValue({ id: "pay1", gateway: "paypal", txId: "T1", kind: "annual", status: "completed" });
+    mockDb.vmbPayment.updateMany.mockResolvedValueOnce({ count: 1 });
+    mockDb.vmbCreditLedger.findFirst.mockResolvedValue({ delta: 120 });
+    mockDb.vmbCreditLedger.aggregate.mockResolvedValue({ _sum: { delta: 45 } });
+    const body = { action: "refund" as const, workspaceId: "w1", paymentId: "pay1", note: "client left" };
+    expect(await runAdminAction("a@x.co", body)).toEqual({ ok: true });
+    expect(mockDb.vmbCreditLedger.findFirst.mock.calls[0][0].where).toMatchObject({ workspaceId: "w1", refId: "paypal:T1" });
+    // 120 granted, 45 left: 45 come back, the balance stops at zero
+    expect(mockDb.vmbCreditLedger.create).toHaveBeenCalledWith({ data: { workspaceId: "w1", delta: -45, reason: "refund", refId: "paypal:T1", note: "client left (a@x.co)" } });
+    expect(mockDb.vmbSubscription.updateMany).toHaveBeenCalledWith({ where: { workspaceId: "w1" }, data: { status: "cancelled" } });
+    // a second click: the payment is already refunded
+    mockDb.vmbPayment.findFirst.mockResolvedValue({ id: "pay1", gateway: "paypal", txId: "T1", kind: "annual", status: "refunded" });
+    expect(await runAdminAction("a@x.co", body)).toEqual({ ok: false, code: "already_refunded" });
+    // another office's payment is not found
+    mockDb.vmbPayment.findFirst.mockResolvedValue(null);
+    expect(await runAdminAction("a@x.co", { ...body, paymentId: "other" })).toEqual({ ok: false, code: "not_found" });
+  });
+
+  it("a credit pack refund takes nothing when the balance is spent, and leaves the subscription", async () => {
+    mockDb.$transaction.mockImplementation((fn: (tx: typeof mockDb) => unknown) => fn(mockDb));
+    mockDb.vmbPayment.findFirst.mockResolvedValue({ id: "pay2", gateway: "manual", txId: "B2", kind: "credits", status: "completed" });
+    mockDb.vmbPayment.updateMany.mockResolvedValue({ count: 1 });
+    mockDb.vmbCreditLedger.findFirst.mockResolvedValue({ delta: 50 });
+    mockDb.vmbCreditLedger.aggregate.mockResolvedValue({ _sum: { delta: 0 } });
+    expect(await runAdminAction("a@x.co", { action: "refund", workspaceId: "w1", paymentId: "pay2", note: "dup" })).toEqual({ ok: true });
+    expect(mockDb.vmbCreditLedger.create).not.toHaveBeenCalled();
+    expect(mockDb.vmbSubscription.updateMany).not.toHaveBeenCalled();
   });
 
   it("an unknown office is not touched", async () => {

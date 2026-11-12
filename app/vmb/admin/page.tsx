@@ -18,7 +18,7 @@ const a = (k: string, vars?: Record<string, string>) => t(`vmb.admin.${k}`, vars
 
 export const metadata: Metadata = { title: t("vmb.admin.title"), robots: { index: false } };
 
-const ERROR_CODES = ["not_found", "no_subscription", "below_zero", "duplicate", "not_frozen", "not_active", "bad_request", "forbidden", "failed"];
+const ERROR_CODES = ["not_found", "no_subscription", "below_zero", "duplicate", "not_frozen", "not_active", "already_refunded", "bad_request", "forbidden", "failed"];
 
 function actionLabels(): OfficeActionsLabels {
   return {
@@ -82,7 +82,11 @@ export default async function VmbAdminPage({ searchParams }: { searchParams: Pro
         <MetricsGrid m={metrics} t={a} />
         <JobsPanels jobs={jobs} t={a} />
         <OfficesList offices={offices} t={a} actions={actionLabels()} />
-        <PaymentsList payments={payments} t={a} />
+        <PaymentsList
+          payments={payments}
+          t={a}
+          refund={{ open: a("act_refund"), note: a("act_refund_note"), submit: a("act_refund_submit"), confirm: a("act_refund_confirm"), errors: Object.fromEntries(ERROR_CODES.map((c) => [c, a(`err_${c}`)])) }}
+        />
       </main>
     </div>
   );

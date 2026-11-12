@@ -228,6 +228,7 @@
       "statusActive": "Active until {date}",
       "statusNone": "No active plan",
       "statusFrozen": "Plan frozen",
+      "statusExpired": "The subscription ended on {date}. Your remaining credits are kept and come back when you renew.",
       "balance": "Credit balance",
       "included": "{n} credits included every year",
       "buyAnnual": "Buy the annual plan",
@@ -565,7 +566,12 @@
       "err_bad_request": "A value is missing or out of range.",
       "err_forbidden": "The request was blocked.",
       "err_failed": "Not done. Try again.",
-      "minutes": "{n} min"
+      "minutes": "{n} min",
+      "act_refund": "Mark refunded",
+      "act_refund_note": "Reason and refund reference",
+      "act_refund_submit": "Mark",
+      "act_refund_confirm": "Refund the money in PayPal or by bank first. This takes back the payment's credits (not below zero) and, for an annual plan, cancels the subscription. Continue?",
+      "err_already_refunded": "This payment is already marked refunded."
     },
     "run": {
       "stopTitle": "The run stopped",

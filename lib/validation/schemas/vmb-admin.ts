@@ -19,5 +19,6 @@ export const vmbAdminActionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("freeze"), workspaceId: id }),
   z.object({ action: z.literal("unfreeze"), workspaceId: id }),
   z.object({ action: z.literal("extend"), workspaceId: id, days: z.number().int().min(1).max(366) }),
+  z.object({ action: z.literal("refund"), workspaceId: id, paymentId: id, note: z.string().trim().min(2).max(200) }),
 ]);
 export type VmbAdminActionBody = z.infer<typeof vmbAdminActionSchema>;

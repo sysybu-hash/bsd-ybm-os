@@ -56,7 +56,9 @@ export default async function VmbAccountPage() {
     ? a("statusActive", { date: day(ent.subscription!.periodEnd) })
     : ent.subscription?.status === "frozen"
       ? a("statusFrozen")
-      : a("statusNone");
+      : ent.subscription?.status === "active"
+        ? a("statusExpired", { date: day(ent.subscription.periodEnd) })
+        : a("statusNone");
   const payLabels = { okText: a("payOk"), failText: a("payFail") };
 
   return (

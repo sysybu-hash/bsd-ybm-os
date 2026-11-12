@@ -1,4 +1,5 @@
 import type { AdminMetrics, AdminOffice, adminJobs, adminPayments } from "@/lib/vmb/admin-store";
+import { RefundButton, type RefundLabels } from "@/components/vmb/admin/RefundButton";
 import { OfficeActions, type OfficeActionsLabels } from "@/components/vmb/admin/OfficeActions";
 
 type T = (k: string, vars?: Record<string, string>) => string;
@@ -125,7 +126,7 @@ export function JobsPanels({ jobs, t }: { jobs: Awaited<ReturnType<typeof adminJ
   );
 }
 
-export function PaymentsList({ payments, t }: { payments: Awaited<ReturnType<typeof adminPayments>>; t: T }) {
+export function PaymentsList({ payments, t, refund }: { payments: Awaited<ReturnType<typeof adminPayments>>; t: T; refund: RefundLabels }) {
   return (
     <section className="vmb-card p-6">
       <h2 className="text-lg font-bold">{t("paymentsTitle")}</h2>
@@ -141,7 +142,10 @@ export function PaymentsList({ payments, t }: { payments: Awaited<ReturnType<typ
               </span>
               <span className="ms-2 text-[color:var(--vmb-muted)]">{day(p.createdAt)}</span>
             </span>
-            <span className="vmb-mono">{money(p.amountMinor)}</span>
+            <span className="flex items-baseline gap-3">
+              {p.status === "completed" ? <RefundButton workspaceId={p.workspaceId} paymentId={p.id} labels={refund} /> : null}
+              <span className="vmb-mono">{money(p.amountMinor)}</span>
+            </span>
           </li>
         ))}
       </ul>

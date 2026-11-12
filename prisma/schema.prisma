@@ -1934,7 +1934,7 @@ model VmbCreditLedger {
   createdAt   DateTime     @default(now())
   workspaceId String
   delta       Int
-  /// grant | purchase | hold | release | adjust
+  /// grant | purchase | hold | release | adjust | refund
   reason      String
   /// What this movement answers to: a payment txId, a job id, an admin action id.
   refId       String

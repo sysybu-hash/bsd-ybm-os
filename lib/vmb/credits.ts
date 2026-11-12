@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
  * failed. Every movement carries (reason, refId), unique per workspace, so a
  * replayed webhook or a retried step cannot count twice.
  */
-export type LedgerReason = "grant" | "purchase" | "hold" | "release" | "adjust";
+export type LedgerReason = "grant" | "purchase" | "hold" | "release" | "adjust" | "refund";
 
 export async function creditBalance(workspaceId: string): Promise<number> {
   const agg = await prisma.vmbCreditLedger.aggregate({ where: { workspaceId }, _sum: { delta: true } });
