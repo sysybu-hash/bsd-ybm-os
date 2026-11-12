@@ -7,6 +7,8 @@ import type { VmbStudioCamera } from "@/lib/validation/schemas/vmb-studio";
 import { ModelViewer, type Pose, type ViewerLabels } from "@/components/vmb/studio3d/ModelViewer";
 import { PlanLocator } from "@/components/vmb/studio3d/PlanLocator";
 import { SheetOverlay, type OverlayLabels } from "@/components/vmb/studio3d/SheetOverlay";
+import { BuildingWorkbench, type BuildingBenchLabels } from "@/components/vmb/studio3d/BuildingWorkbench";
+import type { BuildingStudioData } from "@/lib/projects/pipeline/building-studio";
 
 export type WorkbenchLabels = {
   tab3d: string;
@@ -27,7 +29,10 @@ export type WorkbenchLabels = {
   noSheet: string;
   viewer: ViewerLabels;
   overlay: OverlayLabels;
+  building: BuildingBenchLabels;
 };
+
+const isBuilding = (d: StudioData | BuildingStudioData): d is BuildingStudioData => "kind" in d && d.kind === "building";
 
 const MAX = 8;
 const newId = () => `c${Math.random().toString(36).slice(2, 10)}`;
@@ -37,10 +42,11 @@ const newId = () => `c${Math.random().toString(36).slice(2, 10)}`;
  * where they stand, the model over the client's sheet with its measured distances, and cameras the client adds for
  * the next run.
  */
-export function StudioWorkbench({ projectId, saved, labels, source }: { projectId: string; saved: VmbStudioCamera[]; labels: WorkbenchLabels; /** Where the model and sheet are read from; the project API when left out. */ source?: { data: string; sheet: string } }) {
+export function StudioWorkbench({ projectId, saved, labels, source }: { projectId: string; saved: VmbStudioCamera[]; labels: WorkbenchLabels; /** Where the model and sheet are read from (a storey's sheet: "{key}" in it); the project API when left out. */ source?: { data: string; sheet: string } }) {
   const dataSrc = source?.data ?? `/api/vmb/projects/${projectId}/studio?part=data`;
   const sheetSrc = source?.sheet ?? `/api/vmb/projects/${projectId}/studio?part=sheet`;
   const [data, setData] = useState<StudioData | null>(null);
+  const [building, setBuilding] = useState<BuildingStudioData | null>(null);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<"3d" | "sheet">("3d");
   const [mine, setMine] = useState<VmbStudioCamera[]>(saved);
@@ -52,9 +58,10 @@ export function StudioWorkbench({ projectId, saved, labels, source }: { projectI
   useEffect(() => {
     let off = false;
     fetch(dataSrc)
-      .then((r) => (r.ok ? (r.json() as Promise<StudioData>) : Promise.reject(new Error(String(r.status)))))
+      .then((r) => (r.ok ? (r.json() as Promise<StudioData | BuildingStudioData>) : Promise.reject(new Error(String(r.status)))))
       .then((d) => {
         if (off) return;
+        if (isBuilding(d)) return setBuilding(d);
         setData(d);
         setActive(d.cameras[0]?.id ?? null);
       })
@@ -102,6 +109,7 @@ export function StudioWorkbench({ projectId, saved, labels, source }: { projectI
   const remove = (id: string) => void save(mine.filter((c) => c.id !== id)).then((ok) => ok && active === id && setActive(data?.cameras[0]?.id ?? null));
 
   if (error) return <p className="vmb-card p-5 text-sm text-[color:var(--vmb-ink-soft)]">{labels.failed}</p>;
+  if (building) return <BuildingWorkbench data={building} sheetSrc={(key) => source?.sheet.replace("{key}", key) ?? `/api/vmb/projects/${projectId}/studio?part=sheet&key=${encodeURIComponent(key)}`} labels={labels.building} />;
   if (!data) return <div className="vmb-card h-[560px] animate-pulse" aria-label={labels.loading} />;
 
   const tabBtn = (id: "3d" | "sheet", label: string) => (

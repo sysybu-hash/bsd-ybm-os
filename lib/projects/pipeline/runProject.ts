@@ -16,6 +16,8 @@ import { createLogger } from "@/lib/logger";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
 import { isFloorplanBlobUrl } from "@/lib/projects/floorplan-blob";
 import { flatBookletHtml } from "@/lib/projects/pipeline/flat-booklet";
+import type { BookletState } from "@/lib/projects/building/dwf-booklet";
+import { BUILDING_STUDIO_VERSION, buildingStudioModel, type BuildingStudioData } from "@/lib/projects/pipeline/building-studio";
 import { clientViews, sheetOverlay, studioCameras, STUDIO_VERSION, type StudioCamera, type StudioData } from "@/lib/projects/pipeline/flat-studio";
 import { flatSheet, isFlatFailure, measureFlatFromDxf, renderFlatPictures, UNITS_M, type DrawingUnit } from "@/lib/projects/pipeline/flat-measured";
 
@@ -56,8 +58,11 @@ export type RunOutput = {
   /** Answers this route has no use for (they did not change the booklet). */
   unusedAnswers: AnswerId[];
   /** What the studio opens (plan M3): the model and its cameras, and the sheet it was measured against. */
-  studio?: { dataUrl: string; sheetUrl: string | null };
+  studio?: { dataUrl: string; sheetUrl: string | null; /** A house's or a building's storey sheets, by key (building-studio.ts). */ sheets?: Record<string, string> };
 };
+
+/** One measured model of a house or a building, as its pipeline left it: what its studio is made from. */
+export type MeasuredModel = { name: string; state: BookletState; artefacts: Map<string, Buffer> };
 
 export type RunProjectErrorCode = "no-files" | "fetch-failed" | "unsupported" | "needs-conversion" | "unit-needed" | "not-readable";
 
@@ -78,11 +83,11 @@ export type RunDeps = {
   fetchFile(url: string): Promise<Buffer>;
   putBooklet(jobId: string, pdf: Buffer): Promise<string>;
   /** The studio's files next to the booklet; left out where there is no studio (tests, old callers). */
-  putStudio?(jobId: string, name: "studio.json" | "sheet.jpg", body: Buffer): Promise<string>;
+  putStudio?(jobId: string, name: string, body: Buffer): Promise<string>;
   htmlToPdf(html: string): Promise<Buffer>;
   /** The house and DWF building pipelines, unpainted: their booklet's HTML and how many pictures it holds. */
-  house(files: Map<string, Buffer>, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; notes: string[] }>;
-  buildingDwf(bytes: Buffer, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number }>;
+  house(files: Map<string, Buffer>, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; notes: string[]; models?: MeasuredModel[] }>;
+  buildingDwf(bytes: Buffer, projectName: string, say: (step: string) => void): Promise<{ html: string; pictures: number; models?: MeasuredModel[] }>;
 };
 
 const MAX_FILE_BYTES = 200 * 1024 * 1024;
@@ -104,7 +109,7 @@ export const realDeps: RunDeps = {
   },
   async putStudio(jobId, name, body) {
     const { put } = await import("@vercel/blob");
-    const contentType = name === "studio.json" ? "application/json" : "image/jpeg";
+    const contentType = name.endsWith(".json") ? "application/json" : "image/jpeg";
     const blob = await put(`vmb-studio/${jobId}/${name}`, body, { access: "public", contentType, addRandomSuffix: true });
     return blob.url;
   },
@@ -118,6 +123,7 @@ export const realDeps: RunDeps = {
     const { runPrivateHouseBooklet } = await import("@/lib/projects/building/house-booklet");
     const { project, problems } = houseProjectFromFiles(files);
     if (!project) throw new RunProjectError("unsupported", `אי אפשר לבנות את המבנה מהקבצים: ${problems.join(" · ")}`);
+    const models: MeasuredModel[] = [];
     const out = await runPrivateHouseBooklet({
       load: async (n) => {
         const b = files.get(n);
@@ -129,14 +135,17 @@ export const realDeps: RunDeps = {
       photoreal: false,
       project,
       say,
+      measured: async (m) => {
+        models.push({ name: m.name, state: m.state, artefacts: m.artefacts });
+      },
     });
-    return { html: out.html, pictures: out.pictures, notes: problems };
+    return { html: out.html, pictures: out.pictures, notes: problems, models };
   },
   async buildingDwf(bytes, projectName, say) {
     const { runWholeBooklet } = await import("@/lib/projects/building/dwf-booklet");
     const out = await runWholeBooklet({ projectName, source: async () => bytes, say });
     const pictures = Object.keys(out.state.artefacts ?? {}).filter((n) => /^view-.*\.jpg$|^apt-/.test(n)).length;
-    return { html: out.html, pictures };
+    return { html: out.html, pictures, models: [{ name: projectName, state: out.state, artefacts: out.artefacts }] };
   },
 };
 
@@ -243,6 +252,26 @@ async function saveStudio(
   }
 }
 
+/** A house's or a building's studio: every measured model, and each storey's sheet as a file of its own. Never costs the booklet. */
+async function saveBuildingStudio(jobId: string, models: MeasuredModel[], put: NonNullable<RunDeps["putStudio"]>): Promise<RunOutput["studio"]> {
+  try {
+    const data: BuildingStudioData = { version: BUILDING_STUDIO_VERSION, kind: "building", models: [] };
+    const sheets: Record<string, string> = {};
+    for (const [i, m] of models.entries()) {
+      const made = await buildingStudioModel(m.name, m.state, m.artefacts, models.length > 1 ? `m${i}-` : "");
+      if (!made) continue;
+      data.models.push(made.model);
+      for (const [key, jpeg] of made.sheets) sheets[key] = await put(jobId, `sheet-${key}.jpg`, jpeg);
+    }
+    if (!data.models.length) return undefined;
+    const dataUrl = await put(jobId, "studio.json", Buffer.from(JSON.stringify(data)));
+    return { dataUrl, sheetUrl: null, sheets };
+  } catch (err: unknown) {
+    log.warn("building studio not saved", { jobId, error: err instanceof Error ? err.message : String(err) });
+    return undefined;
+  }
+}
+
 export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
   const { route, files } = chooseRoute(input.kind, input.files);
   const projectName = input.projectName?.trim() || fileName(files[0]!.relPath).replace(/\.[^.]+$/, "");
@@ -304,6 +333,7 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
       : { ...(await deps.buildingDwf(bytes.get(files[0]!.relPath)!, projectName, say)), notes: [] as string[] };
   await report("render", out.pictures, out.pictures);
   const bookletUrl = await deps.putBooklet(input.jobId, await deps.htmlToPdf(out.html));
+  const studio = deps.putStudio && out.models?.length ? await saveBuildingStudio(input.jobId, out.models, deps.putStudio) : undefined;
   await report("booklet", 1, 1);
   const layersGiven = Object.keys(input.layerMaps).length > 0;
   return {
@@ -317,5 +347,6 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
     ],
     route,
     unusedAnswers: Object.keys(NAMES) as AnswerId[],
+    ...(studio ? { studio } : {}),
   };
 }

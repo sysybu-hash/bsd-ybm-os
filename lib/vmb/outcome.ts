@@ -26,7 +26,7 @@ const bookletSchema = z.object({
   creditsUsed: z.number(),
   at: z.string(),
   /** The studio's files (plan M3), where the route makes one: read through /api/vmb/projects/[id]/studio, never linked. */
-  studio: z.object({ dataUrl: z.string().url(), sheetUrl: z.string().url().nullable() }).optional(),
+  studio: z.object({ dataUrl: z.string().url(), sheetUrl: z.string().url().nullable(), sheets: z.record(z.string(), z.string().url()).optional() }).optional(),
 });
 export type ProjectBooklet = z.infer<typeof bookletSchema>;
 

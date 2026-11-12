@@ -15,10 +15,11 @@ const asObject = (v: Prisma.JsonValue | null | undefined): Prisma.JsonObject => 
 
 export type StudioPart = "data" | "sheet";
 
-export async function studioPart(userId: string, projectId: string, part: StudioPart): Promise<{ body: ArrayBuffer; type: string } | null> {
+/** `key` names a storey's sheet of a house or a building; without it, a flat's one sheet. */
+export async function studioPart(userId: string, projectId: string, part: StudioPart, key?: string): Promise<{ body: ArrayBuffer; type: string } | null> {
   const p = await prisma.vmbProject.findFirst({ where: { id: projectId, ...projectsOfUser(userId) }, select: { manifest: true } });
   const studio = p ? projectBooklet(p.manifest)?.studio : undefined;
-  const url = part === "data" ? studio?.dataUrl : studio?.sheetUrl;
+  const url = part === "data" ? studio?.dataUrl : key ? studio?.sheets?.[key] : studio?.sheetUrl;
   if (!url || !isFloorplanBlobUrl(url)) return null;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;

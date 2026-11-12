@@ -24,6 +24,18 @@ export function workbenchLabels(): WorkbenchLabels {
     noSheet: m("noSheet"),
     viewer: { walls: m("walls"), furniture: m("furniture"), cut: m("cut"), hint: m("hint"), unavailable: m("unavailable") },
     overlay: { sheet: m("sheet"), overlay: m("overlay"), far: m("far"), close: m("close"), near: m("near"), away: m("away"), summary: m("summary"), none: m("overlayNone") },
+    building: {
+      tab3d: m("tab3d"),
+      tabSheet: m("tabSheet"),
+      camerasTitle: m("camerasTitle"),
+      free: m("freeView"),
+      model: m("model"),
+      storeySheet: m("storeySheet"),
+      noSheet: m("noStoreySheet"),
+      camerasLater: m("camerasLater"),
+      viewer: { whole: m("whole"), storey: m("storey"), section: m("section"), site: m("site"), hint: m("hint"), unavailable: m("unavailable") },
+      overlay: { sheet: m("sheet"), overlay: m("overlay"), far: m("far"), close: m("close"), near: m("near"), away: m("away"), summary: m("summary"), none: m("storeyOverlayNone") },
+    },
   };
 }
 

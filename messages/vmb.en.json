@@ -611,7 +611,7 @@
       "title": "Studio",
       "back": "Back to project",
       "open": "Open in studio",
-      "none": "This project has no studio model yet. The studio opens after a flat booklet from a DXF file.",
+      "none": "This project has no studio model yet. The studio opens once the first booklet is ready.",
       "tab3d": "3D",
       "tabSheet": "Model vs sheet",
       "loading": "Loading the model",
@@ -641,7 +641,17 @@
       "summary": "median {median} cm · 90% ≤ {p90} cm · {close}% ≤ 15 cm",
       "overlayNone": "No lines found to compare.",
       "assumptionsTitle": "Assumed",
-      "assumptionsHint": "To change a value: update the questions on the project page and run again."
+      "assumptionsHint": "To change a value: update the questions on the project page and run again.",
+      "freeView": "Free view",
+      "model": "Model",
+      "storeySheet": "Storey",
+      "noStoreySheet": "No storey sheets were kept for this building.",
+      "camerasLater": "These are the booklet's cameras. Adding your own for houses and buildings is not available yet.",
+      "whole": "Whole building",
+      "storey": "Storey:",
+      "section": "Section through the middle",
+      "site": "Site and surroundings",
+      "storeyOverlayNone": "No walls of this storey were found to compare."
     }
   }
 }
