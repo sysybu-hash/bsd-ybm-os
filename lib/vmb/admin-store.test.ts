@@ -5,6 +5,9 @@ jest.mock("@/lib/vmb/credits", () => ({
   creditBalance: (...a: unknown[]) => mockCredits.creditBalance(...a),
   recordCredit: (...a: unknown[]) => mockCredits.recordCredit(...a),
 }));
+jest.mock("@/lib/vmb/costs-store", () => ({ logAdminAction: jest.fn() }));
+const mockRetry = jest.fn();
+jest.mock("@/lib/vmb/run-store", () => ({ adminRetryRun: (...a: unknown[]) => mockRetry(...a) }));
 const mockApply = jest.fn();
 jest.mock("@/lib/vmb/billing", () => ({ applyVmbPayment: (...a: unknown[]) => mockApply(...a) }));
 

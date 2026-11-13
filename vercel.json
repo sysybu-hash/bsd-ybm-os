@@ -43,6 +43,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/vmb-cost-alert",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/financial-insights",
       "schedule": "0 6 * * *"
     },

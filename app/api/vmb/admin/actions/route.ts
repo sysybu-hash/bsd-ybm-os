@@ -7,7 +7,7 @@ import { isSameOrigin, withVmbAuth } from "@/lib/vmb/api";
 
 export const dynamic = "force-dynamic";
 
-const STATUS = { not_found: 404, no_subscription: 409, below_zero: 409, duplicate: 409, not_frozen: 409, not_active: 409, already_refunded: 409 } as const;
+const STATUS = { not_found: 404, no_subscription: 409, below_zero: 409, duplicate: 409, not_frozen: 409, not_active: 409, already_refunded: 409, blocked: 409 } as const;
 
 /** An administrator's hand action on an office: credits, manual activation, freeze, extend. Not an admin → 404. */
 export const POST = withVmbAuth(async (req, { user }) => {

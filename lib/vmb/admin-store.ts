@@ -1,8 +1,11 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
+import { adminRetryRun } from "@/lib/vmb/run-store";
 import { prisma } from "@/lib/prisma";
 import { createLogger } from "@/lib/logger";
 import { applyVmbPayment } from "@/lib/vmb/billing";
+import { logAdminAction } from "@/lib/vmb/costs-store";
 import { creditBalance, recordCredit } from "@/lib/vmb/credits";
 import { isSubscriptionActive } from "@/lib/vmb/entitlement";
 import { VMB_ANNUAL_PLAN, withVat } from "@/lib/vmb/plans";
@@ -100,15 +103,23 @@ export type AdminOffice = {
   subscription: { status: string; periodEnd: Date; active: boolean } | null;
 };
 
+/** Rows a list shows at once; a list reads one more to know whether there is a next page. */
+export const ADMIN_PAGE = 50;
+export type Paged<T> = { rows: T[]; page: number; more: boolean };
+const pageOf = (page: number | undefined) => Math.max(0, Math.floor(Number.isFinite(page) ? (page as number) : 0));
+const paged = <T>(all: T[], page: number): Paged<T> => ({ rows: all.slice(0, ADMIN_PAGE), page, more: all.length > ADMIN_PAGE });
+
 /** Offices, newest first; `q` matches the office name or a member's address. */
-export async function adminOffices(q?: string, now = new Date()): Promise<AdminOffice[]> {
+export async function adminOffices(q?: string, pageNo?: number, now = new Date()): Promise<Paged<AdminOffice>> {
   const term = q?.trim();
-  const rows = await prisma.vmbWorkspace.findMany({
+  const page = pageOf(pageNo);
+  const found = await prisma.vmbWorkspace.findMany({
     where: term
       ? { OR: [{ name: { contains: term, mode: "insensitive" } }, { members: { some: { user: { email: { contains: term.toLowerCase() } } } } }] }
       : undefined,
     orderBy: { createdAt: "desc" },
-    take: 100,
+    skip: page * ADMIN_PAGE,
+    take: ADMIN_PAGE + 1,
     select: {
       id: true,
       name: true,
@@ -118,24 +129,30 @@ export async function adminOffices(q?: string, now = new Date()): Promise<AdminO
       _count: { select: { projects: true } },
     },
   });
+  const rows = found.slice(0, ADMIN_PAGE);
   const sums = rows.length
     ? await prisma.vmbCreditLedger.groupBy({ by: ["workspaceId"], where: { workspaceId: { in: rows.map((r) => r.id) } }, _sum: { delta: true } })
     : [];
   const balance = new Map(sums.map((s) => [s.workspaceId, s._sum.delta ?? 0]));
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    createdAt: r.createdAt,
-    owner: r.members.find((m) => m.role === "owner")?.user.email ?? r.members[0]?.user.email ?? null,
-    members: r.members.length,
-    projects: r._count.projects,
-    balance: balance.get(r.id) ?? 0,
-    subscription: r.subscription ? { ...r.subscription, active: isSubscriptionActive(r.subscription, now) } : null,
-  }));
+  return {
+    page,
+    more: found.length > ADMIN_PAGE,
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      createdAt: r.createdAt,
+      owner: r.members.find((m) => m.role === "owner")?.user.email ?? r.members[0]?.user.email ?? null,
+      members: r.members.length,
+      projects: r._count.projects,
+      balance: balance.get(r.id) ?? 0,
+      subscription: r.subscription ? { ...r.subscription, active: isSubscriptionActive(r.subscription, now) } : null,
+    })),
+  };
 }
 
-/** Jobs that need eyes: everything live, and the latest failures. */
-export async function adminJobs() {
+/** Jobs that need eyes: everything live, and the failures, newest first, a page at a time. */
+export async function adminJobs(failedPage?: number) {
+  const page = pageOf(failedPage);
   const select = {
     id: true,
     kind: true,
@@ -152,20 +169,62 @@ export async function adminJobs() {
   } as const;
   const [live, failed] = await Promise.all([
     prisma.vmbJob.findMany({ where: { status: { in: ["queued", "running"] } }, orderBy: { createdAt: "asc" }, take: 50, select }),
-    prisma.vmbJob.findMany({ where: { status: "failed" }, orderBy: { finishedAt: "desc" }, take: 30, select }),
+    prisma.vmbJob.findMany({ where: { status: "failed" }, orderBy: { finishedAt: "desc" }, skip: page * ADMIN_PAGE, take: ADMIN_PAGE + 1, select }),
   ]);
-  return { live, failed };
+  return { live, failed: paged(failed, page) };
 }
 
-export async function adminPayments() {
-  return prisma.vmbPayment.findMany({
+export async function adminPayments(pageNo?: number) {
+  const page = pageOf(pageNo);
+  const rows = await prisma.vmbPayment.findMany({
     orderBy: { createdAt: "desc" },
-    take: 50,
+    skip: page * ADMIN_PAGE,
+    take: ADMIN_PAGE + 1,
     select: { id: true, workspaceId: true, createdAt: true, gateway: true, txId: true, kind: true, packId: true, amountMinor: true, status: true, workspace: { select: { name: true } } },
   });
+  return paged(rows, page);
+}
+
+/** One job in full, for the administrator: its stages, how it ended, and the project's outcome. */
+export async function adminJob(id: string) {
+  const job = await prisma.vmbJob.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      kind: true,
+      status: true,
+      percent: true,
+      progress: true,
+      error: true,
+      createdAt: true,
+      startedAt: true,
+      finishedAt: true,
+      computeMs: true,
+      costCredits: true,
+      dwgConversions: true,
+      workspaceId: true,
+      workspace: { select: { name: true } },
+      project: { select: { id: true, name: true, kind: true, status: true, manifest: true, _count: { select: { files: true } } } },
+    },
+  });
+  if (!job) return null;
+  const manifest = asObject(job.project.manifest);
+  const booklet = asObject(manifest.booklet);
+  const stop = asObject(manifest.stop);
+  const mine = (o: Record<string, unknown>) => o.jobId === job.id;
+  return {
+    ...job,
+    project: { id: job.project.id, name: job.project.name, kind: job.project.kind, status: job.project.status, files: job.project._count.files },
+    stages: Array.isArray(asObject(job.progress).stages) ? (asObject(job.progress).stages as Array<{ key: string; done: number; total: number; detail?: string }>) : [],
+    booklet: mine(booklet) ? { route: String(booklet.route ?? ""), picturesPainted: num(booklet.picturesPainted), picturesFree: num(booklet.picturesFree), creditsUsed: num(booklet.creditsUsed), assumptions: Array.isArray(booklet.assumptions) ? booklet.assumptions.filter((x): x is string => typeof x === "string") : [] } : null,
+    stop: mine(stop) ? { code: String(stop.code ?? ""), message: typeof stop.message === "string" ? stop.message : null } : null,
+    bench: Boolean(asObject(manifest.bench).at),
+  };
 }
 
 export type AdminAction =
+  | { action: "retry"; workspaceId: string; projectId: string }
+  | { action: "bench"; workspaceId: string; projectId: string; on: boolean }
   | { action: "grant"; workspaceId: string; amount: number; note: string }
   | { action: "activate"; workspaceId: string; reference: string }
   | { action: "freeze"; workspaceId: string }
@@ -173,7 +232,7 @@ export type AdminAction =
   | { action: "extend"; workspaceId: string; days: number }
   | { action: "refund"; workspaceId: string; paymentId: string; note: string };
 
-export type AdminActionResult = { ok: true } | { ok: false; code: "not_found" | "no_subscription" | "below_zero" | "duplicate" | "not_frozen" | "not_active" | "already_refunded" };
+export type AdminActionResult = { ok: true } | { ok: false; code: "not_found" | "no_subscription" | "below_zero" | "duplicate" | "not_frozen" | "not_active" | "already_refunded" | "blocked" };
 
 /** One administrator action. Every one is logged with who did it. */
 export async function runAdminAction(adminEmail: string, a: AdminAction): Promise<AdminActionResult> {
@@ -181,11 +240,30 @@ export async function runAdminAction(adminEmail: string, a: AdminAction): Promis
   if (!ws) return { ok: false, code: "not_found" };
   const result = await act(adminEmail, a);
   log.info("vmb_admin_action", { action: a.action, workspaceId: a.workspaceId, admin: adminEmail, ok: result.ok, code: result.ok ? null : result.code });
+  const { workspaceId, action, ...detail } = a;
+  await logAdminAction({ adminEmail, action, workspaceId, ok: result.ok, detail: { ...detail, ...(result.ok ? {} : { code: result.code }) } });
   return result;
 }
 
 async function act(adminEmail: string, a: AdminAction): Promise<AdminActionResult> {
   switch (a.action) {
+    case "retry": {
+      const p = await prisma.vmbProject.findFirst({ where: { id: a.projectId, workspaceId: a.workspaceId }, select: { id: true } });
+      if (!p) return { ok: false, code: "not_found" };
+      const r = await adminRetryRun(p.id);
+      // The office's own limits hold for us too: no subscription, no credits or a live job stops the retry.
+      return r.ok ? { ok: true } : { ok: false, code: r.code === "not_found" ? "not_found" : "blocked" };
+    }
+    case "bench": {
+      // Marks the project as one the zero-touch bench should learn from. Its files still expire by the office's policy.
+      const p = await prisma.vmbProject.findFirst({ where: { id: a.projectId, workspaceId: a.workspaceId }, select: { id: true, manifest: true } });
+      if (!p) return { ok: false, code: "not_found" };
+      const manifest: Record<string, unknown> = { ...asObject(p.manifest) };
+      if (a.on) manifest.bench = { at: new Date().toISOString(), by: adminEmail };
+      else delete manifest.bench;
+      await prisma.vmbProject.update({ where: { id: p.id }, data: { manifest: manifest as Prisma.InputJsonValue } });
+      return { ok: true };
+    }
     case "grant": {
       if (a.amount < 0 && (await creditBalance(a.workspaceId)) + a.amount < 0) return { ok: false, code: "below_zero" };
       await recordCredit({ workspaceId: a.workspaceId, delta: a.amount, reason: "adjust", refId: `admin:${randomUUID()}`, note: `${a.note} (${adminEmail})` });

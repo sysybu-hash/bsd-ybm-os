@@ -2012,6 +2012,8 @@ model VmbJob {
   finishedAt  DateTime?
   costCredits Int?
   computeMs   Int?
+  /// DWG files converted to DXF for this job (a paid conversion each).
+  dwgConversions Int       @default(0)
   workspace   VmbWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project     VmbProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -2058,4 +2060,42 @@ model VmbProjectFile {
   project     VmbProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, relPath])
+}
+
+/// A fixed monthly cost of running VMB (hosting, database, mail...), entered by the owner in the admin console.
+model VmbFixedCost {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+  vendor      String
+  /// Per month, in the currency's minor unit (agorot or cents).
+  amountMinor Int
+  /// ILS | USD
+  currency    String    @default("ILS")
+  startsOn    DateTime
+  /// Null while the cost still runs.
+  endsOn      DateTime?
+  note        String?
+
+  @@index([startsOn])
+}
+
+/// A rate that turns measured usage into money (lib/vmb/cost-rates.ts); a key with no row is unpriced.
+model VmbCostRate {
+  key       String   @id
+  value     Float
+  updatedAt DateTime @default(now()) @updatedAt
+  updatedBy String?
+}
+
+/// Every action an administrator took in the VMB console.
+model VmbAdminLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  adminEmail  String
+  action      String
+  workspaceId String?
+  ok          Boolean  @default(true)
+  detail      Json?
+
+  @@index([createdAt])
 }

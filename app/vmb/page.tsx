@@ -5,7 +5,7 @@ import { vmbT } from "@/lib/vmb/i18n";
 import { VmbLink } from "@/components/vmb/VmbLink";
 import { VmbWordmark } from "@/components/vmb/VmbWordmark";
 import { LandingNav } from "@/components/vmb/landing/LandingNav";
-import { SheetRenderSlider } from "@/components/vmb/landing/SheetRenderSlider";
+import { HeroTower } from "@/components/vmb/landing/HeroTower";
 import { AccuracySection, HowSection, StatsStrip, WRAP } from "@/components/vmb/landing/LandingSections";
 import { FaqSection, FinalCta, GallerySection, PrivacyPricing, ReadsSection } from "@/components/vmb/landing/LandingMore";
 
@@ -36,14 +36,7 @@ export default function VmbLandingPage() {
       />
       <main>
         <section className="relative h-[100svh] min-h-[660px] overflow-hidden text-white">
-          <SheetRenderSlider
-            src="/floorplan-viz/styles/luxury.jpg"
-            alt={t("vmb.hero.stageRender")}
-            sheetLabel={t("vmb.hero.stageSheet")}
-            renderLabel={t("vmb.hero.stageRender")}
-            chips={HERO_CHIPS}
-            priority
-          />
+          <HeroTower sheetLabel={t("vmb.hero.stageSheet")} renderLabel={t("vmb.hero.stageRender")} note={t("vmb.hero.illustration")} chips={HERO_CHIPS} />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[color:var(--vmb-bg)] via-black/25 to-black/55" />
           <div className={`${WRAP} pointer-events-none absolute inset-x-0 bottom-0 pb-14 sm:pb-20`}>
             <p className="vmb-rise mb-6 flex items-center gap-3 text-sm tracking-wide text-[color:var(--vmb-accent)]">
@@ -69,7 +62,6 @@ export default function VmbLandingPage() {
                 {t("vmb.hero.ctaPrimary")}
                 <ArrowLeft className="h-4 w-4 ltr:rotate-180" aria-hidden />
               </VmbLink>
-              <span className="hidden text-sm text-white/55 sm:inline">{t("vmb.hero.dragHint")}</span>
             </div>
           </div>
         </section>

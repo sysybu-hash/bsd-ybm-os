@@ -39,7 +39,7 @@ export function RefundButton({ workspaceId, paymentId, labels }: { workspaceId: 
       </button>
     );
   return (
-    <form onSubmit={(e) => void submit(e)} className="flex flex-wrap items-center gap-1.5">
+    <form method="post" onSubmit={(e) => void submit(e)} className="flex flex-wrap items-center gap-1.5">
       <input name="note" required minLength={2} maxLength={200} placeholder={labels.note} aria-label={labels.note} className="w-40 rounded-lg border border-[color:var(--vmb-line)] bg-[color:var(--vmb-bg-sunk)] px-2 py-1 text-xs" />
       <button type="submit" disabled={busy} className="flex items-center gap-1 rounded-full border border-[color:var(--vmb-line-strong)] px-3 py-1 text-xs font-semibold disabled:opacity-50">
         {busy ? <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden /> : null}

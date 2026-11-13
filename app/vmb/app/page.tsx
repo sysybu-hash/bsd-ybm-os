@@ -3,6 +3,7 @@ import { AccountMenu } from "@/components/vmb/studio/AccountMenu";
 import { StudioFrame } from "@/components/vmb/studio/StudioFrame";
 import { ProjectsBoard } from "@/components/vmb/projects/ProjectsBoard";
 import type { ProjectItem } from "@/components/vmb/projects/types";
+import { isVmbSuperAdmin } from "@/lib/vmb/admin";
 import { listProjects } from "@/lib/vmb/projects";
 import { boardLabels } from "@/lib/vmb/projects-labels";
 import { frameLabels, getStudioContext, vmbStudioT } from "@/lib/vmb/studio-context";
@@ -15,13 +16,21 @@ export const metadata: Metadata = { title: vmbStudioT("vmb.projects.title"), rob
 export default async function VmbProjectsPage() {
   const { user, credits } = await getStudioContext();
   // Same shape the board polls from /api/vmb/projects: dates as ISO strings.
-  const initial = JSON.parse(JSON.stringify(await listProjects(user.id))) as ProjectItem[];
+  const [projects, admin] = await Promise.all([listProjects(user.id), isVmbSuperAdmin(user)]);
+  const initial = JSON.parse(JSON.stringify(projects)) as ProjectItem[];
   return (
     <StudioFrame
       labels={frameLabels()}
       active="projects"
       credits={credits}
-      account={<AccountMenu name={user.name ?? user.email} image={user.image} logoutLabel={vmbStudioT("vmb.studio.logout")} />}
+      account={
+        <AccountMenu
+          name={user.name ?? user.email}
+          image={user.image}
+          logoutLabel={vmbStudioT("vmb.studio.logout")}
+          adminLabel={admin ? vmbStudioT("vmb.admin.link") : undefined}
+        />
+      }
     >
       <div className="py-4">
         <ProjectsBoard initial={initial} labels={boardLabels()} />

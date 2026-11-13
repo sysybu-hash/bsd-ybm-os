@@ -63,7 +63,7 @@ export function OfficeActions({ workspaceId, frozen, labels }: { workspaceId: st
     <details className="mt-3 rounded-xl border border-[color:var(--vmb-line)] p-3">
       <summary className="cursor-pointer text-xs font-semibold text-[color:var(--vmb-accent)]">{labels.open}</summary>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        <form onSubmit={(e) => onForm(e, (f) => ({ action: "grant", amount: Number(f.get("amount")), note: String(f.get("note") ?? "") }))} className="space-y-1.5">
+        <form method="post" onSubmit={(e) => onForm(e, (f) => ({ action: "grant", amount: Number(f.get("amount")), note: String(f.get("note") ?? "") }))} className="space-y-1.5">
           <p className="text-xs font-bold">{labels.grant}</p>
           <input name="amount" type="number" step={1} required aria-label={labels.amount} placeholder={labels.amount} className={`${field} vmb-mono`} dir="ltr" />
           <input name="note" required minLength={2} maxLength={200} aria-label={labels.note} placeholder={labels.note} className={field} />
@@ -72,7 +72,7 @@ export function OfficeActions({ workspaceId, frozen, labels }: { workspaceId: st
             {labels.submit}
           </button>
         </form>
-        <form onSubmit={(e) => onForm(e, (f) => ({ action: "activate", reference: String(f.get("reference") ?? "") }))} className="space-y-1.5">
+        <form method="post" onSubmit={(e) => onForm(e, (f) => ({ action: "activate", reference: String(f.get("reference") ?? "") }))} className="space-y-1.5">
           <p className="text-xs font-bold">{labels.activate}</p>
           <input name="reference" required minLength={3} maxLength={80} aria-label={labels.reference} placeholder={labels.reference} className={`${field} vmb-mono`} dir="ltr" />
           <button type="submit" disabled={busy != null} className={btn}>
@@ -81,7 +81,7 @@ export function OfficeActions({ workspaceId, frozen, labels }: { workspaceId: st
           </button>
         </form>
         <div className="space-y-1.5">
-          <form onSubmit={(e) => onForm(e, (f) => ({ action: "extend", days: Number(f.get("days")) }))} className="space-y-1.5">
+          <form method="post" onSubmit={(e) => onForm(e, (f) => ({ action: "extend", days: Number(f.get("days")) }))} className="space-y-1.5">
             <p className="text-xs font-bold">{labels.extend}</p>
             <input name="days" type="number" min={1} max={366} step={1} required aria-label={labels.days} placeholder={labels.days} className={`${field} vmb-mono`} dir="ltr" />
             <button type="submit" disabled={busy != null} className={btn}>
