@@ -20,9 +20,10 @@ export const runnerReady = () => env.VMB_RUNNER_READY === "1";
 /** What the cost card shows: the estimate, the balance, and why the button is off (null when it is on). */
 export type CostState = { estimate: BookletEstimate; balance: number; active: boolean; block: RunBlock | null; queuedJobId: string | null };
 
-async function loadProject(userId: string, projectId: string) {
+/** `userId` null: an administrator's read, of any office's project (the caller checked isVmbSuperAdmin). */
+async function loadProject(userId: string | null, projectId: string) {
   return prisma.vmbProject.findFirst({
-    where: { id: projectId, ...projectsOfUser(userId) },
+    where: userId ? { id: projectId, ...projectsOfUser(userId) } : { id: projectId },
     select: {
       id: true,
       kind: true,
@@ -79,7 +80,18 @@ export type StartOutcome = { ok: true; jobId: string } | { ok: false; code: RunB
  * balance moved since the card was drawn), the job is removed and nothing is held.
  */
 export async function startRun(userId: string, projectId: string): Promise<StartOutcome> {
-  const p = await loadProject(userId, projectId);
+  return startLoaded(await loadProject(userId, projectId));
+}
+
+/**
+ * An administrator runs a project again (after a fix on our side). The same checks and the same hold as the client's own
+ * button: the office's subscription and credits, never a free run.
+ */
+export async function adminRetryRun(projectId: string): Promise<StartOutcome> {
+  return startLoaded(await loadProject(null, projectId));
+}
+
+async function startLoaded(p: Loaded | null): Promise<StartOutcome> {
   if (!p) return { ok: false, code: "not_found" };
   const cost = await costOf(p);
   if (cost.block) return { ok: false, code: cost.block };

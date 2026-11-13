@@ -12,7 +12,7 @@ import { filesDeleteAt } from "@/lib/vmb/retention";
 import { VMB_BOOKLET_PRICING } from "@/lib/vmb/plans";
 import { advance, etaSeconds, jobPercent, type JobProgress } from "@/lib/vmb/progress";
 import type { CadKind } from "@/lib/projects/building/cad-layers";
-import { RunProjectError, type Report, type RunFileKind, type RunInput, type RunOutput, type RunProjectErrorCode, type RunStage } from "@/lib/projects/pipeline/runProject";
+import { dwgConvertedBefore, RunProjectError, type Report, type RunFileKind, type RunInput, type RunOutput, type RunProjectErrorCode, type RunStage } from "@/lib/projects/pipeline/runProject";
 
 /**
  * The VMB side of the runner: what takes a booklet job off the queue, writes its progress where every shell reads it,
@@ -157,7 +157,14 @@ export async function finishJob(jobId: string, out: RunOutput): Promise<boolean>
   const finishedAt = new Date();
   const moved = await prisma.vmbJob.updateMany({
     where: { id: jobId, status: "running" },
-    data: { status: "done", percent: 100, etaSeconds: 0, finishedAt, computeMs: job.startedAt ? finishedAt.getTime() - job.startedAt.getTime() : null },
+    data: {
+      status: "done",
+      percent: 100,
+      etaSeconds: 0,
+      finishedAt,
+      computeMs: job.startedAt ? finishedAt.getTime() - job.startedAt.getTime() : null,
+      dwgConversions: Math.max(0, Math.floor(out.dwgConverted ?? 0)),
+    },
   });
   if (moved.count !== 1) return false;
   const used = creditsUsed(kindOf(job.project.kind), out.picturesPainted, job.costCredits ?? 0);
@@ -242,6 +249,9 @@ export async function runClaimed(input: RunInput, engine: (input: RunInput, repo
   } catch (err: unknown) {
     if (err instanceof RunProjectError) await failJob(input.jobId, err.code, { code: err.code, message: err.message, units: err.detail?.units });
     else await failJob(input.jobId, err instanceof Error ? err.message : String(err));
+    // The conversions a stopped run already paid for (the cost console counts them).
+    const converted = dwgConvertedBefore(err);
+    if (converted) await prisma.vmbJob.updateMany({ where: { id: input.jobId }, data: { dwgConversions: converted } }).catch(() => undefined);
     return "failed";
   }
 }

@@ -1,6 +1,7 @@
 import type { AdminMetrics, AdminOffice, adminJobs, adminPayments } from "@/lib/vmb/admin-store";
 import { RefundButton, type RefundLabels } from "@/components/vmb/admin/RefundButton";
 import { OfficeActions, type OfficeActionsLabels } from "@/components/vmb/admin/OfficeActions";
+import { VmbLink } from "@/components/vmb/VmbLink";
 
 type T = (k: string, vars?: Record<string, string>) => string;
 
@@ -89,7 +90,9 @@ function JobRows({ jobs, t }: { jobs: Job[]; t: T }) {
       {jobs.map((j) => (
         <li key={j.id} className="space-y-0.5 py-2.5">
           <p className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="font-semibold">{t("job_line", { office: j.workspace.name, project: j.project.name })}</span>
+            <VmbLink href={`/admin/job/${j.id}`} className="font-semibold underline-offset-2 hover:underline">
+              {t("job_line", { office: j.workspace.name, project: j.project.name })}
+            </VmbLink>
             <span className="text-[color:var(--vmb-ink-soft)]">
               {t(`status_${j.status}`)}
               {j.status === "running" ? ` · ${j.percent}%` : ""}
@@ -120,13 +123,13 @@ export function JobsPanels({ jobs, t }: { jobs: Awaited<ReturnType<typeof adminJ
       </div>
       <div className="vmb-card p-6">
         <h2 className="text-lg font-bold">{t("jobsFailed")}</h2>
-        <JobRows jobs={jobs.failed} t={t} />
+        <JobRows jobs={jobs.failed.rows} t={t} />
       </div>
     </section>
   );
 }
 
-export function PaymentsList({ payments, t, refund }: { payments: Awaited<ReturnType<typeof adminPayments>>; t: T; refund: RefundLabels }) {
+export function PaymentsList({ payments, t, refund }: { payments: Awaited<ReturnType<typeof adminPayments>>["rows"]; t: T; refund: RefundLabels }) {
   return (
     <section className="vmb-card p-6">
       <h2 className="text-lg font-bold">{t("paymentsTitle")}</h2>

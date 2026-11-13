@@ -3,7 +3,7 @@
  */
 import { GENERIC_CAD_PROFILE, layerKind, withLayerMap } from "@/lib/projects/building/cad-layers";
 import { isFlatFailure, measureFlatFromDxf } from "@/lib/projects/pipeline/flat-measured";
-import { answerAssumptions, chooseRoute, convertDwgFiles, runProject, RunProjectError, type RunDeps, type RunInput } from "@/lib/projects/pipeline/runProject";
+import { answerAssumptions, chooseRoute, convertDwgFiles, dwgConvertedBefore, runProject, RunProjectError, type RunDeps, type RunInput } from "@/lib/projects/pipeline/runProject";
 
 const file = (relPath: string, kind: RunInput["files"][number]["kind"]) => ({ relPath, kind, blobUrl: `https://x.public.blob.vercel-storage.com/${relPath}` });
 const answers: RunInput["answers"] = {
@@ -147,5 +147,16 @@ describe("convertDwgFiles — DWG read as DXF", () => {
     );
     expect(out.route).toBe("house");
     expect(calls).toEqual(["0.dxf=dxf<dwg:0.dwg>,facades.dxf=dxf<dwg:facades.dwg>"]);
+    expect(out.dwgConverted).toBe(2);
+  });
+
+  it("counts the conversions a run paid for even when it stops after them", async () => {
+    const d = base(async (b) => Buffer.from(`dxf<${b}>`));
+    // One flat from two DXFs is refused, but both DWGs were already converted.
+    const run = runProject({ jobId: "j10", projectId: "p1", kind: "flat", files: [file("a.dwg", "dwg"), file("b.dwg", "dwg")], answers, layerMaps: {} }, report, d);
+    const err: unknown = await run.catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RunProjectError);
+    expect(dwgConvertedBefore(err)).toBe(2);
+    expect(dwgConvertedBefore(new Error("other"))).toBe(0);
   });
 });

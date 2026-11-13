@@ -57,6 +57,8 @@ export type RunOutput = {
   route: "flat-dxf" | "house" | "building-dwf";
   /** Answers this route has no use for (they did not change the booklet). */
   unusedAnswers: AnswerId[];
+  /** DWG files this run converted to DXF (a paid conversion each); the admin console costs them. */
+  dwgConverted?: number;
   /** What the studio opens (plan M3): the model and its cameras, and the sheet it was measured against. */
   studio?: { dataUrl: string; sheetUrl: string | null; /** A house's or a building's storey sheets, by key (building-studio.ts). */ sheets?: Record<string, string> };
 };
@@ -349,11 +351,32 @@ export async function convertDwgFiles(files: RunInput["files"], bytes: Map<strin
   });
 }
 
+/** DWGs a run converted before it stopped: the conversions were paid for whether or not a booklet came out. */
+export function dwgConvertedBefore(err: unknown): number {
+  const n = err && typeof err === "object" ? (err as { dwgConverted?: unknown }).dwgConverted : 0;
+  return typeof n === "number" && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
+}
+
 export async function runProject(input: RunInput, report: Report, deps: RunDeps = realDeps): Promise<RunOutput> {
   const bytes = new Map<string, Buffer>();
-  const { route, files } = chooseRoute(input.kind, await convertDwgFiles(input.files, bytes, deps, report));
+  let converted = 0;
+  try {
+    // Until the files are fetched, everything in `bytes` is a conversion; a run that stops half-way still counts them.
+    const files = await convertDwgFiles(input.files, bytes, deps, report).finally(() => {
+      converted = bytes.size;
+    });
+    return await runConverted(input, report, deps, bytes, files);
+  } catch (err: unknown) {
+    if (err && typeof err === "object") (err as { dwgConverted?: number }).dwgConverted = converted;
+    throw err;
+  }
+}
+
+async function runConverted(input: RunInput, report: Report, deps: RunDeps, bytes: Map<string, Buffer>, convertedFiles: RunInput["files"]): Promise<RunOutput> {
+  const { route, files } = chooseRoute(input.kind, convertedFiles);
   const projectName = input.projectName?.trim() || fileName(files[0]!.relPath).replace(/\.[^.]+$/, "");
-  log.info("run", { jobId: input.jobId, route, files: files.length, converted: bytes.size });
+  const dwgConverted = bytes.size;
+  log.info("run", { jobId: input.jobId, route, files: files.length, converted: dwgConverted });
 
   for (const [i, f] of files.entries()) {
     if (!bytes.has(f.relPath)) bytes.set(f.relPath, await deps.fetchFile(f.blobUrl));
@@ -407,6 +430,7 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
       assumptions,
       route,
       unusedAnswers: (Object.keys(NAMES) as AnswerId[]).filter((k) => !used.includes(k)),
+      dwgConverted,
       ...(studio ? { studio } : {}),
     };
   }
@@ -435,6 +459,7 @@ export async function runProject(input: RunInput, report: Report, deps: RunDeps 
     ],
     route,
     unusedAnswers: Object.keys(NAMES) as AnswerId[],
+    dwgConverted,
     ...(studio ? { studio } : {}),
   };
 }

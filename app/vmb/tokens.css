@@ -104,6 +104,45 @@
   white-space: nowrap;
 }
 
+/* The hero's sheet-to-render slider: a hairline track and an accent dot, the same on every browser. */
+.vmb-range {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: ew-resize;
+}
+.vmb-range::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.vmb-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--vmb-accent);
+}
+.vmb-range::-moz-range-track {
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.vmb-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--vmb-accent);
+}
+.vmb-range:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
 /* Outlined giant numerals (step numbers, section indices). */
 .vmb-outline {
   color: transparent;

@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
-import { useVmbBase, vmbPath } from "@/components/vmb/VmbLink";
+import { LogOut, ShieldCheck } from "lucide-react";
+import { useVmbBase, VmbLink, vmbPath } from "@/components/vmb/VmbLink";
 
-/** The signed-in user's chip with a sign-out button. */
-export function AccountMenu({ name, image, logoutLabel }: { name: string; image: string | null; logoutLabel: string }) {
+/** The signed-in user's chip with a sign-out button; `adminLabel` (administrators only) adds the way into the console. */
+export function AccountMenu({ name, image, logoutLabel, adminLabel }: { name: string; image: string | null; logoutLabel: string; adminLabel?: string }) {
   const router = useRouter();
   const base = useVmbBase();
   const [busy, setBusy] = useState(false);
@@ -33,6 +33,11 @@ export function AccountMenu({ name, image, logoutLabel }: { name: string; image:
         )}
         <span className="max-w-[140px] truncate">{name}</span>
       </span>
+      {adminLabel ? (
+        <VmbLink href="/admin" aria-label={adminLabel} title={adminLabel} className="rounded-full p-2 hover:bg-[color:var(--vmb-bg-sunk)]">
+          <ShieldCheck className="h-4 w-4" aria-hidden />
+        </VmbLink>
+      ) : null}
       <button
         type="button"
         onClick={logout}
